@@ -1183,8 +1183,8 @@ describe('AdminService.getNotificationDailySummary', () => {
     const result = await service.getNotificationDailySummary({});
 
     expect(result).toEqual([
-      { date: '2026-10-08', email: 1, whatsapp: 0, push: 0 },
-      { date: '2026-10-10', email: 1, whatsapp: 1, push: 1 },
+      { date: '2026-10-08', email: 1, whatsapp: 0, push: 0, inApp: 0 },
+      { date: '2026-10-10', email: 1, whatsapp: 1, push: 1, inApp: 0 },
     ]);
   });
 
@@ -1310,6 +1310,8 @@ describe('AdminService.getNotificationDayDetail', () => {
         userEmail: 'ravi@example.com',
         listingId: 'listing1',
         listingTitle: 'Nice flat',
+        deliveryStatus: null,
+        deliveryStatusAt: null,
       },
     ]);
     // See the disable-comment note above for why this is a false positive on this model.
@@ -1369,6 +1371,8 @@ describe('AdminService.getNotificationDayDetail', () => {
         userEmail: 'seeker@example.com',
         listingId: 'listing1',
         listingTitle: 'Nice flat',
+        deliveryStatus: null,
+        deliveryStatusAt: null,
       },
     ]);
   });
@@ -1411,6 +1415,8 @@ describe('AdminService.getNotificationDayDetail', () => {
         userEmail: null,
         listingId: 'listing1',
         listingTitle: 'Nice flat',
+        deliveryStatus: null,
+        deliveryStatusAt: null,
       },
     ]);
   });
@@ -1539,5 +1545,75 @@ describe('AdminService.getNotificationKinds', () => {
     const result = await service.getNotificationKinds();
 
     expect(result).toEqual(['listing_posted_reminder', 'posted', 'welcome']);
+  });
+});
+
+describe('AdminService in-app message logging', () => {
+  const owner = { id: 'owner1', name: 'Ravi', phone: null, email: null };
+  const row = (messageId: string, sentAt: string) => ({
+    kind: 'boost_promo',
+    channel: 'in_app',
+    sentAt: new Date(sentAt),
+    providerMessageId: messageId,
+    deliveryStatus: null,
+    deliveryStatusAt: null,
+    listing: { id: 'listing1', title: 'Nice flat', owner },
+    user: null,
+  });
+
+  it('counts in-app sends in the daily summary', async () => {
+    const { service } = makeService({
+      listingNotificationLog: {
+        findMany: jest.fn().mockResolvedValue([
+          { sentAt: new Date('2026-10-10T04:00:00Z'), channel: 'in_app' },
+          { sentAt: new Date('2026-10-10T05:00:00Z'), channel: 'in_app' },
+        ]),
+      },
+      userNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+    expect(await service.getNotificationDailySummary({})).toEqual([
+      { date: '2026-10-10', email: 0, whatsapp: 0, push: 0, inApp: 2 },
+    ]);
+  });
+
+  it('reports each in-app message as read (with the time), delivered or deleted', async () => {
+    const readAt = new Date('2026-10-10T09:15:00Z');
+    const deletedAt = new Date('2026-10-10T10:00:00Z');
+    const { service } = makeService({
+      listingNotificationLog: {
+        findMany: jest.fn().mockResolvedValue([
+          row('m-read', '2026-10-10T04:00:00Z'),
+          row('m-unread', '2026-10-10T05:00:00Z'),
+          row('m-deleted', '2026-10-10T06:00:00Z'),
+        ]),
+      },
+      userNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+      message: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'm-read', readAt, deletedAt: null },
+          { id: 'm-unread', readAt: null, deletedAt: null },
+          { id: 'm-deleted', readAt: null, deletedAt },
+        ]),
+      },
+    });
+
+    const result = await service.getNotificationDayDetail('2026-10-10');
+    const byStatus = Object.fromEntries(result.map((e) => [e.deliveryStatus, e.deliveryStatusAt]));
+    expect(byStatus).toEqual({
+      read: readAt.toISOString(),
+      delivered: null,
+      deleted: deletedAt.toISOString(),
+    });
+  });
+
+  it('does not touch the messages table when the day has no in-app sends', async () => {
+    const findMany = jest.fn();
+    const { service } = makeService({
+      listingNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+      userNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+      message: { findMany },
+    });
+    await service.getNotificationDayDetail('2026-10-10');
+    expect(findMany).not.toHaveBeenCalled();
   });
 });

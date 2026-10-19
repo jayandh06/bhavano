@@ -9,6 +9,8 @@ export interface NotificationDaySummaryDto {
   email: number;
   whatsapp: number;
   push: number;
+  /** Messages an admin sent into the owner's in-app Messages inbox (channel `in_app`). */
+  inApp: number;
 }
 
 /** One recorded notification send, for the notification-log drill-down or a listing's history —
@@ -31,7 +33,10 @@ export interface NotificationLogEntryDto {
   userEmail: string | null;
   listingId?: string;
   listingTitle?: string;
-  /** Provider callback status when available (currently WhatsApp); not all channels report it. */
+  /** Provider callback status when available (WhatsApp); not all channels report it. For an in-app
+   * message it comes from the message itself: `delivered` (in the owner's inbox, not opened yet),
+   * `read` (the owner opened the thread) or `deleted`. */
   deliveryStatus?: string | null;
+  /** When that status was reached: for an in-app message, when it was read (or deleted). */
   deliveryStatusAt?: string | null;
 }

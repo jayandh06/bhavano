@@ -11,6 +11,17 @@ const CHANNEL_LABELS: Record<string, string> = {
   email: "Email",
   whatsapp: "WhatsApp",
   push: "Push",
+  in_app: "In-app",
+};
+
+/** What the status means, in the words an admin would use. `delivered` for an in-app message means
+ * it is in the owner's inbox but not opened yet. */
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  read: { label: "Read", color: "var(--green)" },
+  delivered: { label: "Delivered, not read", color: "var(--gold)" },
+  deleted: { label: "Deleted", color: "var(--muted)" },
+  sent: { label: "Sent", color: "var(--muted)" },
+  failed: { label: "Failed", color: "var(--danger)" },
 };
 
 /** One row per IST calendar day, copying PageVisitsTable's exact lazy-load-per-row pattern:
@@ -46,7 +57,7 @@ export function NotificationLogTable({
     <tbody>
       {items.map((day) => {
         const isOpen = expandedDays.has(day.date);
-        const total = day.email + day.whatsapp + day.push;
+        const total = day.email + day.whatsapp + day.push + day.inApp;
         return (
           <Fragment key={day.date}>
             <tr style={{ borderTop: "1px solid var(--border)" }}>
@@ -71,11 +82,12 @@ export function NotificationLogTable({
               <td style={tdStyle}>{day.email.toLocaleString()}</td>
               <td style={tdStyle}>{day.whatsapp.toLocaleString()}</td>
               <td style={tdStyle}>{day.push.toLocaleString()}</td>
+              <td style={tdStyle}>{day.inApp.toLocaleString()}</td>
               <td style={{ ...tdStyle, fontWeight: 700 }}>{total.toLocaleString()}</td>
             </tr>
             {isOpen && (
               <tr>
-                <td colSpan={5} style={{ padding: 0, borderTop: "1px solid var(--border)" }}>
+                <td colSpan={6} style={{ padding: 0, borderTop: "1px solid var(--border)" }}>
                   <DayDetailPanel state={details[day.date]} />
                 </td>
               </tr>
@@ -85,7 +97,7 @@ export function NotificationLogTable({
       })}
       {items.length === 0 && (
         <tr style={{ borderTop: "1px solid var(--border)" }}>
-          <td colSpan={5} style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}>
+          <td colSpan={6} style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}>
             No notifications sent in this range.
           </td>
         </tr>
@@ -115,6 +127,8 @@ function DayDetailPanel({ state }: { state: NotificationLogEntryDto[] | "loading
             <th style={innerThStyle}>Channel</th>
             <th style={innerThStyle}>User</th>
             <th style={innerThStyle}>Listing</th>
+            <th style={innerThStyle}>Status</th>
+            <th style={innerThStyle}>Status time (IST)</th>
           </tr>
         </thead>
         <tbody>
@@ -145,6 +159,18 @@ function DayDetailPanel({ state }: { state: NotificationLogEntryDto[] | "loading
                   dash
                 )}
               </td>
+              <td style={innerTdStyle}>
+                {entry.deliveryStatus ? (
+                  <span style={{ fontWeight: 700, color: STATUS_LABELS[entry.deliveryStatus]?.color ?? "var(--text)" }}>
+                    {STATUS_LABELS[entry.deliveryStatus]?.label ?? entry.deliveryStatus}
+                  </span>
+                ) : (
+                  <span style={{ color: "var(--muted)" }} title="This channel does not report delivery or read status">
+                    Not tracked
+                  </span>
+                )}
+              </td>
+              <td style={innerTdStyle}>{entry.deliveryStatusAt ? formatDateTime(entry.deliveryStatusAt) : dash}</td>
             </tr>
           ))}
         </tbody>

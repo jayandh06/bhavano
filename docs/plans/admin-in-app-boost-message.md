@@ -104,3 +104,18 @@ order: send a handful by hand from the Listings page first, read them in the app
 - **Mobile app:** the inbox tag needs the next mobile build/OTA. The "Bhavano Admin" label itself is
   served by the BFF, so it is correct in every existing app version.
 - The 50% discount code expires 2026-09-30; the message quotes the price in force when it is sent.
+
+## Notification log shows in-app messages and whether they were read (2026-10-19)
+
+The in-app send was always logged (`ListingNotificationLog`, `channel: in_app`, `providerMessageId` =
+the message id), but the admin Notification log ignored it: the daily counts added up only email,
+WhatsApp and push, the Channel filter had no in-app option, and the day drill-down carried no status.
+
+- **Daily table:** an **In-app** column, included in the Total. The Channel filter has **In-app message**.
+- **Day drill-down and a listing's history:** a **Status** and **Status time (IST)** column. For an
+  in-app message the status is read from the message itself (`AdminService.deliveryOf`):
+  **Read** with the time it was read (`Message.readAt`, set when the owner opens the thread, see
+  `MessagingService.markRead`), **Delivered, not read** while it sits unopened in their inbox,
+  **Deleted** if removed. WhatsApp rows show MSG91's status; email and push show "Not tracked".
+- **What "read" means:** the owner opened the conversation, not that they read every line. Push
+  notification delivery is a separate thing and is not tracked.

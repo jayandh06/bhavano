@@ -1097,14 +1097,20 @@ export class AdminService {
 
     const byDate = new Map<
       string,
-      { email: number; whatsapp: number; push: number }
+      { email: number; whatsapp: number; push: number; inApp: number }
     >();
     for (const row of [...listingLogs, ...userLogs]) {
       const key = istDateKey(row.sentAt);
-      const entry = byDate.get(key) ?? { email: 0, whatsapp: 0, push: 0 };
+      const entry = byDate.get(key) ?? {
+        email: 0,
+        whatsapp: 0,
+        push: 0,
+        inApp: 0,
+      };
       if (row.channel === 'email') entry.email += 1;
       else if (row.channel === 'whatsapp') entry.whatsapp += 1;
       else if (row.channel === 'push') entry.push += 1;
+      else if (row.channel === IN_APP_CHANNEL) entry.inApp += 1;
       byDate.set(key, entry);
     }
 
@@ -1161,6 +1167,10 @@ export class AdminService {
       }),
     ]);
 
+    // An in-app send logs the id of the message it created, so its read state is the message's own:
+    // readAt is set when the owner opens the thread (see MessagingService.markRead).
+    const inAppById = await this.inAppMessagesFor(listingLogs);
+
     const fromListings: NotificationLogEntryDto[] = listingLogs.map((row) => {
       // `saved_search_match` notifies the matching seeker, not the listing's owner — `row.user`
       // is that seeker when this row was logged after the fix. An older `saved_search_match` row
@@ -1179,6 +1189,7 @@ export class AdminService {
         userEmail: recipient?.email ?? null,
         listingId: row.listing.id,
         listingTitle: row.listing.title,
+        ...this.deliveryOf(row, inAppById),
       };
     });
     const fromUsers: NotificationLogEntryDto[] = userLogs.map((row) => ({
@@ -1194,6 +1205,41 @@ export class AdminService {
     return [...fromListings, ...fromUsers].sort((a, b) =>
       b.sentAt.localeCompare(a.sentAt),
     );
+  }
+
+  /** The in-app messages behind a set of logged sends, keyed by message id. */
+  private async inAppMessagesFor(
+    rows: { channel: string; providerMessageId: string | null }[],
+  ): Promise<Map<string, { readAt: Date | null; deletedAt: Date | null }>> {
+    const ids = rows
+      .filter((row) => row.channel === IN_APP_CHANNEL && row.providerMessageId)
+      .map((row) => row.providerMessageId as string);
+    if (ids.length === 0) return new Map();
+    const messages = await this.prisma.message.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, readAt: true, deletedAt: true },
+    });
+    return new Map(messages.map((m) => [m.id, m]));
+  }
+
+  /** Delivery state of one logged send. WhatsApp reports its own status back; an in-app message is
+   * `read` once the owner opened the thread, `deleted` if it was removed, else `delivered` (sitting
+   * in their inbox). Email and push report nothing, so those stay null. */
+  private deliveryOf(
+    row: { channel: string; providerMessageId: string | null; deliveryStatus: string | null; deliveryStatusAt: Date | null },
+    inAppById: Map<string, { readAt: Date | null; deletedAt: Date | null }>,
+  ): { deliveryStatus: string | null; deliveryStatusAt: string | null } {
+    if (row.channel === IN_APP_CHANNEL) {
+      const message = row.providerMessageId ? inAppById.get(row.providerMessageId) : undefined;
+      if (!message) return { deliveryStatus: null, deliveryStatusAt: null };
+      if (message.deletedAt) return { deliveryStatus: 'deleted', deliveryStatusAt: message.deletedAt.toISOString() };
+      if (message.readAt) return { deliveryStatus: 'read', deliveryStatusAt: message.readAt.toISOString() };
+      return { deliveryStatus: 'delivered', deliveryStatusAt: null };
+    }
+    return {
+      deliveryStatus: row.deliveryStatus ?? null,
+      deliveryStatusAt: row.deliveryStatusAt?.toISOString() ?? null,
+    };
   }
 
   /** Listing-scoped notification history for the moderation detail page. */
@@ -1217,6 +1263,7 @@ export class AdminService {
       },
     });
 
+    const inAppById = await this.inAppMessagesFor(rows);
     return rows.map((row) => {
       const recipient =
         row.user ??
@@ -1231,8 +1278,7 @@ export class AdminService {
         userEmail: recipient?.email ?? null,
         listingId: row.listing.id,
         listingTitle: row.listing.title,
-        deliveryStatus: row.deliveryStatus,
-        deliveryStatusAt: row.deliveryStatusAt?.toISOString() ?? null,
+        ...this.deliveryOf(row, inAppById),
       };
     });
   }

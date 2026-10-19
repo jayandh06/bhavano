@@ -83,6 +83,7 @@ export default async function NotificationLogPage({ searchParams }: { searchPara
                 <option value="email">Email</option>
                 <option value="whatsapp">WhatsApp</option>
                 <option value="push">Push</option>
+                <option value="in_app">In-app message</option>
               </SelectField>
             </Field>
 
@@ -114,6 +115,7 @@ export default async function NotificationLogPage({ searchParams }: { searchPara
                   <th style={thStyle}>Email</th>
                   <th style={thStyle}>WhatsApp</th>
                   <th style={thStyle}>Push</th>
+                  <th style={thStyle}>In-app</th>
                   <th style={thStyle}>Total</th>
                 </tr>
               </thead>
