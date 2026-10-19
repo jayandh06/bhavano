@@ -636,8 +636,11 @@ export default async function CityBrowsePage({
   // Soft, best-effort locality filter for the search bar's "area in a city" case, which has no
   // path segment of its own once a category isn't also known — unlike `parsed.areaSlug` (a real
   // path segment), an unresolved `?area=` is silently ignored rather than a 404.
+  // `resolveArea` matches a slug, but the search bar sends the words as typed ("hsr layout"), so the
+  // text is slugified first. Without that, any area name of more than one word never resolved and
+  // fell through to a title search.
   const areaQueryParam = typeof sp.area === "string" ? sp.area : undefined;
-  const areaRowFromQuery = !areaRow && areaQueryParam ? await resolveArea(cityRow.id, areaQueryParam).catch(() => null) : null;
+  const areaRowFromQuery = !areaRow && areaQueryParam ? await resolveArea(cityRow.id, slugify(areaQueryParam)).catch(() => null) : null;
   // The search bar's leftover text after city/category/price extraction is only ever a
   // *guess* at a locality — when it doesn't match a real area in this city, it was previously
   // just dropped on the floor (silently returning the city's unfiltered listings). Falling back
