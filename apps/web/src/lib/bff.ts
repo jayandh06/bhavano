@@ -367,6 +367,18 @@ export function fetchAreas(cityId: string, q?: string, all?: boolean): Promise<A
   return bffFetch<Area[]>(`/locations/areas?${params.toString()}`, { cache: "no-store" });
 }
 
+/** `{ [areaId]: activeListings }` for a city, cached for an hour. An empty object on any failure, so
+ * a BFF hiccup falls back to the old alphabetical order rather than breaking the page. */
+export async function fetchAreaListingCounts(cityId: string): Promise<Record<string, number>> {
+  try {
+    return await bffFetch<Record<string, number>>(`/locations/area-listing-counts?cityId=${encodeURIComponent(cityId)}`, {
+      next: { revalidate: 3600 },
+    });
+  } catch {
+    return {};
+  }
+}
+
 // Not tied to any one listing — for the Plans page, which describes contact-reveal credits
 // without a listing in context. The per-listing reveal flow gets pack size/price inlined on
 // ListingCardDto/ListingDetailDto instead (see those types' own doc comments).

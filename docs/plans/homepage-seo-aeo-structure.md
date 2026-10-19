@@ -42,3 +42,17 @@ Only the **plain `/` view** (every city, every category, page 1, nothing searche
   overviews are the natural source once some are published).
 - Measuring: compare homepage impressions and clicks in Search Console before and after, and check
   `FAQPage` and `WebSite` in the Rich Results Test.
+
+## Area links ranked by listings (2026-10-19)
+The footer's "Areas in {city}" and the "Explore nearby" block took the city's areas alphabetically,
+capped at a few dozen, so on Bengaluru they started "1st Block", "1st Phase", "2nd Stage" and never
+reached HSR Layout, Koramangala or Whitefield: the best area pages had no internal link from their
+own city page.
+
+- **BFF:** `GET /locations/area-listing-counts?cityId=` returns `{ areaId: activeListings }`.
+- **Web:** `lib/areaRanking.ts` `rankAreasForLinks` orders areas by active listings, most first. It
+  keeps areas that meet the indexable minimum (`MIN_INDEXABLE_AREA_LISTINGS`); if fewer than four do,
+  it keeps every area with any listing; with no data at all it returns the original list. The counts
+  are cached for an hour and an empty result on failure falls back to the old order.
+- **Used by:** the footer, the intro and "Explore nearby" on browse pages, the listing detail
+  footer, and the homepage footer once a city is chosen. The area filter keeps the alphabetical list.

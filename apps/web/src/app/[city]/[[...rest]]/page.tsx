@@ -6,7 +6,16 @@ import { slugify } from "@bhavano/types/slugify";
 import { AMENITY_KEYS } from "@bhavano/types/categoryFields";
 import type { AreaUnit } from "@bhavano/types/areaUnit";
 import { auth } from "@/auth";
-import { fetchAreas, fetchCities, fetchCitySlugRedirect, fetchListingById, fetchListingMeta, fetchListings } from "@/lib/bff";
+import {
+  fetchAreaListingCounts,
+  fetchAreas,
+  fetchCities,
+  fetchCitySlugRedirect,
+  fetchListingById,
+  fetchListingMeta,
+  fetchListings,
+} from "@/lib/bff";
+import { rankAreasForLinks } from "@/lib/areaRanking";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
 import { CATEGORY_LABELS, isListingCategory, isTransactionType, resolveArea, resolveCity, formerCityRedirectPath } from "@/lib/browseRoute";
 import { buildBrowsePath, buildListingPath } from "@/lib/listingPath";
@@ -575,10 +584,13 @@ export default async function CityBrowsePage({
     // below fetches. Listing pages are where search traffic actually lands, so leaving them
     // without a footer left every area and city page under-linked from the deepest, most
     // content-rich pages on the site.
-    const [allCitiesForDetail, cityAreasForDetail] = await Promise.all([
+    const [allCitiesForDetail, areasForDetail, countsForDetail] = await Promise.all([
       fetchCities(undefined, true),
       fetchAreas(cityRow.id, undefined, true),
+      fetchAreaListingCounts(cityRow.id),
     ]);
+    // Most-listed areas first, so the footer links the areas worth ranking (see lib/areaRanking.ts).
+    const cityAreasForDetail = rankAreasForLinks(areasForDetail, countsForDetail);
 
     return (
       <>
@@ -643,7 +655,14 @@ export default async function CityBrowsePage({
 
   const baseQuery = buildQueryForSegments(parsed);
   const heading = headingFor(parsed, cityRow.name, areaRow?.name);
-  const [allCities, cityAreas] = await Promise.all([fetchCities(undefined, true), fetchAreas(cityRow.id, undefined, true)]);
+  const [allCities, cityAreas, areaCounts] = await Promise.all([
+    fetchCities(undefined, true),
+    fetchAreas(cityRow.id, undefined, true),
+    fetchAreaListingCounts(cityRow.id),
+  ]);
+  // The footer and "Explore nearby" link to the areas with the most listings, not the first few
+  // alphabetically. The area filter keeps the full alphabetical `cityAreas`.
+  const linkAreas = rankAreasForLinks(cityAreas, areaCounts);
 
   return (
     <>
@@ -677,6 +696,7 @@ export default async function CityBrowsePage({
         pathAreaName={areaRow?.name}
         areaName={areaRow?.name ?? cityAreas[0]?.name}
         cityAreas={cityAreas}
+        linkAreas={linkAreas}
         allCities={allCities}
         noAreaSelected={noAreaSelected}
         filteredHeading={headingFor(parsed, cityRow.name, areaRow?.name, {

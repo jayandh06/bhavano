@@ -23,6 +23,13 @@ export class LocationsController {
     return this.locationsService.searchAreas(cityId, q, all === 'true');
   }
 
+  /** `{ [areaId]: activeListings }` for a city. Public. */
+  @Get('area-listing-counts')
+  areaListingCounts(@Query('cityId') cityId: string): Promise<Record<string, number>> {
+    if (!cityId) throw new BadRequestException('cityId query param is required');
+    return this.locationsService.areaListingCounts(cityId);
+  }
+
   /** Old city slug → the curated city its listings were moved onto. Null when the slug is live
    * or unknown. The web app 308s; this does not itself redirect. */
   @Get('slug-redirect')

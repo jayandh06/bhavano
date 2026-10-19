@@ -89,6 +89,7 @@ export async function BrowseListingsView({
   areaName,
   pathAreaName,
   cityAreas,
+  linkAreas,
   allCities,
   noAreaSelected = false,
   filteredHeading,
@@ -113,6 +114,9 @@ export async function BrowseListingsView({
   /** Every area in this city, for the multi-select `AreaFilter` — distinct from `areaName`
    * (just a placeholder hint for the search bar). */
   cityAreas: Area[];
+  /** The areas to link to from the intro, "Explore nearby" and the footer, most listings first.
+   * `cityAreas` stays alphabetical for the area filter. Defaults to `cityAreas`. */
+  linkAreas?: Area[];
   /** Every city, passed through to the footer's all-cities block — the caller already fetches
    * this for `popularCities`, so reuse it instead of Footer fetching it again. */
   allCities: City[];
@@ -180,7 +184,7 @@ export async function BrowseListingsView({
             areaName={pathAreaName}
             segments={currentSegments}
             listingTotal={listingsPage.total}
-            cityAreas={cityAreas}
+            cityAreas={linkAreas ?? cityAreas}
             part="intro"
           />
         )}
@@ -347,12 +351,12 @@ export async function BrowseListingsView({
             areaName={pathAreaName}
             segments={currentSegments}
             listingTotal={listingsPage.total}
-            cityAreas={cityAreas}
+            cityAreas={linkAreas ?? cityAreas}
             part="links"
           />
         )}
       </main>
-      <Footer currentCityName={cityName} cityAreas={cityAreas} allCities={allCities} />
+      <Footer currentCityName={cityName} cityAreas={linkAreas ?? cityAreas} allCities={allCities} />
     </div>
   );
 }

@@ -183,6 +183,18 @@ export class LocationsService {
     return matches.map(toAreaDto);
   }
 
+  /** Active, live listing count per area in a city, for ranking the area links on city pages (the
+   * footer, "Explore nearby") by how much is actually there instead of alphabetically. Only areas
+   * with at least one listing appear. Public data; the web app caches it. */
+  async areaListingCounts(cityId: string): Promise<Record<string, number>> {
+    const rows = await this.prisma.$queryRaw<{ areaId: string; count: number }[]>`
+      SELECT l."areaId" AS "areaId", COUNT(*)::int AS "count"
+      FROM "Listing" l
+      WHERE l."cityId" = ${cityId} AND l."status" = 'active' AND l."publishState" = 'live'
+      GROUP BY l."areaId"`;
+    return Object.fromEntries(rows.map((r) => [r.areaId, r.count]));
+  }
+
   /** Former city slug left behind when a user-submitted city was merged onto a curated one.
    * The web catch-all 308s `/{slug}/...` to this city. */
   async resolveSlugRedirect(slug: string): Promise<CityDto | null> {

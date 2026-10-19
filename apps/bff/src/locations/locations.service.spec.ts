@@ -462,3 +462,20 @@ describe('LocationsService.reverseGeocodeGoogle — towns within a served city r
     expect(result.cityId).toBe('nalgonda');
   });
 });
+
+describe('LocationsService.areaListingCounts', () => {
+  it('returns a map of area id to active live listing count', async () => {
+    const { service } = makeService({
+      $queryRaw: jest.fn().mockResolvedValue([
+        { areaId: 'a1', count: 11 },
+        { areaId: 'a2', count: 2 },
+      ]),
+    });
+    await expect(service.areaListingCounts('city1')).resolves.toEqual({ a1: 11, a2: 2 });
+  });
+
+  it('is empty for a city with no active listings', async () => {
+    const { service } = makeService({ $queryRaw: jest.fn().mockResolvedValue([]) });
+    await expect(service.areaListingCounts('city1')).resolves.toEqual({});
+  });
+});

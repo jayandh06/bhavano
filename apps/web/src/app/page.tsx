@@ -4,7 +4,8 @@ import type { ListingCategory } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
 import { platformFeeFor } from "@bhavano/types/platformFeePricing";
-import { BffAuthError, fetchAreas, fetchCities, fetchListings, fetchPlanPricing } from "@/lib/bff";
+import { BffAuthError, fetchAreaListingCounts, fetchAreas, fetchCities, fetchListings, fetchPlanPricing } from "@/lib/bff";
+import { rankAreasForLinks } from "@/lib/areaRanking";
 import { AD_LANDING_INTENTS, resolveAdLandingIntent } from "@/lib/adLandingCard";
 import { AdLandingCard, LISTINGS_ANCHOR_ID } from "@/components/home/AdLandingCard";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
@@ -184,7 +185,10 @@ export default async function HomePage({
   const homeAsset: ListingCategory | undefined = listingCategory ?? (propertyType as ListingCategory | undefined);
   const cityName = resolvedCity?.name;
   // Full area list for both the search bar's placeholder hint and the AreaFilter multi-select.
-  const cityAreas = resolvedCity ? await fetchAreas(resolvedCity.id, undefined, true) : [];
+  const [cityAreas, areaCounts] = resolvedCity
+    ? await Promise.all([fetchAreas(resolvedCity.id, undefined, true), fetchAreaListingCounts(resolvedCity.id)])
+    : [[], {} as Record<string, number>];
+  const linkAreas = rankAreasForLinks(cityAreas, areaCounts);
   const popularSearches = await resolvePopularSearches(cityName ?? "India", resolvedCity?.id);
 
   // Only the landing request carries the ad params, so the card goes away on the next navigation
@@ -384,7 +388,7 @@ export default async function HomePage({
         )}
         {isPlainRoot && <HomeSeoSections popularCities={popularCities} />}
       </main>
-      <Footer currentCityName={resolvedCity?.name} cityAreas={cityAreas} allCities={allCities} />
+      <Footer currentCityName={resolvedCity?.name} cityAreas={linkAreas} allCities={allCities} />
     </div>
   );
 }
