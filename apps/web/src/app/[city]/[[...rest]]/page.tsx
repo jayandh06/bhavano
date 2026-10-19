@@ -645,6 +645,31 @@ export default async function CityBrowsePage({
   // isn't actually a locality of the city being browsed) still find something.
   const qFromUnresolvedArea = areaQueryParam && !areaRow && !areaRowFromQuery ? areaQueryParam : undefined;
 
+  // A search that named a real area (`/bengaluru?area=hsr+layout&rememberCity=0`) is the same
+  // page as the area's own address, so it goes there: the path is what is indexed and shared, the
+  // query form is a duplicate with a heading that said "all of Bengaluru" over one area's results.
+  // The category and facet the search bar already put in the path are kept, and every other query
+  // param (price, `rememberCity=0`, ...) travels along; only `area` is dropped, since the path now
+  // carries it. Cannot loop: the target has the area in its path, so `areaRow` resolves and this
+  // branch is skipped. A permanent redirect, so already-shared `?area=` links consolidate onto it.
+  if (areaRowFromQuery) {
+    const target = buildBrowsePath({
+      cityName: cityRow.name,
+      areaName: areaRowFromQuery.name,
+      transactionGroup: parsed.transactionGroup,
+      category: parsed.category,
+      facetValue: parsed.facetValue,
+    });
+    const carried = new URLSearchParams();
+    for (const [key, value] of Object.entries(sp)) {
+      if (key === "area") continue;
+      if (typeof value === "string") carried.set(key, value);
+      else if (Array.isArray(value)) value.forEach((v) => carried.append(key, v));
+    }
+    const qs = carried.toString();
+    permanentRedirect(qs ? `${target}?${qs}` : target);
+  }
+
   // `AreaFilter`'s multi-select — a comma-separated list of area ids (`?areas=`), distinct from
   // the single-locality `?area=`/path-based cases above. No resolution needed, these ids round-trip
   // straight into the backend's `areaIds` filter.
@@ -664,6 +689,16 @@ export default async function CityBrowsePage({
   // alphabetically. The area filter keeps the full alphabetical `cityAreas`.
   const linkAreas = rankAreasForLinks(cityAreas, areaCounts);
 
+  const filteredHeading = headingFor(parsed, cityRow.name, areaRow?.name, {
+    // Only counted when several are chosen and no single area names the path — one area is
+    // named, and "all areas" is just the city.
+    areaCount: areaIds && areaIds.length > 1 ? areaIds.length : undefined,
+    furnished,
+    minPrice,
+    maxPrice,
+    ...selects,
+  });
+
   return (
     <>
       <JsonLd data={breadcrumbJsonLd(cityRow.name, city, parsed, areaRow?.name)} />
@@ -671,7 +706,7 @@ export default async function CityBrowsePage({
         query={{
           ...baseQuery,
           cityId: cityRow.id,
-          areaId: areaRow?.id ?? areaRowFromQuery?.id,
+          areaId: areaRow?.id,
           areaIds,
           q: qFromUnresolvedArea,
           bedrooms: bedroomsFromQuery ?? baseQuery.bedrooms,
@@ -699,15 +734,9 @@ export default async function CityBrowsePage({
         linkAreas={linkAreas}
         allCities={allCities}
         noAreaSelected={noAreaSelected}
-        filteredHeading={headingFor(parsed, cityRow.name, areaRow?.name, {
-          // Only counted when several are chosen and no single area names the path — one area is
-          // named, and "all areas" is just the city.
-          areaCount: areaIds && areaIds.length > 1 ? areaIds.length : undefined,
-          furnished,
-          minPrice,
-          maxPrice,
-          ...selects,
-        })}
+        filteredHeading={
+          qFromUnresolvedArea ? `${filteredHeading}: results for “${qFromUnresolvedArea}”` : filteredHeading
+        }
       />
     </>
   );
