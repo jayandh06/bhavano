@@ -118,7 +118,10 @@ function DayDetailPanel({ state }: { state: NotificationLogEntryDto[] | "loading
   }
 
   return (
-    <div style={{ padding: 16, background: "var(--bg)", overflowX: "auto" }}>
+    // `width: 0` + `minWidth: 100%` keeps this box from contributing its table's width to the
+    // enclosing cell. Without it the cell grew to fit the (now seven-column) detail table, the
+    // main table grew with it, and this container never overflowed, so it never scrolled.
+    <div style={{ width: 0, minWidth: "100%", padding: 16, background: "var(--bg)", overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
         <thead>
           <tr style={{ textAlign: "left" }}>
