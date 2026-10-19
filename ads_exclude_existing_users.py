@@ -26,7 +26,10 @@ from google.ads.googleads.errors import GoogleAdsException
 CID = "4214066478"
 DRY = "--dry-run" in sys.argv
 
-TARGET_LIST_NAME = "All Users of bhavano-23f72"
+# `--list "<name>"` swaps in another user list, e.g. the Customer Match list that
+# ads_customer_match_upload.py creates, which covers people the signed-in-Google list misses.
+DEFAULT_LIST_NAME = "All Users of bhavano-23f72"
+TARGET_LIST_NAME = sys.argv[sys.argv.index("--list") + 1] if "--list" in sys.argv else DEFAULT_LIST_NAME
 
 POSTER_CAMPAIGNS = [
     "Metro-Generic Post Ad Intent",

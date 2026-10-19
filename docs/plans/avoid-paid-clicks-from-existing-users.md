@@ -30,3 +30,18 @@ in to Google, and its list lags, so it leaks.
   to make, not a default.
 - Google requires account eligibility (spend history, good standing) for Customer Match.
 - The export holds personal data: write it outside the repo and delete it after the upload.
+
+## Update 2026-10-19: Customer Match scripts written, not run
+Measured on the live data, about 1% of paid clicks (27 of roughly 2,600 in 30 days) came from
+people who already had an account, so this is low priority. The tooling exists in case it is wanted:
+- `apps/bff/scripts/export-customer-match.ts`: CSV of email and phone (`all` or `posters`), to a file
+  outside the repo. Sends nothing.
+- `ads_customer_match_upload.py`: normalises and SHA-256 hashes on the local machine, then creates a
+  Customer Match list. `--dry-run` only counts. Live runs need `--confirm-consent`.
+- `ads_exclude_existing_users.py --list "<name>"` then applies the list as an exclusion.
+
+Before any live run: `/privacy` must say that hashed contact details are shared with Google to
+exclude existing users from ads, the business must decide it is entitled to do so (that is what
+`--confirm-consent` declares), and the account needs the spend history and standing Google requires.
+Google also needs roughly 1,000 matched members before a list is usable; the user base is about
+3,400, and matching is never complete, so it may fall short.
