@@ -3,8 +3,9 @@
  * (`/{city}/{area}`). Shared by the BFF (which stores and validates it), the admin app (which
  * edits and reviews it) and the web app (which renders it). See docs/plans/area-overview-pages.md. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AREA_OVERVIEW_REVIEW_CHECKLIST = void 0;
+exports.AREA_OVERVIEW_REVIEW_CHECKLIST = exports.AREA_OVERVIEW_SORT_FIELDS = void 0;
 exports.validateAreaOverviewContent = validateAreaOverviewContent;
+exports.AREA_OVERVIEW_SORT_FIELDS = ["city", "area", "listings", "status", "updated"];
 /** What a reviewer confirms before an overview can be published. The admin page shows these as
  * tick boxes; publishing requires `checklistConfirmed: true`, which the page only sends when all
  * are ticked. The first one is also enforced by `validateAreaOverviewContent`. */

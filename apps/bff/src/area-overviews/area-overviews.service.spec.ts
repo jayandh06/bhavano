@@ -105,3 +105,67 @@ describe('content helpers', () => {
     expect(sameContent(GOOD, { ...GOOD })).toBe(true);
   });
 });
+
+describe('AreaOverviewsService.list', () => {
+  const row = (areaName: string, cityName: string, activeListings: number, status: string | null, updatedAt: string | null) => ({
+    areaId: `${cityName}-${areaName}`, areaName, cityName, activeListings, status, updatedAt: updatedAt ? new Date(updatedAt) : null, reviewedByName: null,
+  });
+  const ROWS = [
+    row('HSR Layout', 'Bengaluru', 11, 'published', '2026-10-18T10:00:00Z'),
+    row('Jayanagar', 'Bengaluru', 8, 'draft', '2026-10-10T10:00:00Z'),
+    row('Aundh', 'Pune', 4, null, null),
+    row('Wakad', 'Pune', 3, 'in_review', '2026-10-15T10:00:00Z'),
+  ];
+  const make = () => {
+    const prisma = { $queryRaw: jest.fn().mockResolvedValue(ROWS) };
+    return new AreaOverviewsService(prisma as never);
+  };
+  const names = (page: { items: { areaName: string }[] }) => page.items.map((i) => i.areaName);
+
+  it('sorts by active listings, busiest first, by default', async () => {
+    expect(names(await make().list({ offset: 0, limit: 10 }))).toEqual(['HSR Layout', 'Jayanagar', 'Aundh', 'Wakad']);
+  });
+
+  it('sorts either way by a chosen column, keeping areas with no date last', async () => {
+    expect(names(await make().list({ sort: 'updated', dir: 'asc', offset: 0, limit: 10 }))).toEqual(['Jayanagar', 'Wakad', 'HSR Layout', 'Aundh']);
+    expect(names(await make().list({ sort: 'updated', dir: 'desc', offset: 0, limit: 10 }))).toEqual(['HSR Layout', 'Wakad', 'Jayanagar', 'Aundh']);
+  });
+
+  it('filters by city, status and listing range, and lists every city', async () => {
+    const page = await make().list({ city: 'pune', minListings: 4, offset: 0, limit: 10 });
+    expect(names(page)).toEqual(['Aundh']);
+    expect(page.cities).toEqual(['Bengaluru', 'Pune']);
+    expect(names(await make().list({ status: 'none', offset: 0, limit: 10 }))).toEqual(['Aundh']);
+    expect(names(await make().list({ status: 'draft', maxListings: 10, offset: 0, limit: 10 }))).toEqual(['Jayanagar']);
+  });
+
+  it('filters by update date in India time, inclusive, and drops areas with no date', async () => {
+    const page = await make().list({ updatedFrom: '2026-10-12', updatedTo: '2026-10-18', offset: 0, limit: 10 });
+    expect(names(page).sort()).toEqual(['HSR Layout', 'Wakad']);
+  });
+
+  it('searches the area name and pages the result', async () => {
+    expect(names(await make().list({ q: 'lay', offset: 0, limit: 10 }))).toEqual(['HSR Layout']);
+    const page = await make().list({ offset: 1, limit: 2 });
+    expect(page.total).toBe(4);
+    expect(names(page)).toEqual(['Jayanagar', 'Aundh']);
+  });
+});
+
+describe('AreaOverviewsService.setStatusBulk', () => {
+  it('refuses to publish without the confirmed checklist', async () => {
+    const { service } = makeService(stored('draft'));
+    await expect(service.setStatusBulk(['a1'], 'published', false, 'u1')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('reports each area on its own, so one failure does not stop the rest', async () => {
+    const { service, prisma } = makeService(null);
+    prisma.areaOverview.findUnique.mockImplementation(({ where }: { where: { areaId: string } }) =>
+      Promise.resolve(where.areaId === 'ok' ? stored('draft') : null),
+    );
+    const { results } = await service.setStatusBulk(['ok', 'missing', 'ok'], 'published', true, 'u1');
+    expect(results).toHaveLength(2);
+    expect(results.find((r) => r.areaId === 'ok')?.ok).toBe(true);
+    expect(results.find((r) => r.areaId === 'missing')).toMatchObject({ ok: false });
+  });
+});

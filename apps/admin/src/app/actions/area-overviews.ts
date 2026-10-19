@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { AreaOverviewContent, AreaOverviewDto, AreaOverviewStatus } from "@bhavano/types/areaOverview";
+import type { AreaOverviewContent, AreaOverviewDto, AreaOverviewStatus, BulkAreaOverviewResult } from "@bhavano/types/areaOverview";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { saveAreaOverview, setAreaOverviewStatus } from "@/lib/bff";
+import { bulkSetAreaOverviewStatus, saveAreaOverview, setAreaOverviewStatus } from "@/lib/bff";
 
 export type AreaOverviewResult = { success: true; overview: AreaOverviewDto } | { success: false; error: string };
 
@@ -28,6 +28,23 @@ export async function setAreaOverviewStatusAction(
     const overview = await setAreaOverviewStatus(accessToken, areaId, status, checklistConfirmed);
     revalidatePath("/area-overviews");
     return { success: true, overview };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to change status" };
+  }
+}
+
+export type BulkAreaOverviewActionResult = ({ success: true } & BulkAreaOverviewResult) | { success: false; error: string };
+
+export async function bulkSetAreaOverviewStatusAction(
+  areaIds: string[],
+  status: "published" | "draft",
+  checklistConfirmed: boolean,
+): Promise<BulkAreaOverviewActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const result = await bulkSetAreaOverviewStatus(accessToken, areaIds, status, checklistConfirmed);
+    revalidatePath("/area-overviews");
+    return { success: true, ...result };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to change status" };
   }

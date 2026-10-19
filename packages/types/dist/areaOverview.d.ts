@@ -33,7 +33,21 @@ export interface AdminAreaOverviewRow {
 }
 export interface AdminAreaOverviewsPage {
     items: AdminAreaOverviewRow[];
+    /** Rows matching the filters (before paging). */
     total: number;
+    /** Every city that has at least one row, for the city filter. Not narrowed by the other filters. */
+    cities: string[];
+}
+export type AreaOverviewSortField = "city" | "area" | "listings" | "status" | "updated";
+export declare const AREA_OVERVIEW_SORT_FIELDS: readonly AreaOverviewSortField[];
+/** Outcome of one area in a bulk status change. */
+export interface BulkAreaOverviewItemResult {
+    areaId: string;
+    ok: boolean;
+    error?: string;
+}
+export interface BulkAreaOverviewResult {
+    results: BulkAreaOverviewItemResult[];
 }
 export interface AdminAreaOverviewDetail {
     areaId: string;

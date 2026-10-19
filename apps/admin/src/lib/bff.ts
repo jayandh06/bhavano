@@ -11,6 +11,7 @@ import type {
   AreaOverviewContent,
   AreaOverviewDto,
   AreaOverviewStatus,
+  BulkAreaOverviewResult,
 } from "@bhavano/types/areaOverview";
 import type { PostEntrySource } from "@bhavano/types/postEntry";
 import type { NotificationDaySummaryDto, NotificationLogEntryDto } from "@bhavano/types/notificationLog";
@@ -1156,16 +1157,41 @@ export function fetchNotificationKinds(accessToken: string): Promise<string[]> {
   return authedBffFetch(accessToken, `/admin/notifications/kinds`, { cache: "no-store" });
 }
 
-export function fetchAreaOverviews(
-  accessToken: string,
-  query: { status?: string; q?: string; offset?: number; limit?: number } = {},
-): Promise<AdminAreaOverviewsPage> {
+export interface AreaOverviewListQuery {
+  status?: string;
+  city?: string;
+  q?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
+  minListings?: string;
+  maxListings?: string;
+  sort?: string;
+  dir?: string;
+  offset?: number;
+  limit?: number;
+}
+
+export function fetchAreaOverviews(accessToken: string, query: AreaOverviewListQuery = {}): Promise<AdminAreaOverviewsPage> {
   const params = new URLSearchParams();
-  if (query.status) params.set("status", query.status);
-  if (query.q) params.set("q", query.q);
+  for (const key of ["status", "city", "q", "updatedFrom", "updatedTo", "minListings", "maxListings", "sort", "dir"] as const) {
+    const value = query[key];
+    if (value) params.set(key, value);
+  }
   if (query.offset !== undefined) params.set("offset", String(query.offset));
   if (query.limit) params.set("limit", String(query.limit));
   return authedBffFetch(accessToken, `/admin/area-overviews?${params.toString()}`, { cache: "no-store" });
+}
+
+export function bulkSetAreaOverviewStatus(
+  accessToken: string,
+  areaIds: string[],
+  status: "published" | "draft",
+  checklistConfirmed: boolean,
+): Promise<BulkAreaOverviewResult> {
+  return authedBffFetch(accessToken, "/admin/area-overviews/bulk-status", {
+    method: "POST",
+    body: JSON.stringify({ areaIds, status, checklistConfirmed }),
+  });
 }
 
 export function fetchAreaOverview(accessToken: string, areaId: string): Promise<AdminAreaOverviewDetail> {

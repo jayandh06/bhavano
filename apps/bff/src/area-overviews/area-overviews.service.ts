@@ -5,12 +5,30 @@ import {
   type AdminAreaOverviewDetail,
   type AdminAreaOverviewRow,
   type AdminAreaOverviewsPage,
+  type AreaOverviewSortField,
+  type BulkAreaOverviewItemResult,
+  type BulkAreaOverviewResult,
   type AreaFaq,
   type AreaOverviewContent,
   type AreaOverviewDto,
   type AreaOverviewStatus,
 } from '@bhavano/types/areaOverview';
 import { PrismaService } from '../prisma/prisma.service';
+
+export interface AreaOverviewListOptions {
+  status?: AreaOverviewStatus | 'none';
+  city?: string;
+  q?: string;
+  /** YYYY-MM-DD, inclusive. */
+  updatedFrom?: string;
+  updatedTo?: string;
+  minListings?: number;
+  maxListings?: number;
+  sort?: AreaOverviewSortField;
+  dir?: 'asc' | 'desc';
+  offset: number;
+  limit: number;
+}
 
 function toFaqs(value: Prisma.JsonValue): AreaFaq[] {
   if (!Array.isArray(value)) return [];
@@ -63,10 +81,12 @@ export class AreaOverviewsService {
     return row ? toDto(row) : null;
   }
 
-  /** Every area that has active listings or already has an overview, busiest first, so reviewers
-   * start where the traffic is. `status` of "none" means areas with no overview yet. Areas are
-   * counted in one query and filtered here: there are a few thousand at most. */
-  async list(options: { status?: AreaOverviewStatus | 'none'; q?: string; offset: number; limit: number }): Promise<AdminAreaOverviewsPage> {
+  /** Every area that has active listings or already has an overview, filtered and sorted for the
+   * admin list. `status` "none" means areas with no overview yet. Areas are counted in one query
+   * and filtered here: there are a few thousand at most. Dates are days in India time (UTC+5:30),
+   * inclusive at both ends; areas with no overview have no update date, so a date filter leaves
+   * them out. */
+  async list(options: AreaOverviewListOptions): Promise<AdminAreaOverviewsPage> {
     const rows = await this.prisma.$queryRaw<
       {
         areaId: string;
@@ -86,21 +106,89 @@ export class AreaOverviewsService {
       LEFT JOIN "Listing" l ON l."areaId" = a.id
       LEFT JOIN "AreaOverview" o ON o."areaId" = a.id
       GROUP BY a.id, c."name", a."name", o."status", o."updatedAt", o."reviewedByName"
-      HAVING COUNT(l.id) FILTER (WHERE l."status" = 'active' AND l."publishState" = 'live') > 0 OR o."status" IS NOT NULL
-      ORDER BY "activeListings" DESC, c."name", a."name"`;
+      HAVING COUNT(l.id) FILTER (WHERE l."status" = 'active' AND l."publishState" = 'live') > 0 OR o."status" IS NOT NULL`;
 
+    const cities = [...new Set(rows.map((r) => r.cityName))].sort((a, b) => a.localeCompare(b));
     const q = options.q?.trim().toLowerCase();
+    const city = options.city?.trim().toLowerCase();
+    const from = options.updatedFrom ? new Date(`${options.updatedFrom}T00:00:00+05:30`) : null;
+    const to = options.updatedTo ? new Date(`${options.updatedTo}T23:59:59.999+05:30`) : null;
+
     const filtered = rows.filter((r) => {
       if (options.status === 'none' && r.status !== null) return false;
       if (options.status && options.status !== 'none' && r.status !== options.status) return false;
-      if (q && !`${r.areaName} ${r.cityName}`.toLowerCase().includes(q)) return false;
+      if (city && r.cityName.toLowerCase() !== city) return false;
+      if (q && !r.areaName.toLowerCase().includes(q)) return false;
+      if (options.minListings !== undefined && r.activeListings < options.minListings) return false;
+      if (options.maxListings !== undefined && r.activeListings > options.maxListings) return false;
+      if (from && (!r.updatedAt || r.updatedAt < from)) return false;
+      if (to && (!r.updatedAt || r.updatedAt > to)) return false;
       return true;
     });
+
+    const sort = options.sort ?? 'listings';
+    const dir = options.dir === 'asc' ? 1 : -1;
+    const statusOrder: Record<string, number> = { draft: 1, in_review: 2, published: 3 };
+    const compare = (a: (typeof rows)[number], b: (typeof rows)[number]): number => {
+      switch (sort) {
+        case 'city':
+          return a.cityName.localeCompare(b.cityName);
+        case 'area':
+          return a.areaName.localeCompare(b.areaName);
+        case 'status':
+          return (a.status ? statusOrder[a.status] : 0) - (b.status ? statusOrder[b.status] : 0);
+        case 'updated': {
+          // Areas with no text have no date: always last, whichever way the column is sorted.
+          if (!a.updatedAt && !b.updatedAt) return 0;
+          if (!a.updatedAt) return Infinity;
+          if (!b.updatedAt) return -Infinity;
+          return a.updatedAt.getTime() - b.updatedAt.getTime();
+        }
+        default:
+          return a.activeListings - b.activeListings;
+      }
+    };
+    filtered.sort((a, b) => {
+      const result = compare(a, b);
+      if (result === Infinity || result === -Infinity) return result > 0 ? 1 : -1;
+      return result * dir || a.cityName.localeCompare(b.cityName) || a.areaName.localeCompare(b.areaName);
+    });
+
     const items: AdminAreaOverviewRow[] = filtered.slice(options.offset, options.offset + options.limit).map((r) => ({
       ...r,
       updatedAt: r.updatedAt?.toISOString() ?? null,
     }));
-    return { items, total: filtered.length };
+    return { items, total: filtered.length, cities };
+  }
+
+  /** Applies one status change to many areas. Each area is handled on its own, so a bad one (no
+   * text, a failing check) is reported and the rest still go through. Publishing needs the same
+   * confirmed checklist as a single publish. */
+  async setStatusBulk(
+    areaIds: string[],
+    status: AreaOverviewStatus,
+    checklistConfirmed: boolean,
+    userId: string,
+  ): Promise<BulkAreaOverviewResult> {
+    if (status === 'published' && !checklistConfirmed) {
+      throw new BadRequestException('Confirm every item of the review checklist before publishing');
+    }
+    const results: BulkAreaOverviewItemResult[] = [];
+    for (const areaId of [...new Set(areaIds)]) {
+      try {
+        await this.setStatus(areaId, status, checklistConfirmed, userId);
+        results.push({ areaId, ok: true });
+      } catch (error) {
+        const message =
+          error instanceof BadRequestException
+            ? ([] as string[]).concat((error.getResponse() as { message?: string | string[] }).message ?? error.message).join(' ')
+            : error instanceof Error
+              ? error.message
+              : 'Failed';
+        results.push({ areaId, ok: false, error: message });
+      }
+    }
+    return { results };
   }
 
   async getForAdmin(areaId: string): Promise<AdminAreaOverviewDetail> {

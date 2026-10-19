@@ -25,6 +25,15 @@ reviewed and published in the admin app under **Area overviews** (`/area-overvie
   BFF): no prices, rents or percentages, no links or emails, length limits, at least one About
   paragraph and one FAQ. Editing in-review or published text sends it back to draft and clears the
   approval. Approval records who and when (the name is copied at approval time).
+- **List page (2026-10-19):** sortable columns (city, area, active listings, status, updated; click
+  a header to sort, click again to reverse) and filters for status, city, area name, update date range
+  (India time, inclusive; areas with no text have no date, so a date filter leaves them out) and
+  active-listing range. Rows with text have a checkbox; **Publish selected** opens the same
+  five-item checklist (all ticked to proceed) and records the signed-in admin as approver for each
+  area, skipping and reporting any area whose text fails a check. **Move to draft** unpublishes in
+  bulk. Selection is per page. Bulk calls `POST /admin/area-overviews/bulk-status` (max 100 areas).
+  Every dropdown in the admin now has its arrow at the far right (global `select` rule in
+  `apps/admin/src/app/globals.css`).
 - **First content:** the eight Bengaluru drafts live in `apps/bff/scripts/area-overview-drafts.ts`
   and are loaded as drafts by `scripts/seed-area-overview-drafts.ts` (re-runnable, never overwrites
   an existing row).
