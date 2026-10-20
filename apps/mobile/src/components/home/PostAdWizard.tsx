@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ActivityIndicator, Alert, Image, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -434,6 +434,9 @@ export function PostAdWizard({
   const [bundleActivating, setBundleActivating] = useState(false);
   // "Maybe later" on the success-screen Featured offer — hides it for this wizard mount only.
   const [boostOfferDismissed, setBoostOfferDismissed] = useState(false);
+  // Phones stack the confirmation (preview, then Featured picker); tablets put them side by side.
+  const { width: windowWidth } = useWindowDimensions();
+  const confirmationSideBySide = windowWidth >= 700;
   // iOS only — fetched for display alongside the redirect-to-website buttons below so their
   // price shows up front, matching the desktop success screen and Android's BoostBundleCard.
   // Read-only preview call, no checkout: Apple's Guideline 3.1.1 (see the buttons' own comment)
@@ -2282,20 +2285,22 @@ export function PostAdWizard({
             * mistake (wrong cover photo, an odd-reading price, a spec that didn't come through) is
             * obvious here rather than after the ad is already live. Matches the web wizard's own
             * ListingPreviewCard. */}
-          <ListingPreviewCard
-            photoUris={photoUris}
-            category={category}
-            transactionType={transactionType}
-            title={title}
-            price={price}
-            priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
-            priceArea={priceArea}
-            priceQualifier={priceQualifier}
-            areaName={areaQuery}
-            cityName={cityOptions.find((c) => c.id === cityId)?.name ?? ""}
-            attributes={attributes}
-            featured={!!boostIntent}
-          />
+          <View style={{ width: "100%", maxWidth: 360, alignSelf: "center" }}>
+            <ListingPreviewCard
+              photoUris={photoUris}
+              category={category}
+              transactionType={transactionType}
+              title={title}
+              price={price}
+              priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
+              priceArea={priceArea}
+              priceQualifier={priceQualifier}
+              areaName={areaQuery}
+              cityName={cityOptions.find((c) => c.id === cityId)?.name ?? ""}
+              attributes={attributes}
+              featured={!!boostIntent}
+            />
+          </View>
 
           {showPublishPanelOnReview && previewBoostDisplay && category && planPricingSettings && (
             <BoostPlanSelector
@@ -2428,9 +2433,18 @@ export function PostAdWizard({
           ) : (
             postAccessToken &&
             !boostOfferDismissed && (
-              <>
+              <View
+                style={{
+                  width: "100%",
+                  flexDirection: confirmationSideBySide ? "row" : "column",
+                  alignItems: confirmationSideBySide ? "flex-start" : "stretch",
+                  gap: 16,
+                }}
+              >
                 {/* Shows what the optional upgrade changes on the already-live ad — see
-                  * docs/plans/post-first-featured-upsell.md. */}
+                  * docs/plans/post-first-featured-upsell.md. Preview first (left on tablets),
+                  * Featured selection after it (right on tablets). */}
+                <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
                 <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, textAlign: "center" }}>
                   Your ad with Featured
                 </Text>
@@ -2451,6 +2465,8 @@ export function PostAdWizard({
                 <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center" }}>
                   Today it shows as a standard ad, without the gold badge.
                 </Text>
+                </View>
+                <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
                 <BoostBundleCard
                   listingId={createdListing.id}
                   category={createdListing.category}
@@ -2464,7 +2480,8 @@ export function PostAdWizard({
                 <Pressable onPress={() => setBoostOfferDismissed(true)} style={{ alignItems: "center", paddingVertical: 6 }}>
                   <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>Maybe later</Text>
                 </Pressable>
-              </>
+                </View>
+              </View>
             )
           )}
 

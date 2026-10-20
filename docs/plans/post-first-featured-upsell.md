@@ -33,6 +33,10 @@ converted 4.4% of posted ads.
   "Your ad is live!" centered at the top, then a two-column row (live-ad preview on the left, Featured
   picker + "Maybe later" on the right; stacks on narrow screens), then the share card and the rest
   centered below.
+- Mobile layout (2026-10-20): the Review preview is centered (max width 360). On the confirmation
+  screen the header stays centered; on phones the live-ad preview sits above the Featured card, and
+  from 700px wide (tablets) they sit side by side, preview left / picker right. iOS keeps its
+  App Store boost card unchanged.
 - No pricing, payment, BFF or flag behaviour changed.
 
 ## Not changed / open
