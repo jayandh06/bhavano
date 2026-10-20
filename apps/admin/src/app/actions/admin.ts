@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
+import type { AppVersionSettingsDto } from "@bhavano/types/appVersion";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
@@ -49,6 +50,7 @@ import {
   deleteUserSavedSearch,
   updateContactRevealSettings,
   updateLoginNudgeSettings,
+  updateAppVersionSettings,
   updateRequirement,
   updateSavedSearchSettings,
   updateInstantAlertsPricingSettings,
@@ -255,6 +257,17 @@ export async function updateContactRevealSettingsAction(input: ContactRevealSett
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update contact-reveal settings" };
+  }
+}
+
+export async function updateAppVersionSettingsAction(input: AppVersionSettingsDto): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updateAppVersionSettings(accessToken, input);
+    revalidatePath("/settings/app-version");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update app version settings" };
   }
 }
 

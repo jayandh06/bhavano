@@ -17,6 +17,7 @@ import { requestTrackingConsent } from "../src/lib/trackingConsent";
 import { recordInstallReferrerOnce } from "../src/lib/installReferrer";
 import { BottomTabBar } from "../src/components/home/BottomTabBar";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
+import { UpdateGate } from "../src/components/UpdateGate";
 import { SoftNavAppPageViews } from "../src/components/home/SoftNavAppPageViews";
 import { ReferralLinkBridge } from "../src/components/home/ReferralLinkBridge";
 import { ProfileCompletionDialog } from "../src/components/home/ProfileCompletionDialog";
@@ -148,6 +149,7 @@ function AppNavigation() {
   return (
     <HomeSheetsProvider popularCities={popularCities ?? []}>
       <AppCrashBoundary>
+        <UpdateGate />
         <PushBridge />
         <GuestSavesSync />
         <IosPurchaseBridge />

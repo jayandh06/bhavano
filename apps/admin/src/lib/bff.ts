@@ -1,6 +1,7 @@
 import "server-only";
 import { headers } from "next/headers";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
+import type { AppVersionSettingsDto } from "@bhavano/types/appVersion";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
@@ -867,6 +868,17 @@ export function unfreezeReferrals(accessToken: string, userId: string, note?: st
     method: "POST",
     body: JSON.stringify({ note }),
   });
+}
+
+export function fetchAppVersionSettings(accessToken: string): Promise<AppVersionSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/app-version-settings", { cache: "no-store" });
+}
+
+export function updateAppVersionSettings(
+  accessToken: string,
+  input: AppVersionSettingsDto,
+): Promise<AppVersionSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/app-version-settings", { method: "PATCH", body: JSON.stringify(input) });
 }
 
 export function fetchLoginNudgeSettings(accessToken: string): Promise<LoginNudgeSettingsDto> {

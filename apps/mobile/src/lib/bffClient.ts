@@ -1,3 +1,4 @@
+import type { AppVersionSettingsDto } from "@bhavano/types/appVersion";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
@@ -226,6 +227,11 @@ export function fetchListings(query: ListingsQuery, accessToken?: string | null)
   if (query.sort) params.set("sort", query.sort);
   const path = `/listings?${params.toString()}`;
   return accessToken ? authedBffFetch(accessToken, path) : bffFetch<ListingsPage>(path);
+}
+
+/** Public — the lowest app version still allowed per platform (admin → Required app update). */
+export function fetchAppVersionSettings(): Promise<AppVersionSettingsDto> {
+  return bffFetch<AppVersionSettingsDto>("/app-config/version");
 }
 
 export function fetchLoginNudgeSettings(): Promise<PublicLoginNudgeDto> {

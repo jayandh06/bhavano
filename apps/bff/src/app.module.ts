@@ -28,6 +28,7 @@ import { ClientErrorsModule } from './client-errors/client-errors.module';
 import { ReferralsModule } from './referrals/referrals.module';
 import { AiModule } from './ai/ai.module';
 import { AreaOverviewsModule } from './area-overviews/area-overviews.module';
+import { AppVersionModule } from './app-version/app-version.module';
 import { CityOverviewsModule } from './city-overviews/city-overviews.module';
 // LoggingModule's import MUST be the last one in this file, not just last in the `imports:`
 // array below — nestjs-pino's LoggerModule.forRootAsync() snapshots every @InjectPinoLogger(...)
@@ -68,6 +69,7 @@ import { LoggingModule } from './logging/logging.module';
     PlansModule,
     ClientErrorsModule,
     AreaOverviewsModule,
+    AppVersionModule,
     CityOverviewsModule,
     ReferralsModule,
     AiModule,
