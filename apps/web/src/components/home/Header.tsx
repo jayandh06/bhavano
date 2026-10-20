@@ -146,10 +146,13 @@ export function Header({
           * original single row summed to roughly twice a 360px viewport and pushed the page into
           * horizontal scroll, which is what made everything else look misaligned. */}
         <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
-          <div className="flex items-center gap-3 py-2.5 sm:py-3">
-            <Link href="/" className="flex items-center gap-2.5 shrink-0">
-              <Image src="/logo.png" alt="" width={38} height={38} className="rounded-[10px] w-8 h-8 sm:w-[38px] sm:h-[38px]" priority />
-              <span className="font-lora font-bold text-xl sm:text-2xl tracking-[-0.01em] text-green">Bhavano</span>
+          {/* On a 360px phone the Google Play icon, Messages icon and account name are all on this row
+            * too. The logo side is the one that gives way (the wordmark truncates) and the theme button is
+            * shrink-0, so the button can never be pushed past the screen edge and clipped. */}
+          <div className="flex items-center gap-2 sm:gap-3 py-2.5 sm:py-3">
+            <Link href="/" className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+              <Image src="/logo.png" alt="" width={38} height={38} className="rounded-[10px] w-8 h-8 sm:w-[38px] sm:h-[38px] shrink-0" priority />
+              <span className="font-lora font-bold text-xl sm:text-2xl tracking-[-0.01em] text-green truncate">Bhavano</span>
             </Link>
             <HeaderAuthButtons userName={userName} cityName={cityName} accessToken={accessToken} />
             {/* Visible at every size. It was hidden below sm while the header was one crowded

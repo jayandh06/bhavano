@@ -1955,7 +1955,10 @@ export function PostAdWizard({
         </div>
       )}
       {step !== "success" && step !== "offer" && (
-        <div className="flex gap-1.5 mb-6 text-xs font-bold text-muted">
+        // Each step is `whitespace-nowrap`, so "4. Preview Ad" can never break after its number on a narrow phone;
+        // when the row is too wide the whole steps wrap onto a second line instead. The arrow trails the step it
+        // follows, so a wrapped line never starts with a stray arrow.
+        <div className="flex flex-wrap gap-x-1.5 gap-y-1 mb-6 text-xs font-bold text-muted">
           {STEP_TRACKER_ORDER.map((s, i) => {
             const label =
               s === "category"
@@ -1967,8 +1970,7 @@ export function PostAdWizard({
                     : "Preview Ad";
             const isPast = i < currentStepIndex;
             return (
-              <span key={s} className={step === s ? "text-green" : "text-muted"}>
-                {i > 0 && " → "}
+              <span key={s} className={`whitespace-nowrap ${step === s ? "text-green" : "text-muted"}`}>
                 {i + 1}.{" "}
                 {isPast ? (
                   // Only a step strictly before the current one is ever a link — there's nothing
@@ -1985,6 +1987,7 @@ export function PostAdWizard({
                 ) : (
                   label
                 )}
+                {i < STEP_TRACKER_ORDER.length - 1 && " →"}
               </span>
             );
           })}

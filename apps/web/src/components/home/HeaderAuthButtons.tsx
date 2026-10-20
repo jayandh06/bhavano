@@ -40,7 +40,7 @@ export function HeaderAuthButtons({
           <GuestSavesSync />
         </>
       )}
-      <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 ml-auto">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 ml-auto">
         <GetAppHeaderQr />
         <GooglePlayHeaderIcon />
         {/* Desktop keeps these as top-level links, where there is room for words. On a phone they
@@ -91,7 +91,7 @@ function AccountMenu({ userName, cityQuery }: { userName: string; cityQuery: str
   const initial = userName.trim().charAt(0).toUpperCase();
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative min-w-0">
       {/* The name is user-supplied and unbounded — a long one stretched this button until it
         * pushed the theme toggle off the row entirely. Capped and truncated instead, with the
         * caret held outside the truncating span so it never disappears with the overflow. The
@@ -99,7 +99,7 @@ function AccountMenu({ userName, cityQuery }: { userName: string; cityQuery: str
       <button
         onClick={() => setOpen((o) => !o)}
         title={userName}
-        className="flex items-center gap-1.5 min-w-0 max-w-[7rem] sm:max-w-[10rem] bg-transparent border-0 text-text text-sm font-bold cursor-pointer"
+        className="flex items-center gap-1.5 min-w-0 max-w-[5.5rem] min-[400px]:max-w-[7rem] sm:max-w-[10rem] bg-transparent border-0 text-text text-sm font-bold cursor-pointer"
       >
         <span className="truncate">{userName}</span>
         <span className="text-[10px] text-muted shrink-0">▾</span>

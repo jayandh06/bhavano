@@ -13,7 +13,7 @@ export function ThemeToggle() {
     <button
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       title="Toggle theme"
-      className="bg-surface-alt border border-border text-text rounded-lg w-[38px] h-[38px] text-base cursor-pointer flex items-center justify-center"
+      className="bg-surface-alt border border-border text-text rounded-lg w-[38px] h-[38px] shrink-0 text-base cursor-pointer flex items-center justify-center"
     >
       {mounted ? <Icon name={theme === "dark" ? "sun" : "moon"} /> : null}
     </button>
