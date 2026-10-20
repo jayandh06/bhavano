@@ -103,6 +103,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             {`window.__BHAVANO_GOOGLE_MAPS_JS_KEY__=${JSON.stringify(GOOGLE_MAPS_JS_KEY)};`}
           </Script>
         )}
+        {/* Sets html[data-android] before first paint so the phone header's Play Store icon can be in the
+          * server HTML and shown by CSS. Deciding it after hydration (useIsAndroidBrowser) made the icon
+          * appear late and shift the header — same test as isAndroidBrowser in lib/appLinks.ts. */}
+        <Script id="android-flag" strategy="beforeInteractive">
+          {`document.documentElement.dataset.android=/Android/i.test(navigator.userAgent)&&!/; wv\\)/.test(navigator.userAgent)?'1':'0';`}
+        </Script>
         {GTM_ID && (
           <Script id="gtm-loader" strategy="afterInteractive">
             {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${GTM_ID}');`}

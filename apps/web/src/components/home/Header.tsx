@@ -9,7 +9,7 @@ import { LocationPicker } from "./LocationPicker";
 import { SearchBar } from "./SearchBar";
 import { ThemeToggle } from "./ThemeToggle";
 import { HeaderAuthButtons } from "./HeaderAuthButtons";
-import type { HomeTabValue } from "@/lib/homeCategories";
+import { HOME_TABS, type HomeTabValue } from "@/lib/homeCategories";
 import { CategoryTabs } from "./CategoryTabs";
 import { MobileHeaderCollapse } from "./MobileHeaderCollapse";
 import { MobileInlineSearch } from "./MobileInlineSearch";
@@ -58,6 +58,18 @@ export function Header({
   // of this prop list.
   // Names only — see SearchBar's `cityNames`.
   const cityNames = allCities.map((c) => c.name);
+
+  // The category strip below streams in after the rest of the page (it sits in a <Suspense>), and with an
+  // empty fallback its 1px slot grew to ~45px a moment later, pushing the whole page down — the main layout
+  // shift on mobile. The fallback reserves exactly that height instead. Heights are the measured ones:
+  // the tab row is 44.7px at every width; PG/Furniture/Interiors add a 36.6px chip row on phones only
+  // (see CategoryTabs). Keep these in step with CategoryTabs if its padding or the chip row changes.
+  const activeTabData = HOME_TABS.find((t) => t.value === activeCategory);
+  const hasPhoneChipRow =
+    !!activeTabData && activeTabData.column1.length > 0 && activeCategory !== "buy" && activeCategory !== "rentLease";
+  const categoryTabsFallback = (
+    <div aria-hidden className={`min-h-[44.7px] ${hasPhoneChipRow ? "max-sm:min-h-[81.3px]" : ""}`} />
+  );
   const searchBarElement = (
     <Suspense>
       <SearchBar initialQuery={searchQuery} cityName={cityName} areaName={areaName} cityNames={cityNames} popularSearches={popularSearches} />
@@ -165,7 +177,9 @@ export function Header({
           </div>
 
           <div className="flex items-center gap-2.5 sm:gap-3 pb-2.5 sm:pb-3 relative">
-            <Suspense>
+            {/* Placeholder is the picker's measured size (130x45px on a phone) so the search and Post ad
+              * buttons beside it do not jump, and the row does not grow 5px, when it streams in. */}
+            <Suspense fallback={<div aria-hidden className="shrink-0 w-[130px] h-[45.3px]" />}>
               <LocationPicker currentCityName={cityName} popularCities={popularCities} currentSegments={currentSegments} />
             </Suspense>
             {/* Desktop and tablet: the full bar, always visible. On a phone it starts as a plain
@@ -196,7 +210,7 @@ export function Header({
           * tone that isn't the same near-white as everything above. */}
         <div className="bg-surface-alt border-t border-border">
           <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
-            <Suspense>
+            <Suspense fallback={categoryTabsFallback}>
               <CategoryTabs active={activeCategory} cityName={cityName} currentSegments={currentSegments} />
             </Suspense>
           </div>
