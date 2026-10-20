@@ -44,6 +44,7 @@ import type { VideoEntitlement } from "@bhavano/types/videoLimits";
 import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { MAX_PHOTOS, MAX_PHOTO_BYTES, MIN_PHOTOS, PHOTO_LIMITS } from "@bhavano/types/photoLimits";
 import { audienceFor } from "@bhavano/types/audience";
+import { FEATURED_BENEFITS } from "@bhavano/types/featuredBenefits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
 import { fetchAiGenerateUsageAction, generateListingCopyAction } from "@/app/actions/ai";
@@ -2698,12 +2699,30 @@ export function PostAdWizard({
               Featured ads get a gold badge, priority placement and instant message alerts. It&apos;s optional &mdash; your ad stays up either way.
             </p>
           </div>
-          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-            {/* The ad is already live and free — this shows what the optional upgrade would
-             * change on the same listing, so the choice is concrete. Preview on the left,
-             * Featured selection on the right. See docs/plans/post-first-featured-upsell.md. */}
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+            {/* Same ad, two ways: today's free listing and the Featured version. See
+              * docs/plans/post-first-featured-upsell.md. */}
             <div className="w-full flex flex-col items-center gap-2">
-              <p className="text-[13px] font-bold text-text m-0">Your ad with Featured</p>
+              <p className="text-[13px] font-bold text-muted m-0">Your ad today</p>
+              <ListingPreviewCard
+                photoUrls={photos.map((p) => p.previewUrl)}
+                category={createdListing.category}
+                transactionType={createdListing.transactionType}
+                title={title}
+                price={price}
+                priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
+                priceArea={priceArea}
+                priceQualifier={priceQualifier}
+                areaName={areaQuery}
+                cityName={cities.find((c) => c.id === cityId)?.name ?? ""}
+                attributes={attributes}
+              />
+              <p className="max-w-[340px] mt-0 mb-0 text-center text-[12px] text-muted">
+                Standard placement, without the gold badge.
+              </p>
+            </div>
+            <div className="w-full flex flex-col items-center gap-2">
+              <p className="text-[13px] font-bold text-[color:var(--gold)] m-0">Your ad with Featured</p>
               <ListingPreviewCard
                 photoUrls={photos.map((p) => p.previewUrl)}
                 category={createdListing.category}
@@ -2719,36 +2738,43 @@ export function PostAdWizard({
                 featured
               />
               <p className="max-w-[340px] mt-0 mb-0 text-center text-[12px] text-muted">
-                Today it shows as a standard ad, without the gold badge.
+                Gold badge and priority placement, and your photos cycle on the card.
               </p>
             </div>
-            {/* Boost + Instant Alerts — one combined picker instead of two separate cards, each of
-             * which used to only reveal its price after being clicked. Prices for every
-             * combination (including the current promo code and the Agent Pro free-credit case)
-             * are fetched up front; adding Instant Alerts checks out as a single payment via
-             * createBoostOrder's `includeInstantAlerts`, not two payments back to back. */}
-            <div className="w-full flex flex-col items-center gap-3">
-              <BoostBundlePicker
-                listingId={createdListing.id}
-                category={createdListing.category}
-                transactionType={createdListing.transactionType}
-                effectiveness={planPricingSettings?.boostEffectiveness ?? null}
-                onActivating={() => {
-                  setShowRegenerateBanner(true);
-                  setStep("success");
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  pushDataLayerEvent("post_offer_skipped", { listingId: createdListing.id });
-                  setStep("success");
-                }}
-                className={secondaryButtonClass}
-              >
-                No thanks, continue
-              </button>
+          </div>
+          <div className="w-full max-w-[440px] flex flex-col items-center gap-4">
+            <div className="w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5">
+              <p className="text-[14px] font-bold text-text mt-0 mb-2.5">Featured gets you:</p>
+              <ul className="flex flex-col gap-2 m-0 p-0 list-none">
+                {FEATURED_BENEFITS.map((text) => (
+                  <li key={text} className="flex items-start gap-2 text-[13px] text-text-soft">
+                    <Icon name="featured" className="text-green mt-[3px] shrink-0" />
+                    <span>{text}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
+            <BoostBundlePicker
+              listingId={createdListing.id}
+              category={createdListing.category}
+              transactionType={createdListing.transactionType}
+              hideBenefits
+              effectiveness={planPricingSettings?.boostEffectiveness ?? null}
+              onActivating={() => {
+                setShowRegenerateBanner(true);
+                setStep("success");
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                pushDataLayerEvent("post_offer_skipped", { listingId: createdListing.id });
+                setStep("success");
+              }}
+              className={secondaryButtonClass}
+            >
+              No thanks, continue
+            </button>
           </div>
         </div>
       )}

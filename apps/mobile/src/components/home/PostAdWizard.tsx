@@ -4,6 +4,7 @@ import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from "react-
 import { useRouter } from "expo-router";
 import { PHOTO_LIMITS } from "@bhavano/types/photoLimits";
 import { audienceFor } from "@bhavano/types/audience";
+import { FEATURED_BENEFITS } from "@bhavano/types/featuredBenefits";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
@@ -120,15 +121,6 @@ function draftAgeLabel(savedAt: number): string {
   const days = Math.round((startOfDay(Date.now()) - startOfDay(savedAt)) / 86_400_000);
   return days <= 0 ? "saved today" : days === 1 ? "saved yesterday" : `saved ${days} days ago`;
 }
-
-// Mirrors the website's identical success-screen pitch (PostAdWizard.tsx's own "Reach more
-// buyers, faster" card) — same four benefits, same icons.
-const BOOST_BENEFITS: [IconName, string][] = [
-  ["featured", "A gold Featured badge on your ad"],
-  ["check", "Ranks above regular listings in search"],
-  ["check", "Rotates fairly through the top slots"],
-  ["bell", "Instant Alerts included: told the moment someone messages or shows interest"],
-];
 
 /** Short two- or three-option fields stay inline as a segmented control — seeing every choice at
  * once is worth the row it costs. Anything longer (facing has eight) wraps chips over three rows
@@ -2361,22 +2353,33 @@ export function PostAdWizard({
               Featured ads get a gold badge, priority placement and instant message alerts. It&rsquo;s optional — your ad stays up either way.
             </Text>
           </View>
-          {Platform.OS === "ios" ? (
-            <>
-              <View
-                style={{
-                  width: "100%",
-                  flexDirection: confirmationSideBySide ? "row" : "column",
-                  alignItems: confirmationSideBySide ? "flex-start" : "stretch",
-                  gap: 16,
-                }}
-              >
-              {/* Same before/after preview as the Android card below (docs/plans/post-first-featured-upsell.md);
-                * the price in the sheet this opens is still Apple's own, never the admin plan's. */}
-              <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, textAlign: "center" }}>
-                  Your ad with Featured
-                </Text>
+          <View
+            style={{
+              width: "100%",
+              flexDirection: confirmationSideBySide ? "row" : "column",
+              alignItems: confirmationSideBySide ? "flex-start" : "stretch",
+              gap: 16,
+            }}
+          >
+            <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted, textAlign: "center" }}>Your ad today</Text>
+                <ListingPreviewCard
+                  photoUris={photoUris}
+                  category={createdListing.category}
+                  transactionType={createdListing.transactionType}
+                  title={title}
+                  price={price}
+                  priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
+                  priceArea={priceArea}
+                  priceQualifier={priceQualifier}
+                  areaName={areaQuery}
+                  cityName={cityOptions.find((c) => c.id === cityId)?.name ?? ""}
+                  attributes={attributes}
+                />
+              <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center" }}>Standard placement, without the gold badge.</Text>
+            </View>
+            <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: colors.gold, textAlign: "center" }}>Your ad with Featured</Text>
                 <ListingPreviewCard
                   photoUris={photoUris}
                   category={createdListing.category}
@@ -2391,25 +2394,39 @@ export function PostAdWizard({
                   attributes={attributes}
                   featured
                 />
-                <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center" }}>
-                  Today it shows as a standard ad, without the gold badge.
-                </Text>
+              <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center" }}>
+                Gold badge and priority placement, and your photos cycle on the card.
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt, gap: 8 }]}>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Featured gets you:</Text>
+            {FEATURED_BENEFITS.map((text) => (
+              <View key={text} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                <Icon name="featured" size={14} color={colors.green} />
+                <Text style={{ flex: 1, fontSize: 13, color: colors.textSoft }}>{text}</Text>
               </View>
-              <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
+            ))}
+          </View>
+          {Platform.OS === "ios" ? (
+            <>
+              <View
+                style={{
+                  width: "100%",
+                  flexDirection: confirmationSideBySide ? "row" : "column",
+                  alignItems: confirmationSideBySide ? "flex-start" : "stretch",
+                  gap: 16,
+                }}
+              >
+              {/* Same before/after preview as the Android card below (docs/plans/post-first-featured-upsell.md);
+                * the price in the sheet this opens is still Apple's own, never the admin plan's. */}
+                            <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
               <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                   <Icon name="boost" size={17} color={colors.gold} />
                   <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
                     Reach more {audienceFor(createdListing.category, createdListing.transactionType)}, faster
                   </Text>
-                </View>
-                <View style={{ gap: 8 }}>
-                  {BOOST_BENEFITS.map(([icon, text]) => (
-                    <View key={text} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                      <Icon name={icon} size={14} color={colors.green} />
-                      <Text style={{ flex: 1, fontSize: 13, color: colors.textSoft }}>{text}</Text>
-                    </View>
-                  ))}
                 </View>
                 {iosBoostDone ? (
                   <Text style={{ marginTop: 16, textAlign: "center", color: colors.green, fontWeight: "700", fontSize: 14 }}>
@@ -2457,29 +2474,7 @@ export function PostAdWizard({
                   {/* Shows what the optional upgrade changes on the already-live ad — see
                     * docs/plans/post-first-featured-upsell.md. Preview first (left on tablets),
                     * Featured selection after it (right on tablets). */}
-                  <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, textAlign: "center" }}>
-                    Your ad with Featured
-                  </Text>
-                  <ListingPreviewCard
-                    photoUris={photoUris}
-                    category={createdListing.category}
-                    transactionType={createdListing.transactionType}
-                    title={title}
-                    price={price}
-                    priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
-                    priceArea={priceArea}
-                    priceQualifier={priceQualifier}
-                    areaName={areaQuery}
-                    cityName={cityOptions.find((c) => c.id === cityId)?.name ?? ""}
-                    attributes={attributes}
-                    featured
-                  />
-                  <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center" }}>
-                    Today it shows as a standard ad, without the gold badge.
-                  </Text>
-                  </View>
-                  <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
+                                    <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
                   <BoostBundleCard
                     listingId={createdListing.id}
                     category={createdListing.category}

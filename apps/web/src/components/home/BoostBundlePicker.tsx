@@ -28,6 +28,7 @@ export function BoostBundlePicker({
   listingId,
   category,
   transactionType,
+  hideBenefits = false,
   onActivating,
   initialPricing,
   source,
@@ -37,6 +38,8 @@ export function BoostBundlePicker({
   category: ListingCategory;
   /** Only used to word the heading for who the ad is meant to reach (tenants, buyers, …). */
   transactionType?: TransactionType;
+  /** The offer screen lists the full Featured benefits itself, so the picker's own two bullets are dropped there. */
+  hideBenefits?: boolean;
   /** Where this checkout was started from, recorded on the payment. */
   source?: PurchaseSource;
   /** A price resolved before this mounted — the deep-link path passes the one its page's server
@@ -219,7 +222,7 @@ export function BoostBundlePicker({
           )}
         </span>
       </div>
-      <ul className="flex flex-col gap-2 m-0 p-0 list-none mb-4">
+      <ul className={`flex flex-col gap-2 m-0 p-0 list-none mb-4 ${hideBenefits ? "hidden" : ""}`}>
         {(
           [
             ["featured", "A gold Featured badge, ranked above regular listings"],
