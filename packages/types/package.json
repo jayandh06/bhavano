@@ -125,6 +125,10 @@
       "types": "./dist/videoLimits.d.ts",
       "default": "./dist/videoLimits.js"
     },
+    "./audience": {
+      "types": "./dist/audience.d.ts",
+      "default": "./dist/audience.js"
+    },
     "./quickResponder": {
       "types": "./dist/quickResponder.d.ts",
       "default": "./dist/quickResponder.js"

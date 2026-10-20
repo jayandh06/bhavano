@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Image, Platform, Pressable, StyleSheet, Text,
 import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { PHOTO_LIMITS } from "@bhavano/types/photoLimits";
+import { audienceFor } from "@bhavano/types/audience";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
@@ -2358,7 +2359,7 @@ export function PostAdWizard({
               Your ad is live!
             </Text>
             <Text style={{ fontSize: 13, color: colors.muted, textAlign: "center" }}>
-              It&rsquo;s now visible to buyers searching your area.
+              It&rsquo;s now visible to {audienceFor(createdListing.category, createdListing.transactionType)} searching your area.
             </Text>
           </View>
 
@@ -2405,7 +2406,7 @@ export function PostAdWizard({
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                   <Icon name="boost" size={17} color={colors.gold} />
                   <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
-                    Reach more buyers, faster
+                    Reach more {audienceFor(createdListing.category, createdListing.transactionType)}, faster
                   </Text>
                 </View>
                 <View style={{ gap: 8 }}>
@@ -2517,6 +2518,7 @@ export function PostAdWizard({
                 <BoostBundleCard
                   listingId={createdListing.id}
                   category={createdListing.category}
+                  transactionType={createdListing.transactionType}
                   accessToken={postAccessToken}
                   onActivating={() => {
                     setBundleActivating(true);

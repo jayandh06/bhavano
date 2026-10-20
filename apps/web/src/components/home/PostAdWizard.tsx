@@ -43,6 +43,7 @@ import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/
 import type { VideoEntitlement } from "@bhavano/types/videoLimits";
 import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { MAX_PHOTOS, MAX_PHOTO_BYTES, MIN_PHOTOS, PHOTO_LIMITS } from "@bhavano/types/photoLimits";
+import { audienceFor } from "@bhavano/types/audience";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
 import { fetchAiGenerateUsageAction, generateListingCopyAction } from "@/app/actions/ai";
@@ -2693,7 +2694,9 @@ export function PostAdWizard({
             </span>
             <div>
               <div className="font-lora text-xl sm:text-2xl font-bold text-text">Your ad is live!</div>
-              <p className="text-sm text-muted mt-1 mb-0">It&apos;s now visible to buyers searching your area.</p>
+              <p className="text-sm text-muted mt-1 mb-0">
+                It&apos;s now visible to {audienceFor(createdListing.category, createdListing.transactionType)} searching your area.
+              </p>
             </div>
           </div>
 
@@ -2754,6 +2757,7 @@ export function PostAdWizard({
                   <BoostBundlePicker
                     listingId={createdListing.id}
                     category={createdListing.category}
+                    transactionType={createdListing.transactionType}
                     effectiveness={planPricingSettings?.boostEffectiveness ?? null}
                     onActivating={() => setShowRegenerateBanner(true)}
                   />

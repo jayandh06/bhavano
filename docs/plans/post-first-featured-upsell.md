@@ -37,6 +37,7 @@ converted 4.4% of posted ads.
   screen the header stays centered; on phones the live-ad preview sits above the Featured card, and
   from 700px wide (tablets) they sit side by side, preview left / picker right. iOS now shows the same preview + Maybe later above its
   App Store boost card (the price in that sheet is still Apple's, never the admin plan's).
+- **Audience wording (2026-10-20):** the confirmation message ("It's now visible to … searching your area") and the boost card heading ("Reach more …, faster") name who the ad is for instead of always saying "buyers": buyers (sale), tenants (rent/lease), people looking for a PG, teams and freelancers (coworking), people looking for storage, customers (interiors). One helper, `audienceFor(category, transactionType)` in `packages/types/src/audience.ts`, shared by web and mobile (tested in `apps/web/src/lib/audience.test.ts`). Still saying "buyers" and not yet changed: the "not visible to buyers until payment" lines on My listings / edit / checkout recovery, the edit-page status label, and the recovery-dialog stat headline (site-wide numbers).
 - No pricing, payment, BFF or flag behaviour changed.
 
 ## Not changed / open

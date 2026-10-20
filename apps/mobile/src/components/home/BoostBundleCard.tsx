@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
+import type { BoostPricingPreviewDto, ListingCategory, TransactionType } from "@bhavano/types";
+import { audienceFor } from "@bhavano/types/audience";
 import {
   boostOptionFor,
   boostSavings,
@@ -38,6 +39,7 @@ import { ReferralFreeBoost } from "./ReferralFreeBoost";
 export function BoostBundleCard({
   listingId,
   category,
+  transactionType,
   accessToken,
   onActivating,
   source,
@@ -46,6 +48,8 @@ export function BoostBundleCard({
 }: {
   listingId: string;
   category: ListingCategory;
+  /** Only used to word the heading for who the ad is meant to reach (tenants, buyers, …). */
+  transactionType?: TransactionType;
   accessToken: string;
   /** Where this checkout was started from, recorded on the payment. */
   source?: PurchaseSource;
@@ -154,7 +158,7 @@ export function BoostBundleCard({
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <Icon name="boost" size={17} color={colors.gold} />
         <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
-          Reach more buyers, faster
+          Reach more {audienceFor(category, transactionType)}, faster
           {/* Same discount-derived label as BoostPlanSelector's title — see its comment for why
               this is computed from the option's own amount/originalAmount rather than hardcoded. */}
           {option?.discountApplied && (

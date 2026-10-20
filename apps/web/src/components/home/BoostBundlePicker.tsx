@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
+import type { BoostPricingPreviewDto, ListingCategory, TransactionType } from "@bhavano/types";
+import { audienceFor } from "@bhavano/types/audience";
 import {
   boostOptionFor,
   boostSavings,
@@ -26,6 +27,7 @@ import { Icon } from "./Icon";
 export function BoostBundlePicker({
   listingId,
   category,
+  transactionType,
   onActivating,
   initialPricing,
   source,
@@ -33,6 +35,8 @@ export function BoostBundlePicker({
 }: {
   listingId: string;
   category: ListingCategory;
+  /** Only used to word the heading for who the ad is meant to reach (tenants, buyers, …). */
+  transactionType?: TransactionType;
   /** Where this checkout was started from, recorded on the payment. */
   source?: PurchaseSource;
   /** A price resolved before this mounted — the deep-link path passes the one its page's server
@@ -207,7 +211,7 @@ export function BoostBundlePicker({
       <div className="flex items-center gap-2 mb-3">
         <Icon name="boost" className="text-[color:var(--gold)] text-lg" />
         <span className="font-lora font-bold text-[15px] text-text">
-          Reach more buyers, faster
+          Reach more {audienceFor(category, transactionType)}, faster
           {/* Computed from the option's own amount/originalAmount rather than hardcoded — the
             * real percent lives on an admin-edited DiscountCode row, so this can't go stale. */}
           {option?.discountApplied && (
