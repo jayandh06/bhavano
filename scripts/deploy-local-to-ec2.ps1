@@ -208,7 +208,15 @@ try {
 if (-not (Test-Path -LiteralPath $tarPath -PathType Leaf)) {
   throw "Failed to create compressed archive: $tarPath"
 }
-Remove-Item -LiteralPath $tarPlain
+# Windows can hold the freshly written .tar for a few seconds (antivirus / indexer scan). That must not
+# abort a deploy whose archive is already built, so retry a few times and only warn if it stays locked.
+for ($attempt = 1; $attempt -le 5; $attempt++) {
+  try { Remove-Item -LiteralPath $tarPlain -ErrorAction Stop; break }
+  catch {
+    if ($attempt -eq 5) { Write-Warning "Could not delete $tarPlain (still in use); delete it by hand later." }
+    else { Start-Sleep -Seconds 3 }
+  }
+}
 
 $remote = "${Ec2User}@${Ec2Host}"
 Write-Host "==> scp $tarName -> ${remote}:~/"
