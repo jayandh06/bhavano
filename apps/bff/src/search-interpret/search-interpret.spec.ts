@@ -67,13 +67,23 @@ describe('sanitizeSearchInterpretation', () => {
     expect(result?.bedrooms).toEqual([1, 2, 3, 4]);
     expect(result?.unmatched).toHaveLength(4);
   });
+
+  it('drops filler words returned as leftovers', () => {
+    const result = sanitizeSearchInterpretation({ category: 'pg', unmatched: ['near', 'bachelors allowed', 'with'] }, { cityNames: CITIES });
+    expect(result?.unmatched).toEqual(['bachelors allowed']);
+  });
 });
 
 describe('matchCityName', () => {
+  it('knows the common old names of renamed cities, but only when the new name is listed', () => {
+    expect(matchCityName('Bangalore', ['Hyderabad', 'Pune'])).toBeUndefined();
+    expect(matchCityName('Bangalore', CITIES)).toBe('Bengaluru');
+    expect(matchCityName('bombay', ['Mumbai'])).toBe('Mumbai');
+  });
+
   it('fixes a one- or two-letter typo only when exactly one city is that close', () => {
     expect(matchCityName('Hyderbad', CITIES)).toBe('Hyderabad');
     expect(matchCityName('Pun', CITIES)).toBeUndefined(); // too short to guess
-    expect(matchCityName('Bangalore', CITIES)).toBeUndefined(); // an alias, not a typo
   });
 });
 

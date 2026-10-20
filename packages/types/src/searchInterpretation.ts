@@ -45,6 +45,8 @@ const MAX_PRICE = 1_000_000_000;
 const MAX_BEDROOMS_LISTED = 4;
 const MAX_UNMATCHED = 4;
 const MAX_TEXT = 60;
+/** Joining words the model sometimes returns on their own as a "leftover" - not a request at all. */
+const FILLER_ONLY = /^(near|nearby|in|at|for|with|and|or|the|a|an|of|to|around|close|by)$/i;
 
 function cleanText(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
@@ -73,8 +75,24 @@ function editDistance(a: string, b: string): number {
   return prev[b.length];
 }
 
+/** Names people still type for cities that were renamed; only used when the current name is in the list. */
+const CITY_ALIASES: Record<string, string> = {
+  bangalore: "bengaluru",
+  bombay: "mumbai",
+  madras: "chennai",
+  calcutta: "kolkata",
+  gurgaon: "gurugram",
+  poona: "pune",
+  trivandrum: "thiruvananthapuram",
+  cochin: "kochi",
+  mysore: "mysuru",
+  mangalore: "mangaluru",
+  vizag: "visakhapatnam",
+};
+
 export function matchCityName(raw: string, cityNames: readonly string[]): string | undefined {
-  const wanted = raw.trim().toLowerCase();
+  const typed = raw.trim().toLowerCase();
+  const wanted = CITY_ALIASES[typed] ?? typed;
   if (!wanted) return undefined;
   const exact = cityNames.find((name) => name.toLowerCase() === wanted);
   if (exact) return exact;
@@ -136,7 +154,7 @@ export function sanitizeSearchInterpretation(
   if (Array.isArray(input.unmatched)) {
     out.unmatched = input.unmatched
       .map((u) => cleanText(u))
-      .filter((u): u is string => Boolean(u))
+      .filter((u): u is string => Boolean(u) && !FILLER_ONLY.test(u as string))
       .slice(0, MAX_UNMATCHED);
   }
 
