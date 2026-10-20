@@ -7,7 +7,7 @@
  *
  * Harmless for SEO: listing and browse pages set their own canonical, which drops the params.
  */
-export type ShareChannel = "whatsapp" | "copy" | "email" | "share_sheet" | "facebook";
+export type ShareChannel = "whatsapp" | "copy" | "email" | "share_sheet" | "facebook" | "poster";
 
 /** `owner_share`: the owner sharing their own ad. `listing_share`: anyone else passing one on.
  * `referral_invite`: the invite link on the Referrals page, not tied to an ad. */

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import type { ListingTotalPriceDto } from "@bhavano/types";
 import { listingPriceText } from "@bhavano/types/priceWords";
@@ -50,6 +51,40 @@ export function OwnerWhatsAppShare({
   const url = taggedShareUrl(`${SITE_URL}${buildListingPath(listing)}`, "whatsapp", "owner_share", code);
   const text = `${listing.title}\n${listingPriceText(listing, "compact")} · ${listing.area}, ${listing.cityName}\nPhotos and details on Bhavano — message me there:`;
   const href = whatsappShareHref(text, url);
+  const [posterBusy, setPosterBusy] = useState(false);
+
+  // A PNG cannot hold a clickable link, so the poster is sent together with the message text that
+  // carries the real link (WhatsApp makes it tappable). Where the browser cannot share files, fall back to
+  // downloading the image — the WhatsApp button above still sends the link.
+  async function sharePoster() {
+    pushDataLayerEvent("owner_share_poster", { listingId: listing.id, placement });
+    setPosterBusy(true);
+    try {
+      const response = await fetch(`/listings/${listing.id}/poster`);
+      if (!response.ok) throw new Error("poster unavailable");
+      const blob = await response.blob();
+      const file = new File([blob], `bhavano-ad-${listing.id}.png`, { type: "image/png" });
+      const posterUrl = taggedShareUrl(`${SITE_URL}${buildListingPath(listing)}`, "poster", "owner_share", code);
+      if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text: `${text}\n${posterUrl}` });
+        return;
+      }
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = file.name;
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      // The share sheet being dismissed is not an error worth showing.
+      if (!(error instanceof DOMException && error.name === "AbortError")) {
+        window.open(`/listings/${listing.id}/poster`, "_blank", "noopener");
+      }
+    } finally {
+      setPosterBusy(false);
+    }
+  }
+
   const onClick = () => {
     pushDataLayerEvent("owner_share_whatsapp", { listingId: listing.id, placement });
     void recordShareTapAction(listing.id, "whatsapp");
@@ -110,14 +145,17 @@ export function OwnerWhatsAppShare({
         <OwnerFacebookShare listing={listing} placement={placement} referralCode={code} variant="prominent" />
         {/* A ready-made picture of the ad for WhatsApp status, groups or print. Public data only —
           * docs/plans/featured-ad-benefits-and-media-limits.md (share kit). */}
-        <a
-          href={`/listings/${listing.id}/poster`}
-          download={`bhavano-ad-${listing.id}.png`}
-          onClick={() => pushDataLayerEvent("owner_share_poster", { listingId: listing.id, placement })}
-          className="border-[1.5px] border-green text-green rounded-lg px-5 py-3 text-[15px] font-bold text-center inline-flex items-center justify-center gap-2 no-underline"
+        <button
+          type="button"
+          onClick={() => void sharePoster()}
+          disabled={posterBusy}
+          className="border-[1.5px] border-green bg-transparent text-green rounded-lg px-5 py-3 text-[15px] font-bold text-center inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
         >
-          <Icon name="camera" /> Download ad poster
-        </a>
+          <Icon name="camera" /> {posterBusy ? "Preparing poster…" : "Share ad poster"}
+        </button>
+        <p className="text-[12px] text-muted m-0">
+          The poster is a picture, so the link travels in the message beside it. Scan the QR on the poster to open the ad.
+        </p>
       </div>
       {code && (
         <Link href="/referrals" className="text-[12.5px] font-bold text-green self-start">
