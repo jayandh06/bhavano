@@ -303,13 +303,41 @@ function listingJsonLd(listing: ListingDetailDto) {
       };
 
   if (!REAL_ESTATE_CATEGORIES.has(listing.category)) {
+    // Google's Product snippet requires `offers` (or aggregateRating/review). A "contact for price" PG,
+    // coworking space, storage unit or service has no amount to report, and a Product without one is
+    // flagged invalid in Search Console / site audits (49 pages as of 2026-10-20). Those are places and
+    // services, not products, so they are described as what they are instead; anything with a real price
+    // keeps the Product + Offer it always had. See docs/plans/structured-data-no-price-listings.md.
+    if (!offers) {
+      const base = {
+        name: listing.title,
+        description: listingSummary(listing),
+        url: `${SITE_URL}${buildListingPath(listing)}`,
+        image: listing.photosFull,
+      };
+      if (listing.category === "interiors") return { "@type": "Service", ...base, areaServed: listing.cityName };
+      if (listing.category === "furniture") return { "@type": "Thing", ...base };
+      return {
+        "@type": "Place",
+        ...base,
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: listing.area,
+          addressRegion: listing.cityName,
+          addressCountry: "IN",
+        },
+        ...(listing.lat !== undefined && listing.lng !== undefined
+          ? { geo: { "@type": "GeoCoordinates", latitude: listing.lat, longitude: listing.lng } }
+          : {}),
+      };
+    }
     return {
       "@type": "Product",
       name: listing.title,
       description: listingSummary(listing),
       category: listing.category,
       image: listing.photosFull,
-      ...(offers ? { offers } : {}),
+      offers,
     };
   }
 
