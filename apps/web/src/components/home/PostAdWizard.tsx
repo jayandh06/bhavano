@@ -544,6 +544,8 @@ export function PostAdWizard({
   // See docs/plans/boost-recovery-dialog.md — state declared here, the idle timer that uses it is
   // below, after showBoostOnReview exists.
   const [showBoostRecovery, setShowBoostRecovery] = useState(false);
+  // "Maybe later" on the success-screen Featured offer — hides the offer for this wizard mount only.
+  const [boostOfferDismissed, setBoostOfferDismissed] = useState(false);
   const boostRecoveryShownRef = useRef(false);
   // Which of the three trigger points opened the dialog currently showing — the idle timer and
   // tapping Post ad both proceed straight to posting either way (onAddBoost/onSkip below), but
@@ -2711,17 +2713,51 @@ export function PostAdWizard({
               </div>
             )
           ) : (
-            /* Boost + Instant Alerts — one combined picker instead of two separate cards, each of
-             * which used to only reveal its price after being clicked. Prices for every
-             * combination (including the current promo code and the Agent Pro free-credit case)
-             * are fetched up front; adding Instant Alerts checks out as a single payment via
-             * createBoostOrder's `includeInstantAlerts`, not two payments back to back. */
-            <BoostBundlePicker
-              listingId={createdListing.id}
-              category={createdListing.category}
-              effectiveness={planPricingSettings?.boostEffectiveness ?? null}
-              onActivating={() => setShowRegenerateBanner(true)}
-            />
+            !boostOfferDismissed && (
+              <>
+                {/* The ad is already live and free — this shows what the optional upgrade would
+                 * change on the same listing, so the choice is concrete. See
+                 * docs/plans/post-first-featured-upsell.md. */}
+                <div className="w-full flex flex-col items-center gap-2">
+                  <p className="text-[13px] font-bold text-text m-0">Your ad with Featured</p>
+                  <ListingPreviewCard
+                    photoUrls={photos.map((p) => p.previewUrl)}
+                    category={createdListing.category}
+                    transactionType={createdListing.transactionType}
+                    title={title}
+                    price={price}
+                    priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
+                    priceArea={priceArea}
+                    priceQualifier={priceQualifier}
+                    areaName={areaQuery}
+                    cityName={cities.find((c) => c.id === cityId)?.name ?? ""}
+                    attributes={attributes}
+                    featured
+                  />
+                  <p className="max-w-[340px] mt-0 mb-0 text-center text-[12px] text-muted">
+                    Today it shows as a standard ad, without the gold badge.
+                  </p>
+                </div>
+                {/* Boost + Instant Alerts — one combined picker instead of two separate cards, each of
+                 * which used to only reveal its price after being clicked. Prices for every
+                 * combination (including the current promo code and the Agent Pro free-credit case)
+                 * are fetched up front; adding Instant Alerts checks out as a single payment via
+                 * createBoostOrder's `includeInstantAlerts`, not two payments back to back. */}
+                <BoostBundlePicker
+                  listingId={createdListing.id}
+                  category={createdListing.category}
+                  effectiveness={planPricingSettings?.boostEffectiveness ?? null}
+                  onActivating={() => setShowRegenerateBanner(true)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setBoostOfferDismissed(true)}
+                  className="text-[13px] font-bold text-muted hover:text-text transition-colors bg-transparent border-0 cursor-pointer"
+                >
+                  Maybe later
+                </button>
+              </>
+            )
           )}
 
           {showRegenerateBanner && (

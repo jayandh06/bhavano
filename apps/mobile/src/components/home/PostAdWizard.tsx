@@ -432,6 +432,8 @@ export function PostAdWizard({
   // Android only — see BoostBundleCard's own comment for why Android gets one combined card
   // instead of iOS's redirect-to-website buttons below, which have nothing to activate in-app.
   const [bundleActivating, setBundleActivating] = useState(false);
+  // "Maybe later" on the success-screen Featured offer — hides it for this wizard mount only.
+  const [boostOfferDismissed, setBoostOfferDismissed] = useState(false);
   // iOS only — fetched for display alongside the redirect-to-website buttons below so their
   // price shows up front, matching the desktop success screen and Android's BoostBundleCard.
   // Read-only preview call, no checkout: Apple's Guideline 3.1.1 (see the buttons' own comment)
@@ -698,11 +700,37 @@ export function PostAdWizard({
   async function finishPublishCheckout(listing: ListingDetailDto, token: string): Promise<boolean> {
     setPublishCheckoutError(null);
     if (Platform.OS === "ios") {
-      // iOS has no product for a listing fee, and pointing at the website to pay is not allowed
-      // either (App Review Guideline 3.1.1). The fee defaults to 0 in every category, so this is
-      // only reached if an admin turns one on. See docs/plans/ios-in-app-purchase.md.
-      setPublishCheckoutError("This ad needs a payment that can't be made in the iPhone app yet, so it can't be published here.");
-      return false;
+      // The ad is held in pending_checkout until paid, same as Android/web. iOS has no product for a
+      // listing fee (and linking to the website to pay isn't allowed — Guideline 3.1.1), so only
+      // the boost can be bought here, through In-App Purchase; the server publishes the held ad
+      // when it verifies that purchase. The fee defaults to 0 in every category, so a fee is only
+      // reached if an admin turns one on. See docs/plans/ios-in-app-purchase.md.
+      const feeApplies = !!(category && planPricingSettings && platformFeeApplies(category, planPricingSettings.platformFee));
+      if (feeApplies || !boostIntent) {
+        setPublishCheckoutError("This ad needs a payment that can't be made in the iPhone app yet, so it can't be published here.");
+        return false;
+      }
+      const result = await iosPurchases.purchase({ type: "boost", listingId: listing.id, boostDays: boostIntent.duration });
+      if (result.outcome === "cancelled") {
+        setPublishCheckoutError("Payment was cancelled — your ad is not live yet. Tap Post ad to try again.");
+        return false;
+      }
+      if (result.outcome === "pending") {
+        setPublishCheckoutError("Your payment is waiting for approval. Your ad will go live once it is approved.");
+        return false;
+      }
+      if (result.outcome === "error") {
+        setPublishCheckoutError(`Payment failed — ${result.message} Tap Post ad to try again.`);
+        return false;
+      }
+      const live = await waitForListingLive(listing.id, token);
+      if (!live) {
+        setPublishCheckoutError("Payment received — still confirming publish. Please retry in a moment.");
+        return false;
+      }
+      setIosBoostDone(true);
+      setShowRegenerateBanner(true);
+      return true;
     }
     const checkout = await startListingPublishCheckout({
       accessToken: token,
@@ -2398,17 +2426,45 @@ export function PostAdWizard({
               <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Featuring…</Text>
             </View>
           ) : (
-            postAccessToken && (
-              <BoostBundleCard
-                listingId={createdListing.id}
-                category={createdListing.category}
-                accessToken={postAccessToken}
-                onActivating={() => {
-                  setBundleActivating(true);
-                  setShowRegenerateBanner(true);
-                }}
-                effectiveness={planPricingSettings?.boostEffectiveness ?? null}
-              />
+            postAccessToken &&
+            !boostOfferDismissed && (
+              <>
+                {/* Shows what the optional upgrade changes on the already-live ad — see
+                  * docs/plans/post-first-featured-upsell.md. */}
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, textAlign: "center" }}>
+                  Your ad with Featured
+                </Text>
+                <ListingPreviewCard
+                  photoUris={photoUris}
+                  category={createdListing.category}
+                  transactionType={createdListing.transactionType}
+                  title={title}
+                  price={price}
+                  priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
+                  priceArea={priceArea}
+                  priceQualifier={priceQualifier}
+                  areaName={areaQuery}
+                  cityName={cityOptions.find((c) => c.id === cityId)?.name ?? ""}
+                  attributes={attributes}
+                  featured
+                />
+                <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center" }}>
+                  Today it shows as a standard ad, without the gold badge.
+                </Text>
+                <BoostBundleCard
+                  listingId={createdListing.id}
+                  category={createdListing.category}
+                  accessToken={postAccessToken}
+                  onActivating={() => {
+                    setBundleActivating(true);
+                    setShowRegenerateBanner(true);
+                  }}
+                  effectiveness={planPricingSettings?.boostEffectiveness ?? null}
+                />
+                <Pressable onPress={() => setBoostOfferDismissed(true)} style={{ alignItems: "center", paddingVertical: 6 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>Maybe later</Text>
+                </Pressable>
+              </>
             )
           )}
 
