@@ -1001,6 +1001,16 @@ export class PaymentsService {
     }
 
     if (payment.purpose === 'listing_boost' && payment.listingId && payment.boostDays) {
+      // An iOS ad is held in pending_checkout until its boost is paid through In-App Purchase (there
+      // is no Razorpay order to bundle it into), so the Apple boost is also what publishes it. Only
+      // a held ad — never an awaiting_claim one — and a no-op for an already-live listing.
+      const held = await this.prisma.listing.findUnique({
+        where: { id: payment.listingId },
+        select: { publishState: true },
+      });
+      if (held?.publishState === 'pending_checkout') {
+        await this.listingsService.completePendingPublish(payment.listingId, payment.adsTrackingAuthorized ?? undefined);
+      }
       const boostedUntil = await this.activateListingBoost(payment.listingId, payment.boostDays, payment.id);
       this.logger.log(`Boost activated for listing ${payment.listingId}`);
       if (payment.boostIncludesInstantAlerts) {

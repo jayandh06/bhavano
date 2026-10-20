@@ -17,3 +17,10 @@ home drawer opens `app/blog/index.tsx`, and each post opens `app/blog/[slug].tsx
 - **`packages/types/dist` is committed** (EAS resolves it without a build hook), so `pnpm build` in
   `packages/types` must be run and the output committed whenever `blogPosts.ts` changes.
 - **SEO:** no change to web routes, metadata or JSON-LD; the web pages are still server-rendered.
+
+## Home tab strip (2026-10-19)
+Blog is also a chip at the end of Home's category strip (after Requirements), besides the drawer row.
+Requirements and Blog are separate screens, but they now render the same `CategoryChips` strip with
+themselves highlighted (no back button), so they read as tabs. Tapping a listing category there
+navigates to Home with `?category=<value>&t=<timestamp>`, which `(tabs)/index.tsx` applies (`t` makes
+a repeat pick register). Blog posts (`/blog/[slug]`) still open as pushed screens with a back button.

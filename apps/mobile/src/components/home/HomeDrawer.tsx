@@ -1,14 +1,12 @@
 import { useEffect, useRef } from "react";
 import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
 import type { City } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 import { HOME_TABS, type HomeTabValue } from "./categories";
 import { COLLAPSED_BAR_HEIGHT } from "./CollapsedHeaderBar";
-import { appWebUrl } from "../../lib/appWebUrl";
 
 const DRAWER_WIDTH = 300;
 
@@ -29,9 +27,8 @@ const DRAWER_WIDTH = 300;
  *    tab, Favourites → `/saved`, Messages → its own tab, My listings → `/my-listings`, My
  *    requirements → `/my-requirements`, Purchase history → `/purchases`. Saved searches has no
  *    native screen yet, so it's left out rather than linking somewhere that doesn't exist.
- * Tools and Plans still open bhavano.com in an in-app browser (a calculator hub and a live
- * purchase flow, neither of which is static content worth duplicating). Help is now a real
- * native page (StaticPageLayout), same as the Legal links in LegalFooter.
+ * Tools (app/tools, the six calculators), Plans (app/plans.tsx) and Help (StaticPageLayout, same
+ * as the Legal links in LegalFooter) are all native screens.
  */
 export function HomeDrawer({
   visible,
@@ -51,7 +48,8 @@ export function HomeDrawer({
   onClose: () => void;
   city: City | null;
   onOpenLocationPicker: () => void;
-  activeCategory: HomeTabValue;
+  /** Null on screens that aren't a category (Requirements, Blog): nothing is highlighted. */
+  activeCategory: HomeTabValue | null;
   onSelectCategory: (value: HomeTabValue) => void;
   isLoggedIn: boolean;
   /** Null while logged out or before the profile fetch resolves — the header row falls back to a
@@ -90,11 +88,6 @@ export function HomeDrawer({
   function go(path: string) {
     onClose();
     router.push(path as never);
-  }
-
-  function openWebsite(path: string) {
-    onClose();
-    WebBrowser.openBrowserAsync(appWebUrl(path));
   }
 
   return (
@@ -164,7 +157,7 @@ export function HomeDrawer({
             </Pressable>
           ))}
 
-          <Pressable onPress={() => openWebsite("/tools")} style={styles.navRow}>
+          <Pressable onPress={() => go("/tools")} style={styles.navRow}>
             <Icon name="calculator" size={17} color={colors.text} />
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Tools</Text>
           </Pressable>

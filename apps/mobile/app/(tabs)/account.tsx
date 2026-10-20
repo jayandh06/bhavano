@@ -3,13 +3,14 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, T
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import type { City, SellerType, UserProfileDto } from "@bhavano/types";
+import type { AccountMergeSummary, City, SellerType, UserProfileDto } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { LegalFooter } from "../../src/components/home/LegalFooter";
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import { LocationMapPicker } from "../../src/components/home/LocationMapPicker";
 import {
+  confirmAccountMerge,
   deleteAccount,
   fetchCities,
   linkPhone,
@@ -144,6 +145,9 @@ function ProfileFields({
   const [emailCode, setEmailCode] = useState("");
   const [emailPending, setEmailPending] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [mergePrompt, setMergePrompt] = useState<{ kind: "phone" | "email"; summary: AccountMergeSummary } | null>(null);
+  const [mergePending, setMergePending] = useState(false);
+  const [mergeError, setMergeError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -176,10 +180,13 @@ function ProfileFields({
     setEmailError(null);
     try {
       const result = await verifyEmail(accessToken, email.trim(), emailCode);
-      // A merge needing confirmation is web-only for now; on mobile the safe outcome is to tell
-      // the user rather than silently do nothing, since nothing has moved.
       if (result.status === "confirm") {
-        setEmailError("That email is on another account — open bhavano.com to combine them.");
+        // Nothing has moved and the code is still valid server-side for the confirm call.
+        setMergePrompt({ kind: "email", summary: result.summary });
+        return;
+      }
+      if (result.status === "merged" && result.reauthRequired) {
+        await signOutAfterMerge();
         return;
       }
       await refreshProfile();
@@ -190,6 +197,46 @@ function ProfileFields({
     } finally {
       setEmailPending(false);
     }
+  }
+
+  /** A merge can retire the session's own account (its data now lives under the survivor), so the
+   * only safe move is to sign out and let the user sign back in as the combined account. */
+  async function signOutAfterMerge() {
+    await logout();
+    router.replace("/");
+  }
+
+  async function onConfirmMerge() {
+    if (!mergePrompt) return;
+    setMergePending(true);
+    setMergeError(null);
+    try {
+      await confirmAccountMerge(
+        accessToken,
+        mergePrompt.kind === "phone"
+          ? { phone: phoneInput, code: otpInput }
+          : { email: email.trim(), code: emailCode },
+      );
+      setMergePrompt(null);
+      await signOutAfterMerge();
+    } catch (e) {
+      setMergeError(e instanceof Error ? e.message : "Couldn't merge the accounts");
+    } finally {
+      setMergePending(false);
+    }
+  }
+
+  function onCancelMerge() {
+    // Back to the step that asks for the identifier so a different one can be tried.
+    if (mergePrompt?.kind === "phone") {
+      setPhoneStep("idle");
+      setOtpInput("");
+    } else {
+      setEmailStep("idle");
+      setEmailCode("");
+    }
+    setMergePrompt(null);
+    setMergeError(null);
   }
 
   async function onSendPhoneOtp() {
@@ -210,10 +257,12 @@ function ProfileFields({
     setPhoneError(null);
     try {
       const result = await linkPhone(accessToken, phoneInput, otpInput);
-      // Same as the email path: a merge needing confirmation is web-only for now, and nothing
-      // has moved, so say so rather than appearing to succeed while the number stays unlinked.
       if (result.status === "confirm") {
-        setPhoneError("That number is on another account — open bhavano.com to combine them.");
+        setMergePrompt({ kind: "phone", summary: result.summary });
+        return;
+      }
+      if (result.status === "merged" && result.reauthRequired) {
+        await signOutAfterMerge();
         return;
       }
       await refreshProfile();
@@ -445,6 +494,46 @@ function ProfileFields({
         </>
       )}
 
+      {/* Both accounts hold something, so nothing moves until the user agrees — a merge can't be
+          undone. The code just verified stays valid for the confirm call. */}
+      {mergePrompt && (
+        <View style={[styles.readOnly, { borderColor: colors.green, backgroundColor: colors.surfaceAlt, marginTop: 16 }]}>
+          <Text style={{ color: colors.text, fontWeight: "700", fontSize: 15 }}>
+            That {mergePrompt.kind === "phone" ? "number" : "email"} is on another Bhavano account
+          </Text>
+          <Text style={{ color: colors.textSoft, fontSize: 13.5, marginTop: 6 }}>
+            It has{" "}
+            {[
+              mergePrompt.summary.listings > 0 && `${mergePrompt.summary.listings} listing${mergePrompt.summary.listings === 1 ? "" : "s"}`,
+              mergePrompt.summary.conversations > 0 &&
+                `${mergePrompt.summary.conversations} conversation${mergePrompt.summary.conversations === 1 ? "" : "s"}`,
+              mergePrompt.summary.payments > 0 && `${mergePrompt.summary.payments} payment${mergePrompt.summary.payments === 1 ? "" : "s"}`,
+              mergePrompt.summary.favourites > 0 && `${mergePrompt.summary.favourites} saved`,
+              mergePrompt.summary.activeSubscription && "an active plan",
+            ]
+              .filter(Boolean)
+              .join(", ") || "some activity"}
+            . Merging brings everything onto one account and can&apos;t be undone. You&apos;ll be signed out
+            and can sign back in.
+          </Text>
+          {mergeError ? <Text style={styles.errorText}>{mergeError}</Text> : null}
+          <Pressable
+            onPress={() => void onConfirmMerge()}
+            disabled={mergePending}
+            style={[styles.secondaryButton, { borderColor: colors.green, marginTop: 10, opacity: mergePending ? 0.5 : 1 }]}
+          >
+            <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>
+              {mergePending ? "Merging…" : "Merge the accounts"}
+            </Text>
+          </Pressable>
+          <Pressable onPress={onCancelMerge} disabled={mergePending} style={{ marginTop: 10, alignItems: "center" }}>
+            <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>
+              Use a different {mergePrompt.kind === "phone" ? "number" : "email"}
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
       <Text style={[styles.label, { color: colors.muted }]}>
         Email{!profile.email ? " *" : ""}
       </Text>
@@ -549,7 +638,7 @@ function ProfileFields({
                   placeholder="10-digit mobile number"
                   placeholderTextColor={colors.muted}
                   keyboardType="number-pad"
-                  style={[styles.input, { flex: 1, marginBottom: 0, borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+                  style={[styles.input, { letterSpacing: 0, flex: 1, marginBottom: 0, borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
                 />
               </View>
               {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
@@ -568,12 +657,12 @@ function ProfileFields({
               <TextInput
                 value={otpInput}
                 onChangeText={(v) => setOtpInput(v.replace(/\D/g, "").slice(0, 6))}
-                placeholder="······"
+                placeholder="6-digit OTP"
                 placeholderTextColor={colors.muted}
                 keyboardType="number-pad"
                 style={[
                   styles.input,
-                  { textAlign: "center", letterSpacing: 8, borderColor: colors.border, color: colors.text, backgroundColor: colors.surface },
+                  { textAlign: "center", letterSpacing: otpInput ? 8 : 0, borderColor: colors.border, color: colors.text, backgroundColor: colors.surface },
                 ]}
               />
               {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
@@ -609,66 +698,6 @@ function ProfileFields({
         </Text>
       )}
 
-      {/* App Store guideline 5.1.1(v) requires deletion to be startable in-app, and the DPDP Act
-          requires it regardless of the store — mirrors the website's identical section. */}
-      <View style={[styles.deleteSection, { borderColor: colors.border }]}>
-        {!deleteOpen ? (
-          <Pressable onPress={() => setDeleteOpen(true)}>
-            <Text style={{ color: "#b3413a", fontWeight: "700", fontSize: 13 }}>Delete my account</Text>
-          </Pressable>
-        ) : (
-          <View>
-            <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13, marginBottom: 8 }}>
-              Delete your account?
-            </Text>
-            <Text style={{ color: colors.muted, fontSize: 12.5, marginBottom: 12 }}>
-              Your ads come offline, your saved searches are removed, and your name, email and
-              phone number are erased. Records of payments you made are kept for accounting, but
-              no longer identify you. This can&rsquo;t be undone.
-            </Text>
-            {!deleteSent ? (
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                <Pressable
-                  onPress={sendDeleteCode}
-                  disabled={deletePending}
-                  style={[styles.dangerButton, { opacity: deletePending ? 0.6 : 1 }]}
-                >
-                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
-                    {deletePending ? "Sending…" : `Send code to my ${profile.phone ? "phone" : "email"}`}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setDeleteOpen(false)}
-                  style={[styles.secondaryButton, { borderColor: colors.border }]}
-                >
-                  <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13 }}>Cancel</Text>
-                </Pressable>
-              </View>
-            ) : (
-              <View style={{ gap: 8 }}>
-                <TextInput
-                  value={deleteCode}
-                  onChangeText={(t) => setDeleteCode(t.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="6-digit code"
-                  placeholderTextColor={colors.muted}
-                  keyboardType="number-pad"
-                  style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface, marginBottom: 0 }]}
-                />
-                <Pressable
-                  onPress={confirmDelete}
-                  disabled={deletePending || deleteCode.length !== 6}
-                  style={[styles.dangerButton, { alignSelf: "flex-start", opacity: deletePending || deleteCode.length !== 6 ? 0.6 : 1 }]}
-                >
-                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
-                    {deletePending ? "Deleting…" : "Delete permanently"}
-                  </Text>
-                </Pressable>
-              </View>
-            )}
-            {deleteError && <Text style={styles.errorText}>{deleteError}</Text>}
-          </View>
-        )}
-      </View>
 
       {!canSave && (
         <Text style={[styles.hint, { color: colors.muted, marginTop: 14 }]}>
@@ -771,6 +800,67 @@ function ProfileFields({
           {loggingOut ? "Logging out…" : "Log out"}
         </Text>
       </Pressable>
+
+      {/* App Store guideline 5.1.1(v) requires deletion to be startable in-app, and the DPDP Act
+          requires it regardless of the store — mirrors the website's identical section. */}
+      <View style={[styles.deleteSection, { borderColor: colors.border }]}>
+        {!deleteOpen ? (
+          <Pressable onPress={() => setDeleteOpen(true)}>
+            <Text style={{ color: "#b3413a", fontWeight: "700", fontSize: 13 }}>Delete my account</Text>
+          </Pressable>
+        ) : (
+          <View>
+            <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13, marginBottom: 8 }}>
+              Delete your account?
+            </Text>
+            <Text style={{ color: colors.muted, fontSize: 12.5, marginBottom: 12 }}>
+              Your ads come offline, your saved searches are removed, and your name, email and
+              phone number are erased. Records of payments you made are kept for accounting, but
+              no longer identify you. This can&rsquo;t be undone.
+            </Text>
+            {!deleteSent ? (
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <Pressable
+                  onPress={sendDeleteCode}
+                  disabled={deletePending}
+                  style={[styles.dangerButton, { opacity: deletePending ? 0.6 : 1 }]}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
+                    {deletePending ? "Sending…" : `Send code to my ${profile.phone ? "phone" : "email"}`}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setDeleteOpen(false)}
+                  style={[styles.secondaryButton, { borderColor: colors.border }]}
+                >
+                  <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13 }}>Cancel</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={{ gap: 8 }}>
+                <TextInput
+                  value={deleteCode}
+                  onChangeText={(t) => setDeleteCode(t.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="6-digit code"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="number-pad"
+                  style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface, marginBottom: 0 }]}
+                />
+                <Pressable
+                  onPress={confirmDelete}
+                  disabled={deletePending || deleteCode.length !== 6}
+                  style={[styles.dangerButton, { alignSelf: "flex-start", opacity: deletePending || deleteCode.length !== 6 ? 0.6 : 1 }]}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
+                    {deletePending ? "Deleting…" : "Delete permanently"}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+            {deleteError && <Text style={styles.errorText}>{deleteError}</Text>}
+          </View>
+        )}
+      </View>
 
       <LegalFooter />
       </KeyboardAwareScrollView>

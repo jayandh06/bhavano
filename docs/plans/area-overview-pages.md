@@ -82,6 +82,9 @@ a city's cannot get tangled.
   seed script. All unreviewed.
 
 ## Homepage Popular areas, and Area filter on All (2026-10-19)
+- **Mobile (2026-10-20):** the All tab shows an "Area" button beside Sort once a city with more than
+  one area is selected. It opens the same `FilterSheet` with only the area checklist (price and the
+  category facets are hidden on All); the listings query already sent `areaIds` for any category.
 - **Popular areas:** `GET /area-overviews` lists areas with a *published* overview, busiest first.
   The plain homepage shows them as links under "Popular areas" and hides the block while none are
   published, so a link never leads to a page with nothing extra on it. Cached for an hour.

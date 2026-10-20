@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { ScreenHeader } from "./ScreenHeader";
@@ -14,23 +14,39 @@ export function StaticPageLayout({
   title,
   updated,
   children,
+  header,
+  onScroll,
+  overlay,
 }: {
   title: string;
   updated?: string;
   children: ReactNode;
+  /** Replaces the title bar with back button — the Blog index shows Home's category strip here. */
+  header?: ReactNode;
+  /** With `header`: the header scrolls away with the content, and `overlay` (the slim bar) takes over. */
+  onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  overlay?: ReactNode;
 }) {
   const { colors } = useAppTheme();
   const router = useRouter();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScreenHeader title={title} onBack={() => router.back()} />
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
-        {updated && (
-          <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 18 }}>Last updated: {updated}</Text>
-        )}
-        <View style={{ gap: 22 }}>{children}</View>
+      {!header && <ScreenHeader title={title} onBack={() => router.back()} />}
+      <ScrollView
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={header ? { paddingBottom: 48 } : { padding: 20, paddingBottom: 48 }}
+      >
+        {header}
+        <View style={header ? { padding: 20 } : undefined}>
+          {updated && (
+            <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 18 }}>Last updated: {updated}</Text>
+          )}
+          <View style={{ gap: 22 }}>{children}</View>
+        </View>
       </ScrollView>
+      {overlay}
     </View>
   );
 }

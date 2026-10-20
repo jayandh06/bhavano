@@ -13,6 +13,7 @@ import { fetchPlanPricing } from "../src/lib/bffClient";
 import { Icon, type IconName } from "../src/components/Icon";
 import { ScreenHeader } from "../src/components/home/ScreenHeader";
 import { SubscribeModal } from "../src/components/home/SubscribeModal";
+import { PendingPayments } from "../src/components/home/PendingPayments";
 import { IosSubscribeSheet } from "../src/components/home/IosPurchaseSheets";
 import { appleSubscriptionsFor } from "@bhavano/types/appleProducts";
 import { iosPurchases } from "../src/lib/iosPurchasesClient";
@@ -155,6 +156,8 @@ export default function PlansScreen() {
         <Text style={{ fontSize: 13, color: colors.muted }}>
           Compare what each plan includes, then pick one — all on this screen.
         </Text>
+
+        <PendingPayments accessToken={accessToken} />
 
         <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }]}>
           <View style={styles.cardTitleRow}>

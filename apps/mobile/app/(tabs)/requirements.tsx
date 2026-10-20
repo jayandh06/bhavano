@@ -14,6 +14,7 @@ import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useRequirementsFeedQuery, useRequirementsFeedSummaryQuery } from "../../src/lib/queries";
 import { friendlyErrorMessage, updateProfile } from "../../src/lib/bffClient";
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
+import { useTabHeader } from "../../src/components/home/useTabHeader";
 import { RequirementsFeedFilters } from "../../src/components/home/RequirementsFeedFilters";
 import { RequirementFeedCard } from "../../src/components/home/RequirementFeedCard";
 
@@ -36,7 +37,6 @@ export default function RequirementsScreen() {
   const queryClient = useQueryClient();
   const { accessToken, isLoggedIn, requireLogin, city: homeCity } = useHomeSheets();
   const filterSheetRef = useRef<BottomSheetModal>(null);
-  const onBack = router.canGoBack() ? () => router.back() : undefined;
 
   const [filters, setFilters] = useState<RequirementFeedFilters>(() => ({ city: homeCity?.id }));
   const [cityName, setCityName] = useState<string | undefined>(homeCity?.name);
@@ -84,18 +84,26 @@ export default function RequirementsScreen() {
     }
   }
 
+  const tab = useTabHeader("requirements");
   const title = cityName ? `Requirements in ${cityName}` : "Requirements";
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScreenHeader title={title} onBack={onBack} />
-
+      {/* The same category strip as Home, with Requirements highlighted, so this reads as one of
+        * Home's tabs rather than a separate page with a back button. */}
+      {/* The header sits at the top of whatever scrolls below, so it scrolls away and the slim bar
+        * (tab.overlay) takes over, as on Home. */}
       {!isLoggedIn ? (
         <ScrollView
-          contentContainerStyle={{ padding: 16, flexGrow: 1 }}
+          onScroll={tab.onScroll}
+          scrollEventThrottle={16}
+          contentContainerStyle={{ flexGrow: 1 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.green} />}
         >
+          {tab.header}
+          <ScreenHeader title={title} />
+          <View style={{ padding: 16 }}>
           <SummaryBlock summary={summaryQuery.data} />
           <View style={[styles.gatePanel, { borderColor: colors.border, backgroundColor: colors.surface }]}>
             <Text style={{ fontSize: 13.5, color: colors.text, textAlign: "center", marginBottom: 14 }}>
@@ -105,12 +113,20 @@ export default function RequirementsScreen() {
               <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Log in</Text>
             </Pressable>
           </View>
+          </View>
         </ScrollView>
       ) : feedQuery.isLoading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator color={colors.green} />
+        <View style={{ flex: 1 }}>
+          {tab.header}
+          <ScreenHeader title={title} />
+          <View style={styles.centered}>
+            <ActivityIndicator color={colors.green} />
+          </View>
         </View>
       ) : feedQuery.isError ? (
+        <View style={{ flex: 1 }}>
+        {tab.header}
+        <ScreenHeader title={title} />
         <View style={styles.centered}>
           <Text style={{ color: "#c0554b", fontSize: 14, textAlign: "center", marginBottom: 12 }}>
             {friendlyErrorMessage(feedQuery.error, "Couldn't load requirements")}
@@ -119,11 +135,17 @@ export default function RequirementsScreen() {
             <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Try again</Text>
           </Pressable>
         </View>
+        </View>
       ) : feed && !feed.eligible ? (
         <ScrollView
-          contentContainerStyle={{ padding: 16, flexGrow: 1 }}
+          onScroll={tab.onScroll}
+          scrollEventThrottle={16}
+          contentContainerStyle={{ flexGrow: 1 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.green} />}
         >
+          {tab.header}
+          <ScreenHeader title={title} />
+          <View style={{ padding: 16 }}>
           <View style={[styles.gatePanel, { borderColor: colors.border, backgroundColor: colors.surface }]}>
             <Text style={{ fontSize: 14.5, fontWeight: "700", color: colors.text, marginBottom: 2 }}>
               Requirements are for owners and agents
@@ -155,9 +177,22 @@ export default function RequirementsScreen() {
             {roleError && <Text style={{ color: "#c0554b", fontSize: 12.5, marginTop: 10 }}>{roleError}</Text>}
           </View>
           <SummaryBlock summary={summaryQuery.data} />
+          </View>
         </ScrollView>
       ) : feed ? (
         <>
+          <FlatList
+            onScroll={tab.onScroll}
+            scrollEventThrottle={16}
+            data={feed.items}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ paddingBottom: 40, flexGrow: 1 }}
+            ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.green} />}
+            ListHeaderComponent={
+              <View>
+                {tab.header}
+                <ScreenHeader title={title} />
           <View style={styles.toolbarRow}>
             <Pressable
               onPress={() => filterSheetRef.current?.present()}
@@ -179,21 +214,14 @@ export default function RequirementsScreen() {
               </Text>
             </Pressable>
           </View>
-
-          <FlatList
-            data={feed.items}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ padding: 16, paddingTop: 10, paddingBottom: 40, flexGrow: 1 }}
-            ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.green} />}
-            ListHeaderComponent={
-              <Text style={{ fontSize: 12.5, color: colors.muted, marginBottom: 10 }}>
-                {feed.total === 0
-                  ? "No requirements match"
-                  : feed.items.length < feed.total
-                    ? `Showing ${feed.items.length} of ${feed.total}`
-                    : `${feed.total} requirement${feed.total === 1 ? "" : "s"}`}
-              </Text>
+                <Text style={{ fontSize: 12.5, color: colors.muted, margin: 16, marginBottom: 10 }}>
+                  {feed.total === 0
+                    ? "No requirements match"
+                    : feed.items.length < feed.total
+                      ? `Showing ${feed.items.length} of ${feed.total}`
+                      : `${feed.total} requirement${feed.total === 1 ? "" : "s"}`}
+                </Text>
+              </View>
             }
             ListEmptyComponent={
               <View style={[styles.empty, { borderColor: colors.border, backgroundColor: colors.surface }]}>
@@ -204,7 +232,11 @@ export default function RequirementsScreen() {
                 </Text>
               </View>
             }
-            renderItem={({ item }) => <RequirementFeedCard card={item} />}
+            renderItem={({ item }) => (
+              <View style={{ paddingHorizontal: 16 }}>
+                <RequirementFeedCard card={item} />
+              </View>
+            )}
           />
 
           <RequirementsFeedFilters
@@ -216,6 +248,7 @@ export default function RequirementsScreen() {
           />
         </>
       ) : null}
+      {tab.overlay}
     </View>
   );
 }

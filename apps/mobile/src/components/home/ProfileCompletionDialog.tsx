@@ -234,7 +234,7 @@ export function ProfileCompletionDialog() {
                 onChangeText={(v) => setOtp(v.replace(/\D/g, "").slice(0, 6))}
                 style={[
                   inputStyle,
-                  { textAlign: "center", letterSpacing: 8, borderColor: colors.border, color: colors.text, backgroundColor: colors.surface },
+                  { textAlign: "center", letterSpacing: otp ? 8 : 0, borderColor: colors.border, color: colors.text, backgroundColor: colors.surface },
                 ]}
               />
               {error && <Text style={errorStyle}>{error}</Text>}
@@ -288,7 +288,7 @@ export function ProfileCompletionDialog() {
                 onChangeText={(v) => setCode(v.replace(/\D/g, "").slice(0, 6))}
                 style={[
                   inputStyle,
-                  { textAlign: "center", letterSpacing: 8, borderColor: colors.border, color: colors.text, backgroundColor: colors.surface },
+                  { textAlign: "center", letterSpacing: code ? 8 : 0, borderColor: colors.border, color: colors.text, backgroundColor: colors.surface },
                 ]}
               />
               {error && <Text style={errorStyle}>{error}</Text>}

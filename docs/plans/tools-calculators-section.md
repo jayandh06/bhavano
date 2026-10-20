@@ -349,3 +349,20 @@ form-config schema.
    tag is present — confirming the SEO-critical content isn't client-only.
 5. Confirm `PostAdWizard`/`SavedSearchesManager` still render identically
    (mod a couple px of button padding) after the `formStyles.ts` refactor.
+
+## Native Tools screens in the app (2026-10-20)
+- **Why:** Tools opened the website, in an in-app Safari sheet on iPhone, and on Android the https
+  link is a verified App Link, so Android handed `bhavano.com/tools` back to the app, which had no
+  `/tools` route ("Unmatched route").
+- **Shared maths:** `apps/web/src/lib/calculatorFormulas.ts` moved to
+  `packages/types/src/calculatorFormulas.ts` (`@bhavano/types/calculatorFormulas`); the web file
+  re-exports it, so web imports are unchanged. `packages/types/dist` is committed, so rebuild it
+  (`pnpm build` in `packages/types`) whenever the formulas change.
+- **Screens:** `apps/mobile/app/tools/index.tsx` (list) and `app/tools/[slug].tsx` (one screen,
+  keyed by the website path's last segment, so `/tools/emi-calculator` opens natively through App
+  Links). The six forms are in `src/components/tools/Calculators.tsx`, mirroring the web forms'
+  fields and defaults. The web page's SEO copy and FAQ are not duplicated.
+- **Entry points:** the green strip, the home drawer and the end-of-feed footer now push the native
+  screens. `app/+not-found.tsx` sends any other unmatched path (a web-only page opened through an
+  App Link) to Home instead of the "Unmatched Route" screen.
+- Ships in a new native build or OTA update.

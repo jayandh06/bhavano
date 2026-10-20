@@ -25,12 +25,14 @@ export function CollapsedHeaderBar({
   query,
   onChangeQuery,
 }: {
-  searchOpen: boolean;
-  onToggleSearch: () => void;
+  /** The search pieces are Home's (they filter Home's listings); omit them elsewhere and no search
+   * button is drawn. */
+  searchOpen?: boolean;
+  onToggleSearch?: () => void;
   onOpenMenu: () => void;
   onPostAd: () => void;
-  query: string;
-  onChangeQuery: (value: string) => void;
+  query?: string;
+  onChangeQuery?: (value: string) => void;
 }) {
   const { colors } = useAppTheme();
 
@@ -44,6 +46,7 @@ export function CollapsedHeaderBar({
         >
           <Icon name="menu" size={18} color={colors.text} />
         </Pressable>
+        {onToggleSearch && (
         <Pressable
           onPress={onToggleSearch}
           accessibilityLabel={searchOpen ? "Close search" : "Search"}
@@ -51,6 +54,7 @@ export function CollapsedHeaderBar({
         >
           <Icon name={searchOpen ? "close" : "search"} size={17} color={colors.text} />
         </Pressable>
+        )}
         <Image source={require("../../../assets/logo.png")} style={styles.logoMark} />
         <View style={{ flex: 1 }} />
         <Pressable onPress={onPostAd} style={[styles.postAdButton, { backgroundColor: colors.green }]}>
@@ -59,11 +63,11 @@ export function CollapsedHeaderBar({
         </Pressable>
       </View>
 
-      {searchOpen && (
+      {searchOpen && onChangeQuery && (
         <View style={styles.searchRow}>
           <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Icon name="search" size={15} color={colors.muted} />
-            <HeaderSearchInput value={query} onChangeText={onChangeQuery} paddingVertical={10} />
+            <HeaderSearchInput value={query ?? ""} onChangeText={onChangeQuery} paddingVertical={10} />
           </View>
         </View>
       )}

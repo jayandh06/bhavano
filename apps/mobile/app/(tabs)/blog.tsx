@@ -2,14 +2,16 @@ import { Pressable, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { sortedPosts } from "@bhavano/types/blogPosts";
 import { useAppTheme } from "../../src/theme/ThemeContext";
+import { useTabHeader } from "../../src/components/home/useTabHeader";
 import { P, StaticPageLayout } from "../../src/components/home/StaticPageLayout";
 
 // Mirrors apps/web/src/app/blog/page.tsx. The posts themselves are shared, in @bhavano/types.
 export default function BlogIndexScreen() {
   const { colors } = useAppTheme();
   const router = useRouter();
+  const tab = useTabHeader("blog");
   return (
-    <StaticPageLayout title="Blog">
+    <StaticPageLayout title="Blog" header={tab.header} onScroll={tab.onScroll} overlay={tab.overlay}>
       <P>Plain-language guides to renting, buying and moving, from the Bhavano team.</P>
       {sortedPosts().map((post) => (
         <Pressable

@@ -24,6 +24,16 @@ Instant Alerts on their own (the fee defaults to 0, so no iOS user is blocked to
 turns one on, iOS shows "needs a payment that can't be made in the iPhone app" and never links to
 the website).
 
+**Posting with a boost on iOS (2026-10-20):** the ad is created held in `pending_checkout`, as on
+Android/web, and the boost is bought through IAP before anything is shown as published. The server
+(`PaymentsService.fulfilPaidPayment`, `listing_boost` branch) publishes a held ad when it verifies
+the Apple boost purchase. A cancelled or failed purchase leaves the ad unpublished and the wizard
+shows "Payment failed ... tap Post ad to try again" (create is idempotent on the client-generated id).
+A listing publish fee still has no iOS product and is still refused. The Plans screen has a
+"Pending payments" section (`PendingPayments.tsx`) listing held ads on both platforms: iOS reopens
+the boost purchase sheet, Android reruns the Razorpay publish checkout. Not yet tested against a
+sandbox purchase; no unit test yet for the held-ad publish branch.
+
 Known gaps: refunded consumables are recorded but their benefit is not reversed (logged for a human
 to review); there is no `GET` for Apple purchase history beyond the existing `/purchases` list;
 boosts ignore the web's per-listing-value price bands (flat tiers only).

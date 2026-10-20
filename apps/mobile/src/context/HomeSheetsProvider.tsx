@@ -998,7 +998,7 @@ export function HomeSheetsProvider({
                   placeholder="10-digit mobile number"
                   placeholderTextColor={colors.muted}
                   keyboardType="number-pad"
-                  style={[styles.input, { flex: 1, borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+                  style={[styles.input, { letterSpacing: 0, flex: 1, borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
                 />
               </View>
               {error && <Text style={styles.errorText}>{error}</Text>}

@@ -1,8 +1,7 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Keyboard,
   Pressable,
   RefreshControl,
@@ -12,7 +11,7 @@ import {
   View,
   type ViewToken,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
@@ -24,9 +23,8 @@ import { HomeDrawer } from "../../src/components/home/HomeDrawer";
 import { HomeExploreFooter } from "../../src/components/home/HomeExploreFooter";
 import { Icon } from "../../src/components/Icon";
 import { ListingCard } from "../../src/components/home/ListingCard";
-import { ProfileCompletionBanner } from "../../src/components/home/ProfileCompletionBanner";
+import { BrandHeader } from "../../src/components/home/BrandHeader";
 import { RequirementPrompt } from "../../src/components/home/RequirementPrompt";
-import { UtilityBar } from "../../src/components/home/UtilityBar";
 import { FilterSheet, EMPTY_FILTERS, activeFilterCount, type AppliedFilters } from "../../src/components/home/FilterSheet";
 import { SortSheet, SORT_OPTIONS, type SortValue } from "../../src/components/home/SortSheet";
 import { HOME_TABS, type HomeTabValue } from "../../src/components/home/categories";
@@ -44,6 +42,16 @@ export default function HomeScreen() {
   const numColumns = width >= WIDE_SCREEN_BREAKPOINT ? 2 : 1;
 
   const [category, setCategory] = useState<HomeTabValue>("all");
+  // Set when a category chip is tapped on Requirements/Blog, which show the same strip but are
+  // their own screens. `t` changes on every tap so choosing the same category again still lands.
+  const { category: categoryParam, t: categoryTap } = useLocalSearchParams<{ category?: string; t?: string }>();
+  useEffect(() => {
+    const next = HOME_TABS.find((tab) => tab.value === categoryParam)?.value;
+    if (next) {
+      setCategory(next);
+      setFilters(EMPTY_FILTERS);
+    }
+  }, [categoryParam, categoryTap]);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AppliedFilters>(EMPTY_FILTERS);
   const propertyType = category === "buy" || category === "rentLease" ? filters.propertyType : undefined;
@@ -125,6 +133,17 @@ export default function HomeScreen() {
   // Switching tabs/property-type clears stale filters — a leftover BHK/price selection from
   // House shouldn't silently apply once the user switches to PG (same rule the web app's
   // CategoryTabs already enforces).
+  // Coming back from another tab, the list can restart at the top without a scroll event, which
+  // left the slim collapsed bar (plain background) laid over the full header as a blank band. Start
+  // each visit unscrolled with the full header showing, so the two always agree.
+  useFocusEffect(
+    useCallback(() => {
+      setHeaderCollapsed(false);
+      setCollapsedSearchOpen(false);
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }, []),
+  );
+
   function onSelectCategory(next: HomeTabValue) {
     setCategory(next);
     setFilters(EMPTY_FILTERS);
@@ -206,66 +225,7 @@ export default function HomeScreen() {
         ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
         ListHeaderComponent={
           <View>
-            <UtilityBar />
-            <ProfileCompletionBanner />
-            <View style={styles.headerTop}>
-              <View style={styles.brandRow}>
-                <Image source={require("../../assets/logo.png")} style={styles.logoMark} />
-                <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 19, color: colors.green }}>
-                  Bhavano
-                </Text>
-              </View>
-              <View style={styles.brandRow}>
-                {/* Messages has its own bottom tab now (with its own reachable unread state) —
-                    no need to duplicate a route to it here too. */}
-                {/* Only an invitation to log in — once logged in there is nothing to offer here,
-                    since the Account tab already owns profile and sign-out. Leaving it visible
-                    made a logged-in user look logged out. */}
-                {!isLoggedIn && (
-                  <Pressable
-                    onPress={() => requireLogin()}
-                    style={[styles.loginButton, { borderColor: colors.green }]}
-                  >
-                    <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13.5 }}>Login</Text>
-                  </Pressable>
-                )}
-                <Pressable
-                  onPress={toggleTheme}
-                  style={[styles.iconButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
-                >
-                  <Icon name={theme === "dark" ? "sun" : "moon"} size={16} color={colors.text} />
-                </Pressable>
-              </View>
-            </View>
-
-            <View style={styles.secondRow}>
-              <Pressable
-                onPress={openLocationPicker}
-                accessibilityLabel="Change city"
-                style={[styles.locationButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
-              >
-                <Icon name="pin" size={14} color={colors.text} />
-                <Text style={{ fontSize: 12.5, fontWeight: "700", color: colors.text, flexShrink: 1, minWidth: 0 }} numberOfLines={1}>
-                  {city?.name ?? "All cities"}
-                </Text>
-                <Icon name="chevronDown" size={13} color={colors.muted} />
-              </Pressable>
-              <Pressable
-                onPress={() => setTopSearchOpen((o) => !o)}
-                accessibilityLabel={topSearchOpen ? "Close search" : "Search"}
-                style={[styles.iconButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
-              >
-                <Icon name={topSearchOpen ? "close" : "search"} size={17} color={colors.text} />
-              </Pressable>
-              {/* `minWidth` (not just `flex:1`) so the search icon and Post ad always keep some
-                  breathing room even when the location button is wide enough to nearly fill the
-                  row on its own. */}
-              <View style={{ flex: 1, minWidth: 14 }} />
-              <Pressable onPress={() => router.push("/post")} style={[styles.postAdButton, { backgroundColor: colors.green }]}>
-                <Icon name="postAd" size={15} color={colors.onGreen} />
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.onGreen }}>Post ad</Text>
-              </Pressable>
-            </View>
+            <BrandHeader search={{ open: topSearchOpen, onToggle: () => setTopSearchOpen((o) => !o) }} />
 
             {/* Only shown on demand — typing already live-filters the list via `query`, so this
                 button's job is just to confirm/dismiss the keyboard rather than trigger a fetch
@@ -296,14 +256,17 @@ export default function HomeScreen() {
               {/* The All tab mixes every category together, so none of these filters mean one
                 * consistent thing across a PG, a plot, and a sofa in the same list — same
                 * reasoning as the web app's own filter row, which hides itself the same way (see
-                * BrowseListingsView.tsx). Sort still applies fine regardless of category, so it
-                * stays. */}
-              {category !== "all" && (
+                * BrowseListingsView.tsx). Area is the exception, as on web: a place means the same thing
+                * for every category, so inside a city the All tab gets an Area-only button.
+                * Sort still applies fine regardless of category, so it stays. */}
+              {(category !== "all" || cityAreas.length > 1) && (
                 <Pressable
                   onPress={() => filterSheetRef.current?.present()}
                   style={[styles.pillButton, { backgroundColor: colors.surfaceAlt, borderColor: filterCount > 0 ? colors.green : colors.border }]}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: filterCount > 0 ? colors.green : colors.text }}>Filters</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: filterCount > 0 ? colors.green : colors.text }}>
+                    {category === "all" ? "Area" : "Filters"}
+                  </Text>
                   {filterCount > 0 && (
                     <View style={[styles.badge, { backgroundColor: colors.green }]}>
                       <Text style={{ fontSize: 10, fontWeight: "700", color: colors.onGreen }}>{filterCount}</Text>
@@ -387,45 +350,6 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
-  },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  logoMark: { width: 30, height: 30, borderRadius: 8 },
-  loginButton: { borderWidth: 1.5, borderRadius: 8, paddingVertical: 7, paddingHorizontal: 14 },
-  iconButton: { width: 32, height: 32, borderRadius: 8, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  secondRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, marginBottom: 12 },
-  // Fixed height (not just padding) on all three of these — locationButton/postAdButton hold
-  // different content (icon+text+icon vs icon+text) than iconButton's single centered icon, so
-  // matching padding alone wouldn't reliably land on the same rendered height the way an explicit
-  // shared value does.
-  locationButton: {
-    // Shrinks (rather than grows) so it doesn't compete with the spacer below for the space that
-    // should push Post Ad to the far right — it only takes as much room as its content needs,
-    // giving up width to fit if a long city name would otherwise overflow the row.
-    flexShrink: 1,
-    height: 32,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderWidth: 1,
-    borderRadius: 9,
-    paddingHorizontal: 10,
-    minWidth: 0,
-  },
-  postAdButton: {
-    height: 32,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-  },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",

@@ -270,7 +270,7 @@ export const FilterSheet = forwardRef<
         contentContainerStyle={styles.content}
         onScrollBeginDrag={() => areasExpanded && setAreasExpanded(false)}
       >
-        <Text style={[styles.title, { color: colors.text }]}>Filters</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{category === "all" ? "Area" : "Filters"}</Text>
 
         {cityAreas.length > 1 && (
           <View style={styles.section}>
@@ -407,6 +407,8 @@ export const FilterSheet = forwardRef<
           </View>
         )}
 
+        {/* The All tab mixes every category, so price means nothing there; only Area applies. */}
+        {category !== "all" && (
         <View style={styles.section} onLayout={(e) => { priceSectionY.current = e.nativeEvent.layout.y; }}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionLabel, { color: colors.muted }]}>PRICE</Text>
@@ -447,6 +449,7 @@ export const FilterSheet = forwardRef<
             {priceError ?? "One bound is enough."}
           </Text>
         </View>
+        )}
 
         {showBhkAndFurnished && (
           <View style={styles.section}>

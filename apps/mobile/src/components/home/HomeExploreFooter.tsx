@@ -1,10 +1,8 @@
 import { Pressable, Text, View } from "react-native";
-import { useRouter } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
+import { useRouter, type Href } from "expo-router";
 import { HOME_STEPS, homeFaqs } from "@bhavano/types/homeContent";
 import { sortedPosts } from "@bhavano/types/blogPosts";
 import { useAppTheme } from "../../theme/ThemeContext";
-import { appWebUrl } from "../../lib/appWebUrl";
 import { Icon } from "../Icon";
 import { FaqGroup } from "./FaqGroup";
 
@@ -76,7 +74,7 @@ export function HomeExploreFooter() {
       <View>
         <Text style={heading}>Free tools</Text>
         {TOOLS.map((tool) => (
-          <Pressable key={tool.path} onPress={() => WebBrowser.openBrowserAsync(appWebUrl(tool.path))} style={row}>
+          <Pressable key={tool.path} onPress={() => router.push(tool.path as Href)} style={row}>
             <Text style={{ flex: 1, fontSize: 14, color: colors.text }}>{tool.label}</Text>
             <Icon name="chevronRight" size={14} color={colors.muted} />
           </Pressable>
