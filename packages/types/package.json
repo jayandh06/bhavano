@@ -121,6 +121,10 @@
       "types": "./dist/videoLimits.d.ts",
       "default": "./dist/videoLimits.js"
     },
+    "./featuredPerformance": {
+      "types": "./dist/featuredPerformance.d.ts",
+      "default": "./dist/featuredPerformance.js"
+    },
     "./photoLimits": {
       "types": "./dist/photoLimits.d.ts",
       "default": "./dist/photoLimits.js"

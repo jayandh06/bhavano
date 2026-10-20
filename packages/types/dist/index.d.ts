@@ -1,5 +1,6 @@
 import type { VideoEntitlement } from "./videoLimits";
 import type { PhotoEntitlement } from "./photoLimits";
+import type { FeaturedPerformanceDto } from "./featuredPerformance";
 import type { BoostDurationDays } from "./boostPricing";
 import type { AreaUnit } from "./areaUnit";
 import type { RequirementAttributes } from "./requirementQuestions";
@@ -250,6 +251,9 @@ export interface ListingDetailDto extends ListingCardDto {
     /** Owner/admin only, like `videoEntitlement`: how many photos this listing may hold (6, or 12 when
      * Featured / Agent Pro) — resolved server-side so clients never derive the tier themselves. */
     photoEntitlement?: PhotoEntitlement;
+    /** Owner's own listing only (`getMine`), and only if it has ever been Featured — what the boost has
+     * done so far. Never on the public detail response. */
+    featuredPerformance?: FeaturedPerformanceDto;
     /** How many times the owner has renewed this listing (pushed `expiresAt` forward). */
     renewCount: number;
     /** Newest-first renewal audit trail — each entry's `from`/`to` are the expiry dates either

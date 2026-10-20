@@ -1,6 +1,17 @@
 # Featured ads: richer media limits, "add more" prompts, and further benefits
 
-## Status: Phase 1 (sections 1 and 2) implemented 2026-10-20; Phases 2-3 not started.
+## Status: Phase 1 (sections 1 and 2) and the Phase 2 performance report implemented 2026-10-20; re-bump deliberately not built (see below); Phase 3 not started.
+
+### Phase 2 — performance report (shipped)
+
+- Owner edit page (web `FeaturedPerformanceCard`, mobile `my-listings/[id]/edit`) shows, for an ad that has ever been Featured: **new viewers, enquiries and contact reveals since the latest boost started**, the boost dates, and "running now" while active. Real counts only.
+- Source: `ListingsService.getMine` (the owner's own detail, `GET /users/me/listings/:id`) adds `featuredPerformance` from `ListingBoost.boostedFrom/boostedUntil` and three indexed counts (`ListingView`, inquiry `Conversation`, `ContactReveal`, all by `createdAt`). Never on the public detail response. Shared builder: `packages/types/src/featuredPerformance.ts` (tested in `apps/bff/src/listings/featured-performance.spec.ts`).
+- **The "before vs Featured" line only appears when the ad lived at least a day before being boosted.** Most boosts (18 of 19 in the September data) start within 10 minutes of posting, so there is usually no "before" to compare against; the card then shows the plain counts, not an invented comparison. The site-wide boosted-vs-unboosted figure stays in the offer copy (`boostRecoveryMessage`, sample-size gated).
+- Views are *unique new viewers* (`ListingView` is one row per listing and viewer), not raw page loads.
+
+### Re-bump — not built, and why
+
+The plan proposed "one free move to the top". The Featured tier is ordered by `Listing.boostRank`, which `BoostRotationService` re-randomises for every boosted listing every 30 minutes, so there is no stable position a seller could be moved to: a "bump" would only re-roll a random number for up to 30 minutes and could not be described honestly as "top". Revisit only together with a ranking change (for example weighting the rotation by recency of the last bump, or a short guaranteed pin), which is a product decision and affects every other Featured seller.
 
 ### What shipped, and one change from the original proposal
 

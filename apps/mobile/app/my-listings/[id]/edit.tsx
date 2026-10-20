@@ -20,6 +20,7 @@ import {
   TITLE_MAX_LENGTH,
 } from "@bhavano/types/listingLimits";
 import { MAX_PHOTOS, PHOTO_LIMITS } from "@bhavano/types/photoLimits";
+import { perDay } from "@bhavano/types/featuredPerformance";
 import { POST_CATEGORIES } from "@bhavano/types/postCategories";
 import { useAppTheme } from "../../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../../src/context/HomeSheetsProvider";
@@ -263,6 +264,44 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
   // several conditional levels deep) into the space it shrunk.
   return (
     <KeyboardAwareScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}>
+      {listing.featuredPerformance && (
+        <View style={{ borderWidth: 1, borderColor: colors.gold, backgroundColor: colors.surfaceAlt, borderRadius: 14, padding: 14, marginBottom: 12, gap: 6 }}>
+          <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
+            {listing.featuredPerformance.active ? "Your Featured ad so far" : "Your last Featured period"}
+          </Text>
+          <Text style={{ fontSize: 12, color: colors.muted }}>
+            {new Date(listing.featuredPerformance.since).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} –{" "}
+            {new Date(listing.featuredPerformance.until).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+            {listing.featuredPerformance.active ? " · running now" : ""}
+          </Text>
+          <View style={{ flexDirection: "row", marginTop: 6 }}>
+            {(
+              [
+                ["New viewers", listing.featuredPerformance.views],
+                ["Enquiries", listing.featuredPerformance.enquiries],
+                ["Contact reveals", listing.featuredPerformance.contactReveals],
+              ] as const
+            ).map(([label, value]) => (
+              <View key={label} style={{ flex: 1, alignItems: "center" }}>
+                <Text style={{ fontSize: 22, fontWeight: "700", color: colors.green }}>{value}</Text>
+                <Text style={{ fontSize: 12, color: colors.muted }}>{label}</Text>
+              </View>
+            ))}
+          </View>
+          {listing.featuredPerformance.before &&
+          perDay(listing.featuredPerformance.before.views, listing.featuredPerformance.before.days) > 0 &&
+          perDay(listing.featuredPerformance.views, listing.featuredPerformance.daysFeatured) > 0 ? (
+            <Text style={{ fontSize: 13, color: colors.textSoft, marginTop: 6 }}>
+              About {perDay(listing.featuredPerformance.views, listing.featuredPerformance.daysFeatured)} new viewers a day while Featured, against{" "}
+              {perDay(listing.featuredPerformance.before.views, listing.featuredPerformance.before.days)} a day before.
+            </Text>
+          ) : listing.featuredPerformance.views === 0 && listing.featuredPerformance.active ? (
+            <Text style={{ fontSize: 13, color: colors.textSoft, marginTop: 6 }}>
+              No new viewers yet — share your ad on WhatsApp to get the first ones in.
+            </Text>
+          ) : null}
+        </View>
+      )}
       <Text style={[styles.label, { color: colors.textSoft }]}>Category / transaction</Text>
       <View style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
         <Text style={{ color: colors.textSoft, fontSize: 14 }}>

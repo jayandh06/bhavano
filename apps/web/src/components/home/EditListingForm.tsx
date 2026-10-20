@@ -26,6 +26,7 @@ import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
 import { CategoryFieldsAccordion } from "./CategoryFieldsAccordion";
 import { EditListingPhotos } from "./EditListingPhotos";
 import { VideoManager } from "./VideoManager";
+import { FeaturedPerformanceCard } from "./FeaturedPerformanceCard";
 
 function attributesToStrings(
   attributes: Record<string, unknown>,
@@ -183,6 +184,8 @@ export function EditListingForm({
 
   return (
     <div className="flex flex-col gap-4">
+      {listing.featuredPerformance && <FeaturedPerformanceCard performance={listing.featuredPerformance} />}
+
       <div className="max-w-[420px]">
         <label className={labelClass}>Category / transaction</label>
         <div className={`${fieldClass} bg-surface-alt text-text-soft`}>

@@ -63,6 +63,7 @@ import { listingPriceIssue } from '@bhavano/types/priceBounds';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
 import { MAX_PHOTOS, MIN_PHOTOS, PHOTO_LIMITS, resolvePhotoEntitlement } from '@bhavano/types/photoLimits';
+import { buildFeaturedPerformance } from '@bhavano/types/featuredPerformance';
 import type { DuplicatePhotoErrorBody } from '@bhavano/types/duplicatePhoto';
 import { PrismaService } from '../prisma/prisma.service';
 import { toE164India } from '../outreach/phone';
@@ -2403,7 +2404,45 @@ export class ListingsService {
     if (listing.ownerId !== userId)
       throw new ForbiddenException("You don't own this listing");
 
-    return this.toDetailDto(listing, undefined, true, true);
+    const dto = this.toDetailDto(listing, undefined, true, true);
+    const featuredPerformance = await this.featuredPerformanceFor(listing);
+    return featuredPerformance ? { ...dto, featuredPerformance } : dto;
+  }
+
+  /** What the owner's latest boost has done so far (views / enquiries / contact reveals since it
+   * started) plus, when the ad lived at least a day before being Featured, the same counts for that
+   * earlier stretch. Owner edit page only — three cheap indexed counts, never run for public reads.
+   * `undefined` if the listing was never boosted. */
+  private async featuredPerformanceFor(listing: { id: string; createdAt: Date }) {
+    const boost = await this.prisma.listingBoost.findFirst({
+      where: { listingId: listing.id },
+      orderBy: { boostedFrom: 'desc' },
+      select: { boostedFrom: true, boostedUntil: true },
+    });
+    if (!boost) return undefined;
+
+    const countsBetween = async (from: Date, to: Date | null) => {
+      const createdAt = { gte: from, ...(to ? { lt: to } : {}) };
+      const [views, enquiries, contactReveals] = await Promise.all([
+        this.prisma.listingView.count({ where: { listingId: listing.id, createdAt } }),
+        this.prisma.conversation.count({ where: { listingId: listing.id, type: 'inquiry', createdAt } }),
+        this.prisma.contactReveal.count({ where: { listingId: listing.id, createdAt } }),
+      ]);
+      return { views, enquiries, contactReveals };
+    };
+
+    const [during, beforeCounts] = await Promise.all([
+      countsBetween(boost.boostedFrom, null),
+      countsBetween(listing.createdAt, boost.boostedFrom),
+    ]);
+    return buildFeaturedPerformance({
+      boostedFrom: boost.boostedFrom,
+      boostedUntil: boost.boostedUntil,
+      listingCreatedAt: listing.createdAt,
+      now: new Date(),
+      during,
+      beforeCounts,
+    });
   }
 
   async update(
