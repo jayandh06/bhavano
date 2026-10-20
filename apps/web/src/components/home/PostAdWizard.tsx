@@ -187,7 +187,7 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
  * then) and isn't a place `jumpToStep` can send you back to anyway. */
 const STEP_TRACKER_ORDER: Step[] = ["category", "transactionType", "details", "review"];
 
-type Step = "category" | "transactionType" | "details" | "review" | "success";
+type Step = "category" | "transactionType" | "details" | "review" | "offer" | "success";
 
 type SavedDraft = NonNullable<Awaited<ReturnType<typeof loadPostAdDraft>>>;
 
@@ -309,6 +309,7 @@ const STEP_SYNTHETIC_PATH: Record<Step, string | null> = {
   transactionType: "/post/transaction-type",
   details: "/post/details",
   review: "/post/preview",
+  offer: "/post/offer",
   success: null,
 };
 
@@ -545,8 +546,6 @@ export function PostAdWizard({
   // See docs/plans/boost-recovery-dialog.md — state declared here, the idle timer that uses it is
   // below, after showBoostOnReview exists.
   const [showBoostRecovery, setShowBoostRecovery] = useState(false);
-  // "Maybe later" on the success-screen Featured offer — hides the offer for this wizard mount only.
-  const [boostOfferDismissed, setBoostOfferDismissed] = useState(false);
   const boostRecoveryShownRef = useRef(false);
   // Which of the three trigger points opened the dialog currently showing — the idle timer and
   // tapping Post ad both proceed straight to posting either way (onAddBoost/onSkip below), but
@@ -683,7 +682,7 @@ export function PostAdWizard({
   // Off while posting for someone else: one seller's ad must never come back as the admin's own
   // next post.
   useEffect(() => {
-    if (!draftSavingRef.current || !category || step === "success" || assistedMode) return;
+    if (!draftSavingRef.current || !category || step === "success" || step === "offer" || assistedMode) return;
     const timer = setTimeout(() => {
       if (!draftSavingRef.current) return;
       savePostAdDraftFields({
@@ -1918,7 +1917,9 @@ export function PostAdWizard({
         ...(phoneE164 ? { phone_number: phoneE164 } : {}),
       },
     });
-    setStep("success");
+    // The ad is live and free at this point. With the Preview-step selector off, the optional
+    // Featured offer gets its own screen before the confirmation (docs/plans/post-first-featured-upsell.md).
+    setStep(previewBoostDisplay?.showSelectorOnPreview ? "success" : "offer");
   }
 
   const currentStepIndex = STEP_TRACKER_ORDER.indexOf(step);
@@ -1926,7 +1927,7 @@ export function PostAdWizard({
   return (
     <div>
       <StepTracker step={step} entry={entry} loggedIn={loggedIn} />
-      {draftRestored && step !== "success" && (
+      {draftRestored && step !== "success" && step !== "offer" && (
         // Deliberately loud: someone who tapped "Post ad" and landed mid-form, possibly in a
         // category they did not choose today, has to understand why before they publish into it.
         <div
@@ -1952,7 +1953,7 @@ export function PostAdWizard({
           </button>
         </div>
       )}
-      {step !== "success" && (
+      {step !== "success" && step !== "offer" && (
         <div className="flex gap-1.5 mb-6 text-xs font-bold text-muted">
           {STEP_TRACKER_ORDER.map((s, i) => {
             const label =
@@ -1989,7 +1990,7 @@ export function PostAdWizard({
         </div>
       )}
 
-      {isAdmin && step !== "success" && (
+      {isAdmin && step !== "success" && step !== "offer" && (
         <AssistedSellerPanel value={assistedSeller} onChange={setAssistedSeller} />
       )}
 
@@ -2686,6 +2687,72 @@ export function PostAdWizard({
         </div>
       )}
 
+      {step === "offer" && createdListing && !assistedMode && (
+        <div className="w-full max-w-[920px] mx-auto flex flex-col items-center gap-6 py-4 px-1">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <span className="text-[13px] font-bold text-green">&#10003; Your ad is posted</span>
+            <div className="font-lora text-xl sm:text-2xl font-bold text-text">
+              Show your ad to more {audienceFor(createdListing.category, createdListing.transactionType)}?
+            </div>
+            <p className="text-sm text-muted m-0 max-w-[520px]">
+              Featured ads get a gold badge, priority placement and instant message alerts. It&apos;s optional &mdash; your ad stays up either way.
+            </p>
+          </div>
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            {/* The ad is already live and free — this shows what the optional upgrade would
+             * change on the same listing, so the choice is concrete. Preview on the left,
+             * Featured selection on the right. See docs/plans/post-first-featured-upsell.md. */}
+            <div className="w-full flex flex-col items-center gap-2">
+              <p className="text-[13px] font-bold text-text m-0">Your ad with Featured</p>
+              <ListingPreviewCard
+                photoUrls={photos.map((p) => p.previewUrl)}
+                category={createdListing.category}
+                transactionType={createdListing.transactionType}
+                title={title}
+                price={price}
+                priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
+                priceArea={priceArea}
+                priceQualifier={priceQualifier}
+                areaName={areaQuery}
+                cityName={cities.find((c) => c.id === cityId)?.name ?? ""}
+                attributes={attributes}
+                featured
+              />
+              <p className="max-w-[340px] mt-0 mb-0 text-center text-[12px] text-muted">
+                Today it shows as a standard ad, without the gold badge.
+              </p>
+            </div>
+            {/* Boost + Instant Alerts — one combined picker instead of two separate cards, each of
+             * which used to only reveal its price after being clicked. Prices for every
+             * combination (including the current promo code and the Agent Pro free-credit case)
+             * are fetched up front; adding Instant Alerts checks out as a single payment via
+             * createBoostOrder's `includeInstantAlerts`, not two payments back to back. */}
+            <div className="w-full flex flex-col items-center gap-3">
+              <BoostBundlePicker
+                listingId={createdListing.id}
+                category={createdListing.category}
+                transactionType={createdListing.transactionType}
+                effectiveness={planPricingSettings?.boostEffectiveness ?? null}
+                onActivating={() => {
+                  setShowRegenerateBanner(true);
+                  setStep("success");
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  pushDataLayerEvent("post_offer_skipped", { listingId: createdListing.id });
+                  setStep("success");
+                }}
+                className={secondaryButtonClass}
+              >
+                No thanks, continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {step === "success" && createdListing && !assistedMode && (
         <div className="w-full max-w-[920px] mx-auto flex flex-col items-center gap-5 py-4 px-1">
           <div className="flex flex-col items-center gap-3 text-center">
@@ -2723,53 +2790,14 @@ export function PostAdWizard({
               </div>
             )
           ) : (
-            !boostOfferDismissed && (
-              <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                {/* The ad is already live and free — this shows what the optional upgrade would
-                 * change on the same listing, so the choice is concrete. Preview on the left,
-                 * Featured selection on the right. See docs/plans/post-first-featured-upsell.md. */}
-                <div className="w-full flex flex-col items-center gap-2">
-                  <p className="text-[13px] font-bold text-text m-0">Your ad with Featured</p>
-                  <ListingPreviewCard
-                    photoUrls={photos.map((p) => p.previewUrl)}
-                    category={createdListing.category}
-                    transactionType={createdListing.transactionType}
-                    title={title}
-                    price={price}
-                    priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
-                    priceArea={priceArea}
-                    priceQualifier={priceQualifier}
-                    areaName={areaQuery}
-                    cityName={cities.find((c) => c.id === cityId)?.name ?? ""}
-                    attributes={attributes}
-                    featured
-                  />
-                  <p className="max-w-[340px] mt-0 mb-0 text-center text-[12px] text-muted">
-                    Today it shows as a standard ad, without the gold badge.
-                  </p>
-                </div>
-                {/* Boost + Instant Alerts — one combined picker instead of two separate cards, each of
-                 * which used to only reveal its price after being clicked. Prices for every
-                 * combination (including the current promo code and the Agent Pro free-credit case)
-                 * are fetched up front; adding Instant Alerts checks out as a single payment via
-                 * createBoostOrder's `includeInstantAlerts`, not two payments back to back. */}
-                <div className="w-full flex flex-col items-center gap-3">
-                  <BoostBundlePicker
-                    listingId={createdListing.id}
-                    category={createdListing.category}
-                    transactionType={createdListing.transactionType}
-                    effectiveness={planPricingSettings?.boostEffectiveness ?? null}
-                    onActivating={() => setShowRegenerateBanner(true)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setBoostOfferDismissed(true)}
-                    className="text-[13px] font-bold text-muted hover:text-text transition-colors bg-transparent border-0 cursor-pointer"
-                  >
-                    Maybe later
-                  </button>
-                </div>
-              </div>
+            !showRegenerateBanner && (
+              <button
+                type="button"
+                onClick={() => setStep("offer")}
+                className="text-[13px] font-bold text-green hover:underline bg-transparent border-0 cursor-pointer"
+              >
+                Make it Featured &rarr;
+              </button>
             )
           )}
 

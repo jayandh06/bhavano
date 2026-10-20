@@ -246,7 +246,7 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   lease: "Lease out",
 };
 
-type Step = "category" | "transactionType" | "details" | "review" | "success";
+type Step = "category" | "transactionType" | "details" | "review" | "offer" | "success";
 
 // Mirrors web PostAdWizard.tsx's own STEP_SYNTHETIC_PATH — kept in sync by hand, same as every
 // other web/mobile pair of these constants in this app.
@@ -255,6 +255,7 @@ const STEP_SYNTHETIC_PATH: Record<Step, string | null> = {
   transactionType: "/post/transaction-type",
   details: "/post/details",
   review: "/post/preview",
+  offer: "/post/offer",
   success: null,
 };
 
@@ -434,8 +435,6 @@ export function PostAdWizard({
   // Android only — see BoostBundleCard's own comment for why Android gets one combined card
   // instead of iOS's redirect-to-website buttons below, which have nothing to activate in-app.
   const [bundleActivating, setBundleActivating] = useState(false);
-  // "Maybe later" on the success-screen Featured offer — hides it for this wizard mount only.
-  const [boostOfferDismissed, setBoostOfferDismissed] = useState(false);
   // Phones stack the confirmation (preview, then Featured picker); tablets put them side by side.
   const { width: windowWidth } = useWindowDimensions();
   const confirmationSideBySide = windowWidth >= 700;
@@ -545,7 +544,7 @@ export function PostAdWizard({
   }
 
   useEffect(() => {
-    if (!draftSavingRef.current || !category || step === "success") return;
+    if (!draftSavingRef.current || !category || step === "success" || step === "offer") return;
     const timer = setTimeout(() => {
       if (!draftSavingRef.current) return;
       void savePostAdDraft({
@@ -1601,7 +1600,9 @@ export function PostAdWizard({
         if (!published) return;
       }
       void logPostAdSuccess({ category: listing.category, transactionType: listing.transactionType });
-      setStep("success");
+      // The ad is live and free here. With the Preview-step selector off (and always on iOS, whose offer is the
+      // App Store sheet) the optional Featured offer gets its own screen before the confirmation.
+      setStep(Platform.OS === "ios" || !previewBoostDisplay?.showSelectorOnPreview ? "offer" : "success");
     } catch (e) {
       // Same "bounce back to Details with something to actually do about it" reasoning as
       // web's identical check — Review (if this app has one) has no photo-add/remove UI of its
@@ -1670,7 +1671,7 @@ export function PostAdWizard({
       style={{ flex: 1 }}
       contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}
     >
-      {step !== "success" && (
+      {step !== "success" && step !== "offer" && (
         // A vector icon, not a "→" text glyph, between steps — a Unicode arrow's rendering
         // depends on the device's own font having that glyph at all, which isn't guaranteed on
         // every Android font/OS version (it showed up missing/wrong on real Android devices,
@@ -1687,7 +1688,7 @@ export function PostAdWizard({
         </View>
       )}
 
-      {draftRestored && step !== "success" && (
+      {draftRestored && step !== "success" && step !== "offer" && (
         // Deliberately loud: someone who tapped "Post ad" and landed mid-form, possibly in a
         // category they did not choose today, has to understand why before they publish into it.
         <View
@@ -2349,26 +2350,19 @@ export function PostAdWizard({
         </View>
       )}
 
-      {step === "success" && createdListing && (
+      {step === "offer" && createdListing && (
         <View style={{ alignItems: "center", gap: 20, paddingTop: 8 }}>
           <View style={{ alignItems: "center", gap: 8 }}>
-            <View style={[styles.celebrateCircle, { backgroundColor: `${colors.green}1a` }]}>
-              <Icon name="celebrate" size={26} color={colors.green} />
-            </View>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.green }}>✓ Your ad is posted</Text>
             <Text style={{ fontFamily: "serif", fontSize: 20, fontWeight: "700", color: colors.text, textAlign: "center" }}>
-              Your ad is live!
+              Show your ad to more {audienceFor(createdListing.category, createdListing.transactionType)}?
             </Text>
             <Text style={{ fontSize: 13, color: colors.muted, textAlign: "center" }}>
-              It&rsquo;s now visible to {audienceFor(createdListing.category, createdListing.transactionType)} searching your area.
+              Featured ads get a gold badge, priority placement and instant message alerts. It&rsquo;s optional — your ad stays up either way.
             </Text>
           </View>
-
           {Platform.OS === "ios" ? (
-            // iOS sells the boost through the App Store (IosBoostSheet, three durations at the
-            // App Store's own prices): a Razorpay checkout, or a button to the website to pay, is
-            // exactly what Apple's Guideline 3.1.1 forbids. Instant Alerts is part of every boost.
             <>
-              {!boostOfferDismissed && (
               <View
                 style={{
                   width: "100%",
@@ -2430,12 +2424,14 @@ export function PostAdWizard({
                   </Pressable>
                 )}
               </View>
-              <Pressable onPress={() => setBoostOfferDismissed(true)} style={{ alignItems: "center", paddingVertical: 6 }}>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>Maybe later</Text>
-              </Pressable>
+                              <Pressable
+                  onPress={() => setStep("success")}
+                  style={{ alignItems: "center", paddingVertical: 6 }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>No thanks, continue</Text>
+                </Pressable>
               </View>
               </View>
-              )}
               <IosBoostSheet
                 visible={iosBoostOpen}
                 listingId={createdListing.id}
@@ -2444,11 +2440,86 @@ export function PostAdWizard({
                 onPurchased={() => {
                   setIosBoostDone(true);
                   setShowRegenerateBanner(true);
+                  setStep("success");
                 }}
               />
-
             </>
-          ) : previewBoostDisplay?.showSelectorOnPreview ? (
+          ) : (
+            postAccessToken && (
+                <View
+                  style={{
+                    width: "100%",
+                    flexDirection: confirmationSideBySide ? "row" : "column",
+                    alignItems: confirmationSideBySide ? "flex-start" : "stretch",
+                    gap: 16,
+                  }}
+                >
+                  {/* Shows what the optional upgrade changes on the already-live ad — see
+                    * docs/plans/post-first-featured-upsell.md. Preview first (left on tablets),
+                    * Featured selection after it (right on tablets). */}
+                  <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, textAlign: "center" }}>
+                    Your ad with Featured
+                  </Text>
+                  <ListingPreviewCard
+                    photoUris={photoUris}
+                    category={createdListing.category}
+                    transactionType={createdListing.transactionType}
+                    title={title}
+                    price={price}
+                    priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
+                    priceArea={priceArea}
+                    priceQualifier={priceQualifier}
+                    areaName={areaQuery}
+                    cityName={cityOptions.find((c) => c.id === cityId)?.name ?? ""}
+                    attributes={attributes}
+                    featured
+                  />
+                  <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center" }}>
+                    Today it shows as a standard ad, without the gold badge.
+                  </Text>
+                  </View>
+                  <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
+                  <BoostBundleCard
+                    listingId={createdListing.id}
+                    category={createdListing.category}
+                    transactionType={createdListing.transactionType}
+                    accessToken={postAccessToken}
+                    onActivating={() => {
+                      setBundleActivating(true);
+                      setShowRegenerateBanner(true);
+                      setStep("success");
+                    }}
+                    effectiveness={planPricingSettings?.boostEffectiveness ?? null}
+                  />
+                                  <Pressable
+                    onPress={() => setStep("success")}
+                    style={{ alignItems: "center", paddingVertical: 6 }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>No thanks, continue</Text>
+                  </Pressable>
+                  </View>
+                </View>
+            )
+          )}
+        </View>
+      )}
+
+      {step === "success" && createdListing && (
+        <View style={{ alignItems: "center", gap: 20, paddingTop: 8 }}>
+          <View style={{ alignItems: "center", gap: 8 }}>
+            <View style={[styles.celebrateCircle, { backgroundColor: `${colors.green}1a` }]}>
+              <Icon name="celebrate" size={26} color={colors.green} />
+            </View>
+            <Text style={{ fontFamily: "serif", fontSize: 20, fontWeight: "700", color: colors.text, textAlign: "center" }}>
+              Your ad is live!
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.muted, textAlign: "center" }}>
+              It&rsquo;s now visible to {audienceFor(createdListing.category, createdListing.transactionType)} searching your area.
+            </Text>
+          </View>
+
+          {previewBoostDisplay?.showSelectorOnPreview && Platform.OS !== "ios" ? (
             // The full picker stays hidden here — the choice was already made on the review step
             // (BoostBundleCard's own showSelectorOnPreview self-gate covers this too, redundantly
             // safe). Only a narrow retry surfaces, and only while an actual attempt is
@@ -2478,61 +2549,11 @@ export function PostAdWizard({
               <Icon name="boost" size={16} color={colors.green} />
               <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Featuring…</Text>
             </View>
-          ) : (
-            postAccessToken &&
-            !boostOfferDismissed && (
-              <View
-                style={{
-                  width: "100%",
-                  flexDirection: confirmationSideBySide ? "row" : "column",
-                  alignItems: confirmationSideBySide ? "flex-start" : "stretch",
-                  gap: 16,
-                }}
-              >
-                {/* Shows what the optional upgrade changes on the already-live ad — see
-                  * docs/plans/post-first-featured-upsell.md. Preview first (left on tablets),
-                  * Featured selection after it (right on tablets). */}
-                <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, textAlign: "center" }}>
-                  Your ad with Featured
-                </Text>
-                <ListingPreviewCard
-                  photoUris={photoUris}
-                  category={createdListing.category}
-                  transactionType={createdListing.transactionType}
-                  title={title}
-                  price={price}
-                  priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
-                  priceArea={priceArea}
-                  priceQualifier={priceQualifier}
-                  areaName={areaQuery}
-                  cityName={cityOptions.find((c) => c.id === cityId)?.name ?? ""}
-                  attributes={attributes}
-                  featured
-                />
-                <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center" }}>
-                  Today it shows as a standard ad, without the gold badge.
-                </Text>
-                </View>
-                <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
-                <BoostBundleCard
-                  listingId={createdListing.id}
-                  category={createdListing.category}
-                  transactionType={createdListing.transactionType}
-                  accessToken={postAccessToken}
-                  onActivating={() => {
-                    setBundleActivating(true);
-                    setShowRegenerateBanner(true);
-                  }}
-                  effectiveness={planPricingSettings?.boostEffectiveness ?? null}
-                />
-                <Pressable onPress={() => setBoostOfferDismissed(true)} style={{ alignItems: "center", paddingVertical: 6 }}>
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>Maybe later</Text>
-                </Pressable>
-                </View>
-              </View>
-            )
-          )}
+          ) : !showRegenerateBanner && !iosBoostDone ? (
+            <Pressable onPress={() => setStep("offer")} style={{ alignItems: "center", paddingVertical: 6 }}>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: colors.green }}>Make it Featured →</Text>
+            </Pressable>
+          ) : null}
 
           {showRegenerateBanner && (
             <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt, gap: 10 }]}>

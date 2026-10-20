@@ -28,6 +28,7 @@ const POST_STEP_LABELS: Record<string, string> = {
   "transaction-type": "Transaction type",
   details: "Details",
   preview: "Preview",
+  offer: "Featured offer",
 };
 
 /** `/post/login-required?step=...` carries the wizard's own internal `Step` value (web/mobile

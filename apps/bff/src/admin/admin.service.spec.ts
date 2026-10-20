@@ -1013,6 +1013,7 @@ describe('AdminService.getPostFunnel', () => {
       { path: '/post/details', label: 'Details', sessions: 0, pctOfPrevious: 0 },
       { path: '/post/preview', label: 'Preview', sessions: 0, pctOfPrevious: null },
       { path: '/post/success', label: 'Success', sessions: 0, pctOfPrevious: null },
+      { path: '/post/offer', label: 'Featured offer screen', sessions: 0, pctOfPrevious: null },
     ]);
     expect(prisma.visit.findMany).not.toHaveBeenCalled();
   });

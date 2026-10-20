@@ -112,6 +112,9 @@ const POST_FUNNEL_STEPS: { path: string; label: string; exact: boolean }[] = [
   { path: '/post/details', label: 'Details', exact: false },
   { path: '/post/preview', label: 'Preview', exact: false },
   { path: '/post/success', label: 'Success', exact: true },
+  // Written by the wizard after posting, so it follows Success: sessions that were shown the
+  // optional Featured offer (docs/plans/post-first-featured-upsell.md).
+  { path: '/post/offer', label: 'Featured offer screen', exact: false },
 ];
 
 function postFunnelStepForPath(path: string): string | null {
