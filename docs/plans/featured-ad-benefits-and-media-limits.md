@@ -1,6 +1,14 @@
 # Featured ads: richer media limits, "add more" prompts, and further benefits
 
-## Status: plan only (2026-10-20) — nothing built. Values marked **(owner decision)** need a call before building.
+## Status: Phase 1 (sections 1 and 2) implemented 2026-10-20; Phases 2-3 not started.
+
+### What shipped, and one change from the original proposal
+
+- Photo **count**: 6 normal, **12** Featured / Agent Pro (`PHOTO_LIMITS`, `resolvePhotoEntitlement` in `packages/types/src/photoLimits.ts`; enforced in `ListingsService.addPhoto`; `photoEntitlement` returned to the owner on the listing detail, like `videoEntitlement`). Creation stays at 6 for everyone (the listing is not boosted yet); extra photos are added afterwards from the edit page.
+- Video: Featured / Agent Pro raised from 3 x 120 s to **5 x 180 s**; the 200 MB size cap is unchanged. Normal stays 1 x 30 s.
+- **Photo size was NOT raised (still 4 MB).** The web wizard and edit page already shrink every photo to a 2560 px JPEG under 4 MB (`shrinkPhoto.ts`), which is larger than the biggest stored variant (1600 px), so 8 MB would add upload time and R2 storage without any visible quality gain. Revisit only if sellers report quality problems.
+- Copy: a quiet line under the photo upload on the details step (web and mobile); the "Your ad is now Featured" banner now tells the seller they can add up to 12 photos and 5 videos, with an **Add photos / videos** button to the edit page; the web and mobile edit pages use the server-resolved cap; all "3 videos, 2 minutes" strings now say 5 videos, 3 minutes.
+- A boost that lapses never removes media already added; it only stops new photos above 6 (tested).
 
 ## Why
 
@@ -31,7 +39,7 @@ Proposed values **(owner decision)**:
 | | Normal | Featured / Agent Pro |
 |---|---|---|
 | Photos (count) | 6 | **12** |
-| Photo size | 4 MB | **8 MB** |
+| Photo size | 4 MB | 4 MB (unchanged — see above) |
 | Videos (count) | 1 | 3 → **5** |
 | Video length | 30 s | 120 s → **180 s** |
 | Video size | 200 MB | 200 MB (unchanged) |

@@ -1264,7 +1264,7 @@ describe('ListingsService', () => {
   });
 
   describe('acceptVideosForOwner — video entitlement by agentPro/boost', () => {
-    // v2 (90s) exceeds the default 30s cap but fits the elevated 120s cap — this array is sized
+    // v2 (90s) exceeds the default 30s cap but fits the elevated 180s cap — this array is sized
     // to exactly the elevated maxVideos (3), so "all accepted" is a meaningful assertion below.
     const videos = [
       { durationSec: 20, storageId: 'a', ext: 'mp4', sizeBytes: 1 },
@@ -1342,7 +1342,7 @@ describe('ListingsService', () => {
         {
           ownerId: 'owner1',
           boostedUntil: null,
-          listingVideos: [{ videoNo: 1 }, { videoNo: 2 }, { videoNo: 3 }],
+          listingVideos: [1, 2, 3, 4, 5].map((videoNo) => ({ videoNo })),
         },
       );
       const call = service.addVideo('listing1', 'owner1', {
@@ -1393,6 +1393,8 @@ describe('ListingsService', () => {
       listingPhotos?: { photoNo: number }[];
       ownerId?: string;
       isDuplicate?: boolean;
+      boostedUntil?: Date | null;
+      agentProUntil?: Date | null;
     } = {}) {
       let counter = opts.listingPhotos?.length ?? 0;
       const prisma = {
@@ -1401,10 +1403,14 @@ describe('ListingsService', () => {
             id: 'listing1',
             ownerId: opts.ownerId ?? 'owner1',
             listingPhotos: opts.listingPhotos ?? [],
+            boostedUntil: opts.boostedUntil ?? null,
           }),
           // Mirrors the real atomic { increment: 1 } — a fresh, strictly-higher value every call,
           // never reused, which is exactly the property the "never collide" test below checks.
           update: jest.fn().mockImplementation(() => Promise.resolve({ photoNoCounter: ++counter })),
+        },
+        user: {
+          findUniqueOrThrow: jest.fn().mockResolvedValue({ agentProUntil: opts.agentProUntil ?? null }),
         },
         listingPhoto: {
           findUnique: jest.fn(),
@@ -1474,6 +1480,40 @@ describe('ListingsService', () => {
         BadRequestException,
       );
       expect(prisma.listing.update).not.toHaveBeenCalled();
+    });
+
+    const future = () => new Date(Date.now() + 86_400_000);
+    const sixPhotos = () => [1, 2, 3, 4, 5, 6].map((photoNo) => ({ photoNo }));
+
+    it('lets a boosted listing add a 7th photo', async () => {
+      const { service, prisma } = makePhotoService({ listingPhotos: sixPhotos(), boostedUntil: future() });
+      await service.addPhoto('listing1', 'owner1', file);
+      expect(prisma.listing.update).toHaveBeenCalled();
+    });
+
+    it('lets an Agent Pro owner add a 7th photo', async () => {
+      const { service, prisma } = makePhotoService({ listingPhotos: sixPhotos(), agentProUntil: future() });
+      await service.addPhoto('listing1', 'owner1', file);
+      expect(prisma.listing.update).toHaveBeenCalled();
+    });
+
+    it('stops a boosted listing at 12 photos', async () => {
+      const twelve = Array.from({ length: 12 }, (_, i) => ({ photoNo: i + 1 }));
+      const { service, prisma } = makePhotoService({ listingPhotos: twelve, boostedUntil: future() });
+      await expect(service.addPhoto('listing1', 'owner1', file)).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.listing.update).not.toHaveBeenCalled();
+    });
+
+    it('a lapsed boost stops new photos above 6 but does not remove existing ones', async () => {
+      const nine = Array.from({ length: 9 }, (_, i) => ({ photoNo: i + 1 }));
+      const { service, prisma } = makePhotoService({ listingPhotos: nine, boostedUntil: new Date(Date.now() - 1000) });
+      await expect(service.addPhoto('listing1', 'owner1', file)).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.listing.update).not.toHaveBeenCalled();
+    });
+
+    it('a normal listing at the cap is told Featured ads can add more', async () => {
+      const { service } = makePhotoService({ listingPhotos: sixPhotos() });
+      await expect(service.addPhoto('listing1', 'owner1', file)).rejects.toThrow(/Feature this listing to add up to 12/);
     });
 
     it('rejects a duplicate photo hash without incrementing the counter', async () => {

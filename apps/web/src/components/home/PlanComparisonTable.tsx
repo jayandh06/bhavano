@@ -43,7 +43,7 @@ function sellerRows(settings: SubscriptionPlanSettings): { label: string; free: 
       pro: { type: "yes" },
     },
     { label: "Public storefront page", free: "Basic", pack: "Basic", pro: "Branded + Pro badge" },
-    { label: "Elevated video (3 × 120s)", free: { type: "no" }, pack: { type: "no" }, pro: { type: "yes" } },
+    { label: "Elevated video (5 × 180s)", free: { type: "no" }, pack: { type: "no" }, pro: { type: "yes" } },
     { label: "Monthly 7-day Feature credit", free: { type: "no" }, pack: { type: "no" }, pro: { type: "yes" } },
     {
       label: "Pay-per-listing Feature",

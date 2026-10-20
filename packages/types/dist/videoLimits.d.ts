@@ -4,8 +4,8 @@ export declare const VIDEO_LIMITS: {
         readonly maxDurationSec: 30;
     };
     readonly elevated: {
-        readonly maxVideos: 3;
-        readonly maxDurationSec: 120;
+        readonly maxVideos: 5;
+        readonly maxDurationSec: 180;
     };
 };
 /** Flat ceiling regardless of tier — enforced by multer, which is configured before any request

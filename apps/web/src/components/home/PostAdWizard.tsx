@@ -42,7 +42,7 @@ import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import type { VideoEntitlement } from "@bhavano/types/videoLimits";
 import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
-import { MAX_PHOTOS, MAX_PHOTO_BYTES, MIN_PHOTOS } from "@bhavano/types/photoLimits";
+import { MAX_PHOTOS, MAX_PHOTO_BYTES, MIN_PHOTOS, PHOTO_LIMITS } from "@bhavano/types/photoLimits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
 import { fetchAiGenerateUsageAction, generateListingCopyAction } from "@/app/actions/ai";
@@ -2243,6 +2243,13 @@ export function PostAdWizard({
                 hint={`JPG, PNG or WebP · up to ${PHOTO_SIZE_LABEL} each · ${MAX_PHOTOS - photos.length} more allowed`}
               />
             )}
+            {/* An extra, not a restriction: 3-6 photos and a video stay free (docs/plans/featured-ad-benefits-and-media-limits.md). */}
+            {!assistedMode && (
+              <p className="text-xs text-muted mt-1.5 mb-0">
+                {photos.length >= MAX_PHOTOS ? `You’ve added ${MAX_PHOTOS} photos. ` : "Want to show more? "}
+                Featured ads can add up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos up to 3 minutes. You can upgrade right after you post.
+              </p>
+            )}
             {duplicatePhotoNos.length > 0 && (
               <p className="text-xs text-[#b3413a] font-bold mt-1.5 mb-0">
                 {duplicatePhotoNos.length === 1 ? "The photo outlined in red" : "The photos outlined in red"} appear{duplicatePhotoNos.length === 1 ? "s" : ""} to
@@ -2306,7 +2313,7 @@ export function PostAdWizard({
             <p className="text-xs text-muted mt-0.5 mb-1.5">
               Up to {videoEntitlement.maxDurationSec}s each.
               {videoEntitlement.canUpgradeByBoosting &&
-                " Feature this listing after posting to add up to 3 videos, up to 2 minutes each."}
+                " Feature this listing after posting to add up to 5 videos, up to 3 minutes each."}
             </p>
             {assistedMode && (
               <p className="text-xs text-muted mt-0 mb-1.5">
@@ -2765,9 +2772,20 @@ export function PostAdWizard({
           {showRegenerateBanner && (
             <div className="w-full max-w-[440px] rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5 flex flex-col gap-3">
               <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-bold text-text m-0">
-                  ✨ Your ad is now Featured — want a richer AI description with nearby landmarks?
-                </p>
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm font-bold text-text m-0">
+                    ✨ Your ad is now Featured — you can now add up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos (up to 3 minutes each).
+                  </p>
+                  <Link
+                    href={`/my-listings/${createdListing.id}/edit`}
+                    className="inline-flex w-fit items-center rounded-lg bg-green px-3.5 py-2 text-[13px] font-bold text-on-green no-underline"
+                  >
+                    Add photos / videos
+                  </Link>
+                  <p className="text-sm font-bold text-text m-0 mt-1">
+                    Want a richer AI description with nearby landmarks?
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowRegenerateBanner(false)}

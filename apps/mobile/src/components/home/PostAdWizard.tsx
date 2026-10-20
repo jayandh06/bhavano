@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, Alert, Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
+import { PHOTO_LIMITS } from "@bhavano/types/photoLimits";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
@@ -2019,6 +2020,12 @@ export function PostAdWizard({
               </Text>
             </Pressable>
           )}
+          {/* An extra, not a restriction: 3-6 photos and a video stay free
+            * (docs/plans/featured-ad-benefits-and-media-limits.md). */}
+          <Text style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>
+            {photoUris.length >= MAX_PHOTOS ? `You’ve added ${MAX_PHOTOS} photos. ` : "Want to show more? "}
+            Featured ads can add up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos up to 3 minutes. You can upgrade right after you post.
+          </Text>
           {photoUris.length > 0 && (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
               {photoUris.map((uri, i) => (
@@ -2045,7 +2052,7 @@ export function PostAdWizard({
           <Text style={{ color: colors.muted, fontSize: 12 }}>
             Up to {videoEntitlement.maxDurationSec}s each.
             {videoEntitlement.canUpgradeByBoosting
-              ? " Feature this listing after posting to add up to 3 videos, up to 2 minutes each."
+              ? " Feature this listing after posting to add up to 5 videos, up to 3 minutes each."
               : ""}
           </Text>
           {videos.length < videoEntitlement.maxVideos && (
@@ -2529,12 +2536,21 @@ export function PostAdWizard({
             <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt, gap: 10 }]}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                 <Text style={{ flex: 1, fontSize: 13, fontWeight: "700", color: colors.text }}>
-                  ✨ Your ad is now Featured — want a richer AI description with nearby landmarks?
+                  ✨ Your ad is now Featured — you can now add up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos (up to 3 minutes each).
                 </Text>
                 <Pressable onPress={() => setShowRegenerateBanner(false)}>
                   <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted }}>Dismiss</Text>
                 </Pressable>
               </View>
+              <Pressable
+                onPress={() => router.push(`/my-listings/${createdListing.id}/edit`)}
+                style={[styles.submitButton, { backgroundColor: colors.green }]}
+              >
+                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Add photos / videos</Text>
+              </Pressable>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
+                Want a richer AI description with nearby landmarks?
+              </Text>
 
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                 <Pressable

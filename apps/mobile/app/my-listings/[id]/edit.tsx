@@ -19,7 +19,7 @@ import {
   maxPriceFor,
   TITLE_MAX_LENGTH,
 } from "@bhavano/types/listingLimits";
-import { MAX_PHOTOS } from "@bhavano/types/photoLimits";
+import { MAX_PHOTOS, PHOTO_LIMITS } from "@bhavano/types/photoLimits";
 import { POST_CATEGORIES } from "@bhavano/types/postCategories";
 import { useAppTheme } from "../../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../../src/context/HomeSheetsProvider";
@@ -173,10 +173,13 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
     }
   }
 
+  // Server-resolved tier (6, or 12 when Featured / Agent Pro) — never derived from boostedUntil here.
+  const maxPhotos = listing.photoEntitlement?.maxPhotos ?? MAX_PHOTOS;
+
   async function pickAndAddPhotos() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
-    const room = MAX_PHOTOS - listing.photosFull.length;
+    const room = maxPhotos - listing.photosFull.length;
     if (room <= 0) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
@@ -381,8 +384,8 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
         />
       </View>
 
-      <Text style={[styles.label, { color: colors.textSoft, marginTop: 18 }]}>Photos (up to {MAX_PHOTOS})</Text>
-      {listing.photosFull.length < MAX_PHOTOS && (
+      <Text style={[styles.label, { color: colors.textSoft, marginTop: 18 }]}>Photos (up to {maxPhotos})</Text>
+      {listing.photosFull.length < maxPhotos && (
         <Pressable
           onPress={pickAndAddPhotos}
           disabled={photoUploading}
@@ -392,8 +395,11 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
           <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>
             {photoUploading ? "Uploading…" : listing.photosFull.length > 0 ? "Add more photos" : "Add photos"}
           </Text>
-          <Text style={{ color: colors.muted, fontSize: 12 }}>{MAX_PHOTOS - listing.photosFull.length} more allowed</Text>
+          <Text style={{ color: colors.muted, fontSize: 12 }}>{maxPhotos - listing.photosFull.length} more allowed</Text>
         </Pressable>
+      )}
+      {listing.photosFull.length >= maxPhotos && listing.photoEntitlement?.canUpgradeByBoosting && (
+        <Text style={{ color: colors.muted, fontSize: 12 }}>Feature this listing to add up to {PHOTO_LIMITS.elevated.maxPhotos} photos.</Text>
       )}
       {listing.photosFull.length > 0 && (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
@@ -440,7 +446,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
             </Pressable>
           ) : (
             listing.videoEntitlement.canUpgradeByBoosting && (
-              <Text style={{ color: colors.muted, fontSize: 12 }}>Boost this listing to add up to 3 videos, up to 2 minutes each.</Text>
+              <Text style={{ color: colors.muted, fontSize: 12 }}>Boost this listing to add up to 5 videos, up to 3 minutes each.</Text>
             )
           )}
           {listing.videos.length > 0 && (

@@ -1,4 +1,5 @@
 import type { VideoEntitlement } from "./videoLimits";
+import type { PhotoEntitlement } from "./photoLimits";
 import type { BoostDurationDays } from "./boostPricing";
 import type { AreaUnit } from "./areaUnit";
 import type { RequirementAttributes } from "./requirementQuestions";
@@ -246,6 +247,9 @@ export interface ListingDetailDto extends ListingCardDto {
      * by resolveVideoEntitlement() so the client never re-derives tier from agentProUntil/
      * boostedUntil itself and can never disagree with what the write path will accept. */
     videoEntitlement?: VideoEntitlement;
+    /** Owner/admin only, like `videoEntitlement`: how many photos this listing may hold (6, or 12 when
+     * Featured / Agent Pro) — resolved server-side so clients never derive the tier themselves. */
+    photoEntitlement?: PhotoEntitlement;
     /** How many times the owner has renewed this listing (pushed `expiresAt` forward). */
     renewCount: number;
     /** Newest-first renewal audit trail — each entry's `from`/`to` are the expiry dates either

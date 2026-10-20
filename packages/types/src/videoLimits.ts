@@ -1,6 +1,6 @@
 export const VIDEO_LIMITS = {
   default: { maxVideos: 1, maxDurationSec: 30 },
-  elevated: { maxVideos: 3, maxDurationSec: 120 },
+  elevated: { maxVideos: 5, maxDurationSec: 180 },
 } as const;
 
 /** Flat ceiling regardless of tier — enforced by multer, which is configured before any request

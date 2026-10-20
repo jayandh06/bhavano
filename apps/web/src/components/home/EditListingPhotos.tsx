@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { addOwnPhotoAction, deleteOwnPhotoAction, rotateOwnPhotoAction, setOwnCoverPhotoAction } from "@/app/actions/listings";
 import { labelClass } from "@/lib/formStyles";
-import { MAX_PHOTOS, MAX_PHOTO_BYTES } from "@bhavano/types/photoLimits";
+import { MAX_PHOTOS, MAX_PHOTO_BYTES, PHOTO_LIMITS } from "@bhavano/types/photoLimits";
 import { PHOTO_SIZE_LABEL, photoTooLargeMessage } from "@/lib/uploadLimits";
 import { shrinkPhoto } from "@/lib/shrinkPhoto";
 import { UploadZone } from "./UploadZone";
@@ -26,10 +26,15 @@ export function EditListingPhotos({
   listingId,
   title,
   photos,
+  maxPhotos = MAX_PHOTOS,
+  canUpgradeByBoosting = false,
 }: {
   listingId: string;
   title: string;
   photos: { url: string; photoNo: number; updatedAt: number }[];
+  /** From the listing's server-resolved `photoEntitlement` (6, or 12 when Featured / Agent Pro). */
+  maxPhotos?: number;
+  canUpgradeByBoosting?: boolean;
 }) {
   const router = useRouter();
   // Purely local, unsaved turns (0-3) per photo — cycling this costs nothing server-side. Only
@@ -93,10 +98,10 @@ export function EditListingPhotos({
     if (!files || files.length === 0) return;
     setError(null);
 
-    const room = MAX_PHOTOS - photos.length;
+    const room = maxPhotos - photos.length;
     const candidates = Array.from(files).slice(0, room);
     if (files.length > room) {
-      setError(`Up to ${MAX_PHOTOS} photos allowed — only added the first ${room}.`);
+      setError(`Up to ${maxPhotos} photos allowed — only added the first ${room}.`);
     }
 
     setUploading(true);
@@ -151,11 +156,11 @@ export function EditListingPhotos({
   // Counts the pending placeholders too, so selecting more while an earlier batch is still
   // processing can't race past the cap client-side — not that it matters much, since the server
   // enforces MAX_PHOTOS regardless.
-  const roomLeft = MAX_PHOTOS - photos.length - pendingNewPhotosCount;
+  const roomLeft = maxPhotos - photos.length - pendingNewPhotosCount;
 
   return (
     <div>
-      <label className={labelClass}>Photos (up to {MAX_PHOTOS})</label>
+      <label className={labelClass}>Photos (up to {maxPhotos})</label>
 
       {roomLeft > 0 && (
         <UploadZone
@@ -165,6 +170,12 @@ export function EditListingPhotos({
           label={uploading ? "Uploading…" : photos.length > 0 ? "Add more photos" : "Add photos"}
           hint={`JPG, PNG or WebP · up to ${PHOTO_SIZE_LABEL} each · ${roomLeft} more allowed`}
         />
+      )}
+
+      {roomLeft <= 0 && canUpgradeByBoosting && (
+        <p className="text-xs text-muted m-0">
+          Feature this listing to add up to {PHOTO_LIMITS.elevated.maxPhotos} photos.
+        </p>
       )}
 
       {(photos.length > 0 || pendingNewPhotosCount > 0) && (

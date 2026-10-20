@@ -146,7 +146,7 @@ the stream upload (`fs.stat` the file first) — without it, the AWS SDK falls b
 ```ts
 export const VIDEO_LIMITS = {
   default:  { maxVideos: 1, maxDurationSec: 30 },
-  elevated: { maxVideos: 3, maxDurationSec: 120 },
+  elevated: { maxVideos: 5, maxDurationSec: 180 }, // raised from 3 x 120 on 2026-10-20 — see featured-ad-benefits-and-media-limits.md
 } as const;
 
 export const MAX_VIDEO_BYTES = 200 * 1024 * 1024;

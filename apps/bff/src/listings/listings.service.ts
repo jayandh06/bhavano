@@ -62,7 +62,7 @@ import { formatInrInWords, perUnitTotalPrice } from '@bhavano/types/priceWords';
 import { listingPriceIssue } from '@bhavano/types/priceBounds';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
-import { MAX_PHOTOS, MIN_PHOTOS } from '@bhavano/types/photoLimits';
+import { MAX_PHOTOS, MIN_PHOTOS, PHOTO_LIMITS, resolvePhotoEntitlement } from '@bhavano/types/photoLimits';
 import type { DuplicatePhotoErrorBody } from '@bhavano/types/duplicatePhoto';
 import { PrismaService } from '../prisma/prisma.service';
 import { toE164India } from '../outreach/phone';
@@ -2020,7 +2020,7 @@ export class ListingsService {
     if (listing.listingVideos.length >= entitlement.maxVideos) {
       throw new BadRequestException(
         entitlement.canUpgradeByBoosting
-          ? 'Boost this listing to add up to 3 videos, up to 2 minutes each.'
+          ? 'Boost this listing to add up to 5 videos, up to 3 minutes each.'
           : `You've added the maximum of ${entitlement.maxVideos} videos. Delete one to add another.`,
       );
     }
@@ -2131,9 +2131,18 @@ export class ListingsService {
     if (listing.ownerId !== ownerId)
       throw new ForbiddenException("You don't own this listing");
 
-    if (listing.listingPhotos.length >= MAX_PHOTOS) {
+    // Tiered like addVideo: a Featured (boosted) listing or an Agent/Broker Pro owner may hold
+    // more than the default cap. Creation itself stays at MAX_PHOTOS — the listing isn't boosted yet.
+    const owner = await this.prisma.user.findUniqueOrThrow({
+      where: { id: ownerId },
+      select: { agentProUntil: true },
+    });
+    const entitlement = resolvePhotoEntitlement(owner, listing);
+    if (listing.listingPhotos.length >= entitlement.maxPhotos) {
       throw new BadRequestException(
-        `You've added the maximum of ${MAX_PHOTOS} photos. Delete one to add another.`,
+        entitlement.canUpgradeByBoosting
+          ? `You've added the maximum of ${entitlement.maxPhotos} photos. Feature this listing to add up to ${PHOTO_LIMITS.elevated.maxPhotos}, or delete one to add another.`
+          : `You've added the maximum of ${entitlement.maxPhotos} photos. Delete one to add another.`,
       );
     }
 
@@ -3892,6 +3901,9 @@ export class ListingsService {
       // photo was ever rotated. See ListingPhoto.updatedAt's own doc comment for why that matters.
       photoUpdatedAts: listing.listingPhotos.map((p) => p.updatedAt.getTime()),
       videos,
+      photoEntitlement: isOwnerOrAdmin
+        ? resolvePhotoEntitlement(listing.owner, listing)
+        : undefined,
       videoEntitlement: isOwnerOrAdmin
         ? resolveVideoEntitlement(listing.owner, listing)
         : undefined,

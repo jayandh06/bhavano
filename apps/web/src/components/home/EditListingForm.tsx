@@ -310,6 +310,8 @@ export function EditListingForm({
             photoNo: listing.photoNos[i],
             updatedAt: listing.photoUpdatedAts[i],
           }))}
+          maxPhotos={listing.photoEntitlement?.maxPhotos}
+          canUpgradeByBoosting={listing.photoEntitlement?.canUpgradeByBoosting}
         />
       </div>
 
