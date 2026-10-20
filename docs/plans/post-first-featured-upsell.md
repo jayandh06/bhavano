@@ -29,6 +29,10 @@ converted 4.4% of posted ads.
   a `ListingPreviewCard featured` (built from the wizard's form state, with the created listing's
   category/transaction type) sits above the picker; "Maybe later" hides the offer for that wizard
   mount (`boostOfferDismissed`, not persisted).
+- Web layout (2026-10-20): the Preview step is centered (`mx-auto`). The confirmation screen keeps
+  "Your ad is live!" centered at the top, then a two-column row (live-ad preview on the left, Featured
+  picker + "Maybe later" on the right; stacks on narrow screens), then the share card and the rest
+  centered below.
 - No pricing, payment, BFF or flag behaviour changed.
 
 ## Not changed / open

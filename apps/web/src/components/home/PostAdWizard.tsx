@@ -2512,7 +2512,7 @@ export function PostAdWizard({
       )}
 
       {step === "review" && category && transactionType && (
-        <div className={`w-full ${showPublishPanelOnReview ? "max-w-6xl" : "max-w-[340px]"}`}>
+        <div className={`w-full mx-auto ${showPublishPanelOnReview ? "max-w-6xl" : "max-w-[340px]"}`}>
           <div
             className={showPublishPanelOnReview ? "flex flex-col xl:flex-row gap-6 xl:items-start" : "flex flex-col gap-3"}
           >
@@ -2679,7 +2679,7 @@ export function PostAdWizard({
       )}
 
       {step === "success" && createdListing && !assistedMode && (
-        <div className="w-full max-w-[440px] mx-auto flex flex-col items-center gap-5 py-4 px-1">
+        <div className="w-full max-w-[920px] mx-auto flex flex-col items-center gap-5 py-4 px-1">
           <div className="flex flex-col items-center gap-3 text-center">
             <span className="w-14 h-14 rounded-full bg-green/10 text-green text-2xl flex items-center justify-center">
               <Icon name="celebrate" />
@@ -2697,7 +2697,7 @@ export function PostAdWizard({
             // in-flight/failed — a skipped or already-succeeded plan renders nothing, per
             // docs/plans/boost-instant-alerts-preview-selector.md's mutual-exclusivity rule.
             selectedBoostPlan && (boostCheckoutInFlight || boostCheckoutOutcome === "failed") && (
-              <div className="w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5">
+              <div className="w-full max-w-[440px] rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5">
                 {boostCheckoutInFlight ? (
                   <p className="text-sm font-bold text-green m-0">Finishing your Feature purchase…</p>
                 ) : (
@@ -2714,10 +2714,10 @@ export function PostAdWizard({
             )
           ) : (
             !boostOfferDismissed && (
-              <>
+              <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                 {/* The ad is already live and free — this shows what the optional upgrade would
-                 * change on the same listing, so the choice is concrete. See
-                 * docs/plans/post-first-featured-upsell.md. */}
+                 * change on the same listing, so the choice is concrete. Preview on the left,
+                 * Featured selection on the right. See docs/plans/post-first-featured-upsell.md. */}
                 <div className="w-full flex flex-col items-center gap-2">
                   <p className="text-[13px] font-bold text-text m-0">Your ad with Featured</p>
                   <ListingPreviewCard
@@ -2743,25 +2743,27 @@ export function PostAdWizard({
                  * combination (including the current promo code and the Agent Pro free-credit case)
                  * are fetched up front; adding Instant Alerts checks out as a single payment via
                  * createBoostOrder's `includeInstantAlerts`, not two payments back to back. */}
-                <BoostBundlePicker
-                  listingId={createdListing.id}
-                  category={createdListing.category}
-                  effectiveness={planPricingSettings?.boostEffectiveness ?? null}
-                  onActivating={() => setShowRegenerateBanner(true)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setBoostOfferDismissed(true)}
-                  className="text-[13px] font-bold text-muted hover:text-text transition-colors bg-transparent border-0 cursor-pointer"
-                >
-                  Maybe later
-                </button>
-              </>
+                <div className="w-full flex flex-col items-center gap-3">
+                  <BoostBundlePicker
+                    listingId={createdListing.id}
+                    category={createdListing.category}
+                    effectiveness={planPricingSettings?.boostEffectiveness ?? null}
+                    onActivating={() => setShowRegenerateBanner(true)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setBoostOfferDismissed(true)}
+                    className="text-[13px] font-bold text-muted hover:text-text transition-colors bg-transparent border-0 cursor-pointer"
+                  >
+                    Maybe later
+                  </button>
+                </div>
+              </div>
             )
           )}
 
           {showRegenerateBanner && (
-            <div className="w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5 flex flex-col gap-3">
+            <div className="w-full max-w-[440px] rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5 flex flex-col gap-3">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-bold text-text m-0">
                   ✨ Your ad is now Featured — want a richer AI description with nearby landmarks?
@@ -2851,18 +2853,20 @@ export function PostAdWizard({
             </div>
           )}
 
-          <OwnerWhatsAppShare
-            listing={createdListing}
-            placement="post_success"
-            variant="prominent"
-          />
+          <div className="w-full max-w-[440px] flex flex-col items-center gap-5">
+            <OwnerWhatsAppShare
+              listing={createdListing}
+              placement="post_success"
+              variant="prominent"
+            />
 
-          <GetAppCard
-            placement="post_success"
-            appPath="my-listings"
-            heading="Never miss an enquiry"
-            body="The Bhavano Android app notifies you the moment someone messages about your ad, so you can reply first."
-          />
+            <GetAppCard
+              placement="post_success"
+              appPath="my-listings"
+              heading="Never miss an enquiry"
+              body="The Bhavano Android app notifies you the moment someone messages about your ad, so you can reply first."
+            />
+          </div>
 
           <div className="w-full flex justify-center">
             <VideoManager listing={createdListing} accessToken={token ?? ""} />
