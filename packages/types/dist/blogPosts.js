@@ -448,7 +448,7 @@ exports.POSTS = [
             },
             {
                 type: "p",
-                text: "When you are ready, you can [post your property on Bhavano](/post).",
+                text: "When you are ready, you can [post your property on Bhavano](/post). Selling rather than renting? Read our [complete guide to selling property online](/blog/how-to-sell-property-online-in-india).",
             },
         ],
     },
@@ -508,7 +508,7 @@ exports.POSTS = [
             },
             {
                 type: "p",
-                text: "When you are ready to look, browse [plots for sale](/plot) and use the [area unit converter](/tools/area-unit-converter) if a listing quotes a size in a unit you do not use every day. Bhavano checks listings before they go live but does not verify land documents, so read [how we check listings and what we don't verify](/trust).",
+                text: "When you are ready to look, browse [plots for sale](/plot) and use the [area unit converter](/tools/area-unit-converter) if a listing quotes a size in a unit you do not use every day. Bhavano checks listings before they go live but does not verify land documents, so read [how we check listings and what we don't verify](/trust). Selling a plot yourself? See our [complete guide to selling property online](/blog/how-to-sell-property-online-in-india).",
             },
         ],
     },
@@ -675,7 +675,7 @@ exports.POSTS = [
             },
             {
                 type: "p",
-                text: "Ready to list? You can [post your property on Bhavano](/post). Our guide to [writing a listing that gets enquiries](/blog/write-a-property-listing-that-gets-enquiries) covers the listing step in more detail, and you can see how others present [houses for sale](/buy/house).",
+                text: "Ready to list? You can [post your property on Bhavano](/post). Our guide to [writing a listing that gets enquiries](/blog/write-a-property-listing-that-gets-enquiries) covers the listing step in more detail, and you can see how others present [houses for sale](/buy/house). For every property type and the full process, see our [complete guide to selling property online](/blog/how-to-sell-property-online-in-india).",
             },
         ],
     },
@@ -961,7 +961,7 @@ exports.POSTS = [
             },
             {
                 type: "p",
-                text: "Bhavano checks listings before they go live but does not verify land or building documents. Read [how we check listings and what we don't verify](/trust). Then browse [plots for sale](/plot) or [apartments for sale](/buy/apartment), and see our guides on [buying a plot](/blog/buying-a-plot-checklist) and on [ready-to-move or under-construction homes](/blog/ready-to-move-vs-under-construction).",
+                text: "Bhavano checks listings before they go live but does not verify land or building documents. Read [how we check listings and what we don't verify](/trust). Then browse [plots for sale](/plot) or [apartments for sale](/buy/apartment), and see our guides on [buying a plot](/blog/buying-a-plot-checklist) and on [ready-to-move or under-construction homes](/blog/ready-to-move-vs-under-construction). If you are the seller, our [complete guide to selling property online](/blog/how-to-sell-property-online-in-india) covers which papers buyers ask for.",
             },
         ],
     },
@@ -1354,6 +1354,129 @@ exports.POSTS = [
             {
                 type: "p",
                 text: "Bhavano does not verify builders' approvals or progress, as explained on our [Trust and Safety page](/trust). To compare the options, browse [apartments for sale](/buy/apartment) and [villas for sale](/buy/villa), and read our shorter guide on [ready-to-move and under-construction flats](/blog/ready-to-move-vs-under-construction).",
+            },
+        ],
+    },
+    {
+        slug: "how-to-sell-property-online-in-india",
+        title: "How to sell property online in India: a complete guide for owners",
+        description: "Sell a flat, house, villa, plot or shop online without a middleman: prepare, price, list, handle buyers and close the sale, with how Bhavano helps at each step.",
+        published: "2026-10-20",
+        format: "Guide",
+        readingMinutes: 8,
+        body: [
+            {
+                type: "note",
+                text: "General information, not legal or financial advice. Sale rules, stamp duty and taxes differ by state and by property. Have a lawyer check the sale agreement and the title before you sign.",
+            },
+            {
+                type: "p",
+                text: "More owners now find their buyer online than through a broker or a signboard. A good online listing reaches people searching in your city and area at the moment they are ready to look, and it lets you reply to them directly. The sale itself still needs careful paperwork. This guide covers the whole path, and shows where Bhavano fits at each step.",
+            },
+            { type: "h2", text: "Step 1: Get your documents ready first" },
+            {
+                type: "p",
+                text: "Serious buyers and their banks ask for papers early. A seller who has them ready sells faster and negotiates from a stronger position.",
+            },
+            {
+                type: "ul",
+                items: [
+                    "Title papers: the sale deed or allotment letter and the chain of earlier documents.",
+                    "Latest property tax receipts, electricity and water bills, and society or maintenance dues clearance.",
+                    "Approvals: building plan, completion or occupancy certificate, and for plots the layout approval. Our [documents checklist](/blog/property-approvals-documents-checklist) explains each.",
+                    "If there is a home loan, ask your lender what it needs to release the original papers when you sell.",
+                ],
+            },
+            { type: "h2", text: "Step 2: Decide your price with evidence" },
+            {
+                type: "p",
+                text: "Do not guess, and do not copy the highest number you see. Browse [apartments for sale](/buy/apartment) or [houses for sale](/buy/house) in your locality, of the same type, size and age, and see what owners are asking. Leave some room to negotiate, and decide in advance the lowest price you would accept.",
+            },
+            {
+                type: "p",
+                text: "Be clear about which area you are quoting. Buyers compare on carpet area, built-up area or super built-up area, and a mismatch causes arguments later. See [carpet, built-up and super built-up area](/blog/carpet-built-up-super-built-up-area).",
+            },
+            { type: "h2", text: "Step 3: Create a listing that earns enquiries" },
+            {
+                type: "p",
+                text: "Your listing is your shop window. Most buyers decide in seconds whether to open it or scroll on.",
+            },
+            {
+                type: "ul",
+                items: [
+                    "Use bright, straight photos of every room, the kitchen, bathrooms, balcony, building entrance and parking. Add a short video walk-through if you can.",
+                    "Write a plain title with the type, size, locality and city.",
+                    "Describe floor, facing, age, furnishing, parking, maintenance and what is included in the sale.",
+                    "Pin the exact location on the map so buyers can judge the commute and the neighbourhood.",
+                    "Be honest. A buyer who finds a surprise at the visit leaves, and tells others.",
+                ],
+            },
+            {
+                type: "p",
+                text: "Our guide to [writing a listing that gets enquiries](/blog/write-a-property-listing-that-gets-enquiries) goes deeper on wording and photos.",
+            },
+            { type: "h2", text: "Step 4: Post it where buyers are searching" },
+            {
+                type: "p",
+                text: "Buyers on Bhavano search by city, area, category and budget, so a complete listing in the right category and area is shown to the right people. You post from your phone or computer in a few steps: choose that you are selling, pick the category (apartment, house, villa, plot or commercial), add the details and photos, set your price and publish.",
+            },
+            {
+                type: "p",
+                text: "Bhavano is built so owners can deal with buyers directly, without a broker in between. [Post your property on Bhavano](/post) to start.",
+            },
+            { type: "h2", text: "Step 5: Reach more buyers" },
+            {
+                type: "ul",
+                items: [
+                    "Share your listing link on WhatsApp with friends, family, your housing society group and colleagues. You can also create a poster of your ad with a QR code that sends people straight to it.",
+                    "Keep the listing fresh. Update the price if you change it, and mark it closed once the property is sold so you do not get calls you cannot use.",
+                    "Consider a Featured listing if you want more visibility. Featured ads get a gold badge, higher placement in relevant results, alerts when someone shows interest, and a daily recap of views and messages. It is optional, and a normal listing works without it.",
+                ],
+            },
+            { type: "h2", text: "Step 6: Handle enquiries and visits safely" },
+            {
+                type: "ul",
+                items: [
+                    "Reply quickly. Buyers who wait a day often move on to the next listing.",
+                    "Use in-app messages for the first conversation and share your number only when you are comfortable.",
+                    "Hold visits at the property, in daylight where possible, and let a family member know when a stranger is visiting.",
+                    "Do not pay anything to receive an offer. A buyer who wants to send an advance before seeing the property, or anyone asking you for a processing fee, is a warning sign. See [spotting a bad property ad or a scam](/blog/spotting-a-bad-property-ad).",
+                    "Ask buyers about their financing early. A buyer with an approved home loan or ready funds is more likely to close. Buyers can check their budget with our [home loan eligibility](/tools/home-loan-eligibility-calculator) and [EMI](/tools/emi-calculator) calculators.",
+                ],
+            },
+            { type: "h2", text: "Step 7: Negotiate, agree and complete the sale" },
+            {
+                type: "ol",
+                items: [
+                    "Agree the price, the token amount, the payment schedule and the possession date in writing.",
+                    "Sign an agreement to sell prepared or reviewed by a lawyer.",
+                    "Clear any existing loan and get the original papers back from the lender.",
+                    "Complete the sale deed and registration at the sub-registrar's office, paying the stamp duty and registration charges your state requires.",
+                    "Hand over possession, keys and utility transfers, and keep copies of every document and receipt.",
+                    "Ask your tax adviser about any tax on the sale and any reporting it needs.",
+                ],
+            },
+            { type: "h2", text: "What Bhavano does and does not do" },
+            {
+                type: "p",
+                text: "Bhavano gives you a place to list, get found and talk to buyers directly. We do not verify ownership, documents or approvals, and we do not take part in the sale or in the payment between you and the buyer. How we handle this is explained on our [Trust and Safety page](/trust). Treat every buyer and every document with the same care you would offline.",
+            },
+            { type: "h2", text: "A short checklist" },
+            {
+                type: "ul",
+                items: [
+                    "Documents collected, and names matched across them.",
+                    "Price set after comparing similar listings.",
+                    "Photos taken in daylight, with a full description and map pin.",
+                    "Listing live in the right category and area.",
+                    "Link shared on WhatsApp and in your society group.",
+                    "Enquiries answered within a few hours.",
+                    "A lawyer engaged before you sign the agreement.",
+                ],
+            },
+            {
+                type: "p",
+                text: "Ready? [Post your property on Bhavano](/post). Selling a plot? Read our [plot checklist](/blog/buying-a-plot-checklist) to see what buyers will ask you. For a shorter overview, see [how to sell your house or flat online](/blog/how-to-sell-your-house-or-flat-online). Selling in order to move? Our [guide to moving to a new city](/moving-to-a-new-city) may help.",
             },
         ],
     },

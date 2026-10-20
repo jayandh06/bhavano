@@ -62,3 +62,33 @@ are: which states DTCP approves layouts in, how Bengaluru's civic and planning b
 what A and B khata mean in current practice and whether conversion schemes are open, and how
 completion and occupancy certificates are combined in each state. Add a real reviewer's name as a
 "reviewed by" line once one exists (see the authorship rules at the top of `blogPosts.ts`).
+
+## Fourth batch (2026-10-20): "how to sell property online" pillar post
+`how-to-sell-property-online-in-india` is a pillar guide for owners selling any property type
+(flat, house, villa, plot, commercial). It walks the whole path (documents, pricing, listing,
+posting, reach, safe visits, closing) and says where Bhavano helps at each step. It deliberately
+claims only things the product does: browse-by-area search, map pin, WhatsApp sharing and the ad
+poster with QR code, direct messaging, optional Featured (badge, higher placement, interest alerts,
+daily recap), and an explicit "what Bhavano does not verify" section pointing to `/trust`. It does
+not say "free" (ad copy was softened away from that) and gives no prices or percentages.
+It overlaps with the shorter `how-to-sell-your-house-or-flat-online`; the two link to each other
+and the new one is the one to promote.
+
+**Internal backlinks added** (pass link equity and send readers to the guide):
+`write-a-property-listing-that-gets-enquiries`, `how-to-sell-your-house-or-flat-online`,
+`buying-a-plot-checklist` and `property-approvals-documents-checklist` now link to it. The pillar
+links out to the listing, area, scam, plot, approvals, calculator, `/post`, `/trust` and moving pages.
+New linked slugs were added to `KNOWN_ROUTES` in `apps/web/src/lib/blog/posts.test.ts`.
+
+**External backlinks (manual, not done):**
+- Pitch it to housing-society, RWA and resident-community newsletters and forums as a seller's
+  checklist; the closing checklist is the quotable part.
+- Offer it to personal-finance and NRI-property blogs (NRIs often sell remotely), alongside the EMI
+  and eligibility calculators.
+- Answer "how to sell a flat without a broker" questions on Quora and Reddit with a helpful answer
+  that cites the guide, disclosing the Bhavano affiliation. No link swaps or purchased links.
+- Share on Bhavano's own Facebook page and WhatsApp channels with the tracked link.
+
+**Needs review before relying on it:** step 7 (agreement, registration, stamp duty, tax) is
+generic and hedged; have a qualified person check it. Rebuild `packages/types` (done) so the mobile
+bundle's committed `dist` carries the post; it reaches the app with the next release.
