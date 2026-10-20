@@ -258,6 +258,9 @@ export function ListingCard({
           {item.isBoosted && (
             <span className="bg-gold text-[#3a2e0f] text-[11px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1"><Icon name="featured" filled /> Featured</span>
           )}
+          {item.isBoosted && item.quickResponder && (
+            <span className="bg-surface text-green text-[11px] font-bold px-2.5 py-1 rounded-md" title="This owner usually replies within an hour">Quick responder</span>
+          )}
         </div>
         {/* Share sits here rather than in the bottom action row so it's visible on your own
           * listing too, unlike Message/Contact below — a seller sharing their own ad is a real

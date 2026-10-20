@@ -161,6 +161,11 @@ export function ListingCard({
               <Text style={{ color: "#3a2e0f", fontSize: 10, fontWeight: "700" }}>Featured</Text>
             </View>
           )}
+          {item.isBoosted && item.quickResponder && (
+            <View style={[styles.tag, { backgroundColor: colors.surface }]}>
+              <Text style={{ color: colors.green, fontSize: 10, fontWeight: "700" }}>Quick responder</Text>
+            </View>
+          )}
         </View>
         {/* Same resting hint as web's camera-count badge — there's more than one photo, whether
           * or not this card happens to be cycling right now. */}

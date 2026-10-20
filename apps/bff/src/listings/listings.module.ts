@@ -18,10 +18,12 @@ import { PushModule } from '../push/push.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { ReferralsModule } from '../referrals/referrals.module';
 
+import { QuickResponderService } from './quick-responder.service';
+
 @Module({
   imports: [ModerationModule, RateLimitModule, NotificationsModule, SavedSearchesModule, LocationsModule, StorageModule, ListingSlotsModule, AdsModule, ContactRevealModule, PlansModule, PushModule, AnalyticsModule, ReferralsModule],
   controllers: [ListingsController],
-  providers: [ListingsService, ListingPhotosService, AssistedListingExpiryJob, LoginNudgeService],
+  providers: [ListingsService, ListingPhotosService, AssistedListingExpiryJob, LoginNudgeService, QuickResponderService],
   exports: [ListingsService, ListingPhotosService, LoginNudgeService],
 })
 export class ListingsModule {}

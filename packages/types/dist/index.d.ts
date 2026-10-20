@@ -111,6 +111,9 @@ export interface ListingCardDto {
     /** True while `Listing.boostedUntil` is in the future — drives the "⭐ Featured" badge and
      * the boosted-first sort. See docs/plans/monetization-boosted-listings-premium-tiers.md. */
     isBoosted: boolean;
+    /** True when the owner has a fast-reply track record (see quickResponder.ts). Absent otherwise.
+     * The cards show it on Featured ads. */
+    quickResponder?: boolean;
     /** True while `Listing.instantAlertsUntil` is in the future — drives the owner-only "Instant
      * Alerts active" state on my-listings/the post-ad success screen (never shown to a non-owner).
      * See docs/plans/instant-alerts-paid-message-notifications.md. */

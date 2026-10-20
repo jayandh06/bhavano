@@ -121,6 +121,10 @@
       "types": "./dist/videoLimits.d.ts",
       "default": "./dist/videoLimits.js"
     },
+    "./quickResponder": {
+      "types": "./dist/quickResponder.d.ts",
+      "default": "./dist/quickResponder.js"
+    },
     "./featuredPerformance": {
       "types": "./dist/featuredPerformance.d.ts",
       "default": "./dist/featuredPerformance.js"

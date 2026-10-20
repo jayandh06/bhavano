@@ -108,6 +108,16 @@ export function OwnerWhatsAppShare({
           <WhatsAppIcon size={22} /> Share on WhatsApp
         </a>
         <OwnerFacebookShare listing={listing} placement={placement} referralCode={code} variant="prominent" />
+        {/* A ready-made picture of the ad for WhatsApp status, groups or print. Public data only —
+          * docs/plans/featured-ad-benefits-and-media-limits.md (share kit). */}
+        <a
+          href={`/listings/${listing.id}/poster`}
+          download={`bhavano-ad-${listing.id}.png`}
+          onClick={() => pushDataLayerEvent("owner_share_poster", { listingId: listing.id, placement })}
+          className="border-[1.5px] border-green text-green rounded-lg px-5 py-3 text-[15px] font-bold text-center inline-flex items-center justify-center gap-2 no-underline"
+        >
+          <Icon name="camera" /> Download ad poster
+        </a>
       </div>
       {code && (
         <Link href="/referrals" className="text-[12.5px] font-bold text-green self-start">

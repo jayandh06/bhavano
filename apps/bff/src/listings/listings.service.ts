@@ -64,6 +64,7 @@ import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
 import { MAX_PHOTOS, MIN_PHOTOS, PHOTO_LIMITS, resolvePhotoEntitlement } from '@bhavano/types/photoLimits';
 import { buildFeaturedPerformance } from '@bhavano/types/featuredPerformance';
+import { isQuickResponderOwner } from './quick-responder.store';
 import type { DuplicatePhotoErrorBody } from '@bhavano/types/duplicatePhoto';
 import { PrismaService } from '../prisma/prisma.service';
 import { toE164India } from '../outreach/phone';
@@ -4069,6 +4070,7 @@ export class ListingsService {
       likeCount: listing.likeCount,
       isFavourited: favouritedIds?.has(listing.id) ?? false,
       isBoosted: isListingBoosted(listing),
+      ...(isQuickResponderOwner(listing.ownerId) ? { quickResponder: true } : {}),
       hasInstantAlerts: (listing.instantAlertsUntil?.getTime() ?? 0) > Date.now(),
       isOwner: viewerId !== undefined && viewerId === listing.ownerId,
       ...(viewerId !== undefined && viewerId === listing.ownerId && !isBulkImportOwner(listing.owner)

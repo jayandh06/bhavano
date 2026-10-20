@@ -90,6 +90,28 @@ export function OwnerWhatsAppShare({
         <WhatsAppIcon size={22} />
         <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Share on WhatsApp</Text>
       </Pressable>
+      {/* A ready-made picture of the ad (public data only) — opens in the browser, where it can be
+        * saved or sent on to WhatsApp status/groups. See docs/plans/featured-ad-benefits-and-media-limits.md. */}
+      <Pressable
+        onPress={() => {
+          void recordAppPageView("/post/success/share-poster");
+          void Linking.openURL(sharedWebUrl(`/listings/${listing.id}/poster`, "owner_share", code)).catch(() => undefined);
+        }}
+        style={{
+          borderRadius: 8,
+          borderWidth: 1.5,
+          borderColor: colors.green,
+          paddingVertical: 12,
+          paddingHorizontal: 28,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+        }}
+      >
+        <Icon name="camera" size={18} color={colors.green} />
+        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Download ad poster</Text>
+      </Pressable>
       {code && (
         <Text onPress={() => router.push("/referrals")} style={{ fontSize: 12.5, fontWeight: "700", color: colors.green }}>
           How referrals work
