@@ -1,3 +1,4 @@
+import type { SearchInterpretationDto } from "@bhavano/types/searchInterpretation";
 import type { AreaOverviewDto, CityOverviewDto, PublishedAreaOverviewLink } from "@bhavano/types/areaOverview";
 import "server-only";
 import { cache } from "react";
@@ -1076,4 +1077,19 @@ export function deleteAccount(
     method: "DELETE",
     body: JSON.stringify(identifier),
   });
+}
+
+/** AI second pass for the search bar (docs/plans/ai-sentence-search.md). Never throws and never blocks a
+ * search: any failure, a missing AI key, a cap or a throttle all come back as null, and the caller
+ * carries on with its own rule-based reading. */
+export async function interpretSearch(text: string, cityName?: string): Promise<SearchInterpretationDto | null> {
+  try {
+    const res = await bffFetch<{ interpretation: SearchInterpretationDto | null }>("/search/interpret", {
+      method: "POST",
+      body: JSON.stringify({ text, ...(cityName ? { cityName } : {}) }),
+    });
+    return res.interpretation;
+  } catch {
+    return null;
+  }
 }

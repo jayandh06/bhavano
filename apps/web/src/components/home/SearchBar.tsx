@@ -1,9 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ListingCategory, PopularSearchDto } from "@bhavano/types";
+import type { SearchInterpretationDto } from "@bhavano/types/searchInterpretation";
+import { interpretSearchAction } from "@/app/actions/search";
 import { buildHomeUrl } from "@/lib/homeUrl";
 import { buildBrowsePath } from "@/lib/listingPath";
 import { parseSearchQuery } from "@/lib/parseSearchQuery";
@@ -24,6 +26,37 @@ function removeCaseInsensitive(haystack: string, needle: string): string {
   const idx = haystack.toLowerCase().indexOf(needle.toLowerCase());
   if (idx === -1) return haystack;
   return (haystack.slice(0, idx) + haystack.slice(idx + needle.length)).replace(/\s+/g, " ").trim();
+}
+
+/** Words the rule-based reader ignores or misreads, so a sentence containing one is worth the AI pass. */
+const AI_HINT_WORDS = /\b(furnished|unfurnished|semi|owner|broker|brokerage|between|sharing|girls?|boys?|ladies|gents|bachelors?|family|or)\b|\d\s*[-–]\s*\d/i;
+const AI_TIMEOUT_MS = 4500;
+
+// "Couldn't filter by …": set right before navigating so the results page's search bar can show it. A tiny
+// module-level store (survives the client-side navigation, gone on a full reload, which is fine for a
+// nicety) read through useSyncExternalStore, so no state is set inside an effect.
+const NOTE_SHOWN_MS = 15_000;
+let searchNote: string | null = null;
+const noteListeners = new Set<() => void>();
+function setSearchNote(text: string | null) {
+  searchNote = text;
+  noteListeners.forEach((listener) => listener());
+  if (text) setTimeout(() => searchNote === text && setSearchNote(null), NOTE_SHOWN_MS);
+}
+function subscribeNote(listener: () => void) {
+  noteListeners.add(listener);
+  return () => {
+    noteListeners.delete(listener);
+  };
+}
+
+/** Cheap check, no network. A short plain query the rules read fully ("2bhk in hsr layout") stays on the
+ * instant rule path and costs nothing. AI is used only when the rules visibly struggled: they
+ * recognised nothing, a long leftover is being guessed as an area name, the text is not English, or a
+ * hint word they ignore is present. */
+function wantsAi(text: string, rules: Interpretation): boolean {
+  const leftoverWords = rules.areaCandidate ? rules.areaCandidate.split(/\s+/).length : 0;
+  return !rules.somethingRecognized || leftoverWords >= 3 || /[^\x00-\x7F]/.test(text) || AI_HINT_WORDS.test(text);
 }
 
 interface Interpretation {
@@ -123,6 +156,8 @@ export function SearchBar({
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
+  const [thinking, setThinking] = useState(false);
+  const note = useSyncExternalStore(subscribeNote, () => searchNote, () => null);
 
   function go(text: string) {
     const result = interpret(text, cityName, cityNames);
@@ -158,10 +193,55 @@ export function SearchBar({
     router.push(query ? `${path}?${query}` : path);
   }
 
-  function submit() {
+  /** Builds the browse address from an AI reading, layering it over the rule-based reading so
+   * anything AI did not state (for example a city typed plainly) still comes from the rules. */
+  function goFromAi(text: string, ai: SearchInterpretationDto): boolean {
+    const rules = interpret(text, cityName, cityNames);
+    const targetCityName = ai.cityName ?? rules.targetCityName;
+    if (!targetCityName) return false;
+    const category = ai.category ?? rules.category;
+    const transactionGroup = ai.transactionGroup ?? rules.transactionGroup ?? (category ? categoryGroupsFor(category)[0] : undefined);
+    const bedrooms = ai.bedrooms ?? (rules.facetValue !== undefined ? [rules.facetValue] : undefined);
+    // One BHK value belongs in the path like the rule-based search puts it; several go in the query.
+    const bedroomsInPath = category !== undefined && facetKindForCategory(category) === "bedrooms" && bedrooms?.length === 1;
+    const path = buildBrowsePath({
+      cityName: targetCityName,
+      transactionGroup,
+      category,
+      facetValue: bedroomsInPath ? bedrooms[0] : undefined,
+    });
+    const qs = new URLSearchParams();
+    const minPrice = ai.minPrice ?? rules.minPrice;
+    const maxPrice = ai.maxPrice ?? rules.maxPrice;
+    if (minPrice !== undefined) qs.set("minPrice", String(minPrice));
+    if (maxPrice !== undefined) qs.set("maxPrice", String(maxPrice));
+    if (bedrooms && !bedroomsInPath) qs.set("bedrooms", bedrooms.join(","));
+    if (ai.furnished) qs.set("furnished", ai.furnished);
+    if (ai.postedBy) qs.set("postedBy", ai.postedBy);
+    if (ai.sharingType && category === "pg") qs.set("sharingType", ai.sharingType);
+    const area = ai.areaText ?? rules.areaCandidate;
+    if (area) qs.set("area", area);
+    qs.set("rememberCity", "0");
+    if (ai.unmatched.length > 0) setSearchNote(`Couldn't filter by: ${ai.unmatched.join(", ")}`);
+    router.push(`${path}?${qs.toString()}`);
+    return true;
+  }
+
+  async function submit() {
     const text = value.trim();
-    if (!text) return;
+    if (!text || thinking) return;
     setOpen(false);
+    setSearchNote(null);
+    if (wantsAi(text, interpret(text, cityName, cityNames))) {
+      setThinking(true);
+      // Bounded wait: AI is an extra, so a slow answer is treated like no answer.
+      const ai = await Promise.race([
+        interpretSearchAction(text, cityName).catch(() => null),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), AI_TIMEOUT_MS)),
+      ]);
+      setThinking(false);
+      if (ai && goFromAi(text, ai)) return;
+    }
     go(text);
   }
 
@@ -206,9 +286,17 @@ export function SearchBar({
           onClick={submit}
           className="bg-green text-on-green border-0 rounded-[7px] px-[18px] py-[9px] text-sm font-bold cursor-pointer"
         >
-          Search
+          {thinking ? "Understanding…" : "Search"}
         </button>
       </div>
+      {note && (
+        <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-40 flex items-start justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-[12px] text-muted shadow-sm">
+          <span>{note}</span>
+          <button type="button" aria-label="Dismiss" onClick={() => setSearchNote(null)} className="bg-transparent border-0 text-muted cursor-pointer">
+            &times;
+          </button>
+        </div>
+      )}
 
       {open && (
         <div className="absolute top-[calc(100%+6px)] left-0 right-0 bg-surface border border-border rounded-[10px] p-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50">

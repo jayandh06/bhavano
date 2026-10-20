@@ -125,6 +125,10 @@
       "types": "./dist/videoLimits.d.ts",
       "default": "./dist/videoLimits.js"
     },
+    "./searchInterpretation": {
+      "types": "./dist/searchInterpretation.d.ts",
+      "default": "./dist/searchInterpretation.js"
+    },
     "./featuredBenefits": {
       "types": "./dist/featuredBenefits.d.ts",
       "default": "./dist/featuredBenefits.js"
