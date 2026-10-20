@@ -491,8 +491,15 @@ export async function generateMetadata({
     if (!listing) return {};
     const canonicalPath = buildListingPath(listing);
     const priceText = [listing.price, listing.priceQualifier].filter(Boolean).join(" ");
+    // With no seller-written description the summary is only the specs ("Single, Men"), so every similar
+    // listing in an area got the identical meta description (flagged as duplicates by a site audit, 2026-10-20:
+    // PGs in Marathahalli, Dum Dum and Aundh). The title leads in that case so each page's text is its own.
+    // A seller's own description already differs per listing and is used as before.
+    const hasOwnDescription = !!listing.description?.replace(/\s+/g, " ").trim();
     const description = truncateForMeta(
-      `${priceText} — ${listingSummary(listing)} in ${listing.area}, ${listing.cityName}.`,
+      hasOwnDescription
+        ? `${priceText} — ${listingSummary(listing)} in ${listing.area}, ${listing.cityName}.`
+        : `${listing.title}: ${priceText} — ${listingSummary(listing)} in ${listing.area}, ${listing.cityName}.`,
     );
     // Sellers write titles of any length — up to a whole sentence — and the layout appends
     // " — Bhavano" to the <title>, which pushed many past what a results page shows (about 60
