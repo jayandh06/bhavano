@@ -11,7 +11,8 @@
     "typecheck:e2e": "tsc -p e2e/tsconfig.json",
     "test:e2e": "playwright test",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "gen:icons": "node scripts/generate-icon-paths.mjs"
   },
   "dependencies": {
     "@bhavano/types": "workspace:*",

@@ -1,88 +1,4 @@
-import {
-  ArrowUpDown,
-  SlidersHorizontal,
-  Ban,
-  BatteryCharging,
-  Bath,
-  Bed,
-  Bell,
-  Bike,
-  Briefcase,
-  Car,
-  Coffee,
-  CookingPot,
-  DoorClosed,
-  Dumbbell,
-  Fan,
-  Hotel,
-  House,
-  LandPlot,
-  Lightbulb,
-  Presentation,
-  Printer,
-  Refrigerator,
-  ShowerHead,
-  Snowflake,
-  Store,
-  Table,
-  Tv,
-  UtensilsCrossed,
-  WashingMachine,
-  Wifi,
-  Building2,
-  Calculator,
-  BookOpen,
-  ClipboardList,
-  Camera,
-  ChartColumn,
-  Droplets,
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Compass,
-  Copy,
-  Eye,
-  FerrisWheel,
-  Flag,
-  Heart,
-  HelpCircle,
-  Home,
-  IndianRupee,
-  Key,
-  Landmark,
-  LayoutGrid,
-  List,
-  LogOut,
-  Mail,
-  MapPin,
-  MessageCircle,
-  Moon,
-  MoreVertical,
-  PartyPopper,
-  Package,
-  Menu,
-  Paintbrush,
-  Phone,
-  Rocket,
-  SquarePen,
-  SquarePlus,
-  Ruler,
-  Scale,
-  Search,
-  Share2,
-  Smartphone,
-  Sofa,
-  Sparkles,
-  Star,
-  Sun,
-  BedDouble,
-  User,
-  Video,
-  Waves,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { ICON_PATHS } from "./iconPaths.generated";
 
 /**
  * The app's icons: one stroke weight, no fill, `currentColor`.
@@ -100,118 +16,15 @@ import {
  * Sized in `em` rather than pixels, so an icon scales with the text beside it instead of needing
  * a size at every call site.
  */
-export const ICONS = {
-  pin: MapPin,
-  filter: SlidersHorizontal,
-  eye: Eye,
-  heart: Heart,
-  message: MessageCircle,
-  phone: Phone,
-  smartphone: Smartphone,
-  camera: Camera,
-  video: Video,
-  search: Search,
-  share: Share2,
-  sun: Sun,
-  moon: Moon,
-  check: Check,
-  close: X,
-  chevronDown: ChevronDown,
-  chevronLeft: ChevronLeft,
-  chevronRight: ChevronRight,
-  compass: Compass,
-  copy: Copy,
-  mail: Mail,
-  featured: Star,
-  boost: Rocket,
-  postAd: SquarePlus,
-  menu: Menu,
-  moreVertical: MoreVertical,
-  flag: Flag,
-  block: Ban,
-  edit: SquarePen,
-  bell: Bell,
-  bed: BedDouble,
-  allCities: LayoutGrid,
-  celebrate: PartyPopper,
-  pack: Package,
-  building: Building2,
-  // Home-tab and tools vocabulary.
-  home: Home,
-  key: Key,
-  sofa: Sofa,
-  paint: Paintbrush,
-  sparkles: Sparkles,
-  calculator: Calculator,
-  requirements: ClipboardList,
-  blog: BookOpen,
-  chart: ChartColumn,
-  ruler: Ruler,
-  scale: Scale,
-  rupee: IndianRupee,
-
-  // Posting categories — the tiles on the first step of the wizard.
-  catHouse: House,
-  catApartment: Building2,
-  catVilla: Hotel,
-  catPlot: LandPlot,
-  catPg: BedDouble,
-  catCommercial: Store,
-  catCoworking: Briefcase,
-  catStorage: Package,
-  catFurniture: Sofa,
-  catInteriors: Paintbrush,
-
-  // What comes with a furnished place — the counted items on a listing's detail page.
-  washingMachine: WashingMachine,
-  stove: CookingPot,
-  fridge: Refrigerator,
-  cupboard: DoorClosed,
-  fan: Fan,
-  light: Lightbulb,
-  bedSingle: Bed,
-  tv: Tv,
-  geyser: ShowerHead,
-  table: Table,
-  diningTable: UtensilsCrossed,
-
-  // The catalogue-style amenities generated in categoryFields.ts's amenities block.
-  cctv: Camera,
-  lift: ArrowUpDown,
-  powerBackup: BatteryCharging,
-  waterSupply: Droplets,
-  playArea: FerrisWheel,
-  gym: Dumbbell,
-  swimmingPool: Waves,
-  clubHouse: Landmark,
-
-  // PG/coworking amenities block (categoryFields.ts's pg/coworking entries).
-  twoWheelerParking: Bike,
-  fourWheelerParking: Car,
-  internet: Wifi,
-  attachedBathroom: Bath,
-  ac: Snowflake,
-  laundryService: WashingMachine,
-  meetingRoomAccess: Presentation,
-  printerAccess: Printer,
-  pantry: Coffee,
-
-  // Account menu.
-  user: User,
-  list: List,
-  help: HelpCircle,
-  logout: LogOut,
-} satisfies Record<string, LucideIcon>;
-
 /** Narrows a name that crossed a package boundary as a plain string — `iconName` on the shared
  * category data, which cannot reference this file. An unknown name renders nothing rather than
  * throwing, so a category added to the types package without an icon here degrades to no icon
  * rather than a blank page. */
 export function isIconName(value: string | undefined): value is IconName {
-  return value !== undefined && value in ICONS;
+  return value !== undefined && value in ICON_PATHS;
 }
 
-export type IconName = keyof typeof ICONS;
+export type IconName = keyof typeof ICON_PATHS;
 
 export function Icon({
   name,
@@ -226,21 +39,21 @@ export function Icon({
   filled?: boolean;
   label?: string;
 }) {
-  const Glyph = ICONS[name];
+  // Only the shapes are emitted per icon; the viewBox is the one attribute an inline <svg> cannot get from CSS,
+  // and everything else (1em size, stroke, weight, caps, vertical alignment) is the shared `.ic` class in
+  // globals.css. That is what took ~93 KB of repeated attributes out of the homepage HTML — see
+  // scripts/generate-icon-paths.mjs. 1.75 stroke rather than lucide's default 2, which reads heavy at the
+  // 13-15px this app mostly uses; 1em so it matches whatever text it sits beside.
   return (
-    <Glyph
-      // 1em wide and tall, so it matches whatever text it sits beside; 1.75 rather than lucide's
-      // default 2, which reads heavy at the 13-15px this app mostly uses.
-      width="1em"
-      height="1em"
-      strokeWidth={1.75}
-      className={`inline-block shrink-0 align-[-0.125em] ${className}`}
-      fill={filled ? "currentColor" : "none"}
+    <svg
+      viewBox="0 0 24 24"
+      className={`ic${filled ? " ic-filled" : ""}${className ? ` ${className}` : ""}`}
       // Decorative by default: almost every icon here sits beside its own label, and a screen
       // reader announcing "map pin Koramangala, Bengaluru" is worse than announcing the text.
       aria-hidden={label ? undefined : true}
       aria-label={label}
       role={label ? "img" : undefined}
+      dangerouslySetInnerHTML={{ __html: ICON_PATHS[name] }}
     />
   );
 }

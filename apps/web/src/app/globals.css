@@ -58,6 +58,26 @@
  * Tailwind utility classes — e.g. `text-on-green` on a Link — can still override this default
  * `a` color instead of being silently clobbered by it. (This is the exact bug that made the
  * active pagination link's text invisible except on hover, before this fix.) */
+/* Shared styling for every <Icon> (components/home/Icon.tsx), so each inline <svg> carries only its shapes.
+ * In `components` (not unlayered) so a call site's own utilities — `w-8`, `text-xl`, `shrink` — still win. */
+@layer components {
+  .ic {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
+    vertical-align: -0.125em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .ic-filled {
+    fill: currentColor;
+  }
+}
+
 @layer base {
   html {
     height: 100%;
