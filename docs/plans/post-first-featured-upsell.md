@@ -35,8 +35,8 @@ converted 4.4% of posted ads.
   centered below.
 - Mobile layout (2026-10-20): the Review preview is centered (max width 360). On the confirmation
   screen the header stays centered; on phones the live-ad preview sits above the Featured card, and
-  from 700px wide (tablets) they sit side by side, preview left / picker right. iOS keeps its
-  App Store boost card unchanged.
+  from 700px wide (tablets) they sit side by side, preview left / picker right. iOS now shows the same preview + Maybe later above its
+  App Store boost card (the price in that sheet is still Apple's, never the admin plan's).
 - No pricing, payment, BFF or flag behaviour changed.
 
 ## Not changed / open

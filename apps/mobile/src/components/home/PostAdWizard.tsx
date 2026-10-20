@@ -2360,6 +2360,40 @@ export function PostAdWizard({
             // App Store's own prices): a Razorpay checkout, or a button to the website to pay, is
             // exactly what Apple's Guideline 3.1.1 forbids. Instant Alerts is part of every boost.
             <>
+              {!boostOfferDismissed && (
+              <View
+                style={{
+                  width: "100%",
+                  flexDirection: confirmationSideBySide ? "row" : "column",
+                  alignItems: confirmationSideBySide ? "flex-start" : "stretch",
+                  gap: 16,
+                }}
+              >
+              {/* Same before/after preview as the Android card below (docs/plans/post-first-featured-upsell.md);
+                * the price in the sheet this opens is still Apple's own, never the admin plan's. */}
+              <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, textAlign: "center" }}>
+                  Your ad with Featured
+                </Text>
+                <ListingPreviewCard
+                  photoUris={photoUris}
+                  category={createdListing.category}
+                  transactionType={createdListing.transactionType}
+                  title={title}
+                  price={price}
+                  priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
+                  priceArea={priceArea}
+                  priceQualifier={priceQualifier}
+                  areaName={areaQuery}
+                  cityName={cityOptions.find((c) => c.id === cityId)?.name ?? ""}
+                  attributes={attributes}
+                  featured
+                />
+                <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center" }}>
+                  Today it shows as a standard ad, without the gold badge.
+                </Text>
+              </View>
+              <View style={{ flex: confirmationSideBySide ? 1 : undefined, gap: 8 }}>
               <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                   <Icon name="boost" size={17} color={colors.gold} />
@@ -2388,6 +2422,12 @@ export function PostAdWizard({
                   </Pressable>
                 )}
               </View>
+              <Pressable onPress={() => setBoostOfferDismissed(true)} style={{ alignItems: "center", paddingVertical: 6 }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>Maybe later</Text>
+              </Pressable>
+              </View>
+              </View>
+              )}
               <IosBoostSheet
                 visible={iosBoostOpen}
                 listingId={createdListing.id}
