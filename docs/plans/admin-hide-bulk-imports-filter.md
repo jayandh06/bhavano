@@ -48,3 +48,18 @@ and page 2 kept it.
 Only Listing moderation has this filter. Other screens (Listing performance, Users) do not. The default stays "Show
 all"; if you want imports hidden by default, change the default in `app/page.tsx` (note the page already defaults the
 created date to one day, so imports created today would be the first thing hidden).
+
+## Update 2026-10-21: bulk imports are now hidden by default
+
+The first version defaulted to "Show all", so the queue still opened full of imports and the admin kept asking for them
+to be filtered out. The page now opens with **Hide bulk imports**; the select's options are **Hide bulk imports** (default),
+**Show all**, **Only bulk imports**.
+
+- "Show all" is a real URL value (`bulkImport=all`), not an empty one: this screen's links (page numbers, tabs, sort) drop
+  empty params, so an empty "show all" would silently fall back to the hide default on the next page. An absent or
+  unknown value means hide. Logic and tests: `apps/admin/src/lib/bulkImportFilter.ts` / `.test.ts`.
+- No BFF change: the data query still takes `bulkImport=exclude|only`; "all" sends nothing.
+- Anyone with a remembered filter from before (no `bulkImport` in it) now gets the hide default too.
+- The "Awaiting claim" tab is unaffected (admin-assisted listings awaiting claim are never counted as imports).
+- Verified locally with the real admin app and a fake data service: arriving with no param sent `bulkImport=exclude`,
+  choosing Show all sent none, and page 2 after Show all still sent none.

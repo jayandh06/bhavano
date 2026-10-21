@@ -10,6 +10,7 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminListingSort, fetchAdminListings, fetchAreas, fetchCities } from "@/lib/bff";
 import { buildPageHref, carriedValue, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
+import { bulkImportChoice, bulkImportQueryValue } from "@/lib/bulkImportFilter";
 import { daysAgoIST, istDayEnd, istDayStart, todayIST } from "@/lib/dateRangeDefaults";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
@@ -68,8 +69,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const createdTo = str(sp.createdTo) ?? (tab === "awaitingClaim" ? undefined : todayIST());
   const updatedFrom = str(sp.updatedFrom);
   const updatedTo = str(sp.updatedTo);
-  // Only the two known values reach the query; anything else in the URL means "show everything".
-  const bulkImport = str(sp.bulkImport) === "exclude" || str(sp.bulkImport) === "only" ? (str(sp.bulkImport) as "exclude" | "only") : undefined;
+  // Bulk imports are hidden unless the admin chose otherwise (see lib/bulkImportFilter.ts).
+  const bulkImportSelected = bulkImportChoice(str(sp.bulkImport));
+  const bulkImport = bulkImportQueryValue(bulkImportSelected);
   const category = str(sp.category) as ListingCategory | undefined;
   const transactionType = str(sp.transactionType) as TransactionType | undefined;
   const status = str(sp.status) as ListingStatus | undefined;
@@ -180,9 +182,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             {/* Bulk imports = listings created by the import tools under the system Bulk Import account and not yet
               * claimed by the business. Admin-assisted listings awaiting a claim are not counted as imports. */}
             <Field label="Bulk imports">
-              <select name="bulkImport" defaultValue={bulkImport ?? ""} style={dateInputStyle}>
-                <option value="">Show all</option>
+              <select name="bulkImport" defaultValue={bulkImportSelected} style={dateInputStyle}>
                 <option value="exclude">Hide bulk imports</option>
+                <option value="all">Show all</option>
                 <option value="only">Only bulk imports</option>
               </select>
             </Field>
