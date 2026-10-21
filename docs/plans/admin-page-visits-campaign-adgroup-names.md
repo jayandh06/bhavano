@@ -131,3 +131,42 @@ Regenerated again — the account gained `Metro-Seeker Intent` (6 ad groups: Ben
 original `Other-Metro-Lease Property` is now paused, suggesting this is an A/B split testing
 Maximize Conversions against the shared Target CPA portfolio). 12 campaigns, 35 ad groups, 1 asset
 group total now.
+
+## Update 2026-10-21 — why some ad clicks had no Campaign / Ad group, and the fix
+
+**Symptom:** some Page visits rows from Google ads showed a dash in Campaign and Ad group. About 95% of rows are not ad
+clicks at all (direct, Facebook, WhatsApp, organic), and a dash there is correct. Of the 1,200 ad-click visits (those
+with a `gclid`) in the 14 days to 2026-10-21, **131 (11%)** had a click id but no campaign or ad group.
+
+**Cause 1 (122 of the 131): the Seeker Intent campaign had no Final URL suffix for its first three weeks.**
+`Metro-Seeker Intent` (id 24297610212) was created 2026-09-30 without
+`gclid={gclid}&campaignid={campaignid}&adgroupid={adgroupid}&adid={creative}`; Google Ads change history shows the suffix was
+added on 2026-10-19 08:40 UTC. The missing rows are on the three "Rent Seekers" landing pages
+(`/bengaluru|pune|kolkata/rent-lease`) between 6 and 18 October and stop after the 19th. Every other campaign had the suffix
+from the start; no ad, ad group or keyword has a suffix of its own that could override it. Redirects (apex to www) keep the
+query string, so nothing on the site dropped the parameters.
+
+**Cause 2 (about 8): sitelink assets.** Sitelinks have their own URLs and an empty suffix of their own.
+
+### What was done (production, 2026-10-21)
+
+1. **Backfill** (`apps/bff/scripts/backfill-seeker-intent-attribution.js`, dry run first, one transaction, count-checked):
+   226 Visit rows (Google cpc, not bots, `gclid` set, `campaignId` empty, created between the campaign's creation and the
+   suffix fix, landing exactly on one of the six Seeker ad-group URLs) got `campaignId = 24297610212` and the ad group
+   that owns that landing page (each ad group has its own URL: Bengaluru Rent 199354221574, Pune Rent 199354221774,
+   Kolkata Rent 202226465882, and the paused Buy groups 199354221734 / 199354221814 / 202226465922). This is **inferred,
+   not captured**: no other campaign lands on those URLs with parameters and the others all had the suffix, so the
+   campaign is certain and the ad group follows from the URL. The original rows cannot show which ad (`adId`) was clicked.
+2. **Sitelinks:** `ads_add_sitelink_url_suffix.py` set the same suffix on the 38 editable sitelink assets (only
+   `final_url_suffix`, final URLs untouched, so no ad review). **4 Google-created sitelinks** (automatically created
+   assets such as `/?postedBy=owner`, `/?sort=newest`) cannot be edited, so their clicks will stay unattributed.
+3. Removed two Visit rows created by my own redirect tests (`gclid=TEST`, campaign 111, ad group 222).
+
+**Result:** ad-click visits without a campaign in the last 14 days went from 131 to **9** (under 1%). The Seeker Intent
+campaign now shows its ad groups in Page visits for the whole period.
+
+### Checking this again
+
+Any new campaign must be given the Final URL suffix when it is created (the Ads scripts that create campaigns should set
+`campaign.final_url_suffix`). Quick check: `SELECT campaign.name, campaign.final_url_suffix FROM campaign` should show it
+on every campaign, and `Visit` rows with a `gclid` but no `campaignId` should stay near zero.
