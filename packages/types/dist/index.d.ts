@@ -429,20 +429,23 @@ export interface UpdateListingInput {
     description?: string;
     attributes?: Record<string, unknown>;
     status?: ListingStatus;
-}
-/** Admin-only superset of `UpdateListingInput` — fields an admin can additionally change from the
- * admin listing edit form that an owner cannot self-edit (category/transactionType/city/area/map
- * pin). `areaId`/`areaName` are mutually exclusive, same as `CreateListingInput` — `areaName` goes
- * through the same find-or-create `ensureArea` resolution creation does. See
- * docs/plans/admin-edit-location-and-category.md. */
-export interface AdminUpdateListingInput extends UpdateListingInput {
-    category?: ListingCategory;
-    transactionType?: TransactionType;
+    /** Moving the listing: the map pin plus the city and area it resolves to. From 2026-10-21 an owner
+     * may send these too, but only all together: a new pin (`lat` and `lng`), the `cityId` it falls in
+     * and the area as `areaId` or `areaName`. The listing URL follows (the old one 301s). See
+     * docs/plans/mandatory-pin-and-owner-location-edit.md. */
     cityId?: string;
     areaId?: string;
     areaName?: string;
     lat?: number;
     lng?: number;
+}
+/** Admin-only superset of `UpdateListingInput`: category and transaction type, which an owner cannot
+ * change. `areaId`/`areaName` are mutually exclusive, same as `CreateListingInput`: `areaName` goes
+ * through the same find-or-create `ensureArea` resolution creation does. See
+ * docs/plans/admin-edit-location-and-category.md. */
+export interface AdminUpdateListingInput extends UpdateListingInput {
+    category?: ListingCategory;
+    transactionType?: TransactionType;
 }
 /** One uploaded photo's metadata as returned by `POST /uploads` — `photoNo` matches the key
  * that upload was stored under (see apps/bff/src/uploads/photo-keys.ts). */

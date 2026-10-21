@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { ListingDetailDto, ListingStatus, SellerType } from "@bhavano/types";
+import type { City, ListingDetailDto, ListingStatus, SellerType } from "@bhavano/types";
 import {
   brokerageFeeIssue,
   brokerageFeeNote,
@@ -27,6 +27,7 @@ import { CategoryFieldsAccordion } from "./CategoryFieldsAccordion";
 import { EditListingPhotos } from "./EditListingPhotos";
 import { VideoManager } from "./VideoManager";
 import { FeaturedPerformanceCard } from "./FeaturedPerformanceCard";
+import { ListingLocationEditor, type ListingLocationChange } from "./ListingLocationEditor";
 
 function attributesToStrings(
   attributes: Record<string, unknown>,
@@ -63,6 +64,7 @@ export function EditListingForm({
   listing,
   accessToken,
   sellerType,
+  cities,
 }: {
   listing: ListingDetailDto;
   accessToken: string;
@@ -72,6 +74,8 @@ export function EditListingForm({
    * returns `{}` when `sellerType` is null, leaving the field genuinely blank so PostedByButtons
    * shows neither option enabled until the seller (or their profile) actually says. */
   sellerType: SellerType | null;
+  /** For the fallback city choice when a pin lands outside every city we list. */
+  cities: City[];
 }) {
   const router = useRouter();
   const isPendingPublish = listing.publishState === "pending_checkout";
@@ -94,6 +98,9 @@ export function EditListingForm({
   }));
   const [attributes, setAttributes] = useState<Record<string, string | string[]>>(initialAttributes);
   const [status, setStatus] = useState<ListingStatus>(listing.status);
+  // Set when the owner moves the pin; null until the new pin has resolved to a city and area.
+  const [locationChange, setLocationChange] = useState<ListingLocationChange | null>(null);
+  const [locationMoved, setLocationMoved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -141,7 +148,9 @@ export function EditListingForm({
     (priceValue > 0 || priceOnRequestAllowed) &&
     title.trim().length > 0 &&
     attributesIssue === null &&
-    descriptionIssue === null;
+    descriptionIssue === null &&
+    // A pin that has moved must have resolved to a city and area before it can be saved.
+    (!locationMoved || locationChange !== null);
 
   // The stored value may not appear in today's fixed option list (legacy free-text data from
   // before this dropdown existed) — keep it selectable rather than silently swapping it out.
@@ -171,6 +180,7 @@ export function EditListingForm({
       priceUnit: priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : null,
       ...(descriptionChanged ? { description: description.trim() } : {}),
       ...(attributesChanged ? { attributes } : {}),
+      ...(locationMoved && locationChange ? locationChange : {}),
       status,
     });
     setSaving(false);
@@ -192,6 +202,22 @@ export function EditListingForm({
           {listing.category} · {listing.transactionType}
         </div>
       </div>
+
+      <ListingLocationEditor
+        cityName={listing.cityName}
+        areaName={listing.area}
+        cityId={listing.cityId}
+        initialPin={
+          listing.exactLat !== undefined && listing.exactLng !== undefined
+            ? { lat: listing.exactLat, lng: listing.exactLng }
+            : null
+        }
+        cities={cities}
+        onChange={(change, moved) => {
+          setLocationChange(change);
+          setLocationMoved(moved);
+        }}
+      />
 
       <div>
         <RequiredLabel text="Title" />
@@ -367,6 +393,9 @@ export function EditListingForm({
         </p>
       )}
       {attributesIssue && <p className="text-[13px] m-0 text-muted">To save: {attributesIssue}</p>}
+      {locationMoved && !locationChange && (
+        <p className="text-[13px] m-0 text-muted">To save: wait for the new location to be found, or move the pin.</p>
+      )}
 
       <button
         onClick={onSave}

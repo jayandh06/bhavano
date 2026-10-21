@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type {
-  Area,
   BoostPlanSelection,
   City,
   CreateListingInput,
@@ -80,8 +79,6 @@ import { useAuthGate } from "./AuthGateProvider";
 import { CategoryFieldsAccordion } from "@/components/home/CategoryFieldsAccordion";
 import { ListingSlotCapPrompt } from "@/components/home/ListingSlotCapPrompt";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
-import { searchAreasAction } from "@/app/actions/locations";
-import { useClickOutside } from "@/lib/useClickOutside";
 import { pushDataLayerEvent, toE164IN } from "@/lib/gtm";
 import { buildListingPath } from "@/lib/listingPath";
 import {
@@ -449,10 +446,6 @@ export function PostAdWizard({
   // Other names Google gave for the dropped pin (a society, the wider locality): one tap swaps a
   // wrong guess. Cleared as soon as the seller types or picks an area themselves.
   const [areaAlternatives, setAreaAlternatives] = useState<string[]>([]);
-  const [areaSuggestions, setAreaSuggestions] = useState<Area[]>([]);
-  const [showAreaSuggestions, setShowAreaSuggestions] = useState(false);
-  const areaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const areaFieldRef = useRef<HTMLDivElement | null>(null);
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
   const [description, setDescription] = useState("");
   // AI "Generate" assist for title/description — see docs/plans/ai-listing-copy-assist.md.
@@ -520,6 +513,10 @@ export function PostAdWizard({
   // Informational, non-blocking note about the map pin's reverse-geocode result — either "we
   // added this city for you" or "couldn't confidently place this pin" (see `onPinChange`).
   const [pinLookupNote, setPinLookupNote] = useState<string | null>(null);
+  // The pin landed outside every city we list: the seller then picks the nearest city (the area still
+  // comes from the pin, never typed).
+  const [pinNoCity, setPinNoCity] = useState(false);
+  const [pinLookingUp, setPinLookingUp] = useState(false);
   // Public, no-login-required settings (fetchBoostPricingAction/fetchInstantAlertsPricingAction,
   // both already used elsewhere for exactly this reason) — read as soon as the wizard mounts, not
   // gated on being logged in, since the Preview-step selector below has to work before onSubmit's
@@ -1154,7 +1151,6 @@ export function PostAdWizard({
     });
   }
 
-  useClickOutside(areaFieldRef, () => setShowAreaSuggestions(false));
 
   function selectCategory(next: ListingCategory) {
     userStartedRef.current = true;
@@ -1333,35 +1329,10 @@ export function PostAdWizard({
     });
   }
 
-  function onAreaQueryChange(value: string) {
-    setAreaQuery(value);
-    setAreaId(null);
-    setAreaAlternatives([]);
-    setShowAreaSuggestions(true);
-
-    if (areaDebounceRef.current) clearTimeout(areaDebounceRef.current);
-    if (!value.trim() || !cityId) {
-      setAreaSuggestions([]);
-      return;
-    }
-    areaDebounceRef.current = setTimeout(async () => {
-      setAreaSuggestions(await searchAreasAction(cityId, value));
-    }, 300);
-  }
-
-  function onPickArea(a: Area) {
-    setAreaQuery(a.name);
-    setAreaId(a.id);
-    setAreaAlternatives([]);
-    setAreaSuggestions([]);
-    setShowAreaSuggestions(false);
-  }
-
   function onCityChange(newCityId: string) {
     setCityId(newCityId);
     setAreaQuery("");
     setAreaId(null);
-    setAreaSuggestions([]);
   }
 
   /** Google's City/Area resolution is a suggestion, never auto-locked — the user can still
@@ -1376,7 +1347,11 @@ export function PostAdWizard({
     suggestion: ReverseGeocodeResultDto | null,
   ) {
     setPin(nextPin);
+    setPinLookingUp(!suggestion);
     if (!suggestion) return;
+    setPinNoCity(!suggestion.cityId);
+    // Outside every city we list: make the seller choose, rather than keeping a stale default.
+    if (!suggestion.cityId) setCityId("");
 
     if (suggestion.cityId) {
       setCities((prev) =>
@@ -1412,7 +1387,6 @@ export function PostAdWizard({
       setAreaId(suggestion.areaId ?? null);
       setAreaQuery(suggestion.resolvedLocality);
       setAreaAlternatives(suggestion.areaAlternatives ?? []);
-      setAreaSuggestions([]);
     }
   }
 
@@ -1456,8 +1430,12 @@ export function PostAdWizard({
   // satisfied — so the Preview button's message always surfaces something else missing before it
   // ever asks for Title/Description, now that those two sit at the end of the step).
   const otherFieldsIssue: { text: string; missing: boolean } | null = (() => {
-    if (!cityId) return { text: "Pick a city", missing: true };
-    if (areaQuery.trim().length === 0) return { text: "Add the area / locality", missing: true };
+    // City and area come from the pin, never typed. See docs/plans/mandatory-pin-and-owner-location-edit.md.
+    if (!pin) return { text: "Drop a pin or search an address to set the location", missing: true };
+    if (pinLookingUp) return { text: "Finding the location…", missing: true };
+    if (!cityId) return { text: "Pick the nearest city", missing: true };
+    if (areaQuery.trim().length === 0)
+      return { text: "We couldn't read an area for that spot. Move the pin a little or search the address", missing: true };
     if (!areaId && areaQuery.trim().length > AREA_NAME_MAX_LENGTH)
       return { text: `Area / locality must be ${AREA_NAME_MAX_LENGTH} characters or fewer`, missing: false };
     // The assisted panel's own Owner/Agent answer overrides this field on submit. Checked before
@@ -2148,10 +2126,11 @@ export function PostAdWizard({
       {step === "details" && category && transactionType && (
         <div className="flex flex-col gap-4">
           <div className="max-w-[720px]">
-            <label className={labelClass}>
-              Pin your exact location (optional — helps buyers find you, and
-              auto-fills City/Area below)
-            </label>
+            <RequiredLabel text="Pin your exact location" />
+            <p className="text-xs text-muted mt-0 mb-2">
+              Search an address or drag the pin to the property. City and area are set from the pin, and buyers see
+              the map on your ad.
+            </p>
             <LocationMapPicker
               defaultCenter={
                 cities.find((c) => c.id === cityId) ??
@@ -2165,53 +2144,32 @@ export function PostAdWizard({
             )}
           </div>
 
-          <div className="flex gap-3 max-w-[720px]">
-            <div className="flex-1">
-              <RequiredLabel text="City" />
-              <SelectField required value={cityId} onChange={(e) => onCityChange(e.target.value)}>
-                {cities.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </SelectField>
-            </div>
-
-            <div ref={areaFieldRef} className="relative flex-1">
-              <RequiredLabel text="Area / locality" />
-              <input
-                required
-                value={areaQuery}
-                onChange={(e) => onAreaQueryChange(e.target.value)}
-                onFocus={() => setShowAreaSuggestions(true)}
-                placeholder="Start typing a locality…"
-                autoComplete="off"
-                className={fieldClass}
-              />
-              {showAreaSuggestions && areaSuggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 z-10 bg-surface border border-border rounded-[9px] mt-1 max-h-[220px] overflow-y-auto">
-                  {areaSuggestions.map((a) => (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => onPickArea(a)}
-                      className="block w-full text-left bg-transparent border-0 px-3.5 py-2.5 text-sm text-text cursor-pointer"
-                    >
-                      {a.name}
-                    </button>
-                  ))}
+          {pin && (
+            <div className="max-w-[720px]">
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <div className="text-xs text-muted mb-1">City</div>
+                  <div className="text-sm text-text font-bold">
+                    {pinNoCity ? "Choose the nearest city below" : cities.find((c) => c.id === cityId)?.name ?? "…"}
+                  </div>
                 </div>
-              )}
+                <div className="flex-1">
+                  <div className="text-xs text-muted mb-1">Area / locality</div>
+                  <div className="text-sm text-text font-bold">
+                    {pinLookingUp ? "Looking up…" : areaQuery.trim() || "Move the pin a little"}
+                  </div>
+                </div>
+              </div>
               {areaAlternatives.length > 0 && (
-                <p className="text-xs text-muted mt-1.5">
+                <p className="text-xs text-muted mt-1.5 mb-0">
                   Not right? Use:{" "}
                   {areaAlternatives.map((name) => (
                     <button
                       key={name}
                       type="button"
                       onClick={() => {
-                        onAreaQueryChange(name);
-                        setShowAreaSuggestions(false);
+                        setAreaQuery(name);
+                        setAreaId(null);
                       }}
                       className="mr-2 underline bg-transparent border-0 p-0 cursor-pointer text-xs text-muted"
                     >
@@ -2220,14 +2178,20 @@ export function PostAdWizard({
                   ))}
                 </p>
               )}
-              {!areaId && areaQuery.trim() && (
-                <p className="text-xs text-muted mt-1.5">
-                  No match selected — &quot;{areaQuery.trim()}&quot; will be added
-                  as a new area.
-                </p>
+              {pinNoCity && (
+                <div className="mt-3 max-w-[320px]">
+                  <SelectField required value={cityId} onChange={(e) => setCityId(e.target.value)}>
+                    <option value="">Select a city</option>
+                    {cities.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </SelectField>
+                </div>
               )}
             </div>
-          </div>
+          )}
 
           {/* No "specs" box. The card's chips are derived from the category fields right below,
             * which the seller is about to fill in — asking again produced "3bhk", "3 BHK" and

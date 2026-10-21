@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { BffAuthError, fetchMyListing, fetchProfile } from "@/lib/bff";
+import { BffAuthError, fetchCities, fetchMyListing, fetchProfile } from "@/lib/bff";
 import { EditListingForm } from "@/components/home/EditListingForm";
 import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
@@ -43,5 +43,6 @@ async function EditListingFields({ accessToken, id }: { accessToken: string; id:
   // an unanswered "Posted by" from the account's own answer, same as PostAdWizard — never to force
   // a default when neither the listing nor the profile actually says.
   const profile = await fetchProfile(accessToken).catch(() => null);
-  return <EditListingForm listing={listing} accessToken={accessToken} sellerType={profile?.sellerType ?? null} />;
+  const cities = await fetchCities().catch(() => []);
+  return <EditListingForm listing={listing} accessToken={accessToken} sellerType={profile?.sellerType ?? null} cities={cities} />;
 }

@@ -9,7 +9,6 @@ import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import type {
-  Area,
   BoostPlanSelection,
   City,
   CreatedVideoInput,
@@ -66,7 +65,6 @@ import {
   BffError,
   createListing,
   fetchAiGenerateUsage,
-  fetchAreas,
   fetchPlanPricing,
   friendlyErrorMessage,
   generateListingCopy,
@@ -342,13 +340,16 @@ export function PostAdWizard({
   const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
 
   const [cityId, setCityId] = useState(defaultCityId ?? cities[0]?.id ?? "");
-  const [cityPickerOpen, setCityPickerOpen] = useState(false);
   const optionSheetRef = useRef<BottomSheetModal>(null);
   const [openField, setOpenField] = useState<FieldConfig | null>(null);
   /** Cities the map pin resolved that aren't in the `cities` prop. Kept separate rather than
    * copying the prop into state, so a later prop update can't be silently shadowed. */
   const [pinResolvedCities, setPinResolvedCities] = useState<City[]>([]);
   const [pinLookupNote, setPinLookupNote] = useState<string | null>(null);
+  // The pin landed outside every city we list: the seller then picks the nearest city (the area still
+  // comes from the pin, never typed).
+  const [pinNoCity, setPinNoCity] = useState(false);
+  const [pinLookingUp, setPinLookingUp] = useState(false);
   const cityOptions = useMemo(
     () => [...cities, ...pinResolvedCities.filter((p) => !cities.some((c) => c.id === p.id))],
     [cities, pinResolvedCities],
@@ -363,8 +364,6 @@ export function PostAdWizard({
   const [areaId, setAreaId] = useState<string | null>(null);
   // Other names Google gave for the pin; one tap swaps a wrong guess. Cleared on manual edits.
   const [areaAlternatives, setAreaAlternatives] = useState<string[]>([]);
-  const [areaSuggestions, setAreaSuggestions] = useState<Area[]>([]);
-  const areaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [description, setDescription] = useState("");
   // AI "Generate" assist for title/description — see docs/plans/ai-listing-copy-assist.md.
   const [generatingTitle, setGeneratingTitle] = useState(false);
@@ -968,32 +967,10 @@ export function PostAdWizard({
     setVideos((prev) => prev.filter((v) => v.uri !== uri));
   }
 
-  function onAreaQueryChange(value: string) {
-    setAreaQuery(value);
-    setAreaId(null);
-    setAreaAlternatives([]);
-
-    if (areaDebounceRef.current) clearTimeout(areaDebounceRef.current);
-    if (!value.trim() || !cityId) {
-      setAreaSuggestions([]);
-      return;
-    }
-    areaDebounceRef.current = setTimeout(async () => {
-      setAreaSuggestions(await fetchAreas(cityId, value));
-    }, 300);
-  }
-
-  function onPickArea(a: Area) {
-    setAreaQuery(a.name);
-    setAreaId(a.id);
-    setAreaSuggestions([]);
-  }
-
   function onCityChange(newCityId: string) {
     setCityId(newCityId);
     setAreaQuery("");
     setAreaId(null);
-    setAreaSuggestions([]);
   }
 
   function countLabel(field: FieldConfig): string {
@@ -1203,7 +1180,11 @@ export function PostAdWizard({
    * docs/plans/canonical-city-catchment.md. */
   function onPinChange(nextPin: { lat: number; lng: number }, suggestion: ReverseGeocodeResultDto | null) {
     setPin(nextPin);
+    setPinLookingUp(!suggestion);
     if (!suggestion) return;
+    setPinNoCity(!suggestion.cityId);
+    // Outside every city we list: make the seller choose, rather than keeping a stale default.
+    if (!suggestion.cityId) setCityId("");
     if (suggestion.cityId) {
       // The pin can resolve a city outside the `cities` prop (it holds popular cities only), in
       // which case selecting its id used to leave nothing selected in the picker and a blank city
@@ -1243,7 +1224,6 @@ export function PostAdWizard({
       setAreaId(suggestion.areaId ?? null);
       setAreaQuery(suggestion.resolvedLocality);
       setAreaAlternatives(suggestion.areaAlternatives ?? []);
-      setAreaSuggestions([]);
     }
   }
 
@@ -1309,8 +1289,12 @@ export function PostAdWizard({
   // canGenerateCopy below and detailsIssue, which falls through to title/description only once
   // these are all satisfied.
   const otherFieldsIssue: { text: string; missing: boolean } | null = (() => {
-    if (!cityId) return { text: "Pick a city", missing: true };
-    if (areaQuery.trim().length === 0) return { text: "Add the area / locality", missing: true };
+    // City and area come from the pin, never typed. See docs/plans/mandatory-pin-and-owner-location-edit.md.
+    if (!pin) return { text: "Drop a pin or search an address to set the location", missing: true };
+    if (pinLookingUp) return { text: "Finding the location…", missing: true };
+    if (!cityId) return { text: "Pick the nearest city", missing: true };
+    if (areaQuery.trim().length === 0)
+      return { text: "We couldn't read an area for that spot. Move the pin a little or search the address", missing: true };
     if (!areaId && areaQuery.trim().length > AREA_NAME_MAX_LENGTH)
       return { text: `Area / locality must be ${AREA_NAME_MAX_LENGTH} characters or fewer`, missing: false };
     // Checked before the generic attribute sweep below so this field's own friendlier copy wins
@@ -1886,7 +1870,11 @@ export function PostAdWizard({
       {step === "details" && category && transactionType && detailsReady && (
         <View style={{ gap: 4 }}>
           <Text style={[styles.label, { color: colors.textSoft }]}>
-            Pin your exact location (optional — helps buyers find you, and auto-fills City/Area below)
+            Pin your exact location
+            <RequiredMark />
+          </Text>
+          <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 6 }}>
+            Search an address or drag the pin to the property. City and area are set from the pin, and buyers see the map on your ad.
           </Text>
           {/* The pin picker is explicitly optional (see the label above it), and City/Area right
             * below are the real fallback — a native map failure (e.g. a missing/invalid Google
@@ -1895,7 +1883,7 @@ export function PostAdWizard({
           <ErrorBoundary
             fallback={
               <Text style={[styles.label, { color: colors.muted, fontStyle: "italic" }]}>
-                Map unavailable right now — pick your City/Area below instead.
+                Map unavailable right now. Please try again in a moment to set the location.
               </Text>
             }
           >
@@ -1909,76 +1897,54 @@ export function PostAdWizard({
             <Text style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>{pinLookupNote}</Text>
           ) : null}
 
-          <Text style={[styles.label, { color: colors.textSoft }]}>
-            City
-            <RequiredMark />
-          </Text>
-          {/* Collapsed by default. Rendering a chip for every city pushed the rest of the form off
-              screen and, worse, hid the fact that dropping a map pin had already chosen one —
-              the selection was a subtly different chip background somewhere in a wall of chips. */}
-          <Pressable
-            onPress={() => setCityPickerOpen((open) => !open)}
-            style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
-          >
-            <Text style={{ color: colors.text, fontSize: 14, flex: 1 }}>
-              {cityOptions.find((c) => c.id === cityId)?.name ?? "Select a city"}
-            </Text>
-            <Text style={{ color: colors.green, fontSize: 12.5, fontWeight: "700" }}>
-              {cityPickerOpen ? "Done" : "Change"}
-            </Text>
-          </Pressable>
-          {cityPickerOpen && (
-            <View style={styles.chipRow}>
-              {cityOptions.map((c) => (
-                <Pressable
-                  key={c.id}
-                  onPress={() => {
-                    onCityChange(c.id);
-                    setCityPickerOpen(false);
-                  }}
-                  style={[styles.chip, { borderColor: colors.border, backgroundColor: cityId === c.id ? colors.surfaceAlt : "transparent" }]}
-                >
-                  <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>{c.name}</Text>
-                </Pressable>
-              ))}
+          {pin ? (
+            <View style={{ marginTop: 10 }}>
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, color: colors.muted }}>City</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>
+                    {pinNoCity ? "Choose the nearest city below" : cityOptions.find((c) => c.id === cityId)?.name ?? "…"}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, color: colors.muted }}>Area / locality</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>
+                    {pinLookingUp ? "Looking up…" : areaQuery.trim() || "Move the pin a little"}
+                  </Text>
+                </View>
+              </View>
+              {areaAlternatives.length > 0 && (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", marginTop: 6 }}>
+                  <Text style={{ fontSize: 12, color: colors.muted }}>Not right? Use: </Text>
+                  {areaAlternatives.map((name) => (
+                    <Pressable
+                      key={name}
+                      onPress={() => {
+                        setAreaQuery(name);
+                        setAreaId(null);
+                      }}
+                      style={{ marginRight: 10 }}
+                    >
+                      <Text style={{ fontSize: 12, color: colors.muted, textDecorationLine: "underline" }}>{name}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+              {pinNoCity && (
+                <View style={[styles.chipRow, { marginTop: 10 }]}>
+                  {cityOptions.map((c) => (
+                    <Pressable
+                      key={c.id}
+                      onPress={() => setCityId(c.id)}
+                      style={[styles.chip, { borderColor: colors.border, backgroundColor: cityId === c.id ? colors.surfaceAlt : "transparent" }]}
+                    >
+                      <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>{c.name}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
             </View>
-          )}
-
-          <Text style={[styles.label, { color: colors.textSoft }]}>
-            Area / locality
-            <RequiredMark />
-          </Text>
-          <TextInput
-            value={areaQuery}
-            onChangeText={onAreaQueryChange}
-            placeholder="Start typing a locality…"
-            placeholderTextColor={colors.muted}
-            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
-          />
-          {areaSuggestions.length > 0 && (
-            <View style={[styles.suggestionsBox, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-              {areaSuggestions.map((a) => (
-                <Pressable key={a.id} onPress={() => onPickArea(a)} style={styles.suggestionRow}>
-                  <Text style={{ color: colors.text, fontSize: 14 }}>{a.name}</Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
-          {areaAlternatives.length > 0 && (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
-              <Text style={{ fontSize: 12, color: colors.muted }}>Not right? Use: </Text>
-              {areaAlternatives.map((name) => (
-                <Pressable key={name} onPress={() => onAreaQueryChange(name)} style={{ marginRight: 10 }}>
-                  <Text style={{ fontSize: 12, color: colors.muted, textDecorationLine: 'underline' }}>{name}</Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
-          {!areaId && areaQuery.trim().length > 0 && (
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>
-              No match selected — &quot;{areaQuery.trim()}&quot; will be added as a new area.
-            </Text>
-          )}
+          ) : null}
 
           {/* No Specs box, as on the website: the card's chips come from the category fields below
             * (deriveCardSpecs), so a typed "3 Beds" only repeated them in another spelling. */}

@@ -512,6 +512,17 @@ export function roundRobinByGroup<T>(rows: T[], keyFor: (row: T) => string): T[]
   return result;
 }
 
+/** How far a pin an owner sets on their own listing may be from the centre of the city it is filed under. */
+const OWNER_PIN_MAX_KM_FROM_CITY = 120;
+
+function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const rad = (deg: number) => (deg * Math.PI) / 180;
+  const a =
+    Math.sin(rad(lat2 - lat1) / 2) ** 2 +
+    Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lng2 - lng1) / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(a));
+}
+
 @Injectable()
 export class ListingsService {
   private readonly logger = new Logger(ListingsService.name);
@@ -2509,8 +2520,9 @@ export class ListingsService {
     actorType: 'owner' | 'admin',
     actorId: string,
   ): Promise<ListingDetailDto> {
-    // Only ever set by the admin route (AdminUpdateListingDto) — the owner-facing route binds to
-    // plain UpdateListingDto, so these are always undefined for actorType === 'owner'.
+    // Category and transaction type are only ever set by the admin route (AdminUpdateListingDto) —
+    // the owner-facing route binds to plain UpdateListingDto, so these are always undefined for
+    // actorType === 'owner'.
     const nextCategory = dto.category ?? existing.category;
     const nextTransactionType = dto.transactionType ?? existing.transactionType;
     const categoryOrTxnChanged =
@@ -2589,6 +2601,37 @@ export class ListingsService {
         resolvedPrice?.price ?? existing.price,
         attributesToValidate ?? ((existing.attributes as Record<string, unknown> | null) ?? {}),
       );
+    }
+
+    // An owner moving their own listing must send the whole picture: the pin and the city and area it
+    // falls in. A pin alone would leave the area page and the map disagreeing, and a typed city or
+    // area with no pin is exactly what the mandatory-pin rule removes. The pin also has to be near
+    // the chosen city, so a mis-resolved or tampered request cannot file it under a far-off city.
+    // Admins keep their looser tools. See docs/plans/mandatory-pin-and-owner-location-edit.md.
+    if (actorType === 'owner') {
+      const movesLocation =
+        dto.lat !== undefined ||
+        dto.lng !== undefined ||
+        dto.cityId !== undefined ||
+        dto.areaId !== undefined ||
+        dto.areaName !== undefined;
+      if (movesLocation) {
+        if (
+          dto.lat === undefined ||
+          dto.lng === undefined ||
+          dto.cityId === undefined ||
+          (dto.areaId === undefined && dto.areaName === undefined)
+        ) {
+          throw new BadRequestException(
+            'To change the location, set the map pin; the city and area come from it.',
+          );
+        }
+        const pinCity = await this.prisma.city.findUnique({ where: { id: dto.cityId } });
+        if (!pinCity) throw new BadRequestException('Unknown city');
+        if (distanceKm(dto.lat, dto.lng, pinCity.lat, pinCity.lng) > OWNER_PIN_MAX_KM_FROM_CITY) {
+          throw new BadRequestException("That pin is too far from the selected city. Move the pin or pick the right city.");
+        }
+      }
     }
 
     // City/area resolution — admin-only, and only when at least one of the three is present.

@@ -81,22 +81,6 @@ export class UpdateListingDto {
   @IsOptional()
   @IsIn(LISTING_STATUSES)
   status?: ListingStatus;
-}
-
-/** Admin-only superset of `UpdateListingDto` — bound exclusively to the admin PATCH route
- * (`AdminController.updateListing`). Category/transactionType/city/area/lat/lng are deliberately
- * absent from the base `UpdateListingDto` the owner-facing route uses, so Nest's global
- * `whitelist: true` ValidationPipe strips them from any owner request before it ever reaches
- * `ListingsService` — that binding choice, not a runtime role check, is what keeps owners from
- * self-editing these fields. See docs/plans/admin-edit-location-and-category.md. */
-export class AdminUpdateListingDto extends UpdateListingDto {
-  @IsOptional()
-  @IsIn(LISTING_CATEGORIES)
-  category?: ListingCategory;
-
-  @IsOptional()
-  @IsIn(TRANSACTION_TYPES)
-  transactionType?: TransactionType;
 
   @IsOptional()
   @IsString()
@@ -119,4 +103,21 @@ export class AdminUpdateListingDto extends UpdateListingDto {
   @IsOptional()
   @IsLongitude()
   lng?: number;
+}
+
+/** Admin-only superset of `UpdateListingDto` — bound exclusively to the admin PATCH route
+ * (`AdminController.updateListing`). Category/transactionType are deliberately absent from the base
+ * `UpdateListingDto` the owner-facing route uses, so Nest's global `whitelist: true` ValidationPipe
+ * strips them from any owner request before it ever reaches `ListingsService` — that binding
+ * choice, not a runtime role check, is what keeps owners from self-editing these fields. City, area
+ * and the map pin moved into the base DTO on 2026-10-21 (owners can now correct their own pin; see
+ * docs/plans/mandatory-pin-and-owner-location-edit.md and admin-edit-location-and-category.md). */
+export class AdminUpdateListingDto extends UpdateListingDto {
+  @IsOptional()
+  @IsIn(LISTING_CATEGORIES)
+  category?: ListingCategory;
+
+  @IsOptional()
+  @IsIn(TRANSACTION_TYPES)
+  transactionType?: TransactionType;
 }

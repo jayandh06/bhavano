@@ -3005,3 +3005,71 @@ describe('ListingsService.completePendingPublish — recovering the posting sess
     expect(recordPageView).not.toHaveBeenCalled();
   });
 });
+
+describe('ListingsService.update — an owner moving their own listing', () => {
+  const existing = {
+    id: 'l1',
+    ownerId: 'owner1',
+    category: 'pg',
+    transactionType: 'rent',
+    price: 5000,
+    priceQualifier: '/month',
+    title: 'Same title',
+    specs: [],
+    description: null,
+    attributes: {},
+    status: 'active',
+    moderationState: 'approved',
+    cityId: 'blr',
+    areaId: 'a-old',
+    lat: null,
+    lng: null,
+  };
+
+  function setup() {
+    const made = makeService();
+    (made.prisma.listing.findUnique as jest.Mock).mockResolvedValue(existing);
+    (made.prisma.listing.update as jest.Mock).mockResolvedValue({});
+    const prisma = made.prisma as unknown as Record<string, unknown>;
+    prisma.city = { findUnique: jest.fn().mockResolvedValue({ id: 'blr', lat: 12.97, lng: 77.59 }) };
+    prisma.area = { findUnique: jest.fn().mockResolvedValue({ id: 'a-new', cityId: 'blr' }) };
+    return made;
+  }
+
+  it('rejects a city or area change that comes without a pin', async () => {
+    const { service } = setup();
+    await expect(service.update('l1', 'owner1', { cityId: 'blr', areaName: 'HSR Layout' } as never)).rejects.toThrow(
+      /set the map pin/,
+    );
+  });
+
+  it('rejects a pin that comes without its city and area', async () => {
+    const { service } = setup();
+    await expect(service.update('l1', 'owner1', { lat: 12.9, lng: 77.6 } as never)).rejects.toThrow(/set the map pin/);
+  });
+
+  it('rejects a pin far from the chosen city', async () => {
+    const { service } = setup();
+    await expect(
+      service.update('l1', 'owner1', { lat: 28.6, lng: 77.2, cityId: 'blr', areaId: 'a-new' } as never),
+    ).rejects.toThrow(/too far from the selected city/);
+  });
+
+  it('saves a pin with its city and area and logs the move', async () => {
+    const { service, prisma } = setup();
+    await service
+      .update('l1', 'owner1', { lat: 12.91, lng: 77.64, cityId: 'blr', areaId: 'a-new' } as never)
+      .catch(() => undefined);
+    expect(prisma.listing.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ lat: 12.91, lng: 77.64, areaId: 'a-new' }),
+      }),
+    );
+    expect(prisma.listingEditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        actorType: 'owner',
+        changes: expect.objectContaining({ areaId: { before: 'a-old', after: 'a-new' } }),
+      }),
+    });
+  });
+});

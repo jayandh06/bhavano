@@ -30,6 +30,8 @@ left in place will likely fail validation or silently carry nonsense fields (e.g
 change, mirroring exactly what the posting wizard already does when a seller picks a category
 (`defaultAttributesFor`, used in `PostAdWizard.tsx:222`).
 
+**Update 2026-10-21:** owners can now move their own pin, city and area too (see mandatory-pin-and-owner-location-edit.md).
+
 **Scope decision (confirmed):** the map-location editor is plain Lat/Lng number inputs plus a
 "View on Google Maps ↗" link (`https://www.google.com/maps?q={lat},{lng}`) — not a ported
 interactive draggable-pin map. That avoids a new Google Maps JS API key, script loader, and

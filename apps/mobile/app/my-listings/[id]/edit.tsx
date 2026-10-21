@@ -24,12 +24,13 @@ import { perDay } from "@bhavano/types/featuredPerformance";
 import { POST_CATEGORIES } from "@bhavano/types/postCategories";
 import { useAppTheme } from "../../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../../src/context/HomeSheetsProvider";
-import { useMyListingQuery } from "../../../src/lib/queries";
+import { useCitiesQuery, useMyListingQuery } from "../../../src/lib/queries";
 import { addListingPhoto, addListingVideo, deleteListingPhoto, deleteListingVideo, updateListing } from "../../../src/lib/bffClient";
 import { Icon } from "../../../src/components/Icon";
 import { ScreenHeader } from "../../../src/components/home/ScreenHeader";
 import { PerUnitTotalHint, PriceWordsHint } from "../../../src/components/home/PriceWithWords";
 import { CategoryFieldsForm } from "../../../src/components/home/CategoryFieldsForm";
+import { ListingLocationEditor, type ListingLocationChange } from "../../../src/components/home/ListingLocationEditor";
 
 const ALLOWED_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const ALLOWED_VIDEO_MIME_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/3gpp", "video/x-matroska"];
@@ -101,6 +102,10 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
     attributesToStrings(initialListing.attributes),
   );
   const [status, setStatus] = useState<ListingStatus>(initialListing.status);
+  // Set when the owner moves the pin; null until the new pin has resolved to a city and area.
+  const [locationChange, setLocationChange] = useState<ListingLocationChange | null>(null);
+  const [locationMoved, setLocationMoved] = useState(false);
+  const { data: cityList } = useCitiesQuery(undefined, true);
   const [statusPickerOpen, setStatusPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -163,6 +168,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
         priceUnit: priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : null,
         ...(descriptionChanged ? { description: description.trim() } : {}),
         attributes,
+        ...(locationMoved && locationChange ? locationChange : {}),
         status,
       });
       setListing(updated);
@@ -308,6 +314,22 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
           {POST_CATEGORIES.find((c) => c.value === listing.category)?.label} · {listing.transactionType}
         </Text>
       </View>
+
+      <ListingLocationEditor
+        cityName={listing.cityName}
+        areaName={listing.area}
+        cityId={listing.cityId}
+        initialPin={
+          listing.exactLat !== undefined && listing.exactLng !== undefined
+            ? { lat: listing.exactLat, lng: listing.exactLng }
+            : null
+        }
+        cities={cityList ?? []}
+        onChange={(change, moved) => {
+          setLocationChange(change);
+          setLocationMoved(moved);
+        }}
+      />
 
       <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
         <Text style={[styles.label, { color: colors.textSoft }]}>Title</Text>
@@ -553,10 +575,13 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
       )}
 
       {brokerageIssue && <Text style={{ color: "#b3413a", fontSize: 13, marginTop: 12 }}>{brokerageIssue}</Text>}
+      {locationMoved && !locationChange && (
+        <Text style={{ color: colors.muted, fontSize: 13, marginTop: 12 }}>To save: wait for the new location to be found, or move the pin.</Text>
+      )}
       <Pressable
         onPress={onSave}
-        disabled={saving || !valid}
-        style={[styles.saveButton, { backgroundColor: colors.green, opacity: saving || !valid ? 0.5 : 1 }]}
+        disabled={saving || !valid || (locationMoved && !locationChange)}
+        style={[styles.saveButton, { backgroundColor: colors.green, opacity: saving || !valid || (locationMoved && !locationChange) ? 0.5 : 1 }]}
       >
         {saving ? <ActivityIndicator color={colors.onGreen} /> : <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Save changes</Text>}
       </Pressable>
