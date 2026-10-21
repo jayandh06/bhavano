@@ -43,7 +43,7 @@ test.describe("post-ad draft photo restore", () => {
     await page.getByRole("button", { name: "Preview Ad" }).click();
     const owner = page.getByRole("button", { name: "Owner", exact: true });
     if (await owner.isVisible()) await owner.click();
-    await page.getByRole("button", { name: "Post ad" }).click();
+    await page.getByRole("button", { name: "Publish & reach more people" }).click();
     await expect(page.getByText("Your ad is live!")).toBeVisible({ timeout: 60_000 });
   });
 });

@@ -42,7 +42,7 @@ test.describe("post-ad preview back button", () => {
     await fillStorageDetails(page);
 
     await page.getByRole("button", { name: "Preview Ad" }).click();
-    await expect(page.getByRole("button", { name: "Post ad" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Publish & reach more people" })).toBeVisible();
 
     await page.goBack();
     await expect(page).toHaveURL(/\/post/);
@@ -52,7 +52,7 @@ test.describe("post-ad preview back button", () => {
     // Previewing again and using the in-page Back keeps history consistent: one more browser Back
     // then leaves the form for the home page, rather than needing a dead extra press.
     await page.getByRole("button", { name: "Preview Ad" }).click();
-    await expect(page.getByRole("button", { name: "Post ad" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Publish & reach more people" })).toBeVisible();
     await page.getByRole("button", { name: "← Back" }).click();
     await expect(page.getByRole("button", { name: "Preview Ad" })).toBeVisible();
     await page.goBack();

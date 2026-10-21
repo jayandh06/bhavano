@@ -710,7 +710,7 @@ export function PostAdWizard({
       }
       const result = await iosPurchases.purchase({ type: "boost", listingId: listing.id, boostDays: boostIntent.duration });
       if (result.outcome === "cancelled") {
-        setPublishCheckoutError("Payment was cancelled — your ad is not live yet. Tap Post ad to try again.");
+        setPublishCheckoutError("Payment was cancelled — your ad is not live yet. Tap Publish to try again.");
         return false;
       }
       if (result.outcome === "pending") {
@@ -718,7 +718,7 @@ export function PostAdWizard({
         return false;
       }
       if (result.outcome === "error") {
-        setPublishCheckoutError(`Payment failed — ${result.message} Tap Post ad to try again.`);
+        setPublishCheckoutError(`Payment failed — ${result.message} Tap Publish to try again.`);
         return false;
       }
       const live = await waitForListingLive(listing.id, token);
@@ -2349,7 +2349,7 @@ export function PostAdWizard({
           <View style={styles.navRow}>
             <Pressable onPress={onSubmit} disabled={pending} style={[styles.submitButton, { backgroundColor: colors.green, opacity: pending ? 0.6 : 1 }]}>
               <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }} numberOfLines={1}>
-                {pending ? postAdButtonProgressText(uploadProgress) : "Post ad"}
+                {pending ? postAdButtonProgressText(uploadProgress) : "Publish & reach more people"}
               </Text>
             </Pressable>
           </View>
@@ -2359,7 +2359,6 @@ export function PostAdWizard({
       {step === "offer" && createdListing && (
         <View style={{ alignItems: "center", gap: 20, paddingTop: 8 }}>
           <View style={{ alignItems: "center", gap: 8 }}>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.green }}>✓ Your ad is posted</Text>
             <Text style={{ fontFamily: "serif", fontSize: 20, fontWeight: "700", color: colors.text, textAlign: "center" }}>
               Show your ad to more {audienceFor(createdListing.category, createdListing.transactionType)}?
             </Text>
@@ -2499,6 +2498,7 @@ export function PostAdWizard({
                       setShowRegenerateBanner(true);
                       setStep("success");
                     }}
+                    onCancelled={() => setStep("success")}
                     effectiveness={planPricingSettings?.boostEffectiveness ?? null}
                   />
                                   <Pressable

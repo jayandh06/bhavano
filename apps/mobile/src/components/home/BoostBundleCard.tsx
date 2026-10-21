@@ -42,6 +42,7 @@ export function BoostBundleCard({
   transactionType,
   accessToken,
   onActivating,
+  onCancelled,
   source,
   ignorePlacementSetting = false,
   effectiveness,
@@ -60,6 +61,8 @@ export function BoostBundleCard({
    * swaps this card for its own "pending" state while the webhook confirms, same contract
    * BoostModal/InstantAlertsModal already use. */
   onActivating: () => void;
+  /** The buyer closed the payment sheet without paying; the offer screen goes on to the live-ad confirmation. */
+  onCancelled?: () => void;
   /** The same real boosted-vs-unboosted stats the web review step already shows
    * (docs/plans/boost-offer-conversion-2026-09.md's own finding: the ~12x-views lift is the
    * strongest argument for boosting, and wasn't shown on this card before) — null before the
@@ -104,6 +107,7 @@ export function BoostBundleCard({
     });
     setPending(false);
     if (result.outcome === "activated" || result.outcome === "paid") onActivating();
+    else if (result.outcome === "cancelled") onCancelled?.();
     else if (result.outcome === "error") setError(result.message);
     // "cancelled" — same as before, no error shown, just re-enable the button.
   }

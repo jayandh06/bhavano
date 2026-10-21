@@ -1630,7 +1630,7 @@ export function PostAdWizard({
       // "Posting…" for good.
       setPending(false);
       reportPostError("publish_exception", submitError instanceof Error ? submitError.message : String(submitError));
-      setError("Your ad couldn't be sent. Check your internet connection and tap Post ad again.");
+      setError("Your ad couldn't be sent. Check your internet connection and tap Publish again.");
     }
   }
 
@@ -1803,7 +1803,7 @@ export function PostAdWizard({
       if (failure.kind === "needsLogin") {
         requireLogin({ onSuccess: () => void onSubmit() });
       } else if (failure.kind === "unreadable") {
-        setError(`Photo ${failure.photoNo} can no longer be read. Remove it, add it again, then tap Post ad.`);
+        setError(`Photo ${failure.photoNo} can no longer be read. Remove it, add it again, then tap Publish.`);
       } else {
         // A message written for the person (a damaged photo, say) is shown as is, with the photo
         // named. Anything technical becomes a plain retry, which only resends what failed.
@@ -1811,7 +1811,7 @@ export function PostAdWizard({
         setError(
           friendly
             ? `Photo ${failure.photoNo}: ${friendly}`
-            : `Photo ${failure.photoNo} didn't upload. Check your internet connection and tap Post ad again. Photos that already uploaded won't be sent twice.`,
+            : `Photo ${failure.photoNo} didn't upload. Check your internet connection and tap Publish again. Photos that already uploaded won't be sent twice.`,
         );
       }
       return;
@@ -2674,7 +2674,7 @@ export function PostAdWizard({
               disabled={pending}
               className={`ml-auto ${primaryButtonClass}`}
             >
-              {pending ? postAdButtonProgressText(uploadProgress) : assistedMode ? "Save for seller" : "Post ad"}
+              {pending ? postAdButtonProgressText(uploadProgress) : assistedMode ? "Save for seller" : "Publish & reach more people"}
             </button>
           </div>
           </div>
@@ -2718,7 +2718,6 @@ export function PostAdWizard({
       {step === "offer" && createdListing && !assistedMode && (
         <div className="w-full max-w-[920px] mx-auto flex flex-col items-center gap-6 py-4 px-1">
           <div className="flex flex-col items-center gap-2 text-center">
-            <span className="text-[13px] font-bold text-green">&#10003; Your ad is posted</span>
             <div className="font-lora text-xl sm:text-2xl font-bold text-text">
               Show your ad to more {audienceFor(createdListing.category, createdListing.transactionType)}?
             </div>
@@ -2789,6 +2788,10 @@ export function PostAdWizard({
               effectiveness={planPricingSettings?.boostEffectiveness ?? null}
               onActivating={() => {
                 setShowRegenerateBanner(true);
+                setStep("success");
+              }}
+              onCancelled={() => {
+                pushDataLayerEvent("post_offer_skipped", { listingId: createdListing.id, via: "payment_cancelled" });
                 setStep("success");
               }}
             />

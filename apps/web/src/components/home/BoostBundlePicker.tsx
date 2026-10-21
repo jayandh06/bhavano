@@ -30,6 +30,7 @@ export function BoostBundlePicker({
   transactionType,
   hideBenefits = false,
   onActivating,
+  onCancelled,
   initialPricing,
   source,
   effectiveness,
@@ -50,6 +51,9 @@ export function BoostBundlePicker({
    * success screen swaps this picker for a "Boost pending…" style state while the webhook
    * catches up, same contract BoostButton/BoostProvider already use elsewhere. */
   onActivating?: () => void;
+  /** Fired when the buyer closes the payment window without paying. The offer screen uses it to
+   * go straight to the live-ad confirmation instead of leaving them on the offer. */
+  onCancelled?: () => void;
   /** The same real boosted-vs-unboosted stats BoostRecoveryDialog already shows on the review
    * step (docs/plans/boost-offer-conversion-2026-09.md's own finding: the ~12x-views lift is the
    * strongest argument for boosting and wasn't shown here before) — null before the nightly job's
@@ -151,7 +155,8 @@ export function BoostBundlePicker({
     } else if (result.outcome === "error") {
       setError(result.message);
     }
-    // "cancelled" — no error shown, just re-enable the button, same as before.
+    else if (result.outcome === "cancelled") onCancelled?.();
+    // "cancelled" — no error shown, the button is re-enabled; the offer screen moves on via onCancelled.
   }
 
   async function onUseFreeBoost() {
