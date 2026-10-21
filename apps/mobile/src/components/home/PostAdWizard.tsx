@@ -710,7 +710,7 @@ export function PostAdWizard({
       }
       const result = await iosPurchases.purchase({ type: "boost", listingId: listing.id, boostDays: boostIntent.duration });
       if (result.outcome === "cancelled") {
-        setPublishCheckoutError("Payment was cancelled — your ad is not live yet. Tap Publish to try again.");
+        setPublishCheckoutError("Payment was cancelled — your ad is not live yet. Try again.");
         return false;
       }
       if (result.outcome === "pending") {
@@ -718,7 +718,7 @@ export function PostAdWizard({
         return false;
       }
       if (result.outcome === "error") {
-        setPublishCheckoutError(`Payment failed — ${result.message} Tap Publish to try again.`);
+        setPublishCheckoutError(`Payment failed — ${result.message} Try again.`);
         return false;
       }
       const live = await waitForListingLive(listing.id, token);
@@ -2349,7 +2349,7 @@ export function PostAdWizard({
           <View style={styles.navRow}>
             <Pressable onPress={onSubmit} disabled={pending} style={[styles.submitButton, { backgroundColor: colors.green, opacity: pending ? 0.6 : 1 }]}>
               <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }} numberOfLines={1}>
-                {pending ? postAdButtonProgressText(uploadProgress) : "Publish & reach more people"}
+                {pending ? postAdButtonProgressText(uploadProgress) : "Reach more people"}
               </Text>
             </Pressable>
           </View>

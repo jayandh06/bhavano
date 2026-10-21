@@ -1630,7 +1630,7 @@ export function PostAdWizard({
       // "Posting…" for good.
       setPending(false);
       reportPostError("publish_exception", submitError instanceof Error ? submitError.message : String(submitError));
-      setError("Your ad couldn't be sent. Check your internet connection and tap Publish again.");
+      setError("Your ad couldn't be sent. Check your internet connection and try again.");
     }
   }
 
@@ -1803,7 +1803,7 @@ export function PostAdWizard({
       if (failure.kind === "needsLogin") {
         requireLogin({ onSuccess: () => void onSubmit() });
       } else if (failure.kind === "unreadable") {
-        setError(`Photo ${failure.photoNo} can no longer be read. Remove it, add it again, then tap Publish.`);
+        setError(`Photo ${failure.photoNo} can no longer be read. Remove it, add it again, then try again.`);
       } else {
         // A message written for the person (a damaged photo, say) is shown as is, with the photo
         // named. Anything technical becomes a plain retry, which only resends what failed.
@@ -1811,7 +1811,7 @@ export function PostAdWizard({
         setError(
           friendly
             ? `Photo ${failure.photoNo}: ${friendly}`
-            : `Photo ${failure.photoNo} didn't upload. Check your internet connection and tap Publish again. Photos that already uploaded won't be sent twice.`,
+            : `Photo ${failure.photoNo} didn't upload. Check your internet connection and try again. Photos that already uploaded won't be sent twice.`,
         );
       }
       return;
@@ -2674,7 +2674,7 @@ export function PostAdWizard({
               disabled={pending}
               className={`ml-auto ${primaryButtonClass}`}
             >
-              {pending ? postAdButtonProgressText(uploadProgress) : assistedMode ? "Save for seller" : "Publish & reach more people"}
+              {pending ? postAdButtonProgressText(uploadProgress) : assistedMode ? "Save for seller" : "Reach more people"}
             </button>
           </div>
           </div>
