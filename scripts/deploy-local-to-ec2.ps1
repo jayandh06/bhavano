@@ -28,6 +28,9 @@ param(
   [string] $Ec2User = $(if ($env:BHAVANO_EC2_USER) { $env:BHAVANO_EC2_USER } else { "ubuntu" }),
   [string] $SshKey = $env:BHAVANO_EC2_SSH_KEY,
   [string] $RemoteDir = $(if ($env:BHAVANO_REMOTE_DIR) { $env:BHAVANO_REMOTE_DIR } else { "~/bhavano" }),
+  # Where the image tarballs are written (about 1-2 GB, twice: raw then gzipped). Defaults to the
+  # repo root; point it at another drive when the repo's drive is full.
+  [string] $WorkDir = $env:BHAVANO_WORK_DIR,
   [string] $EnvFile = $(if ($env:BHAVANO_ENV_FILE) { $env:BHAVANO_ENV_FILE } else { ".env.prod.build" }),
   # No [ValidateSet]/typed-array binding here on purpose — see the normalization block below for
   # why: `powershell -File` flattens a multi-value array argument (any syntax: @('web','admin'),
@@ -177,9 +180,11 @@ if ($BuildOnly) {
 }
 
 $tarName = "bhavano-images-$TAG.tar.gz"
-$tarPath = Join-Path $RepoRoot $tarName
+$tarDir = if ($WorkDir) { $WorkDir } else { $RepoRoot }
+if (-not (Test-Path -LiteralPath $tarDir -PathType Container)) { New-Item -ItemType Directory -Path $tarDir | Out-Null }
+$tarPath = Join-Path $tarDir $tarName
 Write-Host "==> docker save -> $tarName"
-$tarPlain = Join-Path $RepoRoot "bhavano-images-$TAG.tar"
+$tarPlain = Join-Path $tarDir "bhavano-images-$TAG.tar"
 docker save -o $tarPlain @imageRefs
 if ($LASTEXITCODE -ne 0) { throw "docker save failed" }
 if (-not (Test-Path -LiteralPath $tarPlain -PathType Leaf)) {
