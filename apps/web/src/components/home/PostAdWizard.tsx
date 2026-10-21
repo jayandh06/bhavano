@@ -2853,9 +2853,10 @@ export function PostAdWizard({
                 setStep("success");
               }}
               onEvent={(event, days) => reportPostAction("offer", event, days != null ? { days } : undefined)}
+              allowPromoCode={isAdmin}
               onCancelled={() => {
-                pushDataLayerEvent("post_offer_skipped", { listingId: createdListing.id, via: "payment_cancelled" });
-                setStep("success");
+                // Stay on this screen: the picker says the payment wasn't completed and lets them retry.
+                pushDataLayerEvent("post_offer_payment_cancelled", { listingId: createdListing.id });
               }}
             />
             <button

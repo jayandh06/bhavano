@@ -29,6 +29,7 @@ export function BoostBundlePicker({
   category,
   transactionType,
   hideBenefits = false,
+  allowPromoCode = false,
   onActivating,
   onCancelled,
   onEvent,
@@ -42,6 +43,8 @@ export function BoostBundlePicker({
   transactionType?: TransactionType;
   /** The offer screen lists the full Featured benefits itself, so the picker's own two bullets are dropped there. */
   hideBenefits?: boolean;
+  /** Shows a promo-code field (admins only). Everyone else gets the auto-applied promo. */
+  allowPromoCode?: boolean;
   /** Where this checkout was started from, recorded on the payment. */
   source?: PurchaseSource;
   /** A price resolved before this mounted — the deep-link path passes the one its page's server
@@ -80,6 +83,9 @@ export function BoostBundlePicker({
   // Ever-increasing, not a retry count — bumping it is what re-triggers the effect below, both
   // from its own backoff and from the focus listener further down.
   const [fetchKey, setFetchKey] = useState(0);
+  const [promoInput, setPromoInput] = useState("");
+  /** The typed code the price was last fetched with; empty means the auto-applied promo. */
+  const [appliedCode, setAppliedCode] = useState("");
   const failuresRef = useRef(0);
   const MAX_PRICE_RETRIES = 5;
 
@@ -97,7 +103,7 @@ export function BoostBundlePicker({
     let cancelled = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
 
-    previewBoostPricingAction(category, listingId).then((result) => {
+    previewBoostPricingAction(category, listingId, appliedCode || undefined).then((result) => {
       if (cancelled) return;
       if (result.success) {
         setPricing(result.pricing);
@@ -117,7 +123,7 @@ export function BoostBundlePicker({
       cancelled = true;
       if (retry) clearTimeout(retry);
     };
-  }, [category, listingId, fetchKey, initialPricing]);
+  }, [category, listingId, fetchKey, initialPricing, appliedCode]);
 
   // Logging in via the Google OAuth popup steals focus for the whole flow, so by the time the
   // visitor is back on this tab the backoff above may have already exhausted its retries (or the
@@ -151,6 +157,7 @@ export function BoostBundlePicker({
       duration: effectiveDuration,
       includeInstantAlerts: true,
       source,
+      promoCode: appliedCode || undefined,
     });
     setPending(false);
 
@@ -169,8 +176,11 @@ export function BoostBundlePicker({
     } else if (result.outcome === "error") {
       setError(result.message);
     }
-    else if (result.outcome === "cancelled") onCancelled?.();
-    // "cancelled" — no error shown, the button is re-enabled; the offer screen moves on via onCancelled.
+    else if (result.outcome === "cancelled") {
+      // Stay put: the buyer closed the payment window, which is not the same as not wanting it.
+      setError("Payment wasn't completed. You can try again, or continue without Featured.");
+      onCancelled?.();
+    }
   }
 
   async function onUseFreeBoost() {
@@ -307,6 +317,41 @@ export function BoostBundlePicker({
           );
         })}
       </div>
+
+      {allowPromoCode && (
+        <div className="mt-3">
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setAppliedCode(promoInput.trim());
+            }}
+          >
+            <input
+              value={promoInput}
+              onChange={(e) => setPromoInput(e.target.value)}
+              placeholder="Promo code"
+              aria-label="Promo code"
+              autoCapitalize="characters"
+              className="flex-1 min-w-0 border border-border bg-surface-alt text-text rounded-lg px-3 py-2 text-sm"
+            />
+            <button
+              type="submit"
+              disabled={pending}
+              className="border border-border bg-surface-alt text-text rounded-lg px-4 py-2 text-sm font-bold cursor-pointer disabled:opacity-50"
+            >
+              Apply
+            </button>
+          </form>
+          {appliedCode && pricing && (
+            <p className={`text-[12px] mt-1.5 mb-0 ${option?.discountApplied ? "text-green" : "text-[#b3413a]"}`}>
+              {option?.discountApplied
+                ? `Code ${appliedCode.toUpperCase()} applied.`
+                : `Code ${appliedCode.toUpperCase()} isn't valid, has expired or was already used.`}
+            </p>
+          )}
+        </div>
+      )}
 
       {error && <p className="text-[#b3413a] text-[13px] mt-3 mb-0">{error}</p>}
 

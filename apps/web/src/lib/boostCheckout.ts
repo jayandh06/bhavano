@@ -22,14 +22,17 @@ export async function startBoostCheckout({
   duration,
   includeInstantAlerts,
   source,
+  promoCode,
 }: {
   listingId: string;
   category: ListingCategory;
   duration: BoostDurationDays;
   includeInstantAlerts: boolean;
   source?: PurchaseSource;
+  /** A code typed by an admin; otherwise the auto-applied promo is used. */
+  promoCode?: string;
 }): Promise<BoostCheckoutResult> {
-  const result = await createBoostBundleOrderAction(listingId, duration, includeInstantAlerts, source);
+  const result = await createBoostBundleOrderAction(listingId, duration, includeInstantAlerts, source, promoCode);
   if (!result.success) return { outcome: "error", message: result.error };
 
   if (result.order.activated) return { outcome: "activated" };

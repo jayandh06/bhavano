@@ -119,12 +119,13 @@ export type PreviewBoostPricingResult =
 export async function previewBoostPricingAction(
   category: ListingCategory,
   listingId?: string,
+  promoCode?: string,
 ): Promise<PreviewBoostPricingResult> {
   const session = await auth();
   if (!session?.accessToken) return { success: false, error: "You must be logged in." };
 
   try {
-    const pricing = await previewBoostPricing(session.accessToken, category, ACTIVE_PROMO_CODE, listingId);
+    const pricing = await previewBoostPricing(session.accessToken, category, promoCode?.trim() || ACTIVE_PROMO_CODE, listingId);
     return { success: true, pricing };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to load pricing" };
@@ -139,8 +140,9 @@ export async function createBoostBundleOrderAction(
   boostDays: BoostDurationDays,
   includeInstantAlerts: boolean,
   source?: PurchaseSource,
+  promoCode?: string,
 ): Promise<CreateBoostOrderResult> {
-  return createBoostOrderAction(listingId, boostDays, ACTIVE_PROMO_CODE, includeInstantAlerts, source);
+  return createBoostOrderAction(listingId, boostDays, promoCode?.trim() || ACTIVE_PROMO_CODE, includeInstantAlerts, source);
 }
 
 export type CreateListingPublishOrderResult =

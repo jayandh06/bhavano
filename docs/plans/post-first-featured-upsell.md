@@ -57,3 +57,15 @@ converted 4.4% of posted ads.
   ~24h low-views nudge and the first-enquiry nudge.
 - Mobile was not typechecked: `tsc` in `apps/mobile` crashes with a stack overflow on a clean tree
   too (pre-existing).
+
+## Update 2026-10-21: payment cancelled stays on the offer, and admins can enter a promo code (web)
+- **Cancel no longer jumps to the live-ad screen.** Closing the Razorpay window leaves the person on the
+  Featured offer with "Payment wasn't completed. You can try again, or continue without Featured." The
+  "No thanks, continue" button still moves on. The analytics event is now `post_offer_payment_cancelled`
+  (it was `post_offer_skipped` with `via: payment_cancelled`). Mobile is unchanged (native payment sheet).
+- **Promo code field, admins only.** `BoostBundlePicker` takes `allowPromoCode` (the wizard passes `isAdmin`).
+  A typed code replaces the auto-applied `ACTIVE_PROMO_CODE` for the price preview and the order
+  (`previewBoostPricingAction` / `createBoostBundleOrderAction` / `startBoostCheckout` gained an optional
+  `promoCode`; the BFF already accepted `discountCode`). The field says whether the code applied. A 100% code
+  gives a ₹0 order, which the BFF fulfils without Razorpay (used to test the extra photo and video limits).
+  Everyone else still gets the automatic promo and no field.
