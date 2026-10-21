@@ -43,7 +43,7 @@ import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/
 import type { VideoEntitlement } from "@bhavano/types/videoLimits";
 import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { MAX_PHOTOS, MAX_PHOTO_BYTES, MIN_PHOTOS, PHOTO_LIMITS } from "@bhavano/types/photoLimits";
-import { audienceFor } from "@bhavano/types/audience";
+import { audienceFor, reachLabelFor } from "@bhavano/types/audience";
 import { FEATURED_BENEFITS } from "@bhavano/types/featuredBenefits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
@@ -2674,7 +2674,7 @@ export function PostAdWizard({
               disabled={pending}
               className={`ml-auto ${primaryButtonClass}`}
             >
-              {pending ? postAdButtonProgressText(uploadProgress) : assistedMode ? "Save for seller" : "Reach more people"}
+              {pending ? postAdButtonProgressText(uploadProgress) : assistedMode ? "Save for seller" : reachLabelFor(category, transactionType)}
             </button>
           </div>
           </div>

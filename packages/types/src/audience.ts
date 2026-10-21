@@ -27,3 +27,23 @@ export function audienceFor(category: ListingCategory | null | undefined, transa
       return "people";
   }
 }
+
+/** The Review step's button, worded for who this ad is for: "Reach more tenants" on a rental,
+ * "Reach more buyers" on a sale, "Reach more PG seekers" on a PG. Short on purpose (it sits on a
+ * button), so it uses a tighter noun than `audienceFor`. Falls back to "Reach more people". */
+export function reachLabelFor(category: ListingCategory | null | undefined, transactionType?: TransactionType | null): string {
+  switch (category) {
+    case "pg":
+      return "Reach more PG seekers";
+    case "coworking":
+      return "Reach more teams";
+    case "storage":
+      return "Reach more renters";
+    case "interiors":
+      return "Reach more customers";
+    default: {
+      const audience = audienceFor(category, transactionType);
+      return audience === "people" ? "Reach more people" : `Reach more ${audience}`;
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { audienceFor } from "@bhavano/types/audience";
+import { audienceFor, reachLabelFor } from "@bhavano/types/audience";
 
 describe("audienceFor", () => {
   it("says buyers for property sold and tenants for property rented or leased", () => {
@@ -20,5 +20,20 @@ describe("audienceFor", () => {
   it("falls back to a neutral word when it cannot tell", () => {
     expect(audienceFor(null)).toBe("people");
     expect(audienceFor("apartment")).toBe("people");
+  });
+});
+
+describe("reachLabelFor", () => {
+  it("names the audience in a short button label", () => {
+    expect(reachLabelFor("house", "rent")).toBe("Reach more tenants");
+    expect(reachLabelFor("apartment", "sell")).toBe("Reach more buyers");
+    expect(reachLabelFor("pg", "rent")).toBe("Reach more PG seekers");
+    expect(reachLabelFor("coworking", "rent")).toBe("Reach more teams");
+    expect(reachLabelFor("interiors", "sell")).toBe("Reach more customers");
+  });
+
+  it("falls back to people when it cannot tell", () => {
+    expect(reachLabelFor(null)).toBe("Reach more people");
+    expect(reachLabelFor("apartment")).toBe("Reach more people");
   });
 });

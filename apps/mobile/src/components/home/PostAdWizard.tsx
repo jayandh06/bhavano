@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Image, Platform, Pressable, StyleSheet, Text,
 import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { PHOTO_LIMITS } from "@bhavano/types/photoLimits";
-import { audienceFor } from "@bhavano/types/audience";
+import { audienceFor, reachLabelFor } from "@bhavano/types/audience";
 import { FEATURED_BENEFITS } from "@bhavano/types/featuredBenefits";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
@@ -2349,7 +2349,7 @@ export function PostAdWizard({
           <View style={styles.navRow}>
             <Pressable onPress={onSubmit} disabled={pending} style={[styles.submitButton, { backgroundColor: colors.green, opacity: pending ? 0.6 : 1 }]}>
               <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }} numberOfLines={1}>
-                {pending ? postAdButtonProgressText(uploadProgress) : "Reach more people"}
+                {pending ? postAdButtonProgressText(uploadProgress) : reachLabelFor(category, transactionType)}
               </Text>
             </Pressable>
           </View>
