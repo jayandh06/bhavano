@@ -52,6 +52,14 @@ const KNOWN_ROUTES = new Set([
   "/blog/verify-property-owner-before-paying-token",
   "/blog/freehold-vs-leasehold-property-india",
   "/blog/society-maintenance-charges-explained",
+  "/blog/down-payment-for-a-home-loan",
+  "/blog/how-to-check-property-title-is-clear",
+  "/blog/how-to-calculate-rental-yield",
+  "/blog/stamp-duty-and-registration-charges-explained",
+  "/blog/capital-gains-tax-on-property-explained",
+  "/blog/how-to-find-reliable-tenants",
+  "/blog/rent-or-buy-questions",
+  "/blog/how-to-sell-property-online-in-india",
 ]);
 
 function textsOf(block: BlogBlock): string[] {

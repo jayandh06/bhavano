@@ -118,3 +118,29 @@ advice" note on the legal ones. The topics are not covered by the earlier 24 pos
   `FAQPage` markup on these posts (the blog renderer has no FAQ block; question headings carry the structure).
 - **How to tell if it worked:** in Page visits, filter Source for `chatgpt.com`, `perplexity.ai`, `gemini.google.com`
   and `copilot.microsoft.com`; in Search Console, look at impressions on the six new URLs after a few weeks.
+
+## Sixth batch (2026-10-21): ten finance and legal questions (scope agreed: concepts and formulas, no rate tables)
+From a list of ten "AI-friendly" question topics. Five already existed, so those were extended instead of duplicated;
+five were new. Every post opens with the direct answer, uses the question as a heading, and adds lists, formulas or
+worked examples. Examples are marked "for illustration only". The posts do not quote rates, state-wise duty or tax
+percentages: those change and would go stale (the blog's no-figures rule is kept, and the posts say where to look).
+
+| # | Question | What was done |
+|---|---|---|
+| 1 | Rent or buy? | `rent-or-buy-questions` extended: side-by-side cost list and a break-even formula with a worked example (price growth needed to break even) |
+| 2 | Down payment for a home loan | new `down-payment-for-a-home-loan`: LTV explained without quoting the cap, what the down payment must cover, effect on EMI |
+| 3 | Is the title clear? | new `how-to-check-property-title-is-clear`: title search, encumbrance certificate, documents list, warning signs |
+| 4 | Verify RERA registration | `rera-explained-for-home-buyers` extended with "what if the project is not registered" (the how-to-check steps already existed) |
+| 5 | Ready-to-move or under-construction | `ready-to-move-vs-under-construction` extended: price, payment plan, possession risk, paperwork, tax (conceptual) |
+| 6 | Documents to buy a flat | already covered by `property-approvals-documents-checklist` and the new title post; not rewritten |
+| 7 | How is EMI calculated | `home-loan-emi-explained` extended: formula and a worked example, links to the calculators |
+| 8 | Stamp duty and registration | new `stamp-duty-and-registration-charges-explained`: who pays, what decides it, how to find the figure; **no state-wise table** |
+| 9 | Rental yield | new `how-to-calculate-rental-yield`: gross and net formulas and a worked example |
+| 10 | Capital gains tax | new `capital-gains-tax-on-property-explained`: how the gain is worked out, holding period, indexation, Sections 54, 54EC, 54F; **no rates**, tax adviser disclaimer |
+
+- Extended posts carry `updated: 2026-10-21`, which the page shows as the last-updated date and sends as `dateModified`.
+- **Review needed before relying on them:** the title, stamp duty and capital gains posts are legal or tax topics written
+  from general knowledge. Have a qualified person read them (and add a real "reviewed by" name when one exists).
+- **Not done:** a state-wise stamp duty table and current LTV and tax figures (would need a sourced, dated data set and
+  a test exemption); tables as a block type (the renderer has none, so lists carry the structure); matching Google Ads
+  landing-page keywords (a separate change to the ad groups).

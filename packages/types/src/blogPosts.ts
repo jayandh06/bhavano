@@ -298,6 +298,7 @@ export const POSTS: BlogPost[] = [
     description:
       "A calm way to think through renting versus buying: your timeline, savings, flexibility and the costs people forget, with no one-size-fits-all answer.",
     published: "2026-10-18",
+    updated: "2026-10-21",
     format: "Guide",
     readingMinutes: 6,
     body: [
@@ -328,6 +329,29 @@ export const POSTS: BlogPost[] = [
         type: "p",
         text: "A rented home lets you move for a better job, a better school or a shorter commute. An owned home gives you stability and control over the space. Neither is free of trade-offs.",
       },
+      { type: "h2", text: "Should I rent or buy? A side-by-side cost comparison" },
+      {
+        type: "p",
+        text: "Compare the yearly cost of living in the home, not the price against the rent. Put the same items on each side.",
+      },
+      {
+        type: "ul",
+        items: [
+          "Renting costs: the rent, the rent increase each year, the deposit tied up (it earns you nothing), brokerage when you move, and moving costs.",
+          "Buying costs: the interest part of your loan payments (the repayment part builds your ownership), property tax, society maintenance, repairs, insurance, and the return you give up on the down payment.",
+          "One-time costs of buying: stamp duty, registration, brokerage and loan fees. See [stamp duty and registration explained](/blog/stamp-duty-and-registration-charges-explained).",
+          "What buying adds: the home's price may rise or fall, and you own what you paid for.",
+        ],
+      },
+      { type: "h2", text: "How do I work out the break-even point?" },
+      {
+        type: "p",
+        text: "A simple version: add up the yearly cost of owning (without any price growth), subtract the yearly rent for a similar home, and divide the difference by the home's price. The result is the yearly price growth the home needs for owning to cost the same as renting. If you expect prices to rise faster than that, buying comes out ahead on these numbers. If you expect them to rise slower, renting does.",
+      },
+      {
+        type: "p",
+        text: "Worked example, for illustration only. A home priced at 5,000,000 rupees rents for 20,000 a month, or 240,000 a year. Buying it with a 1,000,000 down payment means a loan of 4,000,000. Say the first-year costs of owning are interest of 360,000, maintenance of 36,000, property tax of 6,000, and 60,000 of return given up on the down payment: 462,000 in all. The difference from renting is 462,000 - 240,000 = 222,000, and 222,000 / 5,000,000 = about 4.4 per cent a year. The price would need to grow by about that much a year, just to break even, before counting the one-time costs of buying. These numbers are made up, so replace them with your own. A short stay makes buying harder to justify, because the one-time costs are spread over fewer years.",
+      },
       { type: "h2", text: "Try the numbers side by side" },
       {
         type: "p",
@@ -345,6 +369,7 @@ export const POSTS: BlogPost[] = [
     description:
       "A plain explanation of what makes up a home loan EMI and how tenure, interest rate and down payment change it, with links to free calculators.",
     published: "2026-10-18",
+    updated: "2026-10-21",
     format: "Explainer",
     readingMinutes: 5,
     body: [
@@ -355,6 +380,19 @@ export const POSTS: BlogPost[] = [
       {
         type: "p",
         text: "An EMI, or equated monthly instalment, is the fixed amount you pay your lender each month until the loan is cleared. Every EMI is part interest and part repayment of the amount you borrowed.",
+      },
+      { type: "h2", text: "How is a home loan EMI calculated?" },
+      {
+        type: "p",
+        text: "EMI = P x r x (1 + r)^n / ((1 + r)^n - 1). Here P is the loan amount, r is the monthly interest rate (the yearly rate divided by 12 and by 100), and n is the number of monthly payments (years x 12). Lenders use this formula, so a calculator will give you the same answer.",
+      },
+      {
+        type: "p",
+        text: "Worked example, for illustration only. Borrow 2,000,000 rupees at 9 per cent a year for 20 years. The monthly rate r is 9 / 12 / 100 = 0.0075, and n is 240. (1.0075)^240 is about 6.009, so EMI = 2,000,000 x 0.0075 x 6.009 / 5.009 = about 17,995 a month. Over 240 months you would pay about 4,318,800 in total, of which about 2,318,800 is interest. Change any one of the three inputs and the EMI changes, which is what the calculators below let you try.",
+      },
+      {
+        type: "p",
+        text: "The EMI rises in direct proportion to the loan amount at the same rate and tenure, so a bigger down payment lowers it. See [how much down payment you need](/blog/down-payment-for-a-home-loan).",
       },
       { type: "h2", text: "What decides the EMI" },
       {
@@ -614,6 +652,7 @@ export const POSTS: BlogPost[] = [
     description:
       "The trade-offs between buying a ready-to-move flat and an under-construction one: timing, risk, flexibility and what to verify for each.",
     published: "2026-10-19",
+    updated: "2026-10-21",
     format: "Comparison",
     readingMinutes: 5,
     body: [
@@ -639,6 +678,17 @@ export const POSTS: BlogPost[] = [
           "Payments are often spread over stages of construction, which can suit your cash flow.",
           "Delays are possible, and during them you may pay rent and a loan at the same time.",
           "You may get more choice of unit, floor and layout, and newer facilities.",
+        ],
+      },
+      { type: "h2", text: "Which is better: price, payment plan, possession risk and tax compared" },
+      {
+        type: "ul",
+        items: [
+          "Price: under-construction homes are often priced lower per square foot at launch, with the price tending to rise as construction progresses. A ready home is priced for what it is now, and you can compare it with other [apartments for sale](/buy/apartment).",
+          "Payment plan: a ready home is usually paid in full at purchase, with the loan released at once. An under-construction home is paid in stages tied to construction, so you pay loan interest only on the amount released so far. Check the schedule in the agreement.",
+          "Possession risk: a ready home carries almost none, because you can see it and move in. An under-construction home can be delayed, so ask for the handover date in writing and check the project's RERA registration. See [RERA explained](/blog/rera-explained-for-home-buyers).",
+          "Paperwork: a ready home should have its completion and occupancy certificate. An under-construction one needs approved plans and a registered project. See [occupancy and completion certificates](/blog/occupancy-certificate-and-completion-certificate).",
+          "Tax: indirect tax on the purchase, such as GST, can apply differently to a home that is still being built than to a completed one with its certificate, and loan tax benefits can depend on whether you have taken possession. These rules change, so confirm them with a tax adviser before you decide.",
         ],
       },
       { type: "h2", text: "What to check for each" },
@@ -1013,6 +1063,7 @@ export const POSTS: BlogPost[] = [
     description:
       "What the Real Estate (Regulation and Development) Act is, which projects must register, what you can check, and what a RERA number does and does not promise.",
     published: "2026-10-19",
+    updated: "2026-10-21",
     format: "Explainer",
     readingMinutes: 6,
     reviewedBy: [{ name: "Jayandhan Rajasundaram" }, { name: "Anitha Narayanasamy" }],
@@ -1049,6 +1100,18 @@ export const POSTS: BlogPost[] = [
           "Search the number on your state RERA authority's official website.",
           "Compare the promoter's name, the project name and address, the completion date and the status with what you were told.",
           "Read the approvals listed there, and check them against the [documents in our checklist](/blog/property-approvals-documents-checklist).",
+        ],
+      },
+      { type: "h2", text: "What if the project is not registered?" },
+      {
+        type: "ul",
+        items: [
+          "Ask the builder, in writing, for the registration number. A project that needs registration and has none is a serious warning sign.",
+          "Search the project and the builder by name on your state's RERA website. A different spelling or a different phase can hide a real registration.",
+          "Some small or completed projects may be outside the Act. Ask which exemption applies and have your lawyer confirm it.",
+          "Do not pay a booking amount or sign an agreement until you have the answer.",
+          "If a builder is advertising or selling an unregistered project that needs registration, you can report it to your state's RERA authority.",
+          "If in doubt, choose a registered project or a ready home. See [ready-to-move or under-construction](/blog/ready-to-move-vs-under-construction).",
         ],
       },
       { type: "h2", text: "What RERA does not do" },
@@ -1871,6 +1934,339 @@ export const POSTS: BlogPost[] = [
       {
         type: "p",
         text: "Maintenance is part of the real monthly cost of a home, so include it when you compare. Use the [rent affordability calculator](/tools/rent-affordability-calculator) or the [rent vs buy calculator](/tools/rent-vs-buy-calculator), then browse [apartments for rent](/rent-lease/apartment) or [apartments for sale](/buy/apartment). Our [flat viewing checklist](/blog/flat-viewing-checklist) lists what to look at on the visit.",
+      },
+    ],
+  },
+  {
+    slug: "down-payment-for-a-home-loan",
+    title: "How much down payment do you need for a home loan in India?",
+    description:
+      "A lender finances only part of a home's value and you pay the rest. How the loan-to-value limit works, what else to budget for, and how down payment changes your EMI.",
+    published: "2026-10-21",
+    format: "Explainer",
+    readingMinutes: 6,
+    body: [
+      {
+        type: "note",
+        text: "General information, not financial advice. The maximum loan a lender may give, and the charges you pay, are set by the central bank and by each lender, and they change. Ask your lender for the current figures. Every number below is an illustration, not a quote.",
+      },
+      { type: "h2", text: "How much down payment do I need?" },
+      {
+        type: "p",
+        text: "You need to pay the part of the price that the lender will not finance, plus the one-time costs of buying. A lender lends only up to a share of the property's value, called the loan-to-value ratio, and the central bank caps that share. The cap is lower for higher-priced homes, so a more expensive home needs a larger down payment as a share of the price. Ask your lender what it will finance for the home you want.",
+      },
+      { type: "h2", text: "What is the loan-to-value (LTV) ratio?" },
+      {
+        type: "p",
+        text: "Loan-to-value is the loan amount divided by the value of the property, shown as a share. If a lender finances four-fifths of a home's value, its LTV is four-fifths and you pay the remaining one-fifth yourself. The value used is usually the lower of the price you agree and the lender's own valuation, so a low valuation can raise your down payment.",
+      },
+      { type: "h2", text: "What does the down payment have to cover?" },
+      {
+        type: "ul",
+        items: [
+          "The part of the price the lender does not finance.",
+          "Stamp duty and registration charges. See [stamp duty and registration explained](/blog/stamp-duty-and-registration-charges-explained).",
+          "Loan processing fees and any charges the lender asks for upfront.",
+          "Brokerage, if a broker is involved.",
+          "Society transfer, deposit or corpus fund payments in an apartment complex. See [society maintenance charges](/blog/society-maintenance-charges-explained).",
+          "Moving, repairs and furnishing, which are not part of the loan.",
+        ],
+      },
+      { type: "h2", text: "How does the down payment change my EMI?" },
+      {
+        type: "p",
+        text: "At the same interest rate and tenure, the EMI rises and falls in direct proportion to the loan amount. Borrow twice as much and the EMI is twice as high. A bigger down payment therefore lowers the EMI, and it also lowers the total interest you pay. The formula is in [how a home loan EMI is calculated](/blog/home-loan-emi-explained).",
+      },
+      {
+        type: "p",
+        text: "Example, for illustration only. Take a home priced at 5,000,000 rupees. With a down payment of 1,000,000 the loan is 4,000,000. With a down payment of 2,000,000 the loan is 3,000,000. At the same rate and tenure, where a 2,000,000 loan has an EMI of about 17,995, the first loan has an EMI of about 35,989 and the second about 26,992. Putting 1,000,000 more down lowers the monthly payment by about 8,997.",
+      },
+      { type: "h2", text: "How big should my down payment be?" },
+      {
+        type: "ol",
+        items: [
+          "Start with the lender's minimum, which is the home's value less the most it will finance.",
+          "Keep an emergency fund aside. Do not spend all your savings on the down payment.",
+          "Check that the EMI fits comfortably in your monthly income, using the [home loan eligibility calculator](/tools/home-loan-eligibility-calculator).",
+          "Try a few down payments in the [down payment calculator](/tools/down-payment-calculator) and compare the EMI each gives, using the [EMI calculator](/tools/emi-calculator).",
+          "Only then decide how much to put down.",
+        ],
+      },
+      {
+        type: "p",
+        text: "Browsing homes within your budget? See [apartments for sale](/buy/apartment) and [houses for sale](/buy/house) on Bhavano.",
+      },
+    ],
+  },
+  {
+    slug: "how-to-check-property-title-is-clear",
+    title: "How to check if a property has a clear title before you buy",
+    description:
+      "A clear title means the seller can legally pass full ownership to you. How a title search works, what an encumbrance certificate shows, and which documents to ask for.",
+    published: "2026-10-21",
+    format: "Checklist",
+    readingMinutes: 7,
+    body: [
+      {
+        type: "note",
+        text: "General information, not legal advice. Land and registration rules differ by state. Have a property lawyer check the documents before you pay a significant amount.",
+      },
+      { type: "h2", text: "How do I check if a property has a clear title?" },
+      {
+        type: "p",
+        text: "A title is clear when the seller can show an unbroken chain of ownership up to themselves, and no loan, dispute or other claim stands in the way of selling. You check it by collecting the title documents, getting an encumbrance certificate for the property, confirming the records match on the ground, and having a lawyer carry out a title search and give a written opinion.",
+      },
+      { type: "h2", text: "What is a title search?" },
+      {
+        type: "p",
+        text: "A title search is the review of the documents and public records showing who has owned the property and whether anyone else has a claim on it. A lawyer usually does it. They trace each transfer from an earlier owner to the present seller, look for gaps or doubtful documents, and check the registry, court and revenue records for loans, disputes or conflicting claims.",
+      },
+      { type: "h2", text: "What is an encumbrance certificate?" },
+      {
+        type: "p",
+        text: "An encumbrance certificate is an official record, from the sub-registrar's office in most states, that lists registered transactions on a property for a period you choose: sales, mortgages, gifts and similar. It helps show whether the property is free of registered loans or other claims. It does not show everything. An unregistered agreement or a court case may not appear, which is why it is one check among several.",
+      },
+      { type: "h2", text: "Which documents should I ask the seller for?" },
+      {
+        type: "ul",
+        items: [
+          "The registered sale deed or allotment letter in the seller's name, and the earlier deeds in the chain.",
+          "The encumbrance certificate for as many years back as the records allow.",
+          "Property tax receipts, and the khata or other municipal record in the seller's name. See [A khata and B khata](/blog/a-khata-b-khata-bengaluru) for one example.",
+          "The approved building plan and the completion or occupancy certificate. See [occupancy and completion certificates](/blog/occupancy-certificate-and-completion-certificate).",
+          "For a plot, the layout approval. See [buying a plot checklist](/blog/buying-a-plot-checklist).",
+          "Electricity and water bills, and a society no-dues letter for an apartment.",
+          "If the seller has a loan on it, the lender's statement and a written plan for releasing the original documents at sale.",
+          "If someone else is selling for the owner, the registered power of attorney, and proof that the owner is alive and agrees.",
+          "For a project, the RERA registration. See [how to verify a builder's RERA registration](/blog/rera-explained-for-home-buyers).",
+        ],
+      },
+      { type: "h2", text: "What checks should I do beyond the papers?" },
+      {
+        type: "ol",
+        items: [
+          "Visit the property and confirm who is actually in possession. A tenant or occupant may have rights.",
+          "Match the boundaries and area in the documents to what you see on site.",
+          "Ask neighbours and the society office whether there are disputes.",
+          "Have your lawyer search court records for cases involving the property or the seller.",
+          "Ask your lawyer to publish a public notice inviting objections, if they advise it.",
+          "Check that all co-owners or legal heirs are signing the sale.",
+        ],
+      },
+      { type: "h2", text: "What are the warning signs?" },
+      {
+        type: "ul",
+        items: [
+          "The seller cannot show the original documents, or says they are with a bank without proof.",
+          "The names on the papers do not match, or the chain has a missing step.",
+          "The price is far below similar homes, and the seller is in a hurry.",
+          "A co-owner or heir is absent from the sale.",
+          "The seller will not let your lawyer see the documents.",
+        ],
+      },
+      {
+        type: "p",
+        text: "For the full set of approvals to ask for, read the [documents checklist](/blog/property-approvals-documents-checklist). Before paying any advance, read [how to verify an owner](/blog/verify-property-owner-before-paying-token), and see our [trust page](/trust) for what Bhavano does and does not verify.",
+      },
+    ],
+  },
+  {
+    slug: "how-to-calculate-rental-yield",
+    title: "How to calculate rental yield on a property: gross and net, with an example",
+    description:
+      "Rental yield compares a property's yearly rent with its cost. The gross and net yield formulas, a worked example, and what the figure leaves out.",
+    published: "2026-10-21",
+    format: "Explainer",
+    readingMinutes: 5,
+    body: [
+      {
+        type: "note",
+        text: "General information, not financial or tax advice. The numbers in the example are made up to show the method and are not market figures.",
+      },
+      { type: "h2", text: "How do I calculate rental yield?" },
+      {
+        type: "p",
+        text: "Divide a year's rent by what the property cost, and express it as a share. That is the gross yield. For a fuller picture, take off the yearly costs of owning it and divide by the total you spent buying it. That is the net yield.",
+      },
+      { type: "h2", text: "What is the formula for gross rental yield?" },
+      {
+        type: "p",
+        text: "Gross rental yield = (monthly rent x 12) / property price x 100. It ignores every cost, so it flatters the property, but it is the quickest way to compare two homes.",
+      },
+      { type: "h2", text: "What is the formula for net rental yield?" },
+      {
+        type: "p",
+        text: "Net rental yield = (yearly rent - yearly costs) / (property price + buying costs) x 100.",
+      },
+      {
+        type: "ul",
+        items: [
+          "Yearly costs: property tax, society maintenance paid by the owner, repairs, insurance, agent fees, and rent lost while the home is empty between tenants.",
+          "Buying costs: stamp duty, registration, brokerage and any fitting-out. See [stamp duty and registration explained](/blog/stamp-duty-and-registration-charges-explained).",
+        ],
+      },
+      { type: "h2", text: "What does a worked example look like?" },
+      {
+        type: "p",
+        text: "Illustration only. A flat is priced at 5,000,000 rupees and rents for 20,000 a month. Yearly rent is 240,000. Gross yield is 240,000 / 5,000,000 = 4.8 per cent.",
+      },
+      {
+        type: "p",
+        text: "Now the costs. Say the owner pays 6,000 property tax, 36,000 maintenance, 10,000 repairs and loses one month of rent (20,000) to a vacancy. That is 72,000, leaving 168,000. Buying costs of 350,000 bring the total spent to 5,350,000. Net yield is 168,000 / 5,350,000 = about 3.14 per cent. The net figure is well below the gross one, which is normal.",
+      },
+      { type: "h2", text: "What does rental yield leave out?" },
+      {
+        type: "ul",
+        items: [
+          "Price growth. A property can gain or lose value, and yield counts only the rent.",
+          "Loan interest. If you borrowed to buy, your return depends on the loan's cost. See [how a home loan EMI works](/blog/home-loan-emi-explained).",
+          "Tax on rent and on a later sale.",
+          "The effort and risk of finding and keeping a good tenant. See [how to find reliable tenants](/blog/how-to-find-reliable-tenants).",
+        ],
+      },
+      { type: "h2", text: "How do I use yield to compare properties?" },
+      {
+        type: "ol",
+        items: [
+          "Look up what similar homes in the same area rent for, in [apartments for rent](/rent-lease/apartment), and what they sell for in [apartments for sale](/buy/apartment).",
+          "Calculate gross yield for each, then net yield for the finalists.",
+          "Compare the result with the cost of a loan and with other places you could put the money.",
+          "Do not choose on yield alone: location, building quality and demand decide whether the home stays let.",
+        ],
+      },
+      {
+        type: "p",
+        text: "Thinking of owning versus renting for yourself? See [rent or buy: the break-even rate](/blog/rent-or-buy-questions) and the [rent vs buy calculator](/tools/rent-vs-buy-calculator).",
+      },
+    ],
+  },
+  {
+    slug: "stamp-duty-and-registration-charges-explained",
+    title: "Stamp duty and registration charges on property in India: who pays and what decides them",
+    description:
+      "What stamp duty and registration charges are, who normally pays, why they differ by state, and how to find the exact amount for your property.",
+    published: "2026-10-21",
+    format: "Explainer",
+    readingMinutes: 5,
+    body: [
+      {
+        type: "note",
+        text: "General information, not legal or tax advice. Rates, concessions and rules are set by each state and change often. This page deliberately does not list rates. Always confirm the current figure with the state registration department or your lawyer.",
+      },
+      { type: "h2", text: "What are stamp duty and registration charges?" },
+      {
+        type: "p",
+        text: "Stamp duty is a tax the state government charges when a property changes hands or is leased on a registered document. Registration charges are a separate fee for recording the document at the sub-registrar's office. Together they make the transfer legally recognised, so they are a must-pay cost of buying, over and above the price.",
+      },
+      { type: "h2", text: "Who pays stamp duty and registration?" },
+      {
+        type: "p",
+        text: "In a sale, the buyer normally pays both. This is the usual practice, and it can be agreed differently in the contract. In a rental, the duty on the rent agreement is usually split or paid as the agreement says, so write it down. See [rental agreement questions](/blog/rental-agreement-questions).",
+      },
+      { type: "h2", text: "Why does stamp duty differ from state to state?" },
+      {
+        type: "p",
+        text: "Land and registration are state subjects, so each state sets its own rates and rules. Within a state, the amount can also depend on several things.",
+      },
+      {
+        type: "ul",
+        items: [
+          "The state and sometimes the city or local body the property is in.",
+          "The value used for duty, which is often the higher of the price you agreed and the government's own guideline or circle value for the area.",
+          "The type of property: residential, commercial, agricultural land or a plot.",
+          "Whether the property is ready or under construction, and whether it is a sale, a gift or a lease.",
+          "Concessions that some states give to certain buyers, such as women, or for affordable homes.",
+          "Other surcharges collected along with the duty, such as local body cess.",
+        ],
+      },
+      { type: "h2", text: "How do I find the exact amount for my property?" },
+      {
+        type: "ol",
+        items: [
+          "Find the guideline or circle value of the area on the state registration department's website, or ask the sub-registrar's office.",
+          "Compare it with the price in your agreement. Duty is usually charged on the higher figure.",
+          "Look up the current duty and registration rates for your state and property type on the same official site.",
+          "Ask your lawyer or the builder to confirm the total before you sign, and note any concession you qualify for.",
+          "Keep the duty and registration inside your budget from the start. See [how much down payment you need](/blog/down-payment-for-a-home-loan).",
+        ],
+      },
+      { type: "h2", text: "Can I avoid or reduce stamp duty?" },
+      {
+        type: "p",
+        text: "You can claim concessions the state offers, and you should pay the duty on the correct value. Under-stating the price to pay less duty is illegal and can put your ownership and your loan at risk. Pay the right amount and keep the receipts. They are part of your proof of title. See [how to check a property has a clear title](/blog/how-to-check-property-title-is-clear).",
+      },
+      {
+        type: "p",
+        text: "Comparing the total cost of different homes? Browse [apartments for sale](/buy/apartment), [houses for sale](/buy/house) and [plots](/plot), then use the [rent vs buy calculator](/tools/rent-vs-buy-calculator) to see the full picture.",
+      },
+    ],
+  },
+  {
+    slug: "capital-gains-tax-on-property-explained",
+    title: "Capital gains tax when you sell a property in India: how it works and ways to save tax",
+    description:
+      "How the capital gain on a property sale is worked out, short-term versus long-term, and exemptions such as Sections 54 and 54EC. Confirm with a tax adviser.",
+    published: "2026-10-21",
+    format: "Explainer",
+    readingMinutes: 6,
+    body: [
+      {
+        type: "note",
+        text: "General information, not tax advice. Tax rates, holding periods, indexation and exemption limits have changed in recent years and can change again. This page does not quote rates, so it cannot go out of date on them. Confirm the rules for your sale, and for the year you sell, with a chartered accountant or tax adviser.",
+      },
+      { type: "h2", text: "How is capital gains tax on a property sale calculated?" },
+      {
+        type: "p",
+        text: "The gain is the sale price minus what the property cost you to buy and improve, and minus the expenses of selling. The tax is charged on that gain, not on the whole price. Which rate applies depends on whether the gain is short-term or long-term, and that depends on how long you held the property.",
+      },
+      {
+        type: "ul",
+        items: [
+          "Sale price: the full value you receive, or the government's guideline value if that is higher and the tax rules say it counts.",
+          "Cost of acquisition: what you paid, including stamp duty and registration at the time.",
+          "Cost of improvement: money spent on additions and major improvements, with proof. Routine repairs usually do not count.",
+          "Selling expenses: brokerage and legal costs of this sale.",
+          "Gain = sale price - (acquisition cost + improvement cost + selling expenses).",
+        ],
+      },
+      { type: "h2", text: "What is the difference between short-term and long-term gains?" },
+      {
+        type: "p",
+        text: "The law sets a holding period. Sell after holding the property for longer than that period and the gain is long-term. Sell before it and the gain is short-term. A short-term gain is generally added to your income and taxed at your normal slab rate, while a long-term gain is taxed at its own special rate. Check the current period and rate for the year you sell.",
+      },
+      { type: "h2", text: "What is indexation, and does it still apply?" },
+      {
+        type: "p",
+        text: "Indexation adjusted the purchase cost upward for inflation, so that a long-term gain reflected real growth rather than inflation alone. The rules on whether it is available, for which purchases and at which rate, have been changed by recent budgets. Do not assume your adviser's last answer still holds. Ask which method applies to a property bought on your date, and whether you are allowed to choose.",
+      },
+      { type: "h2", text: "How can I save tax on the gain?" },
+      {
+        type: "p",
+        text: "The Income Tax Act allows some exemptions on long-term gains if you reinvest the money in specified ways. Each has conditions on time, amount and what you may buy, so the details matter.",
+      },
+      {
+        type: "ul",
+        items: [
+          "Section 54: for a long-term gain on a residential house, reinvesting in another residential house within the allowed time. Limits and conditions apply, and the new house may not be sold again too soon.",
+          "Section 54EC: for a long-term gain on land or a building, investing in specified bonds within the allowed time, up to a stated limit, and holding them for the required period.",
+          "Section 54F: for a long-term gain on an asset other than a house, investing the sale proceeds in a residential house, with conditions about what else you own.",
+          "Capital gains account scheme: if you have not reinvested before your tax return is due, you can deposit the unused amount in this account so the exemption is not lost.",
+        ],
+      },
+      { type: "h2", text: "What records should I keep?" },
+      {
+        type: "ol",
+        items: [
+          "The sale deed of your purchase, and proof of the stamp duty and registration you paid then.",
+          "Receipts and contractor bills for improvements.",
+          "The sale agreement and deed for this sale, and the bills for brokerage and legal fees.",
+          "Bank records of the money received and any reinvestment you make.",
+          "Your adviser's written working of the tax.",
+        ],
+      },
+      {
+        type: "p",
+        text: "If you plan to sell, read [how to sell property online in India](/blog/how-to-sell-property-online-in-india) and prepare the papers using the [documents checklist](/blog/property-approvals-documents-checklist). Costs on the way in matter too: see [stamp duty and registration](/blog/stamp-duty-and-registration-charges-explained).",
       },
     ],
   },
