@@ -79,4 +79,11 @@ describe('PostedConfirmationService', () => {
     await service.sendDue(new Date('2026-10-21T10:00:00Z'));
     expect(prisma.listing.findMany.mock.calls[0][0].where.publishedAt.lte.toISOString()).toBe('2026-10-21T09:00:00.000Z');
   });
+
+  it('falls back to 60 minutes if the setting cannot be read', async () => {
+    const { service, prisma } = make();
+    prisma.postedConfirmationSetting.findUnique.mockRejectedValue(new Error('relation does not exist'));
+    await service.sendDue(new Date('2026-10-21T10:00:00Z'));
+    expect(prisma.listing.findMany.mock.calls[0][0].where.publishedAt.lte.toISOString()).toBe('2026-10-21T09:00:00.000Z');
+  });
 });
