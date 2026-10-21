@@ -1529,6 +1529,351 @@ export const POSTS: BlogPost[] = [
       },
     ],
   },
+  {
+    slug: "what-does-bhk-mean",
+    title: "What does 1 BHK, 2 BHK and 3 BHK mean? A plain answer",
+    description:
+      "BHK means bedroom, hall and kitchen. What 1 BHK, 2 BHK, 3 BHK, 1 RK and studio mean, what is not counted, and how to compare homes of the same BHK.",
+    published: "2026-10-21",
+    format: "Explainer",
+    readingMinutes: 4,
+    body: [
+      {
+        type: "p",
+        text: "BHK stands for bedroom, hall and kitchen. The number in front is the number of bedrooms. So a 2 BHK home has two bedrooms, one hall (the living room) and one kitchen, usually with at least one bathroom.",
+      },
+      { type: "h2", text: "What do 1 BHK, 2 BHK and 3 BHK mean?" },
+      {
+        type: "ul",
+        items: [
+          "1 BHK: one bedroom, a living room and a kitchen. Common for singles and couples.",
+          "2 BHK: two bedrooms, a living room and a kitchen. The most searched size for small families.",
+          "3 BHK: three bedrooms, a living room and a kitchen. Suits larger families or people who want a home office or guest room.",
+          "4 BHK and above: four or more bedrooms, mostly in villas and larger apartments.",
+        ],
+      },
+      { type: "h2", text: "What does 1 RK mean, and what is a studio?" },
+      {
+        type: "p",
+        text: "RK means room and kitchen. A 1 RK has one room that serves as both bedroom and living space, with a separate kitchen. A studio flat has a single open space that holds the bed, sitting area and kitchen counter, usually with a separate bathroom.",
+      },
+      { type: "h2", text: "What is not counted in a BHK?" },
+      {
+        type: "p",
+        text: "Bathrooms, balconies, a utility area, a store room, a pooja room and a dining area are not counted in the BHK number. Some sellers add words like 2.5 BHK or 2 BHK plus study to describe an extra small room. Ask to see it, and check whether it is a real room with a window and a door.",
+      },
+      { type: "h2", text: "Does the same BHK mean the same size?" },
+      {
+        type: "p",
+        text: "No. Two flats can both be 2 BHK and differ a lot in size, because the number only counts rooms. Compare the area in square feet, and make sure both are quoted the same way. Carpet area is what you can actually use, while built-up and super built-up area include walls and shared spaces. Our guide to [carpet, built-up and super built-up area](/blog/carpet-built-up-super-built-up-area) explains the difference, and the [area unit converter](/tools/area-unit-converter) helps when sizes are given in different units.",
+      },
+      { type: "h2", text: "How do I pick the right BHK?" },
+      {
+        type: "ol",
+        items: [
+          "Count the people who will live there, and whether anyone needs a work-from-home space.",
+          "Decide whether you are renting or buying. A larger home costs more to rent, to maintain and to furnish.",
+          "Check the floor plan, not just the BHK label: where the doors, windows and bathrooms are matters as much as the room count.",
+          "Look at several homes of your chosen size in the same area before deciding.",
+        ],
+      },
+      {
+        type: "p",
+        text: "Ready to look? Browse [apartments for rent](/rent-lease/apartment) or [apartments for sale](/buy/apartment) and filter by BHK on Bhavano.",
+      },
+    ],
+  },
+  {
+    slug: "real-estate-terms-explained-india",
+    title: "Indian property terms explained: a plain-language glossary",
+    description:
+      "Plain answers to common property words in India: furnishing, token amount, lock-in, security deposit, possession, carpet area, khata, RERA and more.",
+    published: "2026-10-21",
+    format: "Glossary",
+    readingMinutes: 6,
+    body: [
+      {
+        type: "note",
+        text: "General information, not legal advice. Terms and rules differ by state and by agreement. Read your own documents and ask a lawyer when money or ownership is at stake.",
+      },
+      {
+        type: "p",
+        text: "Property ads are full of short words that assume you already know them. This glossary gives a plain answer to each, so you can read a listing or an agreement with confidence.",
+      },
+      { type: "h2", text: "Words you see on rental listings" },
+      {
+        type: "ul",
+        items: [
+          "Unfurnished: no furniture or appliances, though lights, fans and kitchen fittings may be there. Ask what is included.",
+          "Semi-furnished: some items such as wardrobes, a modular kitchen, lights and fans, but usually no bed or sofa. There is no fixed list, so ask for it in writing.",
+          "Fully furnished: ready to live in, with beds, sofa, wardrobes and usually appliances such as a fridge and washing machine. Check what works before you move in.",
+          "Security deposit: money you pay at the start and get back at the end, less any agreed deductions. See [how a security deposit works](/blog/security-deposit-for-rent-in-india).",
+          "Lock-in period: a minimum time you agree to stay (or the owner agrees to let you stay). Leaving early may cost you a penalty.",
+          "Notice period: how long before leaving you must tell the owner in writing.",
+          "Maintenance: the monthly society charge for common areas. Ask whether it is included in the rent or paid by you on top. See [society maintenance charges explained](/blog/society-maintenance-charges-explained).",
+        ],
+      },
+      { type: "h2", text: "Words you see on sale listings" },
+      {
+        type: "ul",
+        items: [
+          "Ready to move: the building is complete and you can take possession now. Compare with under-construction in [ready to move vs under construction](/blog/ready-to-move-vs-under-construction).",
+          "Possession: the date the owner hands over the property to you.",
+          "Resale: a property being sold by its current owner, not a builder selling a new one.",
+          "Token amount: a small advance paid to hold a property while the paperwork is prepared. Pay it only to a verified owner, against a written receipt. See [how to verify an owner before you pay](/blog/verify-property-owner-before-paying-token).",
+          "Carpet area, built-up area, super built-up area: three ways of measuring size. See [what each one means](/blog/carpet-built-up-super-built-up-area).",
+          "Freehold and leasehold: whether you own the land outright or for a fixed term. See [freehold vs leasehold](/blog/freehold-vs-leasehold-property-india).",
+        ],
+      },
+      { type: "h2", text: "Words about approvals and papers" },
+      {
+        type: "ul",
+        items: [
+          "Sale deed: the registered document that transfers ownership from seller to buyer.",
+          "Khata: a local-authority record of a property used for tax. In Bengaluru, see [A khata and B khata](/blog/a-khata-b-khata-bengaluru).",
+          "Occupancy certificate: proof from the local authority that a building was completed as approved and is fit to live in. See [occupancy and completion certificates](/blog/occupancy-certificate-and-completion-certificate).",
+          "RERA: the real estate regulator's registration for projects. See [RERA explained](/blog/rera-explained-for-home-buyers).",
+          "Encumbrance: a claim on the property, such as a loan or a dispute. An encumbrance certificate lists registered claims.",
+        ],
+      },
+      {
+        type: "p",
+        text: "For a full list of documents to ask for, read the [approvals and documents checklist](/blog/property-approvals-documents-checklist). For what the word BHK means, see [what BHK means](/blog/what-does-bhk-mean).",
+      },
+    ],
+  },
+  {
+    slug: "security-deposit-for-rent-in-india",
+    title: "Security deposit for rent in India: how it works and how to get it back",
+    description:
+      "What a rental security deposit is, how much is usual, when it is returned, what can be deducted, and what to put in writing so you get it back.",
+    published: "2026-10-21",
+    format: "Guide",
+    readingMinutes: 5,
+    body: [
+      {
+        type: "note",
+        text: "General information, not legal advice. Deposit amounts and rules differ by city, by state and by agreement. Read your own rental agreement carefully.",
+      },
+      {
+        type: "p",
+        text: "A security deposit is money a tenant pays the owner at the start of a tenancy. It is held as protection against unpaid rent or damage, and it is meant to come back when the tenancy ends, less any deductions the agreement allows. It is not rent, and it is not a fee.",
+      },
+      { type: "h2", text: "How much is a security deposit?" },
+      {
+        type: "p",
+        text: "There is no single amount for the whole country. It is usually set as a number of months of rent, and the customary number differs between cities, and even between neighbourhoods. Some cities have a norm of a few months, while others expect much more. Ask the owner, compare with similar homes in [apartments for rent](/rent-lease/apartment) in the same area, and negotiate before you sign, not after.",
+      },
+      { type: "h2", text: "Is the deposit refundable, and when?" },
+      {
+        type: "p",
+        text: "Yes, the deposit is meant to be refundable. The agreement should say when it is returned: usually on the day you hand back the keys, or within a fixed number of days afterwards. If the agreement is silent, you are relying on goodwill, so get a date written down.",
+      },
+      { type: "h2", text: "What can an owner deduct?" },
+      {
+        type: "ul",
+        items: [
+          "Unpaid rent or unpaid utility bills.",
+          "Repairs for damage beyond normal wear and tear.",
+          "Any items missing from the inventory you both signed.",
+          "Painting or cleaning charges, only if the agreement says so.",
+        ],
+      },
+      {
+        type: "p",
+        text: "Normal wear and tear, such as faded paint or small marks from everyday use, is generally not damage. Agree on that wording at the start.",
+      },
+      { type: "h2", text: "How do I protect my deposit?" },
+      {
+        type: "ol",
+        items: [
+          "Pay by bank transfer or UPI, not cash, and keep the receipt.",
+          "Put the amount, the refund date and the allowed deductions in the written agreement. See [rental agreement questions](/blog/rental-agreement-questions).",
+          "Take dated photos or a video of every room on the day you move in, and share them with the owner.",
+          "Sign an inventory list for any furniture and appliances.",
+          "Give notice in writing and keep a copy, within the notice period.",
+          "On the day you leave, do a joint walk-through and note the condition together.",
+        ],
+      },
+      { type: "h2", text: "What if the deposit is not returned?" },
+      {
+        type: "p",
+        text: "Start by asking in writing and keeping the message. Many disputes end there. If the owner still refuses, a lawyer or your local consumer or rent authority can advise on the next step for your state. Keeping the agreement, the payment proof and your move-in photos makes any dispute far easier.",
+      },
+      {
+        type: "p",
+        text: "Looking for a rental? Read our [flat viewing checklist](/blog/flat-viewing-checklist) and the [rent affordability calculator](/tools/rent-affordability-calculator) before you shortlist.",
+      },
+    ],
+  },
+  {
+    slug: "verify-property-owner-before-paying-token",
+    title: "How to verify a property owner before you pay a token amount",
+    description:
+      "Before paying any advance for a flat or house, check that the person is the real owner or an authorised agent. A step-by-step list of what to ask and see.",
+    published: "2026-10-21",
+    format: "Checklist",
+    readingMinutes: 5,
+    body: [
+      {
+        type: "note",
+        text: "General information, not legal advice. For a purchase, have a lawyer check the title before you pay a significant amount.",
+      },
+      {
+        type: "p",
+        text: "Check three things before you pay any advance: that the person you are dealing with really owns the property or is authorised to act for the owner, that the property can legally be let or sold, and that you get a written receipt for what you pay. Pay nothing to anyone who rushes you or who will not let you see the property and the papers.",
+      },
+      { type: "h2", text: "How do I know the person is the owner?" },
+      {
+        type: "ol",
+        items: [
+          "Ask to see a government photo ID, and match the name to the ownership papers.",
+          "For a purchase, ask for the sale deed or allotment letter, and the latest property tax receipt in the same name.",
+          "For a rental, ask for the same papers, or the latest electricity or water bill, and compare the name.",
+          "Meet at the property. Be cautious of anyone who is always unreachable, or who only wants to talk by message.",
+          "If a broker or relative is dealing for the owner, ask for a written authorisation and speak to the owner yourself.",
+        ],
+      },
+      { type: "h2", text: "What are the warning signs?" },
+      {
+        type: "ul",
+        items: [
+          "The rent or price is far below similar homes nearby. See [how to spot a bad property ad](/blog/spotting-a-bad-property-ad).",
+          "You are asked to pay before seeing the property, or to pay to 'hold' it the same day.",
+          "The owner is 'abroad' or 'in the army' and asks you to send money to receive keys.",
+          "The photos do not match the building or the neighbourhood.",
+          "They will not put anything in writing, or the name on the papers keeps changing.",
+        ],
+      },
+      { type: "h2", text: "How should I pay the token amount?" },
+      {
+        type: "ul",
+        items: [
+          "Pay by bank transfer or UPI to an account in the owner's name, not cash and not to a third person.",
+          "Get a signed receipt that states the amount, the date, the property address and what the amount is for.",
+          "Write down whether the token is refundable, and under what conditions, before you pay.",
+          "For a purchase, ask your lawyer to review the token or agreement-to-sell paper first.",
+        ],
+      },
+      { type: "h2", text: "What does Bhavano verify?" },
+      {
+        type: "p",
+        text: "Bhavano shows whether a listing is posted by an owner or an agent, and lets you message the poster. We do not inspect properties or check ownership papers for you, so the checks above are still yours to do. Our [trust page](/trust) explains what we do and do not verify.",
+      },
+      {
+        type: "p",
+        text: "Visiting soon? Use the [flat viewing checklist](/blog/flat-viewing-checklist), and read the [documents checklist](/blog/property-approvals-documents-checklist) before you buy.",
+      },
+    ],
+  },
+  {
+    slug: "freehold-vs-leasehold-property-india",
+    title: "Freehold vs leasehold property in India: what is the difference?",
+    description:
+      "Freehold means you own the property and the land outright. Leasehold means you hold it for a fixed term. How each affects selling, loans and renewal.",
+    published: "2026-10-21",
+    format: "Explainer",
+    readingMinutes: 5,
+    body: [
+      {
+        type: "note",
+        text: "General information, not legal advice. Land and lease rules differ by state and by authority. Have a lawyer read the title and any lease before you buy.",
+      },
+      {
+        type: "p",
+        text: "Freehold means you own the property and the land under it outright, with no time limit. Leasehold means the land belongs to another party, often a development authority or a government body, and you hold the right to use it for a fixed number of years under a lease. Both can be good buys, but they come with different rights and different checks.",
+      },
+      { type: "h2", text: "What is a freehold property?" },
+      {
+        type: "p",
+        text: "With freehold, ownership passes to you in full on registration. You can usually sell, gift or leave the property to your heirs without anyone else's permission, subject to ordinary local rules. Most standalone houses and many apartments in private layouts are freehold.",
+      },
+      { type: "h2", text: "What is a leasehold property?" },
+      {
+        type: "p",
+        text: "With leasehold, you own the building or the right to use the property, but the land is leased to you for a stated term. In some cities, plots and flats allotted by an authority are leasehold at first. The lease may later be converted to freehold on payment of charges, if the authority allows it. The terms are set by the lease deed, so the deed matters more than the label.",
+      },
+      { type: "h2", text: "How do they differ?" },
+      {
+        type: "ul",
+        items: [
+          "Ownership: freehold covers land and building; leasehold covers a right for a fixed term over land that belongs to someone else.",
+          "Selling: a freehold owner usually sells freely. A leasehold seller may need the lessor's permission or have to pay a transfer charge.",
+          "Loans: some lenders are cautious about leasehold, especially when little of the term remains. Ask your bank early.",
+          "Renewal and conversion: leasehold may need renewal, and conversion to freehold depends on the authority's current policy.",
+          "Resale: buyers often prefer freehold, so check how easy a leasehold property would be to sell later.",
+        ],
+      },
+      { type: "h2", text: "What should I check before buying a leasehold property?" },
+      {
+        type: "ol",
+        items: [
+          "Read the lease deed: the term, what remains of it, any ground rent, and any limits on use or transfer.",
+          "Ask the authority what it needs for transfer and whether conversion to freehold is open.",
+          "Confirm that any charges due to the authority are paid, with a clearance in writing.",
+          "Check the approvals, as for any property. See the [documents checklist](/blog/property-approvals-documents-checklist).",
+          "Ask your lender whether it will fund a leasehold property of that age and term.",
+        ],
+      },
+      {
+        type: "p",
+        text: "Comparing options? See [apartments for sale](/buy/apartment), [houses for sale](/buy/house) and [plots](/plot) on Bhavano, and ask each seller whether the title is freehold or leasehold before you visit. If you are buying land, read the [plot buying checklist](/blog/buying-a-plot-checklist) too.",
+      },
+    ],
+  },
+  {
+    slug: "society-maintenance-charges-explained",
+    title: "Society maintenance charges explained: what you pay and what it covers",
+    description:
+      "What apartment maintenance charges cover, who pays them, what a sinking fund and corpus fund are, and what to ask before you rent or buy in a society.",
+    published: "2026-10-21",
+    format: "Explainer",
+    readingMinutes: 5,
+    body: [
+      {
+        type: "p",
+        text: "Maintenance charges are a regular payment, usually monthly, that residents of an apartment complex or gated society make to run and repair the shared parts of the property. The amount and what it covers are set by the society, so they differ from one complex to the next. Always ask before you rent or buy.",
+      },
+      { type: "h2", text: "What do maintenance charges cover?" },
+      {
+        type: "ul",
+        items: [
+          "Security staff and the gate.",
+          "Cleaning and upkeep of staircases, corridors and the compound.",
+          "Lift operation and repairs.",
+          "Electricity for common areas and water pumps.",
+          "Gardening and the upkeep of shared facilities such as a gym, clubhouse or play area.",
+          "Common insurance, repairs and the society's day-to-day expenses.",
+        ],
+      },
+      { type: "h2", text: "What are a sinking fund and a corpus fund?" },
+      {
+        type: "p",
+        text: "A sinking fund is money set aside regularly for big future repairs, such as repainting the building or replacing a lift or a water tank. A corpus fund is usually a one-time payment made by a new buyer when joining, held as a reserve. Neither is a monthly running cost, and both are usually paid by the owner, not a tenant. Ask the society which funds exist and what each is used for.",
+      },
+      { type: "h2", text: "Who pays: the owner or the tenant?" },
+      {
+        type: "p",
+        text: "There is no universal rule. In many rentals the tenant pays the monthly maintenance on top of rent, while in others the owner pays it, or it is included in a single figure. Large one-off payments, like a sinking fund or a special repair levy, are usually the owner's. Settle this before you sign, and put it in the agreement. See [rental agreement questions](/blog/rental-agreement-questions).",
+      },
+      { type: "h2", text: "What should I ask before renting or buying?" },
+      {
+        type: "ol",
+        items: [
+          "How much is the maintenance, how is it calculated (per flat or by area), and how often is it paid?",
+          "Is it included in the rent, or paid separately?",
+          "What does it cover, and what are the extra charges (parking, club, water)?",
+          "Are there any unpaid dues on this flat? For a purchase, get a no-dues letter from the society.",
+          "Is the society registered, and is there a residents' association that holds regular meetings?",
+          "Are any big repairs or a levy planned?",
+        ],
+      },
+      {
+        type: "p",
+        text: "Maintenance is part of the real monthly cost of a home, so include it when you compare. Use the [rent affordability calculator](/tools/rent-affordability-calculator) or the [rent vs buy calculator](/tools/rent-vs-buy-calculator), then browse [apartments for rent](/rent-lease/apartment) or [apartments for sale](/buy/apartment). Our [flat viewing checklist](/blog/flat-viewing-checklist) lists what to look at on the visit.",
+      },
+    ],
+  },
 ];
 
 export function getPost(slug: string): BlogPost | undefined {

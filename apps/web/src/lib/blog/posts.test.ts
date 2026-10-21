@@ -46,6 +46,12 @@ const KNOWN_ROUTES = new Set([
   "/plot",
   "/blog/rental-agreement-questions",
   "/blog/spotting-a-bad-property-ad",
+  "/blog/what-does-bhk-mean",
+  "/blog/real-estate-terms-explained-india",
+  "/blog/security-deposit-for-rent-in-india",
+  "/blog/verify-property-owner-before-paying-token",
+  "/blog/freehold-vs-leasehold-property-india",
+  "/blog/society-maintenance-charges-explained",
 ]);
 
 function textsOf(block: BlogBlock): string[] {

@@ -92,3 +92,29 @@ New linked slugs were added to `KNOWN_ROUTES` in `apps/web/src/lib/blog/posts.te
 **Needs review before relying on it:** step 7 (agreement, registration, stamp duty, tax) is
 generic and hedged; have a qualified person check it. Rebuild `packages/types` (done) so the mobile
 bundle's committed `dist` carries the post; it reaches the app with the next release.
+
+## Fifth batch (2026-10-21): answer-first posts for AI assistants and answer engines
+Six posts written for the questions people put to ChatGPT, Perplexity, Google AI Overviews and similar tools. Each
+opens with a one- or two-sentence direct answer, then uses question-style headings with a short answer under each,
+lists and ordered steps (easy to quote), and links to the matching Bhavano listings, tools and earlier posts. They
+follow the blog's rules: no prices, rents or percentages, no invented author, and a "general information, not legal
+advice" note on the legal ones. The topics are not covered by the earlier 24 posts.
+
+| Post | Question it answers | Links to |
+|---|---|---|
+| `what-does-bhk-mean` | What does 1 BHK, 2 BHK, 3 BHK, RK and studio mean? | area explainer, converter, apartments for rent and sale |
+| `real-estate-terms-explained-india` | glossary: furnishing, token amount, lock-in, possession, sale deed, khata, RERA | hub linking the other new posts and the approvals posts |
+| `security-deposit-for-rent-in-india` | How does a rental security deposit work and how do I get it back? | rental agreement, viewing checklist, affordability calculator |
+| `verify-property-owner-before-paying-token` | How do I verify an owner before paying a token amount? | bad-ad guide, `/trust`, documents checklist |
+| `freehold-vs-leasehold-property-india` | What is the difference between freehold and leasehold? | documents and plot checklists, listings |
+| `society-maintenance-charges-explained` | What do maintenance charges, sinking fund and corpus fund cover? | calculators, viewing checklist, listings |
+
+- **Review before relying on them.** `freehold-vs-leasehold-property-india`, `security-deposit-for-rent-in-india` and
+  `verify-property-owner-before-paying-token` touch legal ground. They were written from general knowledge and
+  hedged; have a qualified person read them and add a real "reviewed by" name when one exists.
+- **Already in place:** every post gets `BlogPosting` and `BreadcrumbList` JSON-LD and is in the sitemap
+  automatically; `robots.ts` does not block AI crawlers. The mobile app bundles the same posts (next release).
+- **Not done:** an `llms.txt` file (optional, and `robots`/sitemap-adjacent changes need confirmation), and
+  `FAQPage` markup on these posts (the blog renderer has no FAQ block; question headings carry the structure).
+- **How to tell if it worked:** in Page visits, filter Source for `chatgpt.com`, `perplexity.ai`, `gemini.google.com`
+  and `copilot.microsoft.com`; in Search Console, look at impressions on the six new URLs after a few weeks.
