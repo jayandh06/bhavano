@@ -951,7 +951,7 @@ export function HomeSheetsProvider({
                 <Text style={{ fontSize: 13, color: colors.textSoft, marginBottom: 16, lineHeight: 19 }}>{skipReason}</Text>
               )}
               <Pressable onPress={() => setLoginStep("phone")} style={[styles.primaryButton, { backgroundColor: colors.green }]}>
-                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Continue with Phone OTP</Text>
+                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Continue with Phone (OTP on WhatsApp)</Text>
               </Pressable>
               {/* iOS-only, and still shown above Google even though Phone OTP now leads —
                 * Apple requires Sign in with Apple to have equal or greater prominence than any

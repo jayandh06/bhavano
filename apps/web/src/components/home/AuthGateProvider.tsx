@@ -493,7 +493,7 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
             {loginStep === "choose" && (
               <>
                 <button onClick={() => setLoginStep("phone")} className={`${outlineButtonClass} mb-2.5`}>
-                  Continue with Phone OTP
+                  Continue with Phone (OTP on WhatsApp)
                 </button>
                 {/* White with a border and the official colour mark, not the app's own green:
                   * Google's own button guidelines call for a neutral surface so the coloured

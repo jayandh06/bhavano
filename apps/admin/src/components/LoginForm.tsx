@@ -130,7 +130,7 @@ export function LoginForm() {
             Continue with Google
           </button>
           <button onClick={() => setStep("phone")} style={outlineButtonStyle}>
-            Continue with Phone OTP
+            Continue with Phone (OTP on WhatsApp)
           </button>
         </>
       )}
@@ -162,6 +162,9 @@ export function LoginForm() {
 
       {step === "otp" && (
         <>
+          <p style={{ fontSize: 13, margin: "0 0 12px", lineHeight: 1.5 }}>
+            We sent a 6-digit code to WhatsApp on +91 {phone} (or by SMS if WhatsApp was unavailable).
+          </p>
           <input
             value={otp}
             onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
