@@ -69,3 +69,7 @@ converted 4.4% of posted ads.
   `promoCode`; the BFF already accepted `discountCode`). The field says whether the code applied. A 100% code
   gives a ₹0 order, which the BFF fulfils without Razorpay (used to test the extra photo and video limits).
   Everyone else still gets the automatic promo and no field.
+- **Fix (2026-10-21): a 100% code threw "internal server error".** `createBoostOrder` asked Razorpay for a zero-amount
+  order, which Razorpay refuses. It now activates directly when the discounted total is 0 (a paid payment row at 0, the
+  redemption recorded, then the boost and its Instant Alerts), like the publish checkout already did. Other products
+  (Instant Alerts only, subscriptions, credit packs) still do not special-case a 100% code.

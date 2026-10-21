@@ -487,6 +487,37 @@ export class PaymentsService {
     });
     const amountInPaise = this.applyDiscount(baseRupees * 100, discount?.discountPercent);
 
+    // A 100% code leaves nothing to charge, and Razorpay refuses a zero-amount order (it was an
+    // internal server error). Activate directly, the way the publish checkout does for a zero total:
+    // a paid-at-zero payment row, the redemption recorded now (there is no webhook to do it later),
+    // then the boost and its Instant Alerts.
+    if (amountInPaise === 0) {
+      const payment = await this.prisma.payment.create({
+        data: {
+          userId,
+          razorpayOrderId: `free_boost_${listingId}_${Date.now()}`,
+          amount: 0,
+          currency: 'INR',
+          purpose: 'listing_boost',
+          listingId,
+          boostDays,
+          boostIncludesInstantAlerts: true,
+          discountCodeId: discount?.id,
+          status: 'paid',
+          paidAt: new Date(),
+          ...context,
+        },
+      });
+      if (discount?.id) {
+        await this.prisma.discountCodeRedemption.create({
+          data: { discountCodeId: discount.id, userId, paymentId: payment.id },
+        });
+      }
+      const boostedUntil = await this.activateListingBoost(listingId, boostDays, payment.id);
+      await this.activateInstantAlerts(listingId, payment.id, boostedUntil);
+      return { paymentId: payment.id, amount: 0, currency: 'INR', activated: true };
+    }
+
     const order = await this.getRazorpay().orders.create({
       amount: amountInPaise,
       currency: 'INR',

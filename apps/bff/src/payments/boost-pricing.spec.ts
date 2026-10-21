@@ -221,6 +221,40 @@ describe('PaymentsService.createBoostOrder — 30 days, alerts included', () => 
     expect(prisma.payment.create).toHaveBeenCalledWith({ data: expect.objectContaining({ amount: 14950 }) });
   });
 
+  it('activates a 100%-off boost directly: no Razorpay order, a paid payment at zero and a recorded redemption', async () => {
+    const { service, prisma, razorpayCreate } = makePayments();
+    (prisma.discountCode.findUnique as jest.Mock).mockResolvedValue({
+      id: 'dc100',
+      code: 'ADMINTEST',
+      discountPercent: 100,
+      active: true,
+      expiresAt: null,
+      maxRedemptions: null,
+      maxRedemptionsPerUser: 1,
+    });
+    const redemptionCreate = jest.fn();
+    (prisma as unknown as { discountCodeRedemption: unknown }).discountCodeRedemption = {
+      count: jest.fn().mockResolvedValue(0),
+      create: redemptionCreate,
+    };
+    (prisma.payment.create as jest.Mock).mockResolvedValue({ id: 'pay1' });
+    const internals = service as unknown as Record<string, jest.Mock>;
+    internals.activateListingBoost = jest.fn().mockResolvedValue(new Date());
+    internals.activateInstantAlerts = jest.fn().mockResolvedValue(undefined);
+
+    const result = await service.createBoostOrder('u1', 'l1', 30, 'ADMINTEST');
+
+    expect(razorpayCreate).not.toHaveBeenCalled();
+    expect(prisma.payment.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ amount: 0, status: 'paid', boostDays: 30, discountCodeId: 'dc100' }),
+    });
+    expect(redemptionCreate).toHaveBeenCalledWith({
+      data: { discountCodeId: 'dc100', userId: 'u1', paymentId: 'pay1' },
+    });
+    expect(internals.activateListingBoost).toHaveBeenCalledWith('l1', 30, 'pay1');
+    expect(result).toMatchObject({ amount: 0, activated: true });
+  });
+
   it('records where the checkout started, so admin-message boosts can be counted', async () => {
     const { service, prisma } = makePayments();
 
