@@ -681,8 +681,12 @@ export function recordShareTap(
   });
 }
 
-export function sendOtp(phone: string): Promise<{ success: true }> {
-  return bffFetch("/auth/otp/send", { method: "POST", body: JSON.stringify({ phone }) });
+export type OtpChannel = "whatsapp" | "sms";
+
+/** `channel` omitted lets the server choose (WhatsApp first, SMS if that fails); the response says
+ * which one the code actually went out on, so the sheet can tell the user where to look. */
+export function sendOtp(phone: string, channel?: OtpChannel): Promise<{ success: true; channel: OtpChannel }> {
+  return bffFetch("/auth/otp/send", { method: "POST", body: JSON.stringify({ phone, channel }) });
 }
 
 export async function verifyOtp(

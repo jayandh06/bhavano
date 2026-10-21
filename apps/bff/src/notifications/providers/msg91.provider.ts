@@ -231,6 +231,85 @@ export class Msg91Provider {
     }
   }
 
+  /** Login OTP over WhatsApp, via MSG91's WhatsApp API, using the approved AUTHENTICATION
+   * template ("{{1}} is your verification code. For your security, do not share this code.
+   * Expires in 10 minutes." plus a Copy code button). An authentication template carries the
+   * code twice: once as the body variable and once as the copy-code button's parameter, which is
+   * why `button_1` repeats it. Shape follows the other templates here (named `body_*` keys and a
+   * `button_1` of subtype url); the authentication template's body variable is positional, so
+   * its key is `body_1` — confirm against the dashboard's own "Code" snippet for this template
+   * if a real send is rejected, as with sendWhatsappTemplate above.
+   *
+   * Returns false instead of throwing, for every failure (not configured, MSG91 error, network):
+   * the caller's job on false is to fall back to SMS, not to surface an error. A true only means
+   * MSG91 accepted it; it is not a delivery receipt, which is why the login screens also offer
+   * "send by SMS instead". Own template name and namespace, as with the ad-posted template. */
+  async sendWhatsappOtp(phone: string, code: string): Promise<boolean> {
+    const authKey = this.config.get<string>('MSG91_AUTH_KEY');
+    const integratedNumber = this.config.get<string>('MSG91_WHATSAPP_INTEGRATED_NUMBER');
+    const template = this.config.get<string>('MSG91_WHATSAPP_OTP_TEMPLATE_NAME');
+    const namespace =
+      this.config.get<string>('MSG91_WHATSAPP_OTP_NAMESPACE') ??
+      this.config.get<string>('MSG91_WHATSAPP_NAMESPACE');
+    if (!authKey || !integratedNumber || !template || !namespace) {
+      this.logger.warn(
+        'MSG91 WhatsApp OTP not configured (MSG91_WHATSAPP_INTEGRATED_NUMBER/' +
+          'MSG91_WHATSAPP_OTP_TEMPLATE_NAME/MSG91_WHATSAPP_OTP_NAMESPACE) — falling back to SMS',
+      );
+      return false;
+    }
+
+    const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { authkey: authKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          integrated_number: integratedNumber,
+          content_type: 'template',
+          payload: {
+            messaging_product: 'whatsapp',
+            type: 'template',
+            template: {
+              name: template,
+              language: { code: 'en', policy: 'deterministic' },
+              namespace,
+              to_and_components: [
+                {
+                  to: [`91${phone}`],
+                  components: {
+                    body_1: { type: 'text', value: code },
+                    button_1: { subtype: 'url', type: 'text', value: code },
+                  },
+                },
+              ],
+            },
+          },
+        }),
+      });
+      const responseBody = await res.text();
+      const ok = res.ok && !responseBody.includes('"error"');
+      // The request is logged without the code: it is a live credential for the next 10 minutes.
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'msg91',
+        method: 'sendWhatsappOtp',
+        url,
+        request: { template, namespace, phone: maskPhone(phone) },
+        status: res.status,
+        responseText: responseBody,
+        ok,
+      });
+      if (!ok) this.logger.error(`MSG91 WhatsApp OTP send failed (${res.status})`);
+      return ok;
+    } catch (error) {
+      this.logger.error(
+        `Failed to send WhatsApp OTP: ${error instanceof Error ? error.message : error}`,
+      );
+      return false;
+    }
+  }
+
   /** WhatsApp via MSG91 — the ad-posted-confirmation notification (see
    * NotificationsService.notifyListingPosted), sent once an advertiser's listing goes live.
    * Reuses the welcome template's integrated number (one WABA account shared across templates),

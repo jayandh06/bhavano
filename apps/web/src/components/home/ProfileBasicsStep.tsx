@@ -390,7 +390,7 @@ export function ProfileBasicsStep({
   if (phase === "askOtp") {
     return (
       <div>
-        <p className="text-[13px] text-muted m-0 mb-4">Enter the OTP sent to +91 {linkPhone}.</p>
+        <p className="text-[13px] text-muted m-0 mb-4">Enter the OTP sent to +91 {linkPhone} on WhatsApp (or by SMS).</p>
         <input
           type="text"
           inputMode="numeric"

@@ -13,7 +13,7 @@ import { AuthGuard } from './guards/auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { RequestUser } from './guards/auth.guard';
 import { AuthService } from './auth.service';
-import { SendOtpDto } from './dto/send-otp.dto';
+import { SendOtpDto, type OtpChannel } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
 import { AppleLoginDto } from './dto/apple-login.dto';
@@ -28,9 +28,9 @@ export class AuthController {
   @HttpCode(200)
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
-  async sendOtp(@Body() dto: SendOtpDto): Promise<{ success: true }> {
-    await this.authService.sendOtp(dto.phone);
-    return { success: true };
+  async sendOtp(@Body() dto: SendOtpDto): Promise<{ success: true; channel: OtpChannel }> {
+    const channel = await this.authService.sendOtp(dto.phone, dto.channel);
+    return { success: true, channel };
   }
 
   @Post('otp/verify')

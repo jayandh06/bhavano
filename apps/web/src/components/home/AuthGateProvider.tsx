@@ -73,6 +73,10 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   const [loginStep, setLoginStep] = useState<LoginStep>("choose");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
+  // Where the code actually went (the server falls back from WhatsApp to SMS on its own), and how
+  // long until "send by SMS instead" appears: WhatsApp can accept a message the user never sees.
+  const [otpChannel, setOtpChannel] = useState<"whatsapp" | "sms">("whatsapp");
+  const [smsWaitSeconds, setSmsWaitSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -233,6 +237,12 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   /** Existing session / full-page Google return: force name + verified secondary if missing.
    * City-only gaps are not forced on every load (still optional). */
   useEffect(() => {
+    if (loginStep !== "otp" || smsWaitSeconds <= 0) return;
+    const timer = setTimeout(() => setSmsWaitSeconds((n) => n - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [loginStep, smsWaitSeconds]);
+
+  useEffect(() => {
     if (sessionBasicsCheckedRef.current) return;
     sessionBasicsCheckedRef.current = true;
     let cancelled = false;
@@ -290,12 +300,15 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  async function handleSendOtp() {
+  async function handleSendOtp(channel?: "whatsapp" | "sms") {
     setPending(true);
     setError(null);
-    const result = await sendOtpAction(phone);
+    const result = await sendOtpAction(phone, channel);
     setPending(false);
     if (result.success) {
+      setOtpChannel(result.channel ?? "sms");
+      setSmsWaitSeconds(SMS_FALLBACK_AFTER_SECONDS);
+      setOtp("");
       setLoginStep("otp");
     } else {
       setError(result.error ?? "Failed to send OTP");
@@ -525,12 +538,16 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                 </div>
                 {error && <p className={errorClass}>{error}</p>}
                 <button
-                  onClick={handleSendOtp}
+                  onClick={() => void handleSendOtp()}
                   disabled={phone.length !== 10 || pending}
                   className={`${primaryButtonClass} ${phone.length === 10 ? "opacity-100" : "opacity-50"}`}
                 >
-                  Send OTP
+                  Send OTP on WhatsApp
                 </button>
+                <p className="text-xs text-muted mb-2.5 leading-[1.5]">
+                  We&apos;ll send a 6-digit code to this number on WhatsApp. If it doesn&apos;t arrive, you can get it
+                  by SMS instead.
+                </p>
                 <button onClick={() => setLoginStep("choose")} className={backButtonClass}>
                   ← Back
                 </button>
@@ -539,6 +556,18 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
 
             {loginStep === "otp" && (
               <>
+                <p className="text-sm text-text mb-3 leading-[1.5]">
+                  {otpChannel === "whatsapp" ? (
+                    <>
+                      We sent a 6-digit code to <strong>WhatsApp</strong> on +91 {phone}. Open WhatsApp, tap{" "}
+                      <strong>Copy code</strong>, then paste it here.
+                    </>
+                  ) : (
+                    <>
+                      We sent a 6-digit code by <strong>SMS</strong> to +91 {phone}.
+                    </>
+                  )}
+                </p>
                 <input
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -553,6 +582,18 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                 >
                   Verify &amp; continue
                 </button>
+                {otpChannel === "whatsapp" &&
+                  (smsWaitSeconds > 0 ? (
+                    <p className="text-xs text-muted mb-1">Didn&apos;t get it on WhatsApp? SMS option in {smsWaitSeconds}s</p>
+                  ) : (
+                    <button
+                      onClick={() => void handleSendOtp("sms")}
+                      disabled={pending}
+                      className="bg-transparent border-0 text-text-soft text-[13px] font-bold underline cursor-pointer mb-1 block"
+                    >
+                      Send the code by SMS instead
+                    </button>
+                  ))}
                 <button onClick={() => setLoginStep("phone")} className={backButtonClass}>
                   ← Back
                 </button>
@@ -588,6 +629,9 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     </AuthGateContext.Provider>
   );
 }
+
+/** How long the WhatsApp code gets before "send by SMS instead" appears. */
+const SMS_FALLBACK_AFTER_SECONDS = 20;
 
 const primaryButtonClass =
   "w-full bg-green text-on-green border-0 rounded-lg p-[13px] text-sm font-bold cursor-pointer mb-2.5";

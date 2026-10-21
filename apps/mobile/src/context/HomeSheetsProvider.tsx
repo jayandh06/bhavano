@@ -56,6 +56,8 @@ export const TOKEN_KEY = "bhavano.accessToken";
  * is a preference, not a secret, and SecureStore has no web implementation. Mirrors web's
  * `bhavano_city` cookie — see apps/web/src/lib/defaultCity.ts. */
 const CITY_KEY = "bhavano.city";
+/** How long the WhatsApp code gets before "send by SMS instead" appears. */
+const SMS_FALLBACK_AFTER_SECONDS = 20;
 
 /** Decodes the JWT payload without verifying — fine for local display purposes only;
  * the BFF independently verifies the token's signature on every request. */
@@ -198,6 +200,10 @@ export function HomeSheetsProvider({
   const [loginStep, setLoginStep] = useState<LoginStep>("choose");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
+  // Where the code actually went (the server falls back from WhatsApp to SMS on its own), and how
+  // long until "send by SMS instead" appears: WhatsApp can accept a message the user never sees.
+  const [otpChannel, setOtpChannel] = useState<"whatsapp" | "sms">("whatsapp");
+  const [smsWaitSeconds, setSmsWaitSeconds] = useState(0);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [basicsInitial, setBasicsInitial] = useState<ProfileBasicsValues>({
@@ -229,6 +235,12 @@ export function HomeSheetsProvider({
     setProfile(null);
     if (Platform.OS !== "web") await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (loginStep !== "otp" || smsWaitSeconds <= 0) return;
+    const timer = setTimeout(() => setSmsWaitSeconds((n) => n - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [loginStep, smsWaitSeconds]);
 
   useEffect(() => {
     setUnauthorizedHandler((token) => void endDeadSession(token));
@@ -627,11 +639,14 @@ export function HomeSheetsProvider({
     if (token) await bffLogout(token).catch(() => {});
   }, [accessToken]);
 
-  async function handleSendOtp() {
+  async function handleSendOtp(channel?: "whatsapp" | "sms") {
     setPending(true);
     setError(null);
     try {
-      await sendOtp(phone);
+      const sent = await sendOtp(phone, channel);
+      setOtpChannel(sent.channel);
+      setSmsWaitSeconds(SMS_FALLBACK_AFTER_SECONDS);
+      setOtp("");
       setLoginStep("otp");
     } catch (e) {
       setError(friendlyErrorMessage(e, "Failed to send OTP"));
@@ -1003,12 +1018,15 @@ export function HomeSheetsProvider({
               </View>
               {error && <Text style={styles.errorText}>{error}</Text>}
               <Pressable
-                onPress={handleSendOtp}
+                onPress={() => void handleSendOtp()}
                 disabled={phone.length !== 10 || pending}
                 style={[styles.primaryButton, { backgroundColor: colors.green, opacity: phone.length === 10 ? 1 : 0.5 }]}
               >
-                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Send OTP</Text>
+                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Send OTP on WhatsApp</Text>
               </Pressable>
+              <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18, marginBottom: 8 }}>
+                We'll send a 6-digit code to this number on WhatsApp. If it doesn't arrive, you can get it by SMS instead.
+              </Text>
               <Pressable
                 onPress={() => setLoginStep("choose")}
                 style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}
@@ -1022,6 +1040,11 @@ export function HomeSheetsProvider({
           {loginStep === "otp" && (
             <>
               <Text style={[styles.sheetTitle, { color: colors.text }]}>Enter the OTP</Text>
+              <Text style={{ color: colors.text, fontSize: 14, lineHeight: 21, marginBottom: 12 }}>
+                {otpChannel === "whatsapp"
+                  ? `We sent a 6-digit code to WhatsApp on +91 ${phone}. Open WhatsApp, tap Copy code, then paste it here.`
+                  : `We sent a 6-digit code by SMS to +91 ${phone}.`}
+              </Text>
               <BottomSheetTextInput
                 value={otp}
                 onChangeText={(v) => setOtp(v.replace(/\D/g, "").slice(0, 6))}
@@ -1041,6 +1064,18 @@ export function HomeSheetsProvider({
               >
                 <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Verify & continue</Text>
               </Pressable>
+              {otpChannel === "whatsapp" &&
+                (smsWaitSeconds > 0 ? (
+                  <Text style={{ color: colors.muted, fontSize: 12, marginTop: 4 }}>
+                    Didn't get it on WhatsApp? SMS option in {smsWaitSeconds}s
+                  </Text>
+                ) : (
+                  <Pressable onPress={() => void handleSendOtp("sms")} disabled={pending} style={{ marginTop: 4 }}>
+                    <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13, textDecorationLine: "underline" }}>
+                      Send the code by SMS instead
+                    </Text>
+                  </Pressable>
+                ))}
               <Pressable
                 onPress={() => setLoginStep("phone")}
                 style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}

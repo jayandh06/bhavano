@@ -1,3 +1,4 @@
+import type { OtpChannel } from './dto/send-otp.dto';
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
@@ -140,14 +141,27 @@ export class AuthService {
    * team is a different audience from external TestFlight testers, and only this path actually
    * exercises the real phone-OTP flow real users go through; Sign in with Apple alone never
    * would. */
-  async sendOtp(phone: string): Promise<void> {
+  async sendOtp(phone: string, requested?: OtpChannel): Promise<OtpChannel> {
     const testPhone = this.config.get<string>('TEST_OTP_PHONE');
     const testCode = this.config.get<string>('TEST_OTP_CODE');
     const isTestPhone = Boolean(testPhone && testCode && phone === testPhone);
 
+    // WhatsApp first, SMS as the fallback. `OTP_DEFAULT_CHANNEL=sms` is the kill switch: it
+    // turns the WhatsApp attempt off for everyone who did not explicitly ask for it. An explicit
+    // `sms` request (the login screens' "send by SMS instead") always goes straight to SMS.
+    const preferred: OtpChannel =
+      requested ?? (this.config.get<string>('OTP_DEFAULT_CHANNEL') === 'sms' ? 'sms' : 'whatsapp');
+
     const code = await this.otpService.createChallenge(phone, isTestPhone ? testCode : undefined);
-    if (isTestPhone) return;
+    if (isTestPhone) return preferred;
+
+    if (preferred === 'whatsapp' && (await this.msg91.sendWhatsappOtp(phone, code))) {
+      return 'whatsapp';
+    }
+    // The same code goes out by SMS: it is the live challenge, and sendWhatsappOtp has already
+    // logged why WhatsApp did not take it. Returned so the client words the screen to match.
     await this.msg91.sendOtp(phone, code);
+    return 'sms';
   }
 
   async verifyOtp(

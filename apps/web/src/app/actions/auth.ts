@@ -2,7 +2,7 @@
 
 import { signIn, signOut } from "@/auth";
 import type { LinkIdentifierResult, UserProfileDto } from "@bhavano/types";
-import { fetchProfile, getVisitContext, linkPhone, logout, sendOtp, type VisitContext } from "@/lib/bff";
+import { fetchProfile, getVisitContext, linkPhone, logout, sendOtp, type OtpChannel, type VisitContext } from "@/lib/bff";
 import { isAccessTokenValid } from "@/lib/session";
 import { auth, unstable_update } from "@/auth";
 
@@ -16,10 +16,13 @@ function definedStrings(visit: VisitContext): Record<string, string> {
   );
 }
 
-export async function sendOtpAction(phone: string): Promise<{ success: boolean; error?: string }> {
+export async function sendOtpAction(
+  phone: string,
+  channel?: OtpChannel,
+): Promise<{ success: boolean; error?: string; channel?: OtpChannel }> {
   try {
-    await sendOtp(phone);
-    return { success: true };
+    const sent = await sendOtp(phone, channel);
+    return { success: true, channel: sent.channel };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to send OTP" };
   }
