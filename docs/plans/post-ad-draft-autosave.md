@@ -53,6 +53,7 @@ survive all of these.
     - Mobile: there's no tab, so the app counts it as a reload when the draft was saved in the last
       10 minutes and the seller hasn't left the post-ad screen in this app run (`leftFormThisRun`).
     - Anything else gets the card.
+  - The "We restored the ad" banner is cleared when the seller moves on to the Preview step (2026-10-21): they have been through the details by then, and the warning to check them came too late there.
   - Test: `apps/web/e2e/post-ad-draft-offer.spec.ts`.
   - The draft is cleared once `createListing` succeeds, even when payment is still pending, so
     retrying payment can never try to create the same listing id again. Saving stops at that point.

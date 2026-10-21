@@ -1486,9 +1486,16 @@ export function PostAdWizard({
     if (!activeToken) {
       void logPostLoginRequired({ step });
       void recordAppPageView(`/post/login-required?step=${encodeURIComponent(step)}`);
-      requireLogin({ onSuccess: () => setStep("review") });
+      requireLogin({
+        onSuccess: () => {
+          setDraftRestored(false);
+          setStep("review");
+        },
+      });
       return;
     }
+    // The restore notice has done its job once the seller has gone through the details.
+    setDraftRestored(false);
     setStep("review");
   }
 

@@ -1640,9 +1640,16 @@ export function PostAdWizard({
     if (!activeToken) {
       pushDataLayerEvent("post_login_required", { step });
       reportLoginRequired(step);
-      requireLogin({ onSuccess: () => setStep("review") });
+      requireLogin({
+        onSuccess: () => {
+          setDraftRestored(false);
+          setStep("review");
+        },
+      });
       return;
     }
+    // The restore notice has done its job once the seller has gone through the details.
+    setDraftRestored(false);
     setStep("review");
   }
 
@@ -2034,7 +2041,7 @@ export function PostAdWizard({
         </div>
       )}
 
-      {isAdmin && step !== "success" && step !== "offer" && (
+      {isAdmin && step === "details" && (
         <AssistedSellerPanel value={assistedSeller} onChange={setAssistedSeller} />
       )}
 

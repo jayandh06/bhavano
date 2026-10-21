@@ -199,3 +199,6 @@ leaves nothing behind for good.
   masked phone, the preparer and the claim link.
 - **Expiry:** `AssistedListingExpiryJob` runs daily at 03:30 IST and fully deletes unclaimed
   assisted listings older than 14 days.
+
+## Placement (2026-10-21)
+The "Posting for someone else" panel shows on the Details step only (it used to sit above every step, including Preview). The choice and seller fields persist into Preview, where the button reads "Save for seller".
