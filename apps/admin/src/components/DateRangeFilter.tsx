@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Link, { useLinkStatus } from "next/link";
+import { useRef, useState } from "react";
 import { carriedValue, type SearchParams } from "@/lib/searchParams";
 import { daysAgoIST, todayIST } from "@/lib/dateRangeDefaults";
 
@@ -60,6 +59,9 @@ export function DateRangeFilter({
   // navigation happens (there may be none — Custom edits the same URL a preset would, but only
   // once "Apply filters" is actually pressed).
   const [customToggled, setCustomToggled] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  // Which preset was just pressed, shown as selected (with an ellipsis) until the page reloads with the new range.
+  const [pendingLabel, setPendingLabel] = useState<string | null>(null);
   const showCustomFields = customToggled || !matchedPreset;
 
   function hrefForPreset(days: number): string {
@@ -74,13 +76,42 @@ export function DateRangeFilter({
     return `${basePath}?${params.toString()}`;
   }
 
+  // A preset now SUBMITS the screen's filter form with the range filled in, rather than following a link built from
+  // the URL: a link can only carry what has already been applied, so anything typed or picked in the form but not
+  // yet applied was silently dropped and the preset seemed not to take effect until "Apply filters" was pressed.
+  // Outside a form (none today) it falls back to the old link.
+  function applyPreset(p: (typeof PRESETS)[number]) {
+    setPendingLabel(p.label);
+    const form = rootRef.current?.closest("form");
+    if (!form) {
+      window.location.assign(hrefForPreset(p.days));
+      return;
+    }
+    const set = (name: string, value: string) => {
+      const el = form.elements.namedItem(name);
+      if (el instanceof HTMLInputElement) el.value = value;
+    };
+    set(fromParam, daysAgoIST(p.days));
+    set(toParam, todayIST());
+    form.requestSubmit();
+  }
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+    <div ref={rootRef} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
         {PRESETS.map((p) => (
-          <Link key={p.label} href={hrefForPreset(p.days)} prefetch={false} style={{ textDecoration: "none" }}>
-            <PresetPill label={p.label} active={!showCustomFields && matchedPreset?.label === p.label} />
-          </Link>
+          <button
+            key={p.label}
+            type="button"
+            onClick={() => applyPreset(p)}
+            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}
+          >
+            <PresetPill
+              label={p.label}
+              active={pendingLabel === p.label || (!showCustomFields && !pendingLabel && matchedPreset?.label === p.label)}
+              pending={pendingLabel === p.label}
+            />
+          </button>
         ))}
         <button
           type="button"
@@ -108,8 +139,7 @@ export function DateRangeFilter({
  * "didn't work" and the natural reaction was to click again. Showing the pill as selected the
  * instant it's pressed (with an ellipsis until the new range arrives) answers "did it register?"
  * immediately. */
-function PresetPill({ label, active }: { label: string; active: boolean }) {
-  const { pending } = useLinkStatus();
+function PresetPill({ label, active, pending }: { label: string; active: boolean; pending: boolean }) {
   return (
     <span style={{ ...pillStyle(active || pending), display: "inline-block", opacity: pending ? 0.75 : 1 }}>
       {label}

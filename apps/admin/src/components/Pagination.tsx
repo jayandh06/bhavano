@@ -84,6 +84,7 @@ export function Pagination({
   pageSize,
   sp,
   paramNames = DEFAULT_PAGE_PARAM_NAMES,
+  formId,
 }: {
   currentPage: number;
   totalPages: number;
@@ -93,7 +94,31 @@ export function Pagination({
   /** Which query-param names this instance owns — override when a page has more than one
    * `<Pagination>` so they don't collide over the same `?page=`/`?limit=` keys. */
   paramNames?: PageParamNames;
+  /** Id of the screen's filter `<form>`. When given, the page buttons SUBMIT that form (with `page` set) instead of
+   * following a link built from the URL, so whatever is typed or picked in the form but not yet applied comes along
+   * — a link can only carry what is already in the URL, which made paging ignore unapplied filters until "Apply
+   * filters" was pressed. */
+  formId?: string;
 }) {
+  const control = (p: number, content: React.ReactNode, style: React.CSSProperties, ariaLabel?: string) =>
+    formId ? (
+      <button
+        key={`page-${p}-${ariaLabel ?? ""}`}
+        type="submit"
+        form={formId}
+        name={paramNames.page}
+        value={String(p)}
+        aria-label={ariaLabel}
+        style={{ ...style, cursor: "pointer", font: "inherit", fontSize: 13, fontWeight: 700 }}
+      >
+        {content}
+      </button>
+    ) : (
+      <Link key={p} href={buildHref(p)} prefetch={false} aria-label={ariaLabel} style={style}>
+        {content}
+      </Link>
+    );
+
   return (
     <div
       style={{
@@ -111,11 +136,7 @@ export function Pagination({
             * to 7 page numbers plus Prev/Next all visible at once, proactively prefetching every
             * one is pure waste, not a correctness issue (each target already carries the real
             * current filters). */}
-          {currentPage > 1 && (
-            <Link href={buildHref(currentPage - 1)} prefetch={false} aria-label="Previous page" style={adjacentButtonStyle}>
-              ← Prev
-            </Link>
-          )}
+          {currentPage > 1 && control(currentPage - 1, "← Prev", adjacentButtonStyle, "Previous page")}
 
           {pageNumbersToShow(currentPage, totalPages).map((p, i) =>
             p === "ellipsis" ? (
@@ -123,9 +144,7 @@ export function Pagination({
                 …
               </span>
             ) : (
-              <Link key={p} href={buildHref(p)} prefetch={false} style={pageButtonStyle(p === currentPage)}>
-                {p}
-              </Link>
+              control(p, p, pageButtonStyle(p === currentPage))
             ),
           )}
 

@@ -142,7 +142,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           * column-header filters submit together via the single "Apply filters" button. A second
           * "Go" submit in the table used to fight this — changing a column filter and then hitting
           * Apply would drop whatever the other form owned, and vice versa. */}
-        <form method="get">
+        <form method="get" id="moderation-filters">
           <div
             style={{
               display: "flex",
@@ -212,6 +212,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           buildHref={(p) => buildPageHref("/", sp, p)}
           pageSize={limit}
           sp={sp}
+          formId="moderation-filters"
         />
       </div>
     </div>

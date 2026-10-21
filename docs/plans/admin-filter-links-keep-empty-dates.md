@@ -41,3 +41,25 @@ receives no date range for page 2.
   Not reproduced as a real problem here and not changed.
 - A click made before the page finished loading once failed to move to page 2 in my local run and could not be
   reproduced again (three further attempts, including an immediate click, worked).
+
+## Follow-up (2026-10-21): presets and page buttons now submit the filter form
+
+After the fix above the admin still reported that "1 day / 7 days" and the page numbers only took effect after pressing
+**Apply filters** first. Apply is a native GET form submit and always works; the presets and page numbers were
+client-side `<Link>` navigations built from the URL, so they could only carry filters that had already been applied
+and they depend on Next's client router (soft navigation) behaving. Both problems go away if they submit the form
+like Apply does.
+
+- `Pagination` takes an optional `formId`; with it, page numbers / Prev / Next are `<button type="submit" form=… name="page"
+  value=N>` that submit the screen's filter form, so unapplied filters (a typed Title, a changed status, custom dates)
+  come along. Listing moderation passes `formId="moderation-filters"`. Other screens keep their links until they adopt it
+  (add an `id` to their form and pass `formId`).
+- `DateRangeFilter` presets are buttons that fill the date fields of the surrounding form and `requestSubmit()` it
+  (falling back to the old link only if there is no form). The pressed pill shows as selected with an ellipsis until the
+  page reloads. The preset still resets to page 1 because `page` is not a form field.
+- Trade-off: these are full page loads (as "Apply filters" already was), not soft navigations, and they drop the
+  `__skipRemember` marker the same way Apply does.
+
+Verified locally (real admin app, test session, fake data service): with "unapplied-title" typed, page 2 sent
+`search=unapplied-title&offset=25`; with "typed-before-preset" typed, "7 days" sent `createdFrom=2026-10-15` plus the
+typed search and reset to offset 0.
