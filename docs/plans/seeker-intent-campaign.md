@@ -150,3 +150,27 @@ out Furniture" ad group, already paused entirely on 2026-09-28 for the same reas
 / "sell 2bhk online" and "free rent ads posting sites" / "property rent advertise free" were
 considered and left alone: they matched the flagging pattern (digits, or "rent a" as a substring of
 "rent ads"/"rent advertise") but read as genuine owner/poster intent, not seeker bycatch.
+
+## Update 2026-10-21 — ad groups for the cities added to the campaign
+
+The campaign's location targeting now lists 8 places (Bengaluru, Pune, Kolkata, Hyderabad, New Delhi, Chennai, Mumbai City,
+Navi Mumbai) but it only had ad groups for the first three, so searchers elsewhere had nothing city-specific to match.
+`ads_add_seeker_city_ad_groups.py` (dry run, then Google-validated, then applied) copied the live Bengaluru Rent / Buy
+Seekers ad groups for **Hyderabad, Delhi NCR, Chennai and Mumbai**: 8 ad groups, 8 phrase-match keywords each (city
+swapped, "delhi" in Delhi's keywords because that is what people type), one responsive search ad each (headlines and
+descriptions with the city, display path `/rent/<slug>` or `/buy/<slug>`), and the **final URL of that city and
+transaction type** (`/<city-slug>/rent-lease` or `/<city-slug>/buy`; slugs hyderabad, delhi-ncr, chennai, mumbai).
+
+- **Rent groups ENABLED, Buy groups PAUSED**, like the existing Buy groups. Ads show "Unknown" approval until Google
+  finishes its first review.
+- The campaign's Final URL suffix (campaign / ad group tracking) is inherited, so these clicks will carry
+  campaign and ad group in Page visits. The new ad group ids are in `apps/bff/src/ads/campaign-names.ts` (needs a BFF
+  deploy for the admin to show their names).
+- **Navi Mumbai has no page on the site**, so it has no ad group of its own; the Mumbai pages serve it. Its location
+  target stays.
+- Pages checked first (all 200, real inventory): Delhi NCR 74 rent / 24 buy, Hyderabad 67 / 18, Chennai 47 / 14,
+  Mumbai 41 / 12 active listings (Kolkata 44 / 16, Pune 55 / 6 for comparison).
+- The script skips ad groups that already exist, so it is safe to re-run. To add another city, add it to `CITIES`
+  (needs a `/<slug>/rent-lease` and `/<slug>/buy` page on the site).
+- Not changed: budget (₹350/day, shared by 14 ad groups now), bidding (portfolio Target CPA), negatives, the Bengaluru, Pune
+  and Kolkata ad groups, or which Buy groups are enabled.

@@ -58,6 +58,15 @@ export const AD_GROUP_NAMES: Record<string, string> = {
   '199354221814': 'Ad Group — Pune Buy Seekers', // Metro-Seeker Intent
   '202226465882': 'Ad Group — Kolkata Rent Seekers', // Metro-Seeker Intent
   '202226465922': 'Ad Group — Kolkata Buy Seekers', // Metro-Seeker Intent
+  // Added 2026-10-21 by ads_add_seeker_city_ad_groups.py (the cities added to the campaign's location targeting)
+  '201399936637': 'Ad Group — Hyderabad Rent Seekers', // Metro-Seeker Intent
+  '201399937157': 'Ad Group — Hyderabad Buy Seekers', // Metro-Seeker Intent
+  '206491243332': 'Ad Group — Delhi NCR Rent Seekers', // Metro-Seeker Intent
+  '206491243572': 'Ad Group — Delhi NCR Buy Seekers', // Metro-Seeker Intent
+  '206491243652': 'Ad Group — Chennai Rent Seekers', // Metro-Seeker Intent
+  '201006388963': 'Ad Group — Chennai Buy Seekers', // Metro-Seeker Intent
+  '206491243812': 'Ad Group — Mumbai Rent Seekers', // Metro-Seeker Intent
+  '201006389003': 'Ad Group — Mumbai Buy Seekers', // Metro-Seeker Intent
   '201054972699': 'Ad Group 3.1 — Lease Commercial/Office', // Other-Metro-Lease Property-MaxConv
   '201054972659': 'Ad Group 3.2 — Lease Residential/Long-term', // Other-Metro-Lease Property-MaxConv
 };
