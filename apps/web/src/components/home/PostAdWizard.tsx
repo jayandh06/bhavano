@@ -115,7 +115,6 @@ import { GetAppCard } from "./GetAppCard";
 import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { SelectField } from "./SelectField";
-import { VideoManager } from "./VideoManager";
 import { Icon, isIconName } from "./Icon";
 import { UploadZone } from "./UploadZone";
 
@@ -2900,13 +2899,20 @@ export function PostAdWizard({
                       <p className="text-sm font-bold text-text m-0">
                         ✨ Your ad is now Featured — you can add up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos (up to 3 minutes each).
                       </p>
-                      <p className="text-xs text-muted m-0">Add videos below, or add more photos from the edit page.</p>
-                      <Link
-                        href={`/my-listings/${createdListing.id}/edit`}
-                        className="inline-flex w-fit items-center rounded-lg bg-green px-3.5 py-2 text-[13px] font-bold text-on-green no-underline"
-                      >
-                        Add more photos
-                      </Link>
+                      <div className="flex flex-wrap gap-2">
+                        <Link
+                          href={`/my-listings/${createdListing.id}/edit#photos`}
+                          className="inline-flex w-fit items-center rounded-lg bg-green px-3.5 py-2 text-[13px] font-bold text-on-green no-underline"
+                        >
+                          Add more photos
+                        </Link>
+                        <Link
+                          href={`/my-listings/${createdListing.id}/edit#videos`}
+                          className="inline-flex w-fit items-center rounded-lg bg-green px-3.5 py-2 text-[13px] font-bold text-on-green no-underline"
+                        >
+                          Add videos
+                        </Link>
+                      </div>
                     </>
                   )}
                   <p className="text-sm font-bold text-text m-0 mt-1">
@@ -3013,9 +3019,22 @@ export function PostAdWizard({
             />
           </div>
 
-          <div className="w-full flex justify-center">
-            <VideoManager key={`${createdListing.id}-${createdListing.videoEntitlement?.maxVideos ?? 0}`} listing={createdListing} accessToken={token ?? ""} />
-          </div>
+          {!showRegenerateBanner && (
+            <div className="w-full flex flex-wrap justify-center gap-2">
+              <Link
+                href={`/my-listings/${createdListing.id}/edit#photos`}
+                className="inline-flex items-center rounded-lg border border-border px-3.5 py-2 text-[13px] font-bold text-text no-underline"
+              >
+                Add more photos
+              </Link>
+              <Link
+                href={`/my-listings/${createdListing.id}/edit#videos`}
+                className="inline-flex items-center rounded-lg border border-border px-3.5 py-2 text-[13px] font-bold text-text no-underline"
+              >
+                Add a video
+              </Link>
+            </div>
+          )}
 
           <div className="flex items-center gap-4">
             <Link

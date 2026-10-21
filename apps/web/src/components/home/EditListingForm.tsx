@@ -330,7 +330,7 @@ export function EditListingForm({
         * Renders even at zero photos — EditListingPhotos' own "+ Add" control is how a listing
         * with none gets its first post-creation photo; the caller must not gate this on
         * photosFull.length. */}
-      <div className="max-w-[720px]">
+      <div id="photos" className="max-w-[720px] scroll-mt-24">
         <EditListingPhotos
           listingId={listing.id}
           title={listing.title}
@@ -346,7 +346,7 @@ export function EditListingForm({
 
       {/* Video add/delete — was previously only reachable from the /my-listings row, not this
         * page. `expanded` matches it to EditListingPhotos' UploadZone-style add control above. */}
-      <div className="max-w-[720px]">
+      <div id="videos" className="max-w-[720px] scroll-mt-24">
         <label className={labelClass}>Videos</label>
         <VideoManager listing={listing} accessToken={accessToken} expanded />
       </div>

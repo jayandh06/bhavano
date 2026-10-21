@@ -158,3 +158,11 @@ test (volume is too small). Also watch R2 storage growth and host disk for the v
 [`featured-listings-visibility-improvements.md`](featured-listings-visibility-improvements.md),
 [`product-pricing-tiers.md`](product-pricing-tiers.md),
 [`boost-30-day-and-included-alerts.md`](boost-30-day-and-included-alerts.md).
+
+## Update 2026-10-21: photo and video actions together, both open the edit screen (web)
+On the web confirmation screen "Add more photos" sat in the Featured banner while "+ Add video" (a file picker
+that asked for the video straight away) sat much lower. Now the Featured banner shows **Add more photos** and **Add
+videos** side by side, both opening the edit screen at its Photos and Videos sections (`#photos`, `#videos`
+anchors on the edit form). The standalone video picker is gone from the confirmation screen; an ad that is not
+Featured sees a quiet pair of links in its place (**Add more photos**, **Add a video**) that go to the same
+place. Mobile already had one combined "Add more photos / videos" button to the edit screen.
