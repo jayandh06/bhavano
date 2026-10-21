@@ -53,6 +53,7 @@ import { INDIAN_LANGUAGE_LABELS, INDIAN_LANGUAGES, type AiGenerateUsageDto, type
 import { reportClientErrorAction } from "@/app/actions/clientErrors";
 import {
   createAssistedListingAction,
+  releasePostedConfirmationAction,
   createListingAction,
   fetchMyListingAction,
   updateListingAction,
@@ -641,6 +642,17 @@ export function PostAdWizard({
     // The preview is only shown after the account check in onPreview, so resume one step back.
     setStep(draft.step === "review" ? "details" : draft.step);
   }
+
+  // The "your ad is posted" email/WhatsApp is held back until here (Featured paid, skipped or the
+  // payment window closed). Once per created ad; the server also sends it after a delay if this
+  // screen is never reached. docs/plans/post-first-featured-upsell.md.
+  const releasedConfirmationFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (step !== "success" || !createdListing || assistedMode) return;
+    if (releasedConfirmationFor.current === createdListing.id) return;
+    releasedConfirmationFor.current = createdListing.id;
+    void releasePostedConfirmationAction(createdListing.id);
+  }, [step, createdListing, assistedMode]);
 
   useEffect(() => {
     if (!showRegenerateBanner || step !== "success" || !createdListing || createdListing.isBoosted) {
@@ -1909,7 +1921,7 @@ export function PostAdWizard({
             claimName: assistedSeller.name.trim(),
             postedAs: assistedSeller.sellerType,
           })
-        : await createListingAction(listingInput);
+        : await createListingAction({ ...listingInput, deferPostedConfirmation: true });
 
     if (!result.success) {
       setPending(false);

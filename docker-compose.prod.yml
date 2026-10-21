@@ -60,6 +60,8 @@ services:
       MSG91_WHATSAPP_OTP_TEMPLATE_NAME: ${MSG91_WHATSAPP_OTP_TEMPLATE_NAME:-}
       MSG91_WHATSAPP_OTP_NAMESPACE: ${MSG91_WHATSAPP_OTP_NAMESPACE:-}
       OTP_DEFAULT_CHANNEL: ${OTP_DEFAULT_CHANNEL:-}
+      # Minutes to hold the "your ad is posted" email/WhatsApp back for the Featured offer (default 60; 0 = at once).
+      POSTED_CONFIRMATION_DELAY_MINUTES: ${POSTED_CONFIRMATION_DELAY_MINUTES:-}
       # Ad-posted-confirmation WhatsApp — same MSG91 account/integrated number as the welcome
       # template above, but its own namespace: MSG91 issued this template (recreated as
       # "listing_posted" to add a location field) a different namespace than welcome's, so it

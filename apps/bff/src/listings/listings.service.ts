@@ -124,6 +124,7 @@ import { PlatformFeeSettingsService } from '../plans/platform-fee-settings.servi
 import { platformFeeApplies } from '@bhavano/types/platformFeePricing';
 import { scrubPhonesInText } from './scrub-listing-phones';
 import { BULK_IMPORT_OWNER_PHONE, isBulkImportOwner } from './bulk-import-owner';
+import { postedConfirmationDelayMinutes } from './posted-confirmation.service';
 import { assistedClaimCutoff, assistedClaimUrl, maskClaimPhone } from './assisted-listing';
 
 /** `create`'s admin-assisted mode — see ListingsService.createAssisted. */
@@ -1507,6 +1508,10 @@ export class ListingsService {
      * than outreach/admin — see CreateListingInput.sessionId's own doc comment for why this,
      * rather than the client, is what records /post/success now. */
     sessionId?: string,
+    /** The client will release the "ad posted" message itself when the seller reaches the live
+     * screen, and PostedConfirmationService sends it after the delay otherwise. Only honoured while
+     * the delay is above zero. */
+    deferPostedConfirmation = false,
   ): Promise<void> {
     if (sessionId) {
       this.analyticsService
@@ -1540,7 +1545,8 @@ export class ListingsService {
         .catch(() => undefined);
     }
 
-    if (!isBulkImportOwner && owner) {
+    const holdPostedConfirmation = deferPostedConfirmation && postedConfirmationDelayMinutes(this.config) > 0;
+    if (!isBulkImportOwner && owner && !holdPostedConfirmation) {
       this.notificationsService
         .notifyListingPosted(
           owner,
@@ -1926,6 +1932,7 @@ export class ListingsService {
         ownerId,
         isBulkImportOwner,
         input.sessionId,
+        input.deferPostedConfirmation === true,
       );
     }
 

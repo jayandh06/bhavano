@@ -491,6 +491,11 @@ export function createListing(input: CreateListingInput, accessToken: string): P
   return authedBffFetch<ListingDetailDto>(accessToken, "/listings", { method: "POST", body: JSON.stringify(input) });
 }
 
+/** The wizard reached the live screen: send the held-back "your ad is posted" message now. */
+export function releasePostedConfirmation(accessToken: string, listingId: string): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/posted-confirmation`, { method: "POST" });
+}
+
 /** Posting wizard's AI title/description "Generate" assist — see
  * docs/plans/ai-listing-copy-assist.md. */
 export function generateListingCopy(

@@ -157,3 +157,20 @@ our problem, not theirs.
   logged, nothing throws.
 - Click the link in the message → lands on the live ad, not a redirect or a 404.
 - Point SMTP at a dead host and post → the ad is still created and returned.
+
+## Timing (2026-10-21)
+
+The message used to go out the moment the Review button was pressed, i.e. before the seller had seen
+the Featured offer. Now (`PostedConfirmationService`, `apps/bff/src/listings/posted-confirmation.*`):
+
+- The web and mobile wizards send `deferPostedConfirmation: true` on create, so the BFF holds the
+  message back.
+- When the wizard reaches the live-ad screen (Featured paid, "No thanks", or the payment window
+  closed) it calls `POST /listings/:id/posted-confirmation`, which sends it at once. Owner-only and
+  idempotent (a `posted` row in `ListingNotificationLog` means "already sent").
+- A job (`PostedConfirmationJob`, every 5 minutes) sends it anyway once the ad has been live for
+  `POSTED_CONFIRMATION_DELAY_MINUTES` (default 60; `0` = send at post time, as before). It looks at
+  ads published in the last 6 hours that came from a browser/app post, so it never mails a backlog.
+- Clients that don't send the flag (older mobile builds, outreach, admin) still get it at post time.
+- The delay is an env var in `docker-compose.prod.yml`; changing it needs a bff restart. An admin
+  setting would need a table and migration, not built.

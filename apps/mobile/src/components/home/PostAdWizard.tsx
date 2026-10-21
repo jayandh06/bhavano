@@ -89,7 +89,7 @@ import { startListingPublishCheckout } from "../../lib/listingPublishCheckout";
 import { listingPublishRequiresCheckout } from "@bhavano/types/listingPublishPricing";
 import { platformFeeApplies } from "@bhavano/types/platformFeePricing";
 import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
-import { fetchListingById, fetchMyListing } from "../../lib/bffClient";
+import { fetchListingById, fetchMyListing, releasePostedConfirmation } from "../../lib/bffClient";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { ErrorBoundary } from "../ErrorBoundary";
@@ -502,6 +502,18 @@ export function PostAdWizard({
     // The preview is only shown after the account check in onPreview, so resume one step back.
     setStep(draft.step === "review" ? "details" : draft.step);
   }
+
+  // Releases the held-back "your ad is posted" message once the live screen is reached (Featured
+  // paid, skipped or the payment sheet closed). Once per created ad; the server also sends it
+  // after a delay if this is never reached.
+  const releasedConfirmationFor = useRef<string | null>(null);
+  useEffect(() => {
+    const token = accessToken ?? postAccessToken;
+    if (step !== "success" || !createdListing || !token) return;
+    if (releasedConfirmationFor.current === createdListing.id) return;
+    releasedConfirmationFor.current = createdListing.id;
+    void releasePostedConfirmation(token, createdListing.id).catch(() => undefined);
+  }, [step, createdListing, accessToken, postAccessToken]);
 
   useEffect(() => {
     const token = accessToken ?? postAccessToken;
@@ -1598,6 +1610,9 @@ export function PostAdWizard({
           // goes live — see CreateListingInput.sessionId's own doc comment for why the client no
           // longer reports its own success (a fire-and-forget request that can silently drop).
           sessionId: getAnalyticsSessionId(),
+          // The "ad posted" email/WhatsApp waits for the live screen (released below) or the
+          // server's delay. docs/plans/post-first-featured-upsell.md.
+          deferPostedConfirmation: true,
           category,
           transactionType,
           price: Number(price),

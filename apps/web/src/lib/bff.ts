@@ -460,6 +460,11 @@ export function createListing(input: CreateListingInput, accessToken?: string): 
   return accessToken ? authedBffFetch(accessToken, "/listings", init) : bffFetch<ListingDetailDto>("/listings", init);
 }
 
+/** The wizard reached the live screen: send the held-back "your ad is posted" message now. */
+export function releasePostedConfirmation(accessToken: string, listingId: string): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/posted-confirmation`, { method: "POST" });
+}
+
 export function fetchMyListings(accessToken: string): Promise<ListingDetailDto[]> {
   return authedBffFetch(accessToken, "/users/me/listings", { cache: "no-store" });
 }

@@ -479,6 +479,9 @@ export interface CreateListingInput {
      * record the /post/success page-view trail entry itself once this listing actually goes live.
      * Absent for outreach/admin-created listings, which have no browser/app session at all. */
     sessionId?: string;
+    /** Hold the "your ad is posted" email/WhatsApp until the live screen releases it (see
+     * POST /listings/:id/posted-confirmation) or POSTED_CONFIRMATION_DELAY_MINUTES passes. */
+    deferPostedConfirmation?: boolean;
     category: ListingCategory;
     transactionType: TransactionType;
     price: number;

@@ -183,4 +183,11 @@ export class CreateListingDto {
   @IsString()
   @MaxLength(64)
   sessionId?: string;
+
+  /// Hold the "your ad is posted" email/WhatsApp back until the wizard's live screen releases it
+  /// (or POSTED_CONFIRMATION_DELAY_MINUTES passes). Sent by clients that call
+  /// POST /listings/:id/posted-confirmation; older clients omit it and get the message at once.
+  @IsOptional()
+  @IsBoolean()
+  deferPostedConfirmation?: boolean;
 }

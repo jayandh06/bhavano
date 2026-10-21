@@ -22,6 +22,7 @@ import {
   claimListing,
   createAssistedListing,
   createListing,
+  releasePostedConfirmation,
   searchUsersAsAdmin,
   deleteListingVideo,
   deleteOwnListingPhoto,
@@ -379,4 +380,12 @@ export async function deleteVideoAction(listingId: string, videoId: string): Pro
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to delete video" };
   }
+}
+
+/** Best effort, like every other analytics-adjacent call here: a failure just means the server's
+ * delayed sweep sends the message instead. */
+export async function releasePostedConfirmationAction(listingId: string): Promise<void> {
+  const session = await auth();
+  if (!session?.accessToken) return;
+  await releasePostedConfirmation(session.accessToken, listingId).catch(() => undefined);
 }
