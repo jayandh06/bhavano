@@ -567,6 +567,10 @@ export function PostAdWizard({
   // see docs/plans/ai-listing-copy-assist.md. Dismissible, and only ever offered, never applied
   // automatically: "Apply" below still goes through ModerationService.moderate() like any edit.
   const [showRegenerateBanner, setShowRegenerateBanner] = useState(false);
+  // Featured is confirmed by a payment webhook, a few seconds after the buyer pays, so the ad record
+  // held here still says "not boosted" (1 video, 6 photos) at that moment. While the banner is up
+  // and the ad is not yet seen as boosted, the effect below re-reads the ad until it is.
+  const [featuredPending, setFeaturedPending] = useState(false);
   const [regeneratedDescriptionReady, setRegeneratedDescriptionReady] = useState(false);
   const [regenerateApplying, setRegenerateApplying] = useState(false);
   const [regenerateApplied, setRegenerateApplied] = useState(false);
@@ -637,6 +641,35 @@ export function PostAdWizard({
     // The preview is only shown after the account check in onPreview, so resume one step back.
     setStep(draft.step === "review" ? "details" : draft.step);
   }
+
+  useEffect(() => {
+    if (!showRegenerateBanner || step !== "success" || !createdListing || createdListing.isBoosted) {
+      setFeaturedPending(false);
+      return;
+    }
+    setFeaturedPending(true);
+    let cancelled = false;
+    let tries = 0;
+    const timer = setInterval(async () => {
+      tries += 1;
+      const fresh = await fetchMyListingAction(createdListing.id);
+      if (cancelled) return;
+      if (fresh?.isBoosted) {
+        setCreatedListing(fresh);
+        setFeaturedPending(false);
+        clearInterval(timer);
+      } else if (tries >= 10) {
+        setFeaturedPending(false);
+        clearInterval(timer);
+      }
+    }, 2500);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+    // createdListing.id / isBoosted are the only parts of the ad this depends on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showRegenerateBanner, step, createdListing?.id, createdListing?.isBoosted]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2876,15 +2909,22 @@ export function PostAdWizard({
             <div className="w-full max-w-[440px] rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5 flex flex-col gap-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex flex-col gap-2">
-                  <p className="text-sm font-bold text-text m-0">
-                    ✨ Your ad is now Featured — you can now add up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos (up to 3 minutes each).
-                  </p>
-                  <Link
-                    href={`/my-listings/${createdListing.id}/edit`}
-                    className="inline-flex w-fit items-center rounded-lg bg-green px-3.5 py-2 text-[13px] font-bold text-on-green no-underline"
-                  >
-                    Add photos / videos
-                  </Link>
+                  {featuredPending ? (
+                    <p className="text-sm font-bold text-text m-0">✨ Activating your Featured benefits…</p>
+                  ) : (
+                    <>
+                      <p className="text-sm font-bold text-text m-0">
+                        ✨ Your ad is now Featured — you can add up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos (up to 3 minutes each).
+                      </p>
+                      <p className="text-xs text-muted m-0">Add videos below, or add more photos from the edit page.</p>
+                      <Link
+                        href={`/my-listings/${createdListing.id}/edit`}
+                        className="inline-flex w-fit items-center rounded-lg bg-green px-3.5 py-2 text-[13px] font-bold text-on-green no-underline"
+                      >
+                        Add more photos
+                      </Link>
+                    </>
+                  )}
                   <p className="text-sm font-bold text-text m-0 mt-1">
                     Want a richer AI description with nearby landmarks?
                   </p>
@@ -2990,7 +3030,7 @@ export function PostAdWizard({
           </div>
 
           <div className="w-full flex justify-center">
-            <VideoManager listing={createdListing} accessToken={token ?? ""} />
+            <VideoManager key={`${createdListing.id}-${createdListing.videoEntitlement?.maxVideos ?? 0}`} listing={createdListing} accessToken={token ?? ""} />
           </div>
 
           <div className="flex items-center gap-4">

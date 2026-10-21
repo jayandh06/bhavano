@@ -2030,10 +2030,23 @@ export function PostAdWizard({
           )}
           {/* An extra, not a restriction: 3-6 photos and a video stay free
             * (docs/plans/featured-ad-benefits-and-media-limits.md). */}
-          <Text style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>
-            {photoUris.length >= MAX_PHOTOS ? `You’ve added ${MAX_PHOTOS} photos. ` : "Want to show more? "}
-            Featured ads can add up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos up to 3 minutes. You can upgrade right after you post.
-          </Text>
+          <View
+            style={{
+              marginTop: 8,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: colors.gold + "80",
+              backgroundColor: colors.gold + "1A",
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+            }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: "700", color: colors.gold }}>✨ Make it Featured to show more</Text>
+            <Text style={{ fontSize: 12, color: colors.text, marginTop: 2 }}>
+              {photoUris.length >= MAX_PHOTOS ? `You’ve added ${MAX_PHOTOS} photos. ` : ""}
+              Featured ads can have up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos of up to 3 minutes each. You can upgrade right after you post.
+            </Text>
+          </View>
           {photoUris.length > 0 && (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
               {photoUris.map((uri, i) => (
@@ -2059,9 +2072,11 @@ export function PostAdWizard({
           </Text>
           <Text style={{ color: colors.muted, fontSize: 12 }}>
             Up to {videoEntitlement.maxDurationSec}s each.
-            {videoEntitlement.canUpgradeByBoosting
-              ? " Feature this listing after posting to add up to 5 videos, up to 3 minutes each."
-              : ""}
+            {videoEntitlement.canUpgradeByBoosting ? (
+              <Text style={{ fontWeight: "700", color: colors.gold }}>
+                {" "}✨ Featured ads can add up to 5 videos, up to 3 minutes each.
+              </Text>
+            ) : null}
           </Text>
           {videos.length < videoEntitlement.maxVideos && (
             <Pressable onPress={pickVideo} style={[styles.photoButton, { borderColor: colors.green, backgroundColor: colors.surfaceAlt, marginTop: 8 }]}>
