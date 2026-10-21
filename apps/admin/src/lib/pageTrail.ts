@@ -31,6 +31,26 @@ const POST_STEP_LABELS: Record<string, string> = {
   offer: "Featured offer",
 };
 
+/** `/post/action?screen=...&event=...` is a click on the Featured offer screen or the "Your ad is
+ * live!" screen, written by the web wizard (apps/web/src/lib/postActionTrail.ts). Event names to
+ * readable text; an unknown one is shown as-is. */
+const POST_ACTION_LABELS: Record<string, string> = {
+  plan_selected: "chose a plan",
+  pay_tapped: "tapped Pay",
+  paid: "paid",
+  activated: "Featured activated (no charge)",
+  free_boost_used: "used a free Featured credit",
+  cancelled: "closed the payment window",
+  error: "checkout error",
+  skipped: "tapped No thanks",
+  make_featured: "tapped Make it Featured",
+  share_whatsapp: "shared on WhatsApp",
+  share_facebook: "shared on Facebook",
+  share_poster: "shared the ad poster",
+  view_ad: "tapped View my ad",
+  feedback: "tapped Feedback on posting",
+};
+
 /** `/post/login-required?step=...` carries the wizard's own internal `Step` value (web/mobile
  * PostAdWizard.tsx's `type Step`), not the kebab-case path slug above — `"review"`/
  * `"transactionType"`, not `"preview"`/`"transaction-type"`. Separate map, same labels. */
@@ -104,6 +124,18 @@ export function trailEntry(path: string): { text: string; isError: boolean } {
               ? `Login nudge — dismissed (${surface})`
               : `Login nudge: ${event} (${surface})`;
       return { text: label, isError: false };
+    } catch {
+      return { text: path, isError: false };
+    }
+  }
+  if (path.startsWith("/post/action")) {
+    try {
+      const params = new URL(path, "https://x.invalid").searchParams;
+      const screen = params.get("screen") === "offer" ? "Featured offer" : "Ad live";
+      const event = params.get("event") ?? "unknown";
+      const days = params.get("days");
+      const what = POST_ACTION_LABELS[event] ?? event;
+      return { text: `${screen} \u2014 ${what}${days ? ` (${days} days)` : ""}`, isError: event === "error" };
     } catch {
       return { text: path, isError: false };
     }
@@ -194,6 +226,7 @@ const SITE_URL = "https://www.bhavano.com";
 
 const EVENT_MARKER_PREFIXES = [
   "/login-nudge",
+  "/post/action",
   "/post/boost-recovery",
   "/post/error",
   "/post/login-required",

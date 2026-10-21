@@ -31,6 +31,7 @@ export function BoostBundlePicker({
   hideBenefits = false,
   onActivating,
   onCancelled,
+  onEvent,
   initialPricing,
   source,
   effectiveness,
@@ -54,6 +55,12 @@ export function BoostBundlePicker({
   /** Fired when the buyer closes the payment window without paying. The offer screen uses it to
    * go straight to the live-ad confirmation instead of leaving them on the offer. */
   onCancelled?: () => void;
+  /** Every step of the buyer's interaction, for the post flow's Page visits trail: a plan chosen,
+   * Pay tapped, and how the checkout ended. Optional; the picker works the same without it. */
+  onEvent?: (
+    event: "plan_selected" | "pay_tapped" | "paid" | "activated" | "cancelled" | "error" | "free_boost_used",
+    days?: number,
+  ) => void;
   /** The same real boosted-vs-unboosted stats BoostRecoveryDialog already shows on the review
    * step (docs/plans/boost-offer-conversion-2026-09.md's own finding: the ~12x-views lift is the
    * strongest argument for boosting and wasn't shown here before) — null before the nightly job's
@@ -137,6 +144,7 @@ export function BoostBundlePicker({
     setPending(true);
     setError(null);
 
+    onEvent?.("pay_tapped", effectiveDuration);
     const result = await startBoostCheckout({
       listingId,
       category,
@@ -146,6 +154,12 @@ export function BoostBundlePicker({
     });
     setPending(false);
 
+    onEvent?.(
+      result.outcome === "paid" || result.outcome === "activated" || result.outcome === "cancelled"
+        ? result.outcome
+        : "error",
+      effectiveDuration,
+    );
     if (result.outcome === "activated") {
       onActivating?.();
       setTimeout(() => router.refresh(), 1500);
@@ -168,6 +182,7 @@ export function BoostBundlePicker({
       setError(result.error);
       return;
     }
+    onEvent?.("free_boost_used");
     onActivating?.();
     setTimeout(() => router.refresh(), 1500);
   }
@@ -260,7 +275,10 @@ export function BoostBundlePicker({
             <button
               key={days}
               type="button"
-              onClick={() => setDuration(days)}
+              onClick={() => {
+                setDuration(days);
+                onEvent?.("plan_selected", days);
+              }}
               disabled={pending}
               className={`flex justify-between items-center gap-3 border-[1.5px] rounded-[10px] px-4 py-3 text-sm font-bold cursor-pointer disabled:opacity-50 ${
                 effectiveDuration === days ? "border-green bg-green/10 text-text" : "border-border bg-surface-alt text-text"

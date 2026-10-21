@@ -161,3 +161,33 @@ describe("trailEntryHref", () => {
     expect(trailEntryHref("/app-install?source=google-play&medium=organic")).toBeNull();
   });
 });
+
+describe("trailEntry — /post/action clicks", () => {
+  it("reads a Featured-offer click as a sentence", () => {
+    expect(trailEntry("/post/action?screen=offer&event=pay_tapped&days=15")).toEqual({
+      text: "Featured offer \u2014 tapped Pay (15 days)",
+      isError: false,
+    });
+    expect(trailEntry("/post/action?screen=offer&event=skipped")).toEqual({
+      text: "Featured offer \u2014 tapped No thanks",
+      isError: false,
+    });
+    expect(trailEntry("/post/action?screen=offer&event=cancelled")).toEqual({
+      text: "Featured offer \u2014 closed the payment window",
+      isError: false,
+    });
+  });
+
+  it("reads a live-screen click, and flags a checkout error", () => {
+    expect(trailEntry("/post/action?screen=live&event=share_facebook")).toEqual({
+      text: "Ad live \u2014 shared on Facebook",
+      isError: false,
+    });
+    expect(trailEntry("/post/action?screen=offer&event=error").isError).toBe(true);
+  });
+
+  it("shows an unknown event as-is and has no link for the marker", () => {
+    expect(trailEntry("/post/action?screen=live&event=something_new").text).toBe("Ad live \u2014 something_new");
+    expect(trailEntryHref("/post/action?screen=live&event=view_ad")).toBeNull();
+  });
+});

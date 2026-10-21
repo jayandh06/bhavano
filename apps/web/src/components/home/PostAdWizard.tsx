@@ -44,6 +44,7 @@ import type { VideoEntitlement } from "@bhavano/types/videoLimits";
 import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { MAX_PHOTOS, MAX_PHOTO_BYTES, MIN_PHOTOS, PHOTO_LIMITS } from "@bhavano/types/photoLimits";
 import { audienceFor, reachLabelFor } from "@bhavano/types/audience";
+import { reportPostAction } from "@/lib/postActionTrail";
 import { FEATURED_BENEFITS } from "@bhavano/types/featuredBenefits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
@@ -2275,10 +2276,13 @@ export function PostAdWizard({
             )}
             {/* An extra, not a restriction: 3-6 photos and a video stay free (docs/plans/featured-ad-benefits-and-media-limits.md). */}
             {!assistedMode && (
-              <p className="text-xs text-muted mt-1.5 mb-0">
-                {photos.length >= MAX_PHOTOS ? `You’ve added ${MAX_PHOTOS} photos. ` : "Want to show more? "}
-                Featured ads can add up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos up to 3 minutes. You can upgrade right after you post.
-              </p>
+              <div className="mt-2 rounded-lg border border-[color:var(--gold)]/50 bg-[color:var(--gold)]/10 px-3 py-2 text-xs text-text">
+                <span className="font-bold text-[color:var(--gold)]">&#10024; Make it Featured to show more</span>
+                <span className="block mt-0.5">
+                  {photos.length >= MAX_PHOTOS ? `You’ve added ${MAX_PHOTOS} photos. ` : ""}
+                  Featured ads can have up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos of up to 3 minutes each. You can upgrade right after you post.
+                </span>
+              </div>
             )}
             {duplicatePhotoNos.length > 0 && (
               <p className="text-xs text-[#b3413a] font-bold mt-1.5 mb-0">
@@ -2342,8 +2346,14 @@ export function PostAdWizard({
             </label>
             <p className="text-xs text-muted mt-0.5 mb-1.5">
               Up to {videoEntitlement.maxDurationSec}s each.
-              {videoEntitlement.canUpgradeByBoosting &&
-                " Feature this listing after posting to add up to 5 videos, up to 3 minutes each."}
+              {videoEntitlement.canUpgradeByBoosting && (
+                <>
+                  {" "}
+                  <span className="font-bold text-[color:var(--gold)]">
+                    &#10024; Featured ads can add up to 5 videos, up to 3 minutes each.
+                  </span>
+                </>
+              )}
             </p>
             {assistedMode && (
               <p className="text-xs text-muted mt-0 mb-1.5">
@@ -2790,6 +2800,7 @@ export function PostAdWizard({
                 setShowRegenerateBanner(true);
                 setStep("success");
               }}
+              onEvent={(event, days) => reportPostAction("offer", event, days != null ? { days } : undefined)}
               onCancelled={() => {
                 pushDataLayerEvent("post_offer_skipped", { listingId: createdListing.id, via: "payment_cancelled" });
                 setStep("success");
@@ -2799,6 +2810,7 @@ export function PostAdWizard({
               type="button"
               onClick={() => {
                 pushDataLayerEvent("post_offer_skipped", { listingId: createdListing.id });
+                reportPostAction("offer", "skipped");
                 setStep("success");
               }}
               className={secondaryButtonClass}
@@ -2849,7 +2861,10 @@ export function PostAdWizard({
             !showRegenerateBanner && (
               <button
                 type="button"
-                onClick={() => setStep("offer")}
+                onClick={() => {
+                  reportPostAction("live", "make_featured");
+                  setStep("offer");
+                }}
                 className="text-[13px] font-bold text-green hover:underline bg-transparent border-0 cursor-pointer"
               >
                 Make it Featured &rarr;
@@ -2981,6 +2996,7 @@ export function PostAdWizard({
           <div className="flex items-center gap-4">
             <Link
               href={buildListingPath(createdListing)}
+              onClick={() => reportPostAction("live", "view_ad")}
               className="text-[13px] font-bold text-muted hover:text-text transition-colors"
             >
               View my ad &rarr;
@@ -2991,6 +3007,7 @@ export function PostAdWizard({
               * link so a submission needs nothing more than the actual feedback text. */}
             <Link
               href={`/contact?topic=posting_feedback&listingUrl=${encodeURIComponent(`${SITE_URL}${buildListingPath(createdListing)}`)}`}
+              onClick={() => reportPostAction("live", "feedback")}
               className="text-[13px] font-bold text-muted hover:text-text transition-colors"
             >
               Feedback on posting &rarr;

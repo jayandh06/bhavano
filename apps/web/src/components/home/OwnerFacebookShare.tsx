@@ -4,6 +4,7 @@ import { buildListingPath } from "@/lib/listingPath";
 import { taggedShareUrl, facebookShareHref } from "@/lib/shareLinks";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { recordShareTapAction } from "@/app/actions/referrals";
+import { reportPostAction } from "@/lib/postActionTrail";
 import { FacebookIcon } from "./FacebookIcon";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bhavano.com";
@@ -44,6 +45,7 @@ export function OwnerFacebookShare({
   const href = facebookShareHref(url);
   const onClick = () => {
     pushDataLayerEvent("owner_share_facebook", { listingId: listing.id, placement });
+    if (placement === "post_success") reportPostAction("live", "share_facebook");
     void recordShareTapAction(listing.id, "facebook");
   };
 

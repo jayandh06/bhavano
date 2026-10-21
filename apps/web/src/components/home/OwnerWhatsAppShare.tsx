@@ -8,6 +8,7 @@ import { pushDataLayerEvent } from "@/lib/gtm";
 import { buildListingPath } from "@/lib/listingPath";
 import { taggedShareUrl, whatsappShareHref } from "@/lib/shareLinks";
 import { recordShareTapAction } from "@/app/actions/referrals";
+import { reportPostAction } from "@/lib/postActionTrail";
 import { Icon } from "./Icon";
 import { WhatsAppIcon } from "./WhatsAppIcon";
 import { OwnerFacebookShare } from "./OwnerFacebookShare";
@@ -58,6 +59,7 @@ export function OwnerWhatsAppShare({
   // downloading the image — the WhatsApp button above still sends the link.
   async function sharePoster() {
     pushDataLayerEvent("owner_share_poster", { listingId: listing.id, placement });
+    if (placement === "post_success") reportPostAction("live", "share_poster");
     setPosterBusy(true);
     try {
       const response = await fetch(`/listings/${listing.id}/poster`);
@@ -87,6 +89,7 @@ export function OwnerWhatsAppShare({
 
   const onClick = () => {
     pushDataLayerEvent("owner_share_whatsapp", { listingId: listing.id, placement });
+    if (placement === "post_success") reportPostAction("live", "share_whatsapp");
     void recordShareTapAction(listing.id, "whatsapp");
   };
 
