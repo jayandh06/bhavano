@@ -587,6 +587,9 @@ export interface ReverseGeocodeResultDto {
   areaId?: string;
   formattedAddress: string;
   resolvedLocality: string;
+  /** Other place names Google gave for the pin (a society, a neighbouring locality), so the
+   * seller can swap a wrong guess with one tap. Empty when there is nothing else. */
+  areaAlternatives?: string[];
   /** Display name for `cityId` — the poster's initially-fetched city list won't contain a
    * just-created city, so the client needs this to render/select it without a second round trip. */
   cityName?: string;

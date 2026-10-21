@@ -63,6 +63,25 @@ const TOWN_COMPONENT_TYPES = ['locality', 'postal_town'];
  * catchment contains. See docs/plans/district-name-vs-catchment-city.md. */
 const DISTRICT_COMPONENT_TYPES = ['administrative_area_level_2', 'administrative_area_level_3'];
 
+/** Components that can name the area, most-preferred first. */
+const PLACE_COMPONENT_TYPES = [
+  'sublocality_level_1',
+  'sublocality',
+  'sublocality_level_2',
+  'sublocality_level_3',
+  'neighborhood',
+];
+
+/** A gated community or building, not a locality: "Green Villas", "Prestige Towers". Such a name
+ * must not become an area (and so a public URL segment). "Layout" and "Nagar" are deliberately
+ * absent: HSR Layout and Rajaji Nagar are real localities. */
+const SOCIETY_NAME =
+  /\b(villas?|apartments?|residency|residences?|towers?|heights|enclave|society|homes|gardens?|township|phase\s*\d+)\b/i;
+
+export function looksLikeSociety(name: string): boolean {
+  return SOCIETY_NAME.test(name);
+}
+
 const ADMIN_NAME_SUFFIX = /\s+(Urban|Rural|District|Taluk|Tehsil|Tahsil|North|South|East|West|Central)$/i;
 
 /** "Coimbatore North" → "Coimbatore", "Bengaluru Urban" → "Bengaluru". Trailing qualifiers only,
@@ -371,9 +390,6 @@ export class LocationsService {
     }
 
     const locality = result.address_components.find((c) => c.types.includes('locality'));
-    const sublocality = result.address_components.find(
-      (c) => c.types.includes('sublocality') || c.types.includes('sublocality_level_1'),
-    );
     // `language=en` on the request (above) isn't a hard guarantee — Google still answers a
     // hyperlocal component (a hamlet/neighborhood name) in its local script when it has never
     // registered an English name for that specific place, even though the same response's
@@ -381,8 +397,19 @@ export class LocationsService {
     // only catches a name that's *entirely* non-Latin (collapses to ""); it does nothing for one
     // that's non-Latin mixed with otherwise-English text, which is what actually reached the
     // screen as visible Kannada. Coarsen to the next reliable option instead of surfacing it.
-    const resolvedLocality = isLatinText(sublocality?.long_name)
-      ? sublocality!.long_name
+    // Google can label a gated community ("Green Villas") as the level-1 sublocality and put the
+    // real locality (Halanayakanahalli) one level down or under neighborhood. Gather every
+    // candidate, then prefer one that is not a society name; the sublocality stays the fallback.
+    const placeCandidates = uniqueNames(
+      PLACE_COMPONENT_TYPES.flatMap((type) =>
+        data.results.flatMap((geocodeResult) =>
+          geocodeResult.address_components.filter((c) => c.types.includes(type)).map((c) => c.long_name),
+        ),
+      ).filter(isLatinText),
+    );
+    const bestCandidate = placeCandidates.find((name) => !looksLikeSociety(name)) ?? placeCandidates[0];
+    const resolvedLocality = bestCandidate
+      ? bestCandidate
       : isLatinText(locality?.long_name)
         ? locality!.long_name
         : '';
@@ -492,6 +519,7 @@ export class LocationsService {
       areaId: area?.id,
       formattedAddress: stripNonLatinSegments(result.formatted_address),
       resolvedLocality: placeName,
+      areaAlternatives: placeCandidates.filter((n) => n.toLowerCase() !== placeName.toLowerCase()).slice(0, 4),
       cityName: city?.name,
       isNewCity: false,
     };

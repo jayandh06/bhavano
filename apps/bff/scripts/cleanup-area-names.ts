@@ -51,6 +51,10 @@ const FIXES: Fix[] = [
   { city: 'Coimbatore', from: 'pai nagar', to: 'Pai Nagar' },
   { city: 'Kanpur', from: 'babu puram', to: 'Babu Puram' },
 
+  // A gated community picked up from the map pin instead of the locality it sits in. Check the
+  // dry-run count first: every listing under "Green Villas" moves to Halanayakanahalli.
+  { city: 'Bengaluru', from: 'Green Villas', to: 'Halanayakanahalli' },
+
   // Junk with nothing pointing at it.
   { city: 'Bengaluru', from: 'taluk', remove: true },
   { city: 'Madurai', from: 'NEAR', remove: true },

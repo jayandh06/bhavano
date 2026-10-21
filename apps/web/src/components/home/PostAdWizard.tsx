@@ -444,6 +444,9 @@ export function PostAdWizard({
   );
   const [areaQuery, setAreaQuery] = useState("");
   const [areaId, setAreaId] = useState<string | null>(null);
+  // Other names Google gave for the dropped pin (a society, the wider locality): one tap swaps a
+  // wrong guess. Cleared as soon as the seller types or picks an area themselves.
+  const [areaAlternatives, setAreaAlternatives] = useState<string[]>([]);
   const [areaSuggestions, setAreaSuggestions] = useState<Area[]>([]);
   const [showAreaSuggestions, setShowAreaSuggestions] = useState(false);
   const areaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1287,6 +1290,7 @@ export function PostAdWizard({
   function onAreaQueryChange(value: string) {
     setAreaQuery(value);
     setAreaId(null);
+    setAreaAlternatives([]);
     setShowAreaSuggestions(true);
 
     if (areaDebounceRef.current) clearTimeout(areaDebounceRef.current);
@@ -1302,6 +1306,7 @@ export function PostAdWizard({
   function onPickArea(a: Area) {
     setAreaQuery(a.name);
     setAreaId(a.id);
+    setAreaAlternatives([]);
     setAreaSuggestions([]);
     setShowAreaSuggestions(false);
   }
@@ -1360,6 +1365,7 @@ export function PostAdWizard({
     if (suggestion.resolvedLocality) {
       setAreaId(suggestion.areaId ?? null);
       setAreaQuery(suggestion.resolvedLocality);
+      setAreaAlternatives(suggestion.areaAlternatives ?? []);
       setAreaSuggestions([]);
     }
   }
@@ -2142,6 +2148,24 @@ export function PostAdWizard({
                     </button>
                   ))}
                 </div>
+              )}
+              {areaAlternatives.length > 0 && (
+                <p className="text-xs text-muted mt-1.5">
+                  Not right? Use:{" "}
+                  {areaAlternatives.map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => {
+                        onAreaQueryChange(name);
+                        setShowAreaSuggestions(false);
+                      }}
+                      className="mr-2 underline bg-transparent border-0 p-0 cursor-pointer text-xs text-muted"
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </p>
               )}
               {!areaId && areaQuery.trim() && (
                 <p className="text-xs text-muted mt-1.5">

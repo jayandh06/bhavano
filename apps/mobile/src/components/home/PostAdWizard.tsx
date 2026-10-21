@@ -361,6 +361,8 @@ export function PostAdWizard({
   const [title, setTitle] = useState("");
   const [areaQuery, setAreaQuery] = useState("");
   const [areaId, setAreaId] = useState<string | null>(null);
+  // Other names Google gave for the pin; one tap swaps a wrong guess. Cleared on manual edits.
+  const [areaAlternatives, setAreaAlternatives] = useState<string[]>([]);
   const [areaSuggestions, setAreaSuggestions] = useState<Area[]>([]);
   const areaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [description, setDescription] = useState("");
@@ -923,6 +925,7 @@ export function PostAdWizard({
   function onAreaQueryChange(value: string) {
     setAreaQuery(value);
     setAreaId(null);
+    setAreaAlternatives([]);
 
     if (areaDebounceRef.current) clearTimeout(areaDebounceRef.current);
     if (!value.trim() || !cityId) {
@@ -1193,6 +1196,7 @@ export function PostAdWizard({
     if (suggestion.resolvedLocality) {
       setAreaId(suggestion.areaId ?? null);
       setAreaQuery(suggestion.resolvedLocality);
+      setAreaAlternatives(suggestion.areaAlternatives ?? []);
       setAreaSuggestions([]);
     }
   }
@@ -1900,6 +1904,16 @@ export function PostAdWizard({
               {areaSuggestions.map((a) => (
                 <Pressable key={a.id} onPress={() => onPickArea(a)} style={styles.suggestionRow}>
                   <Text style={{ color: colors.text, fontSize: 14 }}>{a.name}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+          {areaAlternatives.length > 0 && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
+              <Text style={{ fontSize: 12, color: colors.muted }}>Not right? Use: </Text>
+              {areaAlternatives.map((name) => (
+                <Pressable key={name} onPress={() => onAreaQueryChange(name)} style={{ marginRight: 10 }}>
+                  <Text style={{ fontSize: 12, color: colors.muted, textDecorationLine: 'underline' }}>{name}</Text>
                 </Pressable>
               ))}
             </View>

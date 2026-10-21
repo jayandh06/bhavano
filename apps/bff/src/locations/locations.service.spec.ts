@@ -479,3 +479,49 @@ describe('LocationsService.areaListingCounts', () => {
     await expect(service.areaListingCounts('city1')).resolves.toEqual({});
   });
 });
+
+describe('LocationsService.reverseGeocodeGoogle — a society name does not become the area', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  const bengaluru = {
+    id: 'blr-1',
+    isServed: true,
+    name: 'Bengaluru',
+    state: 'Karnataka',
+    source: 'curated',
+    lat: 12.9716,
+    lng: 77.5946,
+    catchmentKm: 40,
+  };
+
+  it('picks the locality over a gated community and offers the community as an alternative', async () => {
+    const { service } = makeService({
+      city: { findFirst: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([bengaluru]), create: jest.fn() },
+    });
+    mockGeocodeFetch([
+      { types: ['sublocality', 'sublocality_level_1'], long_name: 'Green Villas' },
+      { types: ['neighborhood'], long_name: 'Halanayakanahalli' },
+      { types: ['locality'], long_name: 'Bengaluru' },
+      { types: ['administrative_area_level_1'], long_name: 'Karnataka' },
+    ]);
+
+    const result = await service.reverseGeocodeGoogle(12.9011, 77.684);
+
+    expect(result.resolvedLocality).toBe('Halanayakanahalli');
+    expect(result.areaAlternatives).toEqual(['Green Villas']);
+  });
+
+  it('keeps a society-looking name when it is the only candidate', async () => {
+    const { service } = makeService({
+      city: { findFirst: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([bengaluru]), create: jest.fn() },
+    });
+    mockGeocodeFetch([
+      { types: ['sublocality', 'sublocality_level_1'], long_name: 'Green Villas' },
+      { types: ['locality'], long_name: 'Bengaluru' },
+    ]);
+
+    const result = await service.reverseGeocodeGoogle(12.9011, 77.684);
+
+    expect(result.resolvedLocality).toBe('Green Villas');
+  });
+});
