@@ -47,6 +47,17 @@ describe("parseInstallReferrer", () => {
     });
   });
 
+  it("reads the website session the install link carried, and only if it is a UUID", () => {
+    const ws = "3f2b8e8b-d4d7-4d96-86e3-019592af7a0d";
+    expect(parseInstallReferrer(`utm_source=bhavano_web&utm_medium=header_link&utm_campaign=header&ws=${ws}`)).toEqual({
+      source: "bhavano_web",
+      medium: "header_link",
+      campaign: "header",
+      webSessionId: ws,
+    });
+    expect(parseInstallReferrer("utm_source=bhavano_web&ws=not-a-uuid")).toEqual({ source: "bhavano_web" });
+  });
+
   it("decodes escapes and survives a malformed pair", () => {
     expect(parseInstallReferrer("utm_source=a%20b&utm_medium=%E0%A4&utm_campaign=c+d")).toEqual({
       source: "a b",

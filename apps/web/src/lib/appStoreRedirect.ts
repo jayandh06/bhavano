@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isSafeReferrerPart, playInstallUrl } from "./appLinks";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.finfolia.bhavano";
@@ -34,7 +35,17 @@ export function appRedirect(request: NextRequest): NextResponse {
   return redirect(isAndroid ? playStoreUrl("broker-invite") : SITE_URL);
 }
 
-/** `/android` — always the Play listing, whatever the device. */
-export function androidRedirect(): NextResponse {
+/** `/android` — always the Play listing, whatever the device.
+ *
+ * With `?m=<medium>&c=<campaign>` (the site's own "Get the app" buttons, see androidInstallHref) the install
+ * referrer is the site's usual one plus `ws=<this visitor's session>` read from the httpOnly `bhavano_sid`
+ * cookie, so the app can link the person's web visits to the account they log in with. Without those params
+ * (the SMS link) nothing changes. A missing cookie (crawlers, cookies off) just leaves `ws` out. */
+export function androidRedirect(request?: NextRequest): NextResponse {
+  const medium = request?.nextUrl.searchParams.get("m") ?? null;
+  const campaign = request?.nextUrl.searchParams.get("c") ?? null;
+  if (request && isSafeReferrerPart(medium) && isSafeReferrerPart(campaign)) {
+    return redirect(playInstallUrl(medium, campaign, request.cookies.get("bhavano_sid")?.value));
+  }
   return redirect(playStoreUrl("android-link"));
 }

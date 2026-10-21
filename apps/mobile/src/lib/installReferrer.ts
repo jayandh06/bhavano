@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Application from "expo-application";
 import { recordAppPageView } from "./analyticsSession";
+import { INSTALL_ATTRIBUTION_KEY } from "./installAttributionStore";
 
 /** Where this install came from, per the Play Install Referrer — the `referrer=` the website's
  * Play links and QR codes carry (`utm_source=bhavano_web&utm_medium=qr&utm_campaign=footer`, see
@@ -11,9 +12,13 @@ export interface InstallAttribution {
   source?: string;
   medium?: string;
   campaign?: string;
+  /** The website browsing session the install link came from (`ws`) — see installAttributionStore.ts. */
+  webSessionId?: string;
 }
 
-const STORAGE_KEY = "bhavano.installAttribution";
+const WEB_SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const STORAGE_KEY = INSTALL_ATTRIBUTION_KEY;
 /** An app updated from a build without this code also runs it once, and Play still returns that
  * install's original referrer — only a launch this soon after installing is logged as an install. */
 const FRESH_INSTALL_MS = 24 * 60 * 60 * 1000;
@@ -35,6 +40,7 @@ export function parseInstallReferrer(raw: string): InstallAttribution {
     ...(values.utm_source && { source: values.utm_source }),
     ...(values.utm_medium && { medium: values.utm_medium }),
     ...(values.utm_campaign && { campaign: values.utm_campaign }),
+    ...(values.ws && WEB_SESSION_ID.test(values.ws) && { webSessionId: values.ws }),
   };
 }
 

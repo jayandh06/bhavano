@@ -1,4 +1,5 @@
 import * as Crypto from "expo-crypto";
+import { readInstallWebSessionId } from "./installAttributionStore";
 
 const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL ?? "http://localhost:4000";
 
@@ -40,7 +41,9 @@ export async function linkAnalyticsSessionToUser(accessToken: string): Promise<v
     const res = await fetch(`${BFF_URL}/analytics/link-session`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Client": "app", Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({ sessionId: getAnalyticsSessionId() }),
+      // `webSessionId`: the website session this install came from (Play referrer `ws`), so the server can also
+      // claim that person's earlier anonymous web visits. Absent for installs that did not start on the website.
+      body: JSON.stringify({ sessionId: getAnalyticsSessionId(), webSessionId: await readInstallWebSessionId() }),
     });
     if (res.ok) linkedForToken = accessToken;
   } catch {

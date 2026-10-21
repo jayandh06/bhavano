@@ -15,6 +15,31 @@ export function playStoreUrl(medium: string, campaign: string): string {
   return `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}&referrer=${encodeURIComponent(referrer)}`;
 }
 
+/** The website's "Get the app" buttons point here instead of straight at Play: the `/android` route reads this
+ * visitor's (httpOnly) session cookie on the server and adds it to the Play install referrer as `ws`, so the app
+ * can later tie the person's anonymous web visits to the account they log in with. Static QR codes cannot carry a
+ * per-visitor value, so they keep using playStoreUrl(). */
+export function androidInstallHref(medium: string, campaign: string): string {
+  return `/android?m=${encodeURIComponent(medium)}&c=${encodeURIComponent(campaign)}`;
+}
+
+/** `medium`/`campaign` arrive in a URL on our own domain, so only plain identifiers are accepted. */
+export function isSafeReferrerPart(value: string | null): value is string {
+  return !!value && /^[a-z0-9_-]{1,40}$/i.test(value);
+}
+
+const WEB_SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Play listing with the install referrer for a button on the site, plus this visitor's website session (`ws`)
+ * when there is one. The session id is an opaque random UUID; it only ever lets the BFF fill the owner of that
+ * one anonymous Visit row after the person logs in on the app. */
+export function playInstallUrl(medium: string, campaign: string, webSessionId?: string | null): string {
+  const base = playStoreUrl(medium, campaign);
+  if (!webSessionId || !WEB_SESSION_ID.test(webSessionId)) return base;
+  const referrer = `utm_source=bhavano_web&utm_medium=${medium}&utm_campaign=${campaign}&ws=${webSessionId}`;
+  return `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}&referrer=${encodeURIComponent(referrer)}`;
+}
+
 /** Web routes whose app route has the same path (expo-router strips the `(tabs)` group). */
 const SAME_PATH_ROUTES = new Set([
   "post",

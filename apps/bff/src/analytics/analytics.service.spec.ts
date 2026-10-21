@@ -127,6 +127,19 @@ describe('AnalyticsService', () => {
     });
   });
 
+  describe('linkExistingVisitToUser', () => {
+    it('only updates an existing row that has no owner, and never inserts', async () => {
+      const { prisma, executeRaw } = makePrisma();
+      await new AnalyticsService(prisma, geoIp).linkExistingVisitToUser('web-session', 'u1');
+
+      const sql = sqlOf(executeRaw);
+      expect(sql).toContain('UPDATE "Visit"');
+      expect(sql).not.toContain('INSERT');
+      expect(sql).toContain('"userId" IS NULL');
+      expect(paramsOf(executeRaw)).toEqual(['u1', 'web-session']);
+    });
+  });
+
   describe('confirmJsExecution', () => {
     it('owns jsConfirmedAt and touches nothing else', async () => {
       const { prisma, executeRaw } = makePrisma();

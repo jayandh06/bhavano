@@ -1,6 +1,6 @@
 "use client";
 
-import { playStoreUrl } from "@/lib/appLinks";
+import { androidInstallHref } from "@/lib/appLinks";
 import { reportGetAppEvent, type GetAppPlacement } from "@/lib/getAppEvents";
 import { Icon } from "./Icon";
 
@@ -26,7 +26,7 @@ export function GooglePlayBadge({
   const external = !href;
   return (
     <a
-      href={href ?? playStoreUrl("play_badge", placement)}
+      href={href ?? androidInstallHref("play_badge", placement)}
       target={external ? "_blank" : undefined}
       rel={external ? "noopener" : undefined}
       onClick={() => reportGetAppEvent("click", placement, appPath)}
@@ -51,7 +51,7 @@ export function GetAppHeaderQr() {
   return (
     <div className="group relative hidden lg:block shrink-0">
       <a
-        href={playStoreUrl("header_link", "header")}
+        href={androidInstallHref("header_link", "header")}
         target="_blank"
         rel="noopener"
         onClick={() => reportGetAppEvent("click", "header")}
@@ -86,7 +86,7 @@ export function GetAppHeaderQr() {
 export function GooglePlayHeaderIcon() {
   return (
     <a
-      href={playStoreUrl("play_icon", "header_mobile")}
+      href={androidInstallHref("play_icon", "header_mobile")}
       target="_blank"
       rel="noopener"
       onClick={() => reportGetAppEvent("click", "header_mobile")}

@@ -99,6 +99,8 @@ export class AnalyticsController {
     @CurrentUser() user: RequestUser,
   ): Promise<{ success: true }> {
     await this.analyticsService.linkVisitToUser(dto.sessionId, user.id);
+    // The website session this app install came from (Play referrer `ws`), if the app kept one.
+    if (dto.webSessionId) await this.analyticsService.linkExistingVisitToUser(dto.webSessionId, user.id);
     return { success: true };
   }
 }

@@ -287,4 +287,14 @@ export class AnalyticsService {
         "userId" = COALESCE("Visit"."userId", EXCLUDED."userId")
     `;
   }
+
+  /** Like linkVisitToUser, but only ever UPDATES a row that already exists and has no owner — never creates one.
+   * For a session id that arrives from a client rather than from this request's own session (the website
+   * session an app install came from): a made-up or stale id must not create junk Visit rows. */
+  async linkExistingVisitToUser(sessionId: string, userId: string): Promise<void> {
+    await this.prisma.$executeRaw`
+      UPDATE "Visit" SET "userId" = ${userId}
+      WHERE "sessionId" = ${sessionId} AND "userId" IS NULL
+    `;
+  }
 }
