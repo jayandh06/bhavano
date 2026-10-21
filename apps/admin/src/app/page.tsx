@@ -68,6 +68,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const createdTo = str(sp.createdTo) ?? (tab === "awaitingClaim" ? undefined : todayIST());
   const updatedFrom = str(sp.updatedFrom);
   const updatedTo = str(sp.updatedTo);
+  // Only the two known values reach the query; anything else in the URL means "show everything".
+  const bulkImport = str(sp.bulkImport) === "exclude" || str(sp.bulkImport) === "only" ? (str(sp.bulkImport) as "exclude" | "only") : undefined;
   const category = str(sp.category) as ListingCategory | undefined;
   const transactionType = str(sp.transactionType) as TransactionType | undefined;
   const status = str(sp.status) as ListingStatus | undefined;
@@ -80,6 +82,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const [result, cities, areas] = await Promise.all([
     fetchAdminListings(accessToken, {
       ...tabToQuery(tab),
+      bulkImport,
       search,
       category,
       transactionType,
@@ -173,6 +176,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   <input type="date" name="createdTo" defaultValue={createdTo} style={dateInputStyle} />
                 </Field>
               </DateRangeFilter>
+            </Field>
+            {/* Bulk imports = listings created by the import tools under the system Bulk Import account and not yet
+              * claimed by the business. Admin-assisted listings awaiting a claim are not counted as imports. */}
+            <Field label="Bulk imports">
+              <select name="bulkImport" defaultValue={bulkImport ?? ""} style={dateInputStyle}>
+                <option value="">Show all</option>
+                <option value="exclude">Hide bulk imports</option>
+                <option value="only">Only bulk imports</option>
+              </select>
             </Field>
             <Field label="Modified from">
               <input type="date" name="updatedFrom" defaultValue={updatedFrom} style={dateInputStyle} />

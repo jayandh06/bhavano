@@ -274,6 +274,8 @@ export interface AdminListingsQuery {
   transactionType?: TransactionType;
   status?: ListingStatus;
   publishState?: ListingPublishState;
+  /** "exclude" hides listings created by the bulk-import tools, "only" shows just those. */
+  bulkImport?: "exclude" | "only";
   cityId?: string;
   areaId?: string;
   userId?: string;
@@ -295,6 +297,7 @@ export function fetchAdminListings(accessToken: string, query: AdminListingsQuer
   if (query.transactionType) params.set("transactionType", query.transactionType);
   if (query.status) params.set("status", query.status);
   if (query.publishState) params.set("publishState", query.publishState);
+  if (query.bulkImport) params.set("bulkImport", query.bulkImport);
   if (query.cityId) params.set("cityId", query.cityId);
   if (query.areaId) params.set("areaId", query.areaId);
   if (query.userId) params.set("userId", query.userId);

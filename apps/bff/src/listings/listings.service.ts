@@ -919,6 +919,7 @@ export class ListingsService {
       transactionType,
       status,
       publishState,
+      bulkImport,
       cityId,
       areaId,
       userId,
@@ -941,6 +942,22 @@ export class ListingsService {
       ...(cityId ? { cityId } : {}),
       ...(areaId ? { areaId } : {}),
       ...(userId ? { ownerId: userId } : {}),
+      // A bulk import is a listing still owned by the Bulk Import account (what bulk_upload_listings.py and
+      // OutreachService.createListingFromContact create under) — an admin-assisted listing awaiting its claim is
+      // owned by it too but is a different thing, so it is left out of both sides. "exclude" is written as
+      // positive conditions because a plain NOT over a nullable phone would also drop owners with no phone.
+      ...(bulkImport === 'only'
+        ? { owner: { phone: BULK_IMPORT_OWNER_PHONE }, publishState: { not: 'awaiting_claim' as const } }
+        : {}),
+      ...(bulkImport === 'exclude'
+        ? {
+            OR: [
+              { owner: { phone: { not: BULK_IMPORT_OWNER_PHONE } } },
+              { owner: { phone: null } },
+              { publishState: 'awaiting_claim' as const },
+            ],
+          }
+        : {}),
       ...(createdFrom || createdTo
         ? {
             createdAt: {

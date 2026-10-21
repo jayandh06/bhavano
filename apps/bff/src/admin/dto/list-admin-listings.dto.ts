@@ -24,6 +24,9 @@ const MODERATION_STATES: ModerationState[] = ['approved', 'flagged'];
 const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
 const LISTING_STATUSES: ListingStatus[] = ['active', 'sold', 'rented', 'deactivated'];
 const PUBLISH_STATES: ListingPublishState[] = ['live', 'pending_checkout', 'awaiting_claim'];
+/** `exclude` hides listings created by the bulk-import tools (still owned by the Bulk Import account); `only` shows just those. */
+export const BULK_IMPORT_FILTERS = ['exclude', 'only'] as const;
+export type BulkImportFilter = (typeof BULK_IMPORT_FILTERS)[number];
 /** One asc/desc pair per sortable column on the admin listings table, so each header can be a
  * sort toggle. `messageCount` is included even though it isn't a column on Listing — it's a
  * relation count, which Prisma can order by (`conversations: { _count }`), unlike the admin
@@ -100,6 +103,10 @@ export class ListAdminListingsDto {
   @IsOptional()
   @IsIn(PUBLISH_STATES)
   publishState?: ListingPublishState;
+
+  @IsOptional()
+  @IsIn(BULK_IMPORT_FILTERS)
+  bulkImport?: BulkImportFilter;
 
   @IsOptional()
   @IsString()

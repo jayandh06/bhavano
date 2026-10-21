@@ -2106,6 +2106,28 @@ describe('ListingsService.listForAdmin — status filter and sort', () => {
     expect(where).not.toHaveProperty('title');
   });
 
+  it('hides bulk imports (still owned by the Bulk Import account) when asked, keeping phone-less owners and admin-assisted listings', async () => {
+    const { where } = await callWith({ bulkImport: 'exclude' });
+    expect(where.OR).toEqual([
+      { owner: { phone: { not: '9000000002' } } },
+      { owner: { phone: null } },
+      { publishState: 'awaiting_claim' },
+    ]);
+    expect(where).not.toHaveProperty('owner');
+  });
+
+  it('shows only bulk imports when asked, leaving out admin-assisted listings awaiting claim', async () => {
+    const { where } = await callWith({ bulkImport: 'only' });
+    expect(where).toMatchObject({ owner: { phone: '9000000002' }, publishState: { not: 'awaiting_claim' } });
+    expect(where).not.toHaveProperty('OR');
+  });
+
+  it('does not touch owner or OR when the bulk-import filter is not given', async () => {
+    const { where } = await callWith({});
+    expect(where).not.toHaveProperty('owner');
+    expect(where).not.toHaveProperty('OR');
+  });
+
   it('filters by owner (ownerId) when a userId is given', async () => {
     const { where } = await callWith({ userId: 'user1' });
     expect(where).toMatchObject({ ownerId: 'user1' });

@@ -647,6 +647,7 @@ export function AdminListingsTable({
  * re-emit them as hidden inputs when the table sits inside that same form (would double-submit). */
 const LISTINGS_FORM_OWNED_PARAMS = [
   "tab",
+  "bulkImport",
   "userId",
   "userLabel",
   "createdFrom",
