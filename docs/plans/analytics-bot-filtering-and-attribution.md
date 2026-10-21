@@ -342,6 +342,13 @@ fires `post_ad_success`; this only fills the PageView trail.
   synthetic paths as web.
 - Login (OTP / Google / Apple) sends `sessionId` so `AuthService.linkVisitToUser` attaches the
   Visit to the account.
+
+- **`fromApp` is never a bot (2026-10-21).** Android RN's User-Agent is `okhttp/…`, which the bot
+  list flags, so app sessions were stored `isBot = true` and hidden from Page visits' default
+  "humans" view (and their trails with them). `AnalyticsService.isBotFor` now returns `false`
+  whenever `fromApp` is set; migration `20261021100000_mobile_app_visits_not_bots` repairs old
+  `mobile_app` rows. `okhttp` from non-app callers is still a bot.
+
 - **Already-logged-in launches (2026-09-26).** Login alone left every later launch anonymous: the
   session id is new per process, and a returning user restores a stored token without logging in
   again, so nothing linked the new Visit to them (reported as "my test app visits show as

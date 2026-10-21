@@ -227,8 +227,23 @@ describe('AnalyticsService', () => {
       });
 
       expect(paramsOf(executeRaw)).toEqual(
-        expect.arrayContaining(['s-app', '/post/preview', 'mobile_app']),
+        expect.arrayContaining(['s-app', '/post/preview', 'mobile_app', false]),
       );
+    });
+
+    it('does not flag a fromApp okhttp session as a bot, but still flags okhttp from the web', async () => {
+      const app = makePrisma();
+      await new AnalyticsService(app.prisma, geoIp).recordPageView({
+        sessionId: 's-app2', path: '/', userAgent: 'okhttp/4.12.0', fromApp: true,
+      });
+      expect(paramsOf(app.executeRaw)).toContain(false);
+      expect(paramsOf(app.executeRaw)).not.toContain(true);
+
+      const web = makePrisma();
+      await new AnalyticsService(web.prisma, geoIp).recordPageView({
+        sessionId: 's-web', path: '/', userAgent: 'okhttp/4.12.0',
+      });
+      expect(paramsOf(web.executeRaw)).toContain(true);
     });
   });
 });

@@ -62,6 +62,16 @@ function newVisitId(): string {
   return randomUUID();
 }
 
+/** `Visit.isBot` for a request. The mobile app's own calls (`fromApp`) are never crawlers, but
+ * React Native on Android sends `okhttp/…` as its User-Agent, which the bot list deliberately
+ * flags as tooling — so without this every app session was stored `isBot = true` and vanished
+ * from the admin Page visits screen's default "humans" view. Null stays null (no UA, not
+ * classified). */
+function isBotFor(userAgent: string | undefined, fromApp: boolean | undefined): boolean | null {
+  if (fromApp) return false;
+  return userAgent ? isBotUserAgent(userAgent) : null;
+}
+
 @Injectable()
 export class AnalyticsService {
   constructor(
@@ -95,7 +105,7 @@ export class AnalyticsService {
     // Null when no UA was sent at all — "not classified", not "human"; see Visit.isBot's own
     // schema comment. Web's middleware already drops known crawlers before this endpoint, so a
     // `true` here means that list missed one.
-    const isBot = dto.userAgent ? isBotUserAgent(dto.userAgent) : null;
+    const isBot = isBotFor(dto.userAgent, dto.fromApp);
 
     await this.prisma.$executeRaw`
       INSERT INTO "Visit" (
@@ -202,7 +212,7 @@ export class AnalyticsService {
         ${dto.ip ?? null}, ${geo?.city ?? null}, ${geo?.region ?? null}, ${geo?.country ?? null},
         ${deviceTypeFromUserAgent(dto.userAgent, dto.fromApp ?? false)},
         ${osFromUserAgent(dto.userAgent)},
-        ${dto.userAgent ? isBotUserAgent(dto.userAgent) : null}
+        ${isBotFor(dto.userAgent, dto.fromApp)}
       )
       ON CONFLICT ("sessionId") DO NOTHING
     `;
