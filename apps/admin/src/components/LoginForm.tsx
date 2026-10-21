@@ -130,7 +130,7 @@ export function LoginForm() {
             Continue with Google
           </button>
           <button onClick={() => setStep("phone")} style={outlineButtonStyle}>
-            Continue with Phone (OTP on WhatsApp)
+            Continue with WhatsApp OTP
           </button>
         </>
       )}
