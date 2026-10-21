@@ -124,7 +124,7 @@ import { PlatformFeeSettingsService } from '../plans/platform-fee-settings.servi
 import { platformFeeApplies } from '@bhavano/types/platformFeePricing';
 import { scrubPhonesInText } from './scrub-listing-phones';
 import { BULK_IMPORT_OWNER_PHONE, isBulkImportOwner } from './bulk-import-owner';
-import { postedConfirmationDelayMinutes } from './posted-confirmation.service';
+import { getPostedConfirmationDelayMinutes } from './posted-confirmation-settings';
 import { assistedClaimCutoff, assistedClaimUrl, maskClaimPhone } from './assisted-listing';
 
 /** `create`'s admin-assisted mode — see ListingsService.createAssisted. */
@@ -1545,7 +1545,8 @@ export class ListingsService {
         .catch(() => undefined);
     }
 
-    const holdPostedConfirmation = deferPostedConfirmation && postedConfirmationDelayMinutes(this.config) > 0;
+    const holdPostedConfirmation =
+      deferPostedConfirmation && (await getPostedConfirmationDelayMinutes(this.prisma)) > 0;
     if (!isBulkImportOwner && owner && !holdPostedConfirmation) {
       this.notificationsService
         .notifyListingPosted(

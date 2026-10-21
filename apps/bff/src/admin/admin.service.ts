@@ -76,6 +76,11 @@ import type { NotificationDaySummaryDto, NotificationLogEntryDto } from '@bhavan
 import { ListRequirementsDto } from './dto/list-requirements.dto';
 import { UpdateRequirementDto } from './dto/update-requirement.dto';
 import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings.dto';
+import { UpdatePostedConfirmationSettingsDto } from './dto/update-posted-confirmation-settings.dto';
+import {
+  getPostedConfirmationDelayMinutes,
+  setPostedConfirmationDelayMinutes,
+} from '../listings/posted-confirmation-settings';
 import { UpdateSavedSearchDto } from './dto/update-saved-search.dto';
 import { ListUsersDto, UserSort } from './dto/list-users.dto';
 import { AdminPaymentSort, ListPaymentsDto } from './dto/list-payments.dto';
@@ -2415,6 +2420,16 @@ export class AdminService {
     const existing = await this.prisma.requirement.findUnique({ where: { id }, select: { id: true } });
     if (!existing) throw new NotFoundException('Requirement not found');
     await this.prisma.requirement.update({ where: { id }, data: dto });
+  }
+
+  async getPostedConfirmationSettings(): Promise<{ delayMinutes: number }> {
+    return { delayMinutes: await getPostedConfirmationDelayMinutes(this.prisma) };
+  }
+
+  async updatePostedConfirmationSettings(
+    dto: UpdatePostedConfirmationSettingsDto,
+  ): Promise<{ delayMinutes: number }> {
+    return { delayMinutes: await setPostedConfirmationDelayMinutes(this.prisma, dto.delayMinutes) };
   }
 
   getSavedSearchSettings(): Promise<SavedSearchSettingsDto> {

@@ -540,7 +540,7 @@ export interface CreateListingInput {
    * Absent for outreach/admin-created listings, which have no browser/app session at all. */
   sessionId?: string;
   /** Hold the "your ad is posted" email/WhatsApp until the live screen releases it (see
-   * POST /listings/:id/posted-confirmation) or POSTED_CONFIRMATION_DELAY_MINUTES passes. */
+   * POST /listings/:id/posted-confirmation) or the delay set in Admin → Settings → Posted confirmation passes. */
   deferPostedConfirmation?: boolean;
   category: ListingCategory;
   transactionType: TransactionType;
@@ -1920,6 +1920,12 @@ export interface SavedSearchSettingsDto {
 }
 
 export type UpdateSavedSearchSettingsInput = SavedSearchSettingsDto;
+
+/** Admin -> Settings -> Posted confirmation: how long the "your ad is posted" email/WhatsApp is held
+ * back so the seller reaches the Featured offer first. 0 sends at post time. */
+export interface PostedConfirmationSettingsDto {
+  delayMinutes: number;
+}
 
 /** What an owner is shown about demand matching their own inventory — deliberately carries no
  * seeker identity at all. The contact path is the plan's messaging-first flow, not this. */

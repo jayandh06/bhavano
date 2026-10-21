@@ -85,6 +85,7 @@ import { ListRequirementsDto } from './dto/list-requirements.dto';
 import { UpdateRequirementDto } from './dto/update-requirement.dto';
 import { UpdateSavedSearchDto } from './dto/update-saved-search.dto';
 import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings.dto';
+import { UpdatePostedConfirmationSettingsDto } from './dto/update-posted-confirmation-settings.dto';
 import { UpdateBoostPricingDto } from './dto/update-boost-pricing.dto';
 import { UpdateInstantAlertsPricingDto } from './dto/update-instant-alerts-pricing.dto';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
@@ -472,6 +473,18 @@ export class AdminController {
     const parsedDays = Math.min(Math.max(Number(days) || 30, 1), 365);
     const parsedLimit = Math.min(Math.max(Number(limit) || 50, 1), 200);
     return this.adminService.searchDemand(parsedDays, parsedLimit);
+  }
+
+  @Get('posted-confirmation-settings')
+  getPostedConfirmationSettings(): Promise<{ delayMinutes: number }> {
+    return this.adminService.getPostedConfirmationSettings();
+  }
+
+  @Patch('posted-confirmation-settings')
+  updatePostedConfirmationSettings(
+    @Body() dto: UpdatePostedConfirmationSettingsDto,
+  ): Promise<{ delayMinutes: number }> {
+    return this.adminService.updatePostedConfirmationSettings(dto);
   }
 
   @Get('saved-search-settings')

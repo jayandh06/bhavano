@@ -2492,6 +2492,15 @@ model SavedSearchSetting {
  * string means no minimum. The mobile app reads it at launch and on return to the foreground and
  * shows a blocking update screen when its own version is lower. See docs/plans/forced-app-update.md.
  */
+/// Admin-editable: how many minutes the "your ad is posted" email/WhatsApp is held back so the
+/// seller reaches the Featured offer first (the wizard releases it earlier when the live screen is
+/// reached). One row, id "default". 0 sends at post time. See docs/plans/post-ad-acknowledgement.md.
+model PostedConfirmationSetting {
+  id           String   @id
+  delayMinutes Int      @default(60)
+  updatedAt    DateTime @updatedAt
+}
+
 model AppVersionSetting {
   id                String   @id
   androidMinVersion String   @default("")

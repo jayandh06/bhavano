@@ -63,6 +63,7 @@ import type {
   ReferralSettingsDto,
   ReferralStatus,
   RequirementStatus,
+  PostedConfirmationSettingsDto,
   SavedSearchSettingsDto,
   SearchDemandPage,
   SendPostedNotificationInput,
@@ -772,6 +773,20 @@ export function fetchSearchDemand(
   if (query.days !== undefined) params.set("days", String(query.days));
   if (query.limit !== undefined) params.set("limit", String(query.limit));
   return authedBffFetch(accessToken, `/admin/search-demand?${params.toString()}`, { cache: "no-store" });
+}
+
+export function fetchPostedConfirmationSettings(accessToken: string): Promise<PostedConfirmationSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/posted-confirmation-settings", { cache: "no-store" });
+}
+
+export function updatePostedConfirmationSettings(
+  accessToken: string,
+  input: PostedConfirmationSettingsDto,
+): Promise<PostedConfirmationSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/posted-confirmation-settings", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
 }
 
 export function fetchSavedSearchSettings(accessToken: string): Promise<SavedSearchSettingsDto> {

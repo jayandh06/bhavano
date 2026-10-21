@@ -169,8 +169,7 @@ the Featured offer. Now (`PostedConfirmationService`, `apps/bff/src/listings/pos
   closed) it calls `POST /listings/:id/posted-confirmation`, which sends it at once. Owner-only and
   idempotent (a `posted` row in `ListingNotificationLog` means "already sent").
 - A job (`PostedConfirmationJob`, every 5 minutes) sends it anyway once the ad has been live for
-  `POSTED_CONFIRMATION_DELAY_MINUTES` (default 60; `0` = send at post time, as before). It looks at
+  the **admin setting** Settings → Posted confirmation (`PostedConfirmationSetting.delayMinutes`; default 60, `0` = send at post time, as before, max 1440). It looks at
   ads published in the last 6 hours that came from a browser/app post, so it never mails a backlog.
 - Clients that don't send the flag (older mobile builds, outreach, admin) still get it at post time.
-- The delay is an env var in `docker-compose.prod.yml`; changing it needs a bff restart. An admin
-  setting would need a table and migration, not built.
+- The delay is set only in the admin app (Settings → Posted confirmation); there is no env var. It is read from the database on each post and each sweep, so a change applies to the next ad without a restart.

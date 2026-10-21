@@ -4,7 +4,7 @@ import { PostedConfirmationService } from './posted-confirmation.service';
 
 /** Sends the held-back "your ad is posted" message for sellers who never reached the live screen
  * (closed the tab on the Featured offer). Every 5 minutes; the wait itself is
- * `POSTED_CONFIRMATION_DELAY_MINUTES`. */
+ * the admin setting. */
 @Injectable()
 export class PostedConfirmationJob {
   private readonly logger = new Logger(PostedConfirmationJob.name);

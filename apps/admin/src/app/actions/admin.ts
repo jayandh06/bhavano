@@ -13,6 +13,7 @@ import type {
   ContactRevealSettingsDto,
   LoginNudgeSettingsDto,
   RequirementStatus,
+  PostedConfirmationSettingsDto,
   SavedSearchSettingsDto,
   ListingDetailDto,
   ListingStatus,
@@ -52,6 +53,7 @@ import {
   updateLoginNudgeSettings,
   updateAppVersionSettings,
   updateRequirement,
+  updatePostedConfirmationSettings,
   updateSavedSearchSettings,
   updateInstantAlertsPricingSettings,
   updatePlatformFeeSettings,
@@ -221,6 +223,17 @@ export async function updateRateLimitsAction(input: RateLimitSettingsDto): Promi
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update rate limits" };
+  }
+}
+
+export async function updatePostedConfirmationSettingsAction(input: PostedConfirmationSettingsDto): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updatePostedConfirmationSettings(accessToken, input);
+    revalidatePath("/settings/posted-confirmation");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update the setting" };
   }
 }
 

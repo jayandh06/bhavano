@@ -1,28 +1,17 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { isBulkImportOwner } from './bulk-import-owner';
+import { getPostedConfirmationDelayMinutes } from './posted-confirmation-settings';
 
 const POSTED_KIND = 'posted';
-/** Default wait before an unreleased "your ad is live" message goes out anyway. */
-const DEFAULT_DELAY_MINUTES = 60;
 /** How far back the sweep looks, so a first run never mails old listings. */
 const SWEEP_WINDOW_HOURS = 6;
-
-/** Minutes to hold the confirmation back. Unset or invalid falls back to the default rather than
- * silently sending early; an explicit 0 means "send at post time", as before this existed. */
-export function postedConfirmationDelayMinutes(config: ConfigService): number {
-  const raw = config.get<string>('POSTED_CONFIRMATION_DELAY_MINUTES');
-  if (raw === undefined || raw === null || String(raw).trim() === '') return DEFAULT_DELAY_MINUTES;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : DEFAULT_DELAY_MINUTES;
-}
 
 /** The "your ad is posted" email / WhatsApp, held back until the seller has been through the
  * Featured offer. The wizard releases it when the live screen is reached (paid, skipped or the
  * payment window closed); if they never get there, the sweep sends it once the delay has passed.
- * The delay is `POSTED_CONFIRMATION_DELAY_MINUTES` (default 60; 0 sends at post time, as before).
+ * The delay is an admin setting (Settings → Posted confirmation; default 60, 0 sends at post time).
  * See docs/plans/post-first-featured-upsell.md. */
 @Injectable()
 export class PostedConfirmationService {
@@ -31,13 +20,8 @@ export class PostedConfirmationService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly config: ConfigService,
     private readonly notifications: NotificationsService,
   ) {}
-
-  delayMinutes(): number {
-    return postedConfirmationDelayMinutes(this.config);
-  }
 
   /** Sends the confirmation unless it was already sent. True when a message went out. */
   async send(listingId: string): Promise<boolean> {
@@ -99,7 +83,7 @@ export class PostedConfirmationService {
   /** Sends what is still unsent once the delay has passed. Browser/app posts only (they carry a
    * session id), and only recent ones, so it never mails a backlog. */
   async sendDue(now: Date = new Date()): Promise<number> {
-    const delayMs = this.delayMinutes() * 60_000;
+    const delayMs = (await getPostedConfirmationDelayMinutes(this.prisma)) * 60_000;
     const due = await this.prisma.listing.findMany({
       where: {
         publishState: 'live',
