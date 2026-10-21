@@ -27,7 +27,7 @@ import { SearchableSelect } from "@/components/SearchableSelect";
 import { ListingRowDetail } from "@/components/ListingRowDetail";
 import type { AdminListingSortField } from "@/lib/bff";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
-import { buildSuffixSortHref, str, suffixSortDirectionFor, type SearchParams } from "@/lib/searchParams";
+import { buildSuffixSortHref, carriedValue, str, suffixSortDirectionFor, type SearchParams } from "@/lib/searchParams";
 import { CLEAR_FILTERS_PARAM, SKIP_REMEMBER_PARAM } from "@/lib/rememberedFilters";
 import { SortableHeader } from "@/components/SortableHeader";
 
@@ -687,8 +687,8 @@ function CarriedParams({ sp, omit }: { sp: SearchParams; omit: string[] }) {
   return (
     <>
       {Object.entries(sp).map(([key, value]) => {
-        const v = str(value);
-        if (!v || skip.has(key)) return null;
+        const v = carriedValue(key, value);
+        if (v === undefined || skip.has(key)) return null;
         return <input key={key} type="hidden" name={key} value={v} />;
       })}
     </>
@@ -716,8 +716,8 @@ function ColumnSelector({
     const params = new URLSearchParams();
     for (const [k, value] of Object.entries(sp)) {
       if (k === "cols" || k === "page") continue;
-      const v = str(value);
-      if (v) params.set(k, v);
+      const v = carriedValue(k, value);
+      if (v !== undefined) params.set(k, v);
     }
     // Registry order, not click order, so the URL is stable regardless of how it was built.
     const ordered = columns.filter((c) => next.has(c.key)).map((c) => c.key);
@@ -806,8 +806,8 @@ function hrefResetting(sp: SearchParams): string {
   const params = new URLSearchParams();
   for (const [k, value] of Object.entries(sp)) {
     if (k === "cols" || k === "page") continue;
-    const v = str(value);
-    if (v) params.set(k, v);
+    const v = carriedValue(k, value);
+    if (v !== undefined) params.set(k, v);
   }
   const qs = params.toString();
   return qs ? `/?${qs}` : `/?${CLEAR_FILTERS_PARAM}=1`;

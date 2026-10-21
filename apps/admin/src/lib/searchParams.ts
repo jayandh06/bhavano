@@ -7,6 +7,24 @@ export function str(v: string | string[] | undefined): string | undefined {
 
 export type SearchParams = Record<string, string | string[] | undefined>;
 
+/** Date-range params (`createdFrom`, `from`, `to`, `updatedTo`, …) are the one kind of filter whose *empty* value
+ * means something: several screens apply a silent default window (e.g. "created in the last day") when the param is
+ * ABSENT, and an explicit `createdFrom=` means "no limit — clear the default". */
+export function isDateRangeKey(key: string): boolean {
+  return /^(from|to)$/i.test(key) || /(From|To)$/.test(key);
+}
+
+/** What a link (or hidden field) should carry forward for one current query param: the value if it has one, an
+ * empty string for a date range that was deliberately emptied, and undefined for any other empty param (those carry
+ * nothing, so they are dropped). Dropping an emptied date range made the next page / sort / tab link silently
+ * bring the default window back, so page 2 showed a different result set than page 1 until "Apply filters" was
+ * pressed again. */
+export function carriedValue(key: string, value: string | string[] | undefined): string | undefined {
+  const v = str(value);
+  if (v === undefined) return undefined;
+  return v !== "" || isDateRangeKey(key) ? v : undefined;
+}
+
 /** Every admin list page's page-size selector — kept short and coarse rather than an arbitrary
  * number, so the resulting `?limit=` values stay predictable/bookmarkable. */
 export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
@@ -44,8 +62,8 @@ export function buildPageHref(
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(sp)) {
     if (key === paramNames.page) continue;
-    const v = str(value);
-    if (v) params.set(key, v);
+    const v = carriedValue(key, value);
+    if (v !== undefined) params.set(key, v);
   }
   if (page > 1) params.set(paramNames.page, String(page));
   const qs = params.toString();
@@ -62,8 +80,8 @@ export function buildSortHref(basePath: string, sp: SearchParams, field: string)
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(sp)) {
     if (key === "sort" || key === "page") continue;
-    const v = str(value);
-    if (v) params.set(key, v);
+    const v = carriedValue(key, value);
+    if (v !== undefined) params.set(key, v);
   }
   params.set("sort", nextSort);
   return `${basePath}?${params.toString()}`;
@@ -101,8 +119,8 @@ export function buildSuffixSortHref(
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(sp)) {
     if (key === "sort" || key === "page") continue;
-    const v = str(value);
-    if (v) params.set(key, v);
+    const v = carriedValue(key, value);
+    if (v !== undefined) params.set(key, v);
   }
   params.set("sort", nextSort);
   return `${basePath}?${params.toString()}`;

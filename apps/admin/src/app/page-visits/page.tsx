@@ -11,6 +11,7 @@ import {
 import {
   buildPageHref,
   buildSuffixSortHref,
+  carriedValue,
   parsePage,
   parsePageSize,
   str,
@@ -388,8 +389,8 @@ function buildTrafficHref(sp: SearchParams, traffic: AdminPageVisitTraffic): str
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(sp)) {
     if (key === "traffic" || key === "page") continue;
-    const v = str(value);
-    if (v) params.set(key, v);
+    const v = carriedValue(key, value);
+    if (v !== undefined) params.set(key, v);
   }
   params.set("traffic", traffic);
   return `/page-visits?${params.toString()}`;

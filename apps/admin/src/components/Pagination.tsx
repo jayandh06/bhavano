@@ -3,6 +3,7 @@ import { AutoSubmitSelect } from "./AutoSubmitSelect";
 import {
   DEFAULT_PAGE_PARAM_NAMES,
   PAGE_SIZE_OPTIONS,
+  carriedValue,
   str,
   type PageParamNames,
   type SearchParams,
@@ -139,8 +140,8 @@ export function Pagination({
       <form method="get" style={{ display: "flex", alignItems: "center", gap: 6 }}>
         {Object.entries(sp).map(([key, value]) => {
           if (key === paramNames.page || key === paramNames.limit) return null;
-          const v = str(value);
-          return v ? <input key={key} type="hidden" name={key} value={v} /> : null;
+          const v = carriedValue(key, value);
+          return v !== undefined ? <input key={key} type="hidden" name={key} value={v} /> : null;
         })}
         <label style={{ fontSize: 12, color: "var(--muted)" }}>Per page</label>
         <AutoSubmitSelect

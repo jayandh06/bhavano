@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link, { useLinkStatus } from "next/link";
-import { str, type SearchParams } from "@/lib/searchParams";
+import { carriedValue, type SearchParams } from "@/lib/searchParams";
 import { daysAgoIST, todayIST } from "@/lib/dateRangeDefaults";
 
 const PRESETS = [
@@ -66,8 +66,8 @@ export function DateRangeFilter({
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(sp)) {
       if (key === "page" || key === fromParam || key === toParam) continue;
-      const v = str(value);
-      if (v) params.set(key, v);
+      const v = carriedValue(key, value);
+      if (v !== undefined) params.set(key, v);
     }
     params.set(fromParam, daysAgoIST(days));
     params.set(toParam, todayIST());

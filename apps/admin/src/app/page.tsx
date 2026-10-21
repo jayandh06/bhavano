@@ -8,7 +8,7 @@ import type {
 } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminListingSort, fetchAdminListings, fetchAreas, fetchCities } from "@/lib/bff";
-import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
+import { buildPageHref, carriedValue, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
 import { daysAgoIST, istDayEnd, istDayStart, todayIST } from "@/lib/dateRangeDefaults";
 import { UserPicker } from "@/components/UserPicker";
@@ -43,8 +43,8 @@ function hrefForTab(sp: SearchParams, tab: FilterTab): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(sp)) {
     if (key === "page") continue;
-    const v = str(value);
-    if (v) params.set(key, v);
+    const v = carriedValue(key, value);
+    if (v !== undefined) params.set(key, v);
   }
   params.set("tab", tab);
   return `/?${params.toString()}`;

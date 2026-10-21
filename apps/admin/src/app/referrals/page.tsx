@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReferralFunnelDto, ReferralStatus } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchReferralFunnel, fetchReferrals } from "@/lib/bff";
-import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
+import { buildPageHref, carriedValue, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { Pagination } from "@/components/Pagination";
 import { ReferralsTable } from "@/components/ReferralsTable";
 import { skipReasonLabel } from "@/lib/referralLabels";
@@ -41,8 +41,8 @@ function pillStyle(active: boolean) {
 function hrefWith(sp: SearchParams, changes: Record<string, string>): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(sp)) {
-    const v = str(value);
-    if (v && key !== "page") params.set(key, v);
+    const v = carriedValue(key, value);
+    if (v !== undefined && key !== "page") params.set(key, v);
   }
   for (const [key, value] of Object.entries(changes)) params.set(key, value);
   return `/referrals?${params.toString()}`;
