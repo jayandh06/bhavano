@@ -89,7 +89,7 @@ import { startListingPublishCheckout } from "../../lib/listingPublishCheckout";
 import { listingPublishRequiresCheckout } from "@bhavano/types/listingPublishPricing";
 import { platformFeeApplies } from "@bhavano/types/platformFeePricing";
 import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
-import { fetchListingById } from "../../lib/bffClient";
+import { fetchListingById, fetchMyListing } from "../../lib/bffClient";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { ErrorBoundary } from "../ErrorBoundary";
@@ -429,6 +429,10 @@ export function PostAdWizard({
   // Android only — see BoostBundleCard's own comment for why Android gets one combined card
   // instead of iOS's redirect-to-website buttons below, which have nothing to activate in-app.
   const [bundleActivating, setBundleActivating] = useState(false);
+  // Featured is confirmed by a payment webhook a few seconds after the buyer pays, so the ad held
+  // here still says "not boosted" at that moment. While the banner is up and the ad is not yet seen
+  // as boosted, the effect below re-reads it until it is (or gives up after ~25 s).
+  const [featuredPending, setFeaturedPending] = useState(false);
   // Phones stack the confirmation (preview, then Featured picker); tablets put them side by side.
   const { width: windowWidth } = useWindowDimensions();
   const confirmationSideBySide = windowWidth >= 700;
@@ -498,6 +502,36 @@ export function PostAdWizard({
     // The preview is only shown after the account check in onPreview, so resume one step back.
     setStep(draft.step === "review" ? "details" : draft.step);
   }
+
+  useEffect(() => {
+    const token = accessToken ?? postAccessToken;
+    if (!showRegenerateBanner || step !== "success" || !createdListing || !token || createdListing.isBoosted) {
+      setFeaturedPending(false);
+      return;
+    }
+    setFeaturedPending(true);
+    let cancelled = false;
+    let tries = 0;
+    const timer = setInterval(async () => {
+      tries += 1;
+      const fresh = await fetchMyListing(token, createdListing.id).catch(() => null);
+      if (cancelled) return;
+      if (fresh?.isBoosted) {
+        setCreatedListing(fresh);
+        setFeaturedPending(false);
+        clearInterval(timer);
+      } else if (tries >= 10) {
+        setFeaturedPending(false);
+        clearInterval(timer);
+      }
+    }, 2500);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+    // Only the ad's id and boosted flag matter here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showRegenerateBanner, step, createdListing?.id, createdListing?.isBoosted]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2583,18 +2617,22 @@ export function PostAdWizard({
             <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt, gap: 10 }]}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                 <Text style={{ flex: 1, fontSize: 13, fontWeight: "700", color: colors.text }}>
-                  ✨ Your ad is now Featured — you can now add up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos (up to 3 minutes each).
+                  {featuredPending
+                    ? "✨ Activating your Featured benefits…"
+                    : `✨ Your ad is now Featured — you can add up to ${PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos (up to 3 minutes each).`}
                 </Text>
                 <Pressable onPress={() => setShowRegenerateBanner(false)}>
                   <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted }}>Dismiss</Text>
                 </Pressable>
               </View>
-              <Pressable
-                onPress={() => router.push(`/my-listings/${createdListing.id}/edit`)}
-                style={[styles.submitButton, { backgroundColor: colors.green }]}
-              >
-                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Add photos / videos</Text>
-              </Pressable>
+              {!featuredPending && (
+                <Pressable
+                  onPress={() => router.push(`/my-listings/${createdListing.id}/edit`)}
+                  style={[styles.submitButton, { backgroundColor: colors.green }]}
+                >
+                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Add more photos / videos</Text>
+                </Pressable>
+              )}
               <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
                 Want a richer AI description with nearby landmarks?
               </Text>
