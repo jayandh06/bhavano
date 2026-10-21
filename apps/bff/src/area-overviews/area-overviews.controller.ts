@@ -4,6 +4,7 @@ import type {
   AdminAreaOverviewsPage,
   AreaOverviewDto,
   AreaOverviewStatus,
+  AreaPriceStats,
   BulkAreaOverviewResult,
   PublishedAreaOverviewLink,
 } from '@bhavano/types/areaOverview';
@@ -26,6 +27,12 @@ export class AreaOverviewsPublicController {
   @Header('Cache-Control', 'public, max-age=300')
   listPublished(@Query('limit') limit?: string): Promise<PublishedAreaOverviewLink[]> {
     return this.overviews.listPublished(Math.min(24, Math.max(1, Number(limit) || 12)));
+  }
+
+  @Get(':areaId/prices')
+  @Header('Cache-Control', 'public, max-age=3600')
+  getPrices(@Param('areaId') areaId: string): Promise<AreaPriceStats> {
+    return this.overviews.getPriceStats(areaId);
   }
 
   @Get(':areaId')

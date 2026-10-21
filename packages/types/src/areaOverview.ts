@@ -158,3 +158,21 @@ export interface AdminCityOverviewDetail {
   activeListings: number;
   overview: CityOverviewDto | null;
 }
+
+/** Fewest active listings an area needs before a median is shown. Fewer than this and one odd listing
+ * moves the number, so the block stays hidden rather than printing a figure that misleads. */
+export const AREA_PRICE_MIN_LISTINGS = 5;
+
+/** One median with the number of listings it came from. */
+export interface AreaPriceStat {
+  median: number;
+  count: number;
+}
+
+/** Live asking-price figures for an area's apartments, from our own active listings. A figure is null
+ * when fewer than AREA_PRICE_MIN_LISTINGS listings back it. `asOf` is the date it was computed (ISO). */
+export interface AreaPriceStats {
+  salePricePerSqft: AreaPriceStat | null;
+  monthlyRent: AreaPriceStat | null;
+  asOf: string;
+}

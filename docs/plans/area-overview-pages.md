@@ -92,3 +92,18 @@ a city's cannot get tangled.
   now shows a strip with the Area filter only. The other filters stay off All, because transaction,
   type, price and BHK do not mean one thing across a mixed grid; a place means the same thing
   whatever is listed.
+
+## Live asking-price block (2026-10-21)
+Next step 2 above, built. Not yet deployed or checked against production data (the local database was
+not running, so the SQL has only been type-checked; unit tests cover the minimum-count rule).
+
+- **BFF:** public `GET /area-overviews/:areaId/prices` (`AreaOverviewsService.getPriceStats`), cached an hour.
+  Active, live **apartment** listings with a whole price only (per-unit-priced rows are skipped).
+  Sale = median of price / `carpetAreaSqft` (rows outside ₹500 to ₹200,000 per sq ft are dropped as bad
+  data); rent = median monthly price. Other categories are left out because their size fields differ.
+- **Minimum count:** a figure needs `AREA_PRICE_MIN_LISTINGS` (5) listings, else it is null. Constant and
+  types (`AreaPriceStats`) are in `@bhavano/types/areaOverview`.
+- **Web:** `AreaPrices.tsx`, server-rendered on the plain area page, page 1, above the area overview. Each
+  figure shows its listing count; a line shows the date and that these are asking prices. Hidden when
+  neither figure exists. Independent of whether an overview is published. No JSON-LD on purpose.
+- **Not done:** price trend over time (needs stored snapshots), city-level figures, other categories.

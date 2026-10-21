@@ -1,5 +1,5 @@
 import type { SearchInterpretationDto } from "@bhavano/types/searchInterpretation";
-import type { AreaOverviewDto, CityOverviewDto, PublishedAreaOverviewLink } from "@bhavano/types/areaOverview";
+import type { AreaOverviewDto, AreaPriceStats, CityOverviewDto, PublishedAreaOverviewLink } from "@bhavano/types/areaOverview";
 import "server-only";
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
@@ -264,6 +264,17 @@ export function fetchCities(q?: string, all?: boolean): Promise<City[]> {
 export async function fetchPublishedAreaOverview(areaId: string): Promise<AreaOverviewDto | null> {
   try {
     return await bffFetch<AreaOverviewDto | null>(`/area-overviews/${encodeURIComponent(areaId)}`, {
+      next: { revalidate: 3600 },
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** Live median asking figures for an area, or null if the BFF fails. Cached for an hour. */
+export async function fetchAreaPriceStats(areaId: string): Promise<AreaPriceStats | null> {
+  try {
+    return await bffFetch<AreaPriceStats>(`/area-overviews/${encodeURIComponent(areaId)}/prices`, {
       next: { revalidate: 3600 },
     });
   } catch {

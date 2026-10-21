@@ -169,3 +169,27 @@ describe('AreaOverviewsService.setStatusBulk', () => {
     expect(results.find((r) => r.areaId === 'missing')).toMatchObject({ ok: false });
   });
 });
+
+describe('AreaOverviewsService.getPriceStats', () => {
+  const stats = (rows: { kind: string; median: number | null; count: number }[]) =>
+    new AreaOverviewsService({ $queryRaw: jest.fn().mockResolvedValue(rows) } as never).getPriceStats('a1');
+
+  it('returns a median only when enough listings back it', async () => {
+    const result = await stats([
+      { kind: 'sale', median: 8123.6, count: 5 },
+      { kind: 'rent', median: 30000, count: 4 },
+    ]);
+    expect(result.salePricePerSqft).toEqual({ median: 8124, count: 5 });
+    expect(result.monthlyRent).toBeNull();
+    expect(result.asOf).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('returns nothing for an area with no listings', async () => {
+    const result = await stats([
+      { kind: 'sale', median: null, count: 0 },
+      { kind: 'rent', median: null, count: 0 },
+    ]);
+    expect(result.salePricePerSqft).toBeNull();
+    expect(result.monthlyRent).toBeNull();
+  });
+});

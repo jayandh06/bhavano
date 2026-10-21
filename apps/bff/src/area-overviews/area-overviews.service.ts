@@ -2,6 +2,9 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma, type AreaOverview } from '@prisma/client';
 import {
   validateAreaOverviewContent,
+  AREA_PRICE_MIN_LISTINGS,
+  type AreaPriceStat,
+  type AreaPriceStats,
   type AdminAreaOverviewDetail,
   type AdminAreaOverviewRow,
   type AdminAreaOverviewsPage,
@@ -80,6 +83,32 @@ export class AreaOverviewsService {
   async getPublished(areaId: string): Promise<AreaOverviewDto | null> {
     const row = await this.prisma.areaOverview.findFirst({ where: { areaId, status: 'published' } });
     return row ? toDto(row) : null;
+  }
+
+  /** Median asking figures for an area's apartments, from active live listings only. Sale uses price per
+   * sq ft (price / carpet area) and ignores per-unit-priced and implausible rows; rent uses the monthly
+   * price. A figure under AREA_PRICE_MIN_LISTINGS listings comes back null. */
+  async getPriceStats(areaId: string): Promise<AreaPriceStats> {
+    const rows = await this.prisma.$queryRaw<{ kind: string; median: number | null; count: number }[]>`
+      WITH base AS (
+        SELECT l."transactionType" AS tt, l."price"::float8 AS price,
+               NULLIF(regexp_replace(l."attributes"->>'carpetAreaSqft', '[^0-9.]', '', 'g'), '')::float8 AS sqft
+        FROM "Listing" l
+        WHERE l."areaId" = ${areaId} AND l."category" = 'apartment' AND l."status" = 'active'
+          AND l."publishState" = 'live' AND l."priceUnit" IS NULL AND l."price" > 0
+      )
+      SELECT 'sale' AS kind, percentile_cont(0.5) WITHIN GROUP (ORDER BY price / sqft) AS median, COUNT(*)::int AS count
+        FROM base WHERE tt IN ('sell', 'buy') AND sqft > 0 AND price / sqft BETWEEN 500 AND 200000
+      UNION ALL
+      SELECT 'rent', percentile_cont(0.5) WITHIN GROUP (ORDER BY price), COUNT(*)::int
+        FROM base WHERE tt = 'rent'`;
+    const stat = (kind: string): AreaPriceStat | null => {
+      const row = rows.find((r) => r.kind === kind);
+      return row && row.median !== null && row.count >= AREA_PRICE_MIN_LISTINGS
+        ? { median: Math.round(row.median), count: row.count }
+        : null;
+    };
+    return { salePricePerSqft: stat('sale'), monthlyRent: stat('rent'), asOf: new Date().toISOString().slice(0, 10) };
   }
 
   /** Areas whose overview is published, busiest first, for the homepage's "Popular areas" links. Only

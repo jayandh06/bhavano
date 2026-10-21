@@ -3,7 +3,7 @@
  * (`/{city}/{area}`). Shared by the BFF (which stores and validates it), the admin app (which
  * edits and reviews it) and the web app (which renders it). See docs/plans/area-overview-pages.md. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AREA_OVERVIEW_REVIEW_CHECKLIST = exports.AREA_OVERVIEW_SORT_FIELDS = void 0;
+exports.AREA_PRICE_MIN_LISTINGS = exports.AREA_OVERVIEW_REVIEW_CHECKLIST = exports.AREA_OVERVIEW_SORT_FIELDS = void 0;
 exports.validateAreaOverviewContent = validateAreaOverviewContent;
 exports.AREA_OVERVIEW_SORT_FIELDS = ["city", "area", "listings", "status", "updated"];
 /** What a reviewer confirms before an overview can be published. The admin page shows these as
@@ -58,3 +58,6 @@ function validateAreaOverviewContent(content) {
     }
     return problems;
 }
+/** Fewest active listings an area needs before a median is shown. Fewer than this and one odd listing
+ * moves the number, so the block stays hidden rather than printing a figure that misleads. */
+exports.AREA_PRICE_MIN_LISTINGS = 5;

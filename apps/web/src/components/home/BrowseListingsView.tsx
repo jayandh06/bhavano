@@ -23,6 +23,7 @@ import { SortDropdown } from "./SortDropdown";
 import { Pagination } from "./Pagination";
 import { Footer } from "./Footer";
 import { AreaOverview } from "./AreaOverview";
+import { AreaPrices } from "@/components/home/AreaPrices";
 import { CityOverview } from "./CityOverview";
 import { BrowseSeoIntro } from "./BrowseSeoIntro";
 import { JsonLd } from "@/components/JsonLd";
@@ -344,6 +345,14 @@ export async function BrowseListingsView({
         )}
         {page === 1 && cityName && (
           <CityOverview cityName={cityName} cityId={cityAreas[0]?.cityId} segments={currentSegments} />
+        )}
+        {page === 1 && cityName && (
+          <AreaPrices
+            cityName={cityName}
+            areaId={cityAreas.find((a) => a.name === pathAreaName)?.id}
+            areaName={pathAreaName}
+            segments={currentSegments}
+          />
         )}
         {page === 1 && cityName && (
           <AreaOverview
