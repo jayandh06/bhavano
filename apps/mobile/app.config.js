@@ -53,7 +53,7 @@ module.exports = {
       "com.googleusercontent.apps.336986668125-vs9rfncotlefvtc9e7rsl15r5lhmjfht",
       "com.googleusercontent.apps.336986668125-gujm24as4oq0lqktsn8it63hgg2pm9hi",
     ],
-    version: "1.2.0",
+    version: "1.3.0",
     // EAS Update, added by `eas update:configure` (which can only print these for a dynamic
     // config, not write them). The "appVersion" policy ties an update to the `version` above, so
     // a binary only accepts updates built against that same version string — bumping it cuts
