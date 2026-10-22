@@ -8,6 +8,7 @@ exports.groupFieldsBySection = groupFieldsBySection;
 exports.pruneHiddenAttributes = pruneHiddenAttributes;
 exports.numberFieldIssue = numberFieldIssue;
 exports.listingAttributesIssue = listingAttributesIssue;
+exports.listingAttributeIssues = listingAttributeIssues;
 exports.listingCompleteness = listingCompleteness;
 exports.defaultAttributesFor = defaultAttributesFor;
 exports.normalizeBrokerageAttributes = normalizeBrokerageAttributes;
@@ -178,6 +179,15 @@ const CONDITIONAL_FEE_KEYS = ["maintenanceFeeApplicable"];
  * ListingsService.assertValidAttributes / assertConditionalFee / assertBrokerageFitsPrice.
  */
 function listingAttributesIssue(category, transactionType, attributes, price) {
+    return listingAttributeIssues(category, transactionType, attributes, price)[0]?.text ?? null;
+}
+/**
+ * Every problem `listingAttributesIssue` would report, in the same order, instead of only the first. The first
+ * entry's text is exactly what `listingAttributesIssue` returns. Lets the post forms say how many things are
+ * left and jump to each one.
+ */
+function listingAttributeIssues(category, transactionType, attributes, price) {
+    const issues = [];
     const fields = exports.CATEGORY_FIELD_CONFIG[category];
     for (const field of fields) {
         if (!fieldIsVisible(field, transactionType, attributes))
@@ -185,19 +195,19 @@ function listingAttributesIssue(category, transactionType, attributes, price) {
         const value = attributes[field.key];
         if (value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) {
             if (field.required)
-                return `${field.label} is required`;
+                issues.push({ key: field.key, text: `${field.label} is required` });
             continue;
         }
         if (field.type === "number" || field.type === "area") {
             const issue = numberFieldIssue(field, value);
             if (issue)
-                return issue;
+                issues.push({ key: field.key, text: issue });
         }
         else if (field.type === "select" || field.type === "multi-select") {
             const allowed = new Set(field.options?.map((option) => option.value));
             const picked = Array.isArray(value) ? value : [value];
             if (picked.some((item) => !allowed.has(item)))
-                return `Pick ${field.label} again`;
+                issues.push({ key: field.key, text: `Pick ${field.label} again` });
         }
     }
     for (const applicableKey of CONDITIONAL_FEE_KEYS) {
@@ -210,9 +220,12 @@ function listingAttributesIssue(category, transactionType, attributes, price) {
             continue;
         const amount = attributes[amountField.key];
         if (typeof amount !== "string" || amount.trim() === "")
-            return `${amountField.label} is required`;
+            issues.push({ key: amountField.key, text: `${amountField.label} is required` });
     }
-    return brokerageFeeIssue(transactionType, price, attributes);
+    const brokerage = brokerageFeeIssue(transactionType, price, attributes);
+    if (brokerage)
+        issues.push({ key: null, text: brokerage });
+    return issues;
 }
 /**
  * How many of the optional details a listing has filled in — what the posting forms show as "Add 3

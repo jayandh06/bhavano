@@ -70,7 +70,8 @@ import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
 import { ListUserLoginHistoryDto } from './dto/list-user-login-history.dto';
 import { ListPageVisitsDto, PageVisitSort } from './dto/list-page-visits.dto';
 import { PostFunnelQueryDto } from './dto/post-funnel-query.dto';
-import type { PostFunnelDto } from '@bhavano/types/postFunnel';
+import { summarizePostFieldEvents, type PostDetailsBlockersDto, type PostFunnelDto } from '@bhavano/types/postFunnel';
+import { parsePostFieldEventPath, POST_FIELD_PATH_PREFIX } from '@bhavano/types/postFieldEvents';
 import { NotificationLogQueryDto } from './dto/notification-log-query.dto';
 import type { NotificationDaySummaryDto, NotificationLogEntryDto } from '@bhavano/types/notificationLog';
 import { ListRequirementsDto } from './dto/list-requirements.dto';
@@ -978,6 +979,53 @@ export class AdminService {
    * percent-encoded query string per row is a worse fit for SQL than a single pass over however
    * many `/post*` rows exist in the requested range, which for an admin-only, occasionally-hit
    * report is never going to be a lot. */
+  /** The field-level view of the Details step: how many sessions touched a field, which field blocked Preview, and
+   * where sessions that left stopped. Built from the `/post/field` events the wizards write
+   * (docs/plans/post-details-step-experience.md, Phase 0). `platform` and the date range work as in getPostFunnel. */
+  async getPostDetailsBlockers(query: PostFunnelQueryDto): Promise<PostDetailsBlockersDto> {
+    const { from, to, platform } = query;
+    const range = from || to ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } } : {};
+    const [events, detailsViews, previewViews] = await Promise.all([
+      this.prisma.pageView.findMany({
+        where: { path: { startsWith: POST_FIELD_PATH_PREFIX }, ...range },
+        select: { sessionId: true, path: true },
+      }),
+      this.prisma.pageView.findMany({
+        where: { path: { startsWith: '/post/details' }, ...range },
+        select: { sessionId: true },
+        distinct: ['sessionId'],
+      }),
+      this.prisma.pageView.findMany({
+        where: { path: { startsWith: '/post/preview' }, ...range },
+        select: { sessionId: true },
+        distinct: ['sessionId'],
+      }),
+    ]);
+
+    let keep: (sessionId: string) => boolean = () => true;
+    if (platform) {
+      const ids = [...new Set([...events, ...detailsViews, ...previewViews].map((r) => r.sessionId))];
+      const visits = await this.prisma.visit.findMany({
+        where: { sessionId: { in: ids } },
+        select: { sessionId: true, deviceType: true },
+      });
+      const isApp = new Map(visits.map((v) => [v.sessionId, v.deviceType === 'mobile_app']));
+      keep = (sessionId) => (platform === 'app') === (isApp.get(sessionId) ?? false);
+    }
+
+    const previewSessionIds = new Set(previewViews.filter((r) => keep(r.sessionId)).map((r) => r.sessionId));
+    const summary = summarizePostFieldEvents(
+      events.filter((e) => keep(e.sessionId)),
+      parsePostFieldEventPath,
+      previewSessionIds,
+    );
+    return {
+      sessionsAtDetails: detailsViews.filter((r) => keep(r.sessionId)).length,
+      sessionsAtPreview: previewSessionIds.size,
+      ...summary,
+    };
+  }
+
   async getPostFunnel(query: PostFunnelQueryDto): Promise<PostFunnelDto> {
     const { from, to, entry, platform, loggedIn } = query;
 

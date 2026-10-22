@@ -118,3 +118,38 @@ Baseline first (Phase 0). Do not promise a number until we have it.
 ## 7. Suggested order of work
 Phase 0 (about a week of analytics, nothing visible) → Phase 1 web → Phase 1 mobile (with a release) → Phase 2 → Phase 3 → Phase 4 only if
 the numbers justify it.
+
+## 8. Built: Phase 0 and Phase 1 (2026-10-22), web and mobile
+Not yet deployed or tried in a browser or on a device; types, unit tests (BFF, admin, web) and typechecks pass.
+
+**Shared (`packages/types`)**
+- `listingAttributeIssues` (categoryFields.ts) lists every attribute problem with its field key; `listingAttributesIssue` is now its first entry
+  (same behaviour, tested for every category and transaction).
+- `postDetailsIssues` (new) turns the wizard's old one-problem ladder into an ordered list of `{target, text, missing, group}`; web and mobile
+  both call it, so they agree with each other. Targets: `location`, `posted_by`, `attr:<field key>`, `price`, `brokerage`, `photos`,
+  `owner_type`, `assisted`, `title`, `description`.
+- `postFieldEvents` (new) builds and parses the `/post/field?event=...` paths.
+
+**Phase 1 (decision kept: every section stays open)**
+- An "N left / Next: ..." chip: sticky at the top of the form on web, a floating bar at the bottom on mobile. Tapping scrolls to and focuses the
+  first problem (a collapsed section is opened on web).
+- Preview is no longer disabled for a problem. Tapping it with things left scrolls to the first problem, rings it, and shows a message under
+  every field that has one; the line under the button now also says "(and N more)".
+- Per-field validation on blur: a field's message appears once the seller leaves it (web: the field wrapper's blur; mobile: text inputs on blur,
+  segmented choices on tap). Nothing nags while typing.
+- Web: `CategoryFieldsAccordion` gained an optional `feedback` prop; the edit form does not pass it, so the edit screen is unchanged.
+
+**Phase 0 (measurement)**
+- Events written as synthetic page visits: `first_touch` (with time since the step opened), `preview_blocked` (first blocking target, how many left),
+  `chip_tapped`, `details_exit` (last field touched and time on step, sent only when the seller leaves without going on to Preview, including on
+  `pagehide`). Only target names and the category travel, never typed values.
+- BFF `GET /admin/post-funnel/details` and an "Inside the Details step" section on admin Post-ad funnel: sessions at Details and Preview and the
+  conversion, sessions that touched a field or were blocked, median time to first field, "What blocked Preview" and "Where people stopped".
+  Page visits shows the new events as readable lines ("Details - tapped Preview, blocked by carpetAreaSqft (3 left)").
+- Numbers start from the release that ships this; compare Details-to-Preview before and after.
+
+**Known gaps**
+- Mobile `first_touch` cannot name the field (it listens to touches on the form without claiming them); `details_exit` still names the last field
+  focused. Mobile selects that open the option sheet are not marked "touched" until Preview is tapped.
+- No flag yet: the behaviour change ships to everyone. The plan's flag idea is left for if the numbers fall.
+- The mobile changes need a store build or OTA; web ships first.

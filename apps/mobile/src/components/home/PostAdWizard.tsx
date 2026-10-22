@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ActivityIndicator, Alert, Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Alert, findNodeHandle, Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { PHOTO_LIMITS } from "@bhavano/types/photoLimits";
@@ -30,12 +30,10 @@ import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import {
-  brokerageFeeIssue,
   brokerageFeeNote,
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
   groupFieldsBySection,
-  listingAttributesIssue,
   listingCompleteness,
   pruneHiddenAttributes,
   SECTION_LABELS,
@@ -74,6 +72,8 @@ import {
 } from "../../lib/bffClient";
 import { INDIAN_LANGUAGE_LABELS, INDIAN_LANGUAGES, type AiGenerateUsageDto, type IndianLanguage } from "@bhavano/types/listingCopyAssist";
 import { getAnalyticsSessionId, recordAppPageView } from "../../lib/analyticsSession";
+import { postDetailsIssues } from "@bhavano/types/postDetailsIssues";
+import { postFieldEventPath, type PostFieldEvent } from "@bhavano/types/postFieldEvents";
 import { logPostAdSuccess, logPostError, logPostLoginRequired, logPostStepView } from "../../lib/firebaseAnalytics";
 import {
   clearPostAdDraft,
@@ -1037,7 +1037,12 @@ export function PostAdWizard({
         : (selectedOption?.label ?? null);
 
     const cells: ReactNode[] = [
-      <View key={field.key} style={field.key === "fromBroker" ? styles.attrCellFull : styles.attrCell}>
+      <View
+        key={field.key}
+        ref={anchor(`attr:${field.key}`)}
+        collapsable={false}
+        style={field.key === "fromBroker" ? styles.attrCellFull : styles.attrCell}
+      >
         <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={2}>
           {field.key === "fromBroker" ? POSTED_BY_FORM_LABEL : field.label}
           {field.required && <RequiredMark />}
@@ -1046,6 +1051,8 @@ export function PostAdWizard({
           <TextInput
             value={typeof attributes[field.key] === "string" ? (attributes[field.key] as string) : ""}
             onChangeText={(v) => setAttributes((prev) => ({ ...prev, [field.key]: sanitizeAreaInput(v) }))}
+            onFocus={() => (lastTouchedRef.current = `attr:${field.key}`)}
+            onBlur={() => fieldTouched(field.key)}
             keyboardType="decimal-pad"
             placeholder={field.placeholder}
             placeholderTextColor={colors.muted}
@@ -1074,6 +1081,8 @@ export function PostAdWizard({
               onChangeText={(v) =>
                 setAttributes((prev) => ({ ...prev, [field.key]: clampDigits(digitsOnly(v), field.maxDigits ?? 2) }))
               }
+              onFocus={() => (lastTouchedRef.current = `attr:${field.key}`)}
+              onBlur={() => fieldTouched(field.key)}
               keyboardType="number-pad"
               selectTextOnFocus
               placeholder="-"
@@ -1095,7 +1104,10 @@ export function PostAdWizard({
               return (
                 <Pressable
                   key={opt.value}
-                  onPress={() => setAttributes((prev) => ({ ...prev, [field.key]: opt.value }))}
+                  onPress={() => {
+                    setAttributes((prev) => ({ ...prev, [field.key]: opt.value }));
+                    fieldTouched(field.key);
+                  }}
                   style={[
                     styles.segment,
                     i > 0 && { borderLeftWidth: 1, borderLeftColor: colors.border },
@@ -1142,6 +1154,8 @@ export function PostAdWizard({
                       : clampDigits(digitsOnly(v), field.maxDigits),
               }))
             }
+            onFocus={() => (lastTouchedRef.current = `attr:${field.key}`)}
+            onBlur={() => fieldTouched(field.key)}
             keyboardType={field.type === "number" ? (field.decimal ? "decimal-pad" : "number-pad") : "default"}
             placeholder={field.placeholder}
             placeholderTextColor={colors.muted}
@@ -1151,6 +1165,7 @@ export function PostAdWizard({
         {brokerageNote?.key === field.key && (
           <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 4 }}>{brokerageNote.text}</Text>
         )}
+        {msg(`attr:${field.key}`)}
       </View>,
     ];
 
@@ -1303,45 +1318,136 @@ export function PostAdWizard({
   // web's identical `otherFieldsIssue` for the full reasoning. Single source of truth for both
   // canGenerateCopy below and detailsIssue, which falls through to title/description only once
   // these are all satisfied.
-  const otherFieldsIssue: { text: string; missing: boolean } | null = (() => {
-    // City and area come from the pin, never typed. See docs/plans/mandatory-pin-and-owner-location-edit.md.
-    if (!pin) return { text: "Drop a pin or search an address to set the location", missing: true };
-    if (pinLookingUp) return { text: "Finding the location…", missing: true };
-    if (!cityId) return { text: "Pick the nearest city", missing: true };
-    if (areaQuery.trim().length === 0)
-      return { text: "We couldn't read an area for that spot. Move the pin a little or search the address", missing: true };
-    if (!areaId && areaQuery.trim().length > AREA_NAME_MAX_LENGTH)
-      return { text: `Area / locality must be ${AREA_NAME_MAX_LENGTH} characters or fewer`, missing: false };
-    // Checked before the generic attribute sweep below so this field's own friendlier copy wins
-    // over the generic "Posted by Broker / Agent is required" listingAttributesIssue would
-    // otherwise produce — see the web wizard's identical comment for why.
-    if (categoryHasPostedBy && !sellerTypeFromBroker(attributes.fromBroker))
-      return { text: "Choose Owner or Broker / Agent under Posted by", missing: true };
-    if (category && transactionType) {
-      const attributeIssue = listingAttributesIssue(category, transactionType, attributes);
-      if (attributeIssue) return { text: attributeIssue, missing: attributeIssue.endsWith(" is required") };
-    }
-    if (!priceIsValid(price, category)) return { text: "Add a price", missing: true };
-    if (priceIssue) return { text: priceIssue, missing: false };
-    const brokerageIssue = transactionType ? brokerageFeeIssue(transactionType, totalPrice, attributes) : null;
-    if (brokerageIssue) return { text: brokerageIssue, missing: false };
-    if (photoUris.length < MIN_PHOTOS) return { text: `Add at least ${MIN_PHOTOS} photos`, missing: true };
-    if (askSellerType && !postedAs) return { text: "Choose Owner or Agent / broker", missing: true };
-    return null;
-  })();
+  // Everything still wrong on this step, in form order (shared with the web wizard and tested in
+  // packages/types). The first entry is what the one-line "To preview" message used to show; the rest feed the
+  // "N left" bar, the jump-to-first-problem on Preview, and the message under each field.
+  const issues = postDetailsIssues({
+    hasPin: !!pin,
+    pinLookingUp,
+    hasCity: !!cityId,
+    areaText: areaQuery,
+    areaIsExisting: !!areaId,
+    areaMaxLength: AREA_NAME_MAX_LENGTH,
+    needsPostedBy: categoryHasPostedBy,
+    postedByAnswered: !!sellerTypeFromBroker(attributes.fromBroker),
+    category,
+    transactionType,
+    attributes,
+    priceMissing: !priceIsValid(price, category),
+    priceIssue,
+    totalPrice,
+    photoCount: photoUris.length,
+    minPhotos: MIN_PHOTOS,
+    askSellerType,
+    sellerTypeAnswered: !!postedAs,
+    assistedProblem: null,
+    title,
+    titleMin: TITLE_MIN_LENGTH,
+    description,
+    descriptionMin: DESCRIPTION_MIN_LENGTH,
+  });
+  // The AI copy helper writes the title and description, so only the other problems stop it.
+  const firstOtherIssue = issues.find((issue) => issue.group === "other") ?? null;
+  const otherFieldsIssue: { text: string; missing: boolean } | null = firstOtherIssue
+    ? { text: firstOtherIssue.text, missing: firstOtherIssue.missing }
+    : null;
+  const detailsIssue: { text: string; missing: boolean } | null = issues[0]
+    ? { text: issues[0].text, missing: issues[0].missing }
+    : null;
 
-  const detailsIssue: { text: string; missing: boolean } | null =
-    otherFieldsIssue ??
-    (() => {
-      if (title.trim().length === 0) return { text: "Add a title", missing: true };
-      if (title.trim().length < TITLE_MIN_LENGTH)
-        return { text: `Title needs at least ${TITLE_MIN_LENGTH} characters`, missing: false };
-      if (description.trim().length === 0) return { text: "Add a description", missing: true };
-      if (description.trim().length < DESCRIPTION_MIN_LENGTH)
-        return { text: `Description needs at least ${DESCRIPTION_MIN_LENGTH} characters`, missing: false };
-      return null;
-    })();
-  const detailsValid = !detailsIssue;
+  // Which problems to put a message under: a field's own message once the seller has left it, and every message
+  // after a blocked Preview tap.
+  const [attemptedPreview, setAttemptedPreview] = useState(false);
+  const [touchedTargets, setTouchedTargets] = useState<ReadonlySet<string>>(new Set());
+  const shownMessages: Record<string, string> = {};
+  for (const issue of issues) {
+    if ((attemptedPreview || touchedTargets.has(issue.target)) && !(issue.target in shownMessages)) {
+      shownMessages[issue.target] = issue.text;
+    }
+  }
+  function markTouched(target: string) {
+    setTouchedTargets((prev) => (prev.has(target) ? prev : new Set(prev).add(target)));
+  }
+  function fieldTouched(fieldKey: string) {
+    markTouched(`attr:${fieldKey}`);
+    if (fieldKey === "fromBroker") markTouched("posted_by");
+    lastTouchedRef.current = `attr:${fieldKey}`;
+  }
+  /** The red line under a field, when there is something to say about it. */
+  function msg(target: string) {
+    const text = shownMessages[target] ?? (target.startsWith("attr:fromBroker") ? shownMessages.posted_by : undefined);
+    return text ? <Text style={styles.fieldError}>{text}</Text> : null;
+  }
+
+  // Scroll to a target: each one has a small anchor view (or its own field cell) registered here.
+  const targetRefs = useRef<Record<string, View | null>>({});
+  const anchor = (target: string) => (el: View | null) => {
+    targetRefs.current[target] = el;
+  };
+  function scrollToTarget(target: string) {
+    const key = target === "posted_by" ? "attr:fromBroker" : target === "brokerage" ? "price" : target;
+    const el = targetRefs.current[key];
+    const scroller = scrollRef.current;
+    const handle = scroller ? findNodeHandle(scroller) : null;
+    if (!el || !handle) return;
+    el.measureLayout(
+      handle,
+      (_x, y) => scroller?.scrollTo({ y: Math.max(0, y - 90), animated: true }),
+      () => {},
+    );
+  }
+
+  // Phase 0 of docs/plans/post-details-step-experience.md: where on this step do sellers stall?
+  const detailsStartRef = useRef(0);
+  const firstTouchSentRef = useRef(false);
+  const lastTouchedRef = useRef<string | null>(null);
+  const leftViaPreviewRef = useRef(false);
+  const categoryRef = useRef<string | null>(null);
+  categoryRef.current = category;
+  function reportFieldEvent(event: PostFieldEvent, detail: { field?: string | null; ms?: number; left?: number } = {}) {
+    void recordAppPageView(postFieldEventPath(event, { ...detail, category: categoryRef.current }));
+  }
+  useEffect(() => {
+    if (step !== "details") return;
+    detailsStartRef.current = Date.now();
+    firstTouchSentRef.current = false;
+    lastTouchedRef.current = null;
+    leftViaPreviewRef.current = false;
+    return () => {
+      if (leftViaPreviewRef.current) return;
+      leftViaPreviewRef.current = true;
+      void recordAppPageView(
+        postFieldEventPath("details_exit", {
+          field: lastTouchedRef.current,
+          category: categoryRef.current,
+          ms: Date.now() - detailsStartRef.current,
+        }),
+      );
+    };
+  }, [step]);
+  /** Called on every touch inside the Details form without taking it over, to time the first one. */
+  function noteFirstTouch() {
+    if (firstTouchSentRef.current) return false;
+    firstTouchSentRef.current = true;
+    reportFieldEvent("first_touch", { ms: Date.now() - detailsStartRef.current });
+    return false;
+  }
+  /** Preview with things left does not do nothing: it takes the seller to the first problem. */
+  function onPreviewTap() {
+    if (issues.length === 0) {
+      leftViaPreviewRef.current = true;
+      void onPreview();
+      return;
+    }
+    setAttemptedPreview(true);
+    scrollToTarget(issues[0].target);
+    reportFieldEvent("preview_blocked", { field: issues[0].target, left: issues.length });
+  }
+  function onChipTap() {
+    if (!issues[0]) return;
+    scrollToTarget(issues[0].target);
+    reportFieldEvent("chip_tapped", { field: issues[0].target, left: issues.length });
+  }
 
   // AI Generate's whole purpose is to fill title/description, so requiring them first would be
   // circular — hence `otherFieldsIssue` alone. No listingId sent here: this component's own
@@ -1905,11 +2011,12 @@ export function PostAdWizard({
       )}
 
       {step === "details" && category && transactionType && detailsReady && (
-        <View style={{ gap: 4 }}>
+        <View style={{ gap: 4 }} onStartShouldSetResponderCapture={noteFirstTouch}>
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700", marginBottom: 4 }}>
             Tell us about the {POST_CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()} you&apos;re{" "}
             {transactionType === "sell" ? "selling" : transactionType === "rent" ? "renting out" : "leasing out"}
           </Text>
+          <View ref={anchor("location")} collapsable={false} />
           <Text style={[styles.label, { color: colors.textSoft }]}>
             Pin your exact location
             <RequiredMark />
@@ -1987,6 +2094,8 @@ export function PostAdWizard({
             </View>
           ) : null}
 
+          {msg("location")}
+
           {/* No Specs box, as on the website: the card's chips come from the category fields below
             * (deriveCardSpecs), so a typed "3 Beds" only repeated them in another spelling. */}
           <View style={[styles.divider, { borderColor: colors.border }]}>
@@ -2031,6 +2140,7 @@ export function PostAdWizard({
                     </Pressable>
                   </View>
                 )}
+                <View ref={anchor("price")} collapsable={false} />
                 <Text style={[styles.label, { color: colors.textSoft }]}>
                   {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹)` : "Price (₹)"}
                   <RequiredMark />
@@ -2054,7 +2164,9 @@ export function PostAdWizard({
                   <Text style={styles.fieldError}>Enter a price greater than 0.</Text>
                 ) : priceIssue ? (
                   <Text style={styles.fieldError}>{priceIssue}</Text>
-                ) : null}
+                ) : (
+                  msg("price")
+                )}
                 <Text style={[styles.label, { color: colors.textSoft }]}>Price qualifier *</Text>
                 <View style={styles.chipRow}>
                   {getPriceQualifierOptions(category, transactionType).map((opt) => (
@@ -2076,6 +2188,7 @@ export function PostAdWizard({
             ))}
           </View>
 
+          <View ref={anchor("photos")} collapsable={false} />
           <Text style={[styles.label, { color: colors.textSoft }]}>
             Photos ({MIN_PHOTOS}-{MAX_PHOTOS})
             <RequiredMark />
@@ -2129,6 +2242,7 @@ export function PostAdWizard({
             </View>
           )}
           {photoNotice && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{photoNotice}</Text>}
+          {msg("photos")}
 
           <Text style={[styles.label, { color: colors.textSoft, marginTop: 18 }]}>
             Video (optional, up to {videoEntitlement.maxVideos})
@@ -2245,6 +2359,7 @@ export function PostAdWizard({
             </Text>
           )}
 
+          <View ref={anchor("title")} collapsable={false} />
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <Text style={[styles.label, { color: colors.textSoft, marginTop: 0, marginBottom: 0 }]}>
               Title
@@ -2271,9 +2386,13 @@ export function PostAdWizard({
             value={title}
             maxLength={TITLE_MAX_LENGTH}
             onChangeText={(v) => setTitle(v.slice(0, TITLE_MAX_LENGTH))}
+            onFocus={() => (lastTouchedRef.current = "title")}
+            onBlur={() => markTouched("title")}
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
           />
+          {msg("title")}
 
+          <View ref={anchor("description")} collapsable={false} />
           <Text style={[styles.label, { color: colors.textSoft }]}>
             Description
             <RequiredMark />
@@ -2281,6 +2400,8 @@ export function PostAdWizard({
           <TextInput
             value={description}
             onChangeText={(v) => setDescription(v.slice(0, DESCRIPTION_MAX_LENGTH))}
+            onFocus={() => (lastTouchedRef.current = "description")}
+            onBlur={() => markTouched("description")}
             maxLength={DESCRIPTION_MAX_LENGTH}
             multiline
             numberOfLines={5}
@@ -2295,9 +2416,11 @@ export function PostAdWizard({
           {aiGenerateError ? (
             <Text style={{ fontSize: 12, color: "#b3413a", marginTop: 4 }}>{aiGenerateError}</Text>
           ) : null}
+          {msg("description")}
 
           {/* Asked here, before Preview, not on the preview itself: there it sat under the ad card
             * and sellers kept tapping Post ad straight into the error. */}
+          {askSellerType && <View ref={anchor("owner_type")} collapsable={false} />}
           {askSellerType && (
             <View
               style={{
@@ -2348,9 +2471,8 @@ export function PostAdWizard({
 
           <View style={styles.navRow}>
             <Pressable
-              onPress={() => void onPreview()}
-              disabled={!detailsValid}
-              style={[styles.reviewButton, { backgroundColor: colors.green, opacity: detailsValid ? 1 : 0.5 }]}
+              onPress={onPreviewTap}
+              style={[styles.reviewButton, { backgroundColor: colors.green }]}
             >
               <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Preview Ad</Text>
             </Pressable>
@@ -2366,6 +2488,7 @@ export function PostAdWizard({
               }}
             >
               To preview: {detailsIssue.text}
+              {issues.length > 1 ? ` (and ${issues.length - 1} more)` : ""}
             </Text>
           )}
         </View>
@@ -2792,6 +2915,38 @@ export function PostAdWizard({
         </View>
       )}
     </KeyboardAwareScrollView>
+    {step === "details" && detailsReady && issues.length > 0 && (
+      <Pressable
+        onPress={onChipTap}
+        accessibilityRole="button"
+        accessibilityLabel={`${issues.length} left. Next: ${issues[0].text}`}
+        style={{
+          position: "absolute",
+          left: 12,
+          right: 12,
+          bottom: 12,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          paddingVertical: 10,
+          paddingHorizontal: 14,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.surface,
+          elevation: 4,
+          shadowColor: "#000",
+          shadowOpacity: 0.12,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 2 },
+        }}
+      >
+        <Text style={{ color: "#b3413a", fontWeight: "700", fontSize: 13 }}>{issues.length} left</Text>
+        <Text style={{ color: colors.muted, fontSize: 13, flex: 1 }} numberOfLines={1}>
+          Next: {issues[0].text}
+        </Text>
+      </Pressable>
+    )}
     </View>
 
     {/* One sheet reused by every collapsed select, driven by `openField` — a modal per field would

@@ -1,7 +1,8 @@
 import type { PostEntrySource } from "@bhavano/types/postEntry";
 import { POST_ENTRY_SOURCES } from "@bhavano/types/postEntry";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { fetchPostFunnel, type PostFunnelQuery } from "@/lib/bff";
+import { fetchPostDetailsBlockers, fetchPostFunnel, type PostFunnelQuery } from "@/lib/bff";
+import { postFieldTargetLabel } from "@bhavano/types/postFieldEvents";
 import { str, type SearchParams } from "@/lib/searchParams";
 import { daysAgoIST, istDayEnd, istDayStart, todayIST } from "@/lib/dateRangeDefaults";
 import { POST_ENTRY_LABELS } from "@/lib/pageTrail";
@@ -40,13 +41,17 @@ export default async function PostFunnelPage({ searchParams }: { searchParams: P
   const rawLoggedIn = str(sp.loggedIn);
   const loggedIn = rawLoggedIn && rawLoggedIn !== "any" ? (rawLoggedIn as PostFunnelQuery["loggedIn"]) : undefined;
 
-  const result = await fetchPostFunnel(accessToken, {
-    from: istDayStart(from),
-    to: istDayEnd(to),
-    entry,
-    platform,
-    loggedIn,
-  });
+  const [result, details] = await Promise.all([
+    fetchPostFunnel(accessToken, {
+      from: istDayStart(from),
+      to: istDayEnd(to),
+      entry,
+      platform,
+      loggedIn,
+    }),
+    // The field-level view of Details. Only the date range and platform apply to it.
+    fetchPostDetailsBlockers(accessToken, { from: istDayStart(from), to: istDayEnd(to), platform }).catch(() => null),
+  ]);
 
   const topOfFunnel = result.steps[0]?.sessions ?? 0;
 
@@ -159,7 +164,100 @@ export default async function PostFunnelPage({ searchParams }: { searchParams: P
             </div>
           ))}
         </div>
+
+        {details && (
+          <div style={{ marginTop: 32 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 700, margin: "0 0 6px" }}>Inside the Details step</h2>
+            <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px" }}>
+              From the field-level events the wizards write (docs/plans/post-details-step-experience.md). Entry and
+              logged-in filters do not apply here. Events exist only from the release that added them, so early numbers
+              are small.
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+              <Stat label="Reached Details" value={details.sessionsAtDetails.toLocaleString()} />
+              <Stat label="Went on to Preview" value={details.sessionsAtPreview.toLocaleString()} />
+              <Stat
+                label="Details to Preview"
+                value={details.sessionsAtDetails > 0 ? `${Math.round((details.sessionsAtPreview / details.sessionsAtDetails) * 100)}%` : "—"}
+              />
+              <Stat label="Touched a field" value={details.sessionsTouched.toLocaleString()} />
+              <Stat label="Tapped Preview with things left" value={details.sessionsBlocked.toLocaleString()} />
+              <Stat
+                label="Median time to first field"
+                value={details.medianSecondsToFirstTouch === null ? "—" : `${details.medianSecondsToFirstTouch}s`}
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 16 }}>
+              <SimpleTable
+                title="What blocked Preview"
+                headers={["Field", "Category", "Sessions", "Taps"]}
+                rows={details.blockers.map((b) => [postFieldTargetLabel(b.field), b.category ?? "—", b.sessions, b.taps])}
+                empty="No blocked Preview taps recorded yet."
+              />
+              <SimpleTable
+                title="Where people stopped (left without previewing)"
+                headers={["Last field touched", "Sessions", "Median time"]}
+                rows={details.exits.map((x) => [postFieldTargetLabel(x.field), x.sessions, x.medianSeconds === null ? "—" : `${x.medianSeconds}s`])}
+                empty="No exits recorded yet."
+              />
+            </div>
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ padding: "10px 14px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--surface)", minWidth: 140 }}>
+      <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 700 }}>{value}</div>
+    </div>
+  );
+}
+
+function SimpleTable({
+  title,
+  headers,
+  rows,
+  empty,
+}: {
+  title: string;
+  headers: string[];
+  rows: (string | number)[][];
+  empty: string;
+}) {
+  return (
+    <div style={{ border: "1px solid var(--border)", borderRadius: 10, background: "var(--surface)", padding: 14 }}>
+      <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 8 }}>{title}</div>
+      {rows.length === 0 ? (
+        <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{empty}</div>
+      ) : (
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr>
+              {headers.map((h) => (
+                <th key={h} style={{ textAlign: "left", padding: "4px 6px", color: "var(--muted)", fontSize: 11.5 }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i} style={{ borderTop: "1px solid var(--border)" }}>
+                {row.map((cell, j) => (
+                  <td key={j} style={{ padding: "5px 6px" }}>
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

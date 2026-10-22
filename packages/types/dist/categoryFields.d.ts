@@ -129,6 +129,18 @@ export declare function numberFieldIssue(field: FieldDef, value: unknown): strin
  * ListingsService.assertValidAttributes / assertConditionalFee / assertBrokerageFitsPrice.
  */
 export declare function listingAttributesIssue(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>, price?: number | null): string | null;
+/** One problem with the attributes, and which field it belongs to (null for the brokerage-against-price check,
+ * which is about the price rather than one field). */
+export interface AttributeIssue {
+    key: string | null;
+    text: string;
+}
+/**
+ * Every problem `listingAttributesIssue` would report, in the same order, instead of only the first. The first
+ * entry's text is exactly what `listingAttributesIssue` returns. Lets the post forms say how many things are
+ * left and jump to each one.
+ */
+export declare function listingAttributeIssues(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>, price?: number | null): AttributeIssue[];
 export interface ListingCompleteness {
     filled: number;
     total: number;

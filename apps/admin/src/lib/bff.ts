@@ -5,7 +5,7 @@ import type { AppVersionSettingsDto } from "@bhavano/types/appVersion";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
-import type { PostFunnelDto } from "@bhavano/types/postFunnel";
+import type { PostDetailsBlockersDto, PostFunnelDto } from "@bhavano/types/postFunnel";
 import type {
   AdminAreaOverviewDetail,
   AdminAreaOverviewsPage,
@@ -639,6 +639,14 @@ export function fetchPostFunnel(accessToken: string, query: PostFunnelQuery = {}
     if (value !== undefined && value !== "") params.set(key, String(value));
   }
   return authedBffFetch(accessToken, `/admin/post-funnel?${params.toString()}`, { cache: "no-store" });
+}
+
+export function fetchPostDetailsBlockers(accessToken: string, query: PostFunnelQuery = {}): Promise<PostDetailsBlockersDto> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
+  return authedBffFetch(accessToken, `/admin/post-funnel/details?${params.toString()}`, { cache: "no-store" });
 }
 
 export interface PaymentsQuery {

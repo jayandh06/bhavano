@@ -191,3 +191,18 @@ describe("trailEntry — /post/action clicks", () => {
     expect(trailEntryHref("/post/action?screen=live&event=view_ad")).toBeNull();
   });
 });
+
+describe("trailEntry: /post/field events", () => {
+  it("reads a blocked Preview with the field and how many were left", () => {
+    expect(trailEntry("/post/field?event=preview_blocked&field=attr%3AcarpetAreaSqft&category=apartment&left=3")).toEqual({
+      text: "Details — tapped Preview, blocked by carpetAreaSqft (3 left)",
+      isError: true,
+    });
+  });
+
+  it("reads first touch and leaving, and has no page to link to", () => {
+    expect(trailEntry("/post/field?event=first_touch&field=location&ms=4200").text).toContain("started filling in (location, after 4s)");
+    expect(trailEntry("/post/field?event=details_exit&field=photos&ms=61000").text).toContain("last touched photos after 61s");
+    expect(trailEntryHref("/post/field?event=first_touch")).toBeNull();
+  });
+});

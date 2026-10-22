@@ -1,3 +1,5 @@
+import { parsePostFieldEventPath, POST_FIELD_PATH_PREFIX, postFieldTargetLabel } from "@bhavano/types/postFieldEvents";
+
 /** Which on-site link sent a visitor to `/post` — decodes the `?from=` query param every
  * `/post/*` synthetic path now carries (see
  * docs/plans/post-ad-funnel-step-tracking-and-entry-attribution.md and
@@ -140,6 +142,20 @@ export function trailEntry(path: string): { text: string; isError: boolean } {
       return { text: path, isError: false };
     }
   }
+  if (path.startsWith(POST_FIELD_PATH_PREFIX)) {
+    const e = parsePostFieldEventPath(path);
+    if (!e) return { text: path, isError: false };
+    const where = e.field ? postFieldTargetLabel(e.field) : "the form";
+    const text =
+      e.event === "first_touch"
+        ? `Details \u2014 started filling in (${where}${e.ms !== null ? `, after ${Math.round(e.ms / 1000)}s` : ""})`
+        : e.event === "preview_blocked"
+          ? `Details \u2014 tapped Preview, blocked by ${where}${e.left !== null ? ` (${e.left} left)` : ""}`
+          : e.event === "chip_tapped"
+            ? `Details \u2014 tapped the "left" chip (${where})`
+            : `Details \u2014 left without previewing, last touched ${where}${e.ms !== null ? ` after ${Math.round(e.ms / 1000)}s` : ""}`;
+    return { text, isError: e.event === "preview_blocked" };
+  }
   if (path.startsWith("/post/boost-recovery")) {
     try {
       const params = new URL(path, "https://x.invalid").searchParams;
@@ -227,6 +243,7 @@ const SITE_URL = "https://www.bhavano.com";
 const EVENT_MARKER_PREFIXES = [
   "/login-nudge",
   "/post/action",
+  "/post/field",
   "/post/boost-recovery",
   "/post/error",
   "/post/login-required",

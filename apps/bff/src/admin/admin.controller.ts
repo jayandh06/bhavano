@@ -67,7 +67,7 @@ import { ListLoginsDto } from './dto/list-logins.dto';
 import { ListUserLoginHistoryDto } from './dto/list-user-login-history.dto';
 import { ListPageVisitsDto } from './dto/list-page-visits.dto';
 import { PostFunnelQueryDto } from './dto/post-funnel-query.dto';
-import type { PostFunnelDto } from '@bhavano/types/postFunnel';
+import type { PostDetailsBlockersDto, PostFunnelDto } from '@bhavano/types/postFunnel';
 import { NotificationLogQueryDto } from './dto/notification-log-query.dto';
 import type {
   NotificationDaySummaryDto,
@@ -364,6 +364,11 @@ export class AdminController {
   @Get('page-visits/:sessionId/trail')
   getSessionTrail(@Param('sessionId') sessionId: string): Promise<SessionTrailDto> {
     return this.adminService.getSessionTrail(sessionId);
+  }
+
+  @Get('post-funnel/details')
+  getPostDetailsBlockers(@Query() query: PostFunnelQueryDto): Promise<PostDetailsBlockersDto> {
+    return this.adminService.getPostDetailsBlockers(query);
   }
 
   @Get('post-funnel')

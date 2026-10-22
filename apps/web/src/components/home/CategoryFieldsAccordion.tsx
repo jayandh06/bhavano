@@ -389,6 +389,50 @@ function groupFieldsByChain(fields: FieldDef[]): FieldRun[] {
 /** Renders one run from `groupFieldsByChain` — same toggle-grid / other-grid split as before,
  * just scoped to the run's own fields instead of the whole section, so a chain's toggle(s) and
  * trailing amount field stay adjacent while still getting the same compact grid treatment. */
+/** What the Details step wants shown on the fields: a message under a field, a ring on the one it just scrolled
+ * to, and a callback when focus leaves a field (so the wizard can start showing that field's problem). Keyed by
+ * the field's attribute key. */
+export interface FieldFeedback {
+  errors: Record<string, string>;
+  highlightKey: string | null;
+  onBlurField: (key: string) => void;
+}
+
+/** Gives one field an address for "scroll to it" (`post-field-attr:<key>`), reports when focus leaves it, and
+ * shows its message. Adds no extra box when there is nothing to show. */
+function FieldFrame({
+  fieldKey,
+  feedback,
+  className,
+  children,
+}: {
+  fieldKey: string;
+  feedback?: FieldFeedback;
+  className?: string;
+  children: ReactNode;
+}) {
+  const error = feedback?.errors[fieldKey];
+  const highlighted = feedback?.highlightKey === fieldKey;
+  return (
+    <div
+      id={`post-field-attr:${fieldKey}`}
+      className={[className, highlighted ? "rounded-[10px] ring-2 ring-[#b3413a] ring-offset-2 ring-offset-surface" : ""]
+        .filter(Boolean)
+        .join(" ")}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) feedback?.onBlurField(fieldKey);
+      }}
+    >
+      {children}
+      {error && (
+        <p role="alert" className="text-xs text-[#b3413a] mt-1 mb-0">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function FieldRunBlock({
   run,
   section,
@@ -396,6 +440,7 @@ function FieldRunBlock({
   onChange,
   onUnitChange,
   fieldNote,
+  feedback,
 }: {
   run: FieldRun;
   section: FieldSection | "other";
@@ -403,6 +448,7 @@ function FieldRunBlock({
   onChange: (field: FieldDef, value: string | string[]) => void;
   onUnitChange: (field: FieldDef, unit: string) => void;
   fieldNote?: { key: string; text: string } | null;
+  feedback?: FieldFeedback;
 }) {
   const toggleFields = run.fields.filter(isYesNoField);
   const otherFields = run.fields.filter((field) => !isYesNoField(field));
@@ -420,12 +466,13 @@ function FieldRunBlock({
       {toggleFields.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
           {toggleFields.map((field) => (
-            <CategoryField
-              key={field.key}
-              field={field}
-              value={attributes[field.key]}
-              onChange={(value) => onChange(field, value)}
-            />
+            <FieldFrame key={field.key} fieldKey={field.key} feedback={feedback}>
+              <CategoryField
+                field={field}
+                value={attributes[field.key]}
+                onChange={(value) => onChange(field, value)}
+              />
+            </FieldFrame>
           ))}
         </div>
       )}
@@ -437,7 +484,9 @@ function FieldRunBlock({
             const isMultiUnitArea = field.type === "area" && (field.units?.length ?? 1) > 1;
             return (
               <Fragment key={field.key}>
-                <div
+                <FieldFrame
+                  fieldKey={field.key}
+                  feedback={feedback}
                   className={
                     field.type === "multi-select" || field.key === "fromBroker" || (field.type === "text" && !field.compact)
                       ? "col-span-full"
@@ -450,7 +499,7 @@ function FieldRunBlock({
                     onChange={(value) => onChange(field, value)}
                     note={fieldNote?.key === field.key ? fieldNote.text : undefined}
                   />
-                </div>
+                </FieldFrame>
                 {isMultiUnitArea && (
                   <AreaUnitField
                     field={field}
@@ -594,6 +643,7 @@ export function CategoryFieldsAccordion({
   onAttributesChange,
   sectionExtras,
   fieldNote,
+  feedback,
 }: {
   category: ListingCategory;
   transactionType: TransactionType;
@@ -609,6 +659,8 @@ export function CategoryFieldsAccordion({
   sectionExtras?: Partial<Record<FieldSection, ReactNode>>;
   /** A muted line under one field's input — e.g. what a brokerage % comes to in rupees. */
   fieldNote?: { key: string; text: string } | null;
+  /** Messages, highlight and blur callback for the Details step. Omitted by the edit form. */
+  feedback?: FieldFeedback;
 }) {
   const visibleFields = CATEGORY_FIELD_CONFIG[category].filter((field) =>
     fieldIsVisible(field, transactionType, attributes),
@@ -681,6 +733,7 @@ export function CategoryFieldsAccordion({
                     onChange={setFieldValue}
                     onUnitChange={setFieldUnit}
                     fieldNote={fieldNote}
+                    feedback={feedback}
                   />
                 ))}
               </div>

@@ -221,6 +221,14 @@
       "types": "./dist/homeContent.d.ts",
       "default": "./dist/homeContent.js"
     },
+    "./postDetailsIssues": {
+      "types": "./dist/postDetailsIssues.d.ts",
+      "default": "./dist/postDetailsIssues.js"
+    },
+    "./postFieldEvents": {
+      "types": "./dist/postFieldEvents.d.ts",
+      "default": "./dist/postFieldEvents.js"
+    },
     "./areaOverview": {
       "types": "./dist/areaOverview.d.ts",
       "default": "./dist/areaOverview.js"

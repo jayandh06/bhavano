@@ -276,21 +276,43 @@ export function listingAttributesIssue(
   attributes: Record<string, string | string[]>,
   price?: number | null,
 ): string | null {
+  return listingAttributeIssues(category, transactionType, attributes, price)[0]?.text ?? null;
+}
+
+/** One problem with the attributes, and which field it belongs to (null for the brokerage-against-price check,
+ * which is about the price rather than one field). */
+export interface AttributeIssue {
+  key: string | null;
+  text: string;
+}
+
+/**
+ * Every problem `listingAttributesIssue` would report, in the same order, instead of only the first. The first
+ * entry's text is exactly what `listingAttributesIssue` returns. Lets the post forms say how many things are
+ * left and jump to each one.
+ */
+export function listingAttributeIssues(
+  category: ListingCategory,
+  transactionType: TransactionType,
+  attributes: Record<string, string | string[]>,
+  price?: number | null,
+): AttributeIssue[] {
+  const issues: AttributeIssue[] = [];
   const fields = CATEGORY_FIELD_CONFIG[category];
   for (const field of fields) {
     if (!fieldIsVisible(field, transactionType, attributes)) continue;
     const value = attributes[field.key];
     if (value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) {
-      if (field.required) return `${field.label} is required`;
+      if (field.required) issues.push({ key: field.key, text: `${field.label} is required` });
       continue;
     }
     if (field.type === "number" || field.type === "area") {
       const issue = numberFieldIssue(field, value);
-      if (issue) return issue;
+      if (issue) issues.push({ key: field.key, text: issue });
     } else if (field.type === "select" || field.type === "multi-select") {
       const allowed = new Set(field.options?.map((option) => option.value));
       const picked = Array.isArray(value) ? value : [value];
-      if (picked.some((item) => !allowed.has(item))) return `Pick ${field.label} again`;
+      if (picked.some((item) => !allowed.has(item))) issues.push({ key: field.key, text: `Pick ${field.label} again` });
     }
   }
   for (const applicableKey of CONDITIONAL_FEE_KEYS) {
@@ -303,9 +325,11 @@ export function listingAttributesIssue(
     );
     if (!amountField) continue;
     const amount = attributes[amountField.key];
-    if (typeof amount !== "string" || amount.trim() === "") return `${amountField.label} is required`;
+    if (typeof amount !== "string" || amount.trim() === "") issues.push({ key: amountField.key, text: `${amountField.label} is required` });
   }
-  return brokerageFeeIssue(transactionType, price, attributes);
+  const brokerage = brokerageFeeIssue(transactionType, price, attributes);
+  if (brokerage) issues.push({ key: null, text: brokerage });
+  return issues;
 }
 
 export interface ListingCompleteness {

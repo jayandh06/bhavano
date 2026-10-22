@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FocusEvent } from "react";
 import Link from "next/link";
 import type {
   BoostPlanSelection,
@@ -17,11 +17,9 @@ import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import {
-  brokerageFeeIssue,
   brokerageFeeNote,
   CATEGORY_FIELD_CONFIG,
   defaultAttributesFor,
-  listingAttributesIssue,
   pruneHiddenAttributes,
 } from "@bhavano/types/categoryFields";
 import { fromBrokerDefault, hasFromBrokerField, sellerTypeFromBroker } from "@bhavano/types/sellerType";
@@ -44,6 +42,9 @@ import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { MAX_PHOTOS, MAX_PHOTO_BYTES, MIN_PHOTOS, PHOTO_LIMITS } from "@bhavano/types/photoLimits";
 import { audienceFor, reachLabelFor } from "@bhavano/types/audience";
 import { reportPostAction } from "@/lib/postActionTrail";
+import { reportPostFieldEvent } from "@/lib/postFieldTrail";
+import { attributeKeyForTarget, scrollToTarget } from "@/lib/postDetailsFocus";
+import { postDetailsIssues } from "@bhavano/types/postDetailsIssues";
 import { FEATURED_BENEFITS } from "@bhavano/types/featuredBenefits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
@@ -76,7 +77,7 @@ import {
 } from "@/app/actions/payments";
 import { startBoostCheckout } from "@/lib/boostCheckout";
 import { useAuthGate } from "./AuthGateProvider";
-import { CategoryFieldsAccordion } from "@/components/home/CategoryFieldsAccordion";
+import { CategoryFieldsAccordion, type FieldFeedback } from "@/components/home/CategoryFieldsAccordion";
 import { ListingSlotCapPrompt } from "@/components/home/ListingSlotCapPrompt";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
 import { pushDataLayerEvent, toE164IN } from "@/lib/gtm";
@@ -1443,49 +1444,147 @@ export function PostAdWizard({
   // detailsIssue (checked first, falling through to title/description only once these are all
   // satisfied — so the Preview button's message always surfaces something else missing before it
   // ever asks for Title/Description, now that those two sit at the end of the step).
-  const otherFieldsIssue: { text: string; missing: boolean } | null = (() => {
-    // City and area come from the pin, never typed. See docs/plans/mandatory-pin-and-owner-location-edit.md.
-    if (!pin) return { text: "Drop a pin or search an address to set the location", missing: true };
-    if (pinLookingUp) return { text: "Finding the location…", missing: true };
-    if (!cityId) return { text: "Pick the nearest city", missing: true };
-    if (areaQuery.trim().length === 0)
-      return { text: "We couldn't read an area for that spot. Move the pin a little or search the address", missing: true };
-    if (!areaId && areaQuery.trim().length > AREA_NAME_MAX_LENGTH)
-      return { text: `Area / locality must be ${AREA_NAME_MAX_LENGTH} characters or fewer`, missing: false };
-    // The assisted panel's own Owner/Agent answer overrides this field on submit. Checked before
-    // the generic attribute sweep below so this field's own friendlier copy wins over the generic
-    // "Posted by Broker / Agent is required" listingAttributesIssue would otherwise produce — the
-    // field is marked required there too, so EditListingForm's generic check (no bespoke copy of
-    // its own) enforces the same thing on an existing listing.
-    if (categoryHasPostedBy && !assistedMode && !sellerTypeFromBroker(attributes.fromBroker))
-      return { text: "Choose Owner or Broker / Agent under Posted by", missing: true };
-    if (category && transactionType) {
-      const attributeIssue = listingAttributesIssue(category, transactionType, attributes);
-      if (attributeIssue) return { text: attributeIssue, missing: attributeIssue.endsWith(" is required") };
-    }
-    if (!(Number(price) > 0) && !priceOnRequestAllowed) return { text: "Add a price", missing: true };
-    if (priceIssue) return { text: priceIssue, missing: false };
-    const brokerageIssue = transactionType ? brokerageFeeIssue(transactionType, totalPrice, attributes) : null;
-    if (brokerageIssue) return { text: brokerageIssue, missing: false };
-    if (photos.length < MIN_PHOTOS) return { text: `Add at least ${MIN_PHOTOS} photos`, missing: true };
-    if (askSellerType && !postedAs) return { text: "Choose Owner or Agent / broker", missing: true };
-    const assistedProblem = assistedMode ? assistedSellerProblem(assistedSeller) : null;
-    if (assistedProblem) return { text: assistedProblem, missing: false };
-    return null;
-  })();
+  // Everything still wrong on this step, in form order (shared with the mobile wizard and tested in
+  // packages/types). The first entry is what the one-line "To preview" message used to show; the rest feed the
+  // "N left" chip, the jump-to-first-problem on Preview, and the message under each field.
+  const issues = postDetailsIssues({
+    hasPin: !!pin,
+    pinLookingUp,
+    hasCity: !!cityId,
+    areaText: areaQuery,
+    areaIsExisting: !!areaId,
+    areaMaxLength: AREA_NAME_MAX_LENGTH,
+    needsPostedBy: categoryHasPostedBy && !assistedMode,
+    postedByAnswered: !!sellerTypeFromBroker(attributes.fromBroker),
+    category,
+    transactionType,
+    attributes,
+    priceMissing: !(Number(price) > 0) && !priceOnRequestAllowed,
+    priceIssue,
+    totalPrice,
+    photoCount: photos.length,
+    minPhotos: MIN_PHOTOS,
+    askSellerType,
+    sellerTypeAnswered: !!postedAs,
+    assistedProblem: assistedMode ? assistedSellerProblem(assistedSeller) : null,
+    title,
+    titleMin: TITLE_MIN_LENGTH,
+    description,
+    descriptionMin: DESCRIPTION_MIN_LENGTH,
+  });
+  // The AI copy helper writes the title and description, so only the other problems stop it.
+  const firstOtherIssue = issues.find((issue) => issue.group === "other") ?? null;
+  const otherFieldsIssue: { text: string; missing: boolean } | null = firstOtherIssue
+    ? { text: firstOtherIssue.text, missing: firstOtherIssue.missing }
+    : null;
+  const detailsIssue: { text: string; missing: boolean } | null = issues[0]
+    ? { text: issues[0].text, missing: issues[0].missing }
+    : null;
 
-  const detailsIssue: { text: string; missing: boolean } | null =
-    otherFieldsIssue ??
-    (() => {
-      if (title.trim().length === 0) return { text: "Add a title", missing: true };
-      if (title.trim().length < TITLE_MIN_LENGTH)
-        return { text: `Title needs at least ${TITLE_MIN_LENGTH} characters`, missing: false };
-      if (description.trim().length === 0) return { text: "Add a description", missing: true };
-      if (description.trim().length < DESCRIPTION_MIN_LENGTH)
-        return { text: `Description needs at least ${DESCRIPTION_MIN_LENGTH} characters`, missing: false };
-      return null;
-    })();
-  const detailsValid = !detailsIssue && !preparingMedia;
+  // Which problems to put a message under. Nothing appears while the seller is still working through the form: a
+  // field's own message shows once they have left it, and every message shows after a blocked Preview tap.
+  const [attemptedPreview, setAttemptedPreview] = useState(false);
+  const [touchedTargets, setTouchedTargets] = useState<ReadonlySet<string>>(new Set());
+  const [highlightTarget, setHighlightTarget] = useState<string | null>(null);
+  const shownMessages: Record<string, string> = {};
+  for (const issue of issues) {
+    if ((attemptedPreview || touchedTargets.has(issue.target)) && !(issue.target in shownMessages)) {
+      shownMessages[issue.target] = issue.text;
+    }
+  }
+  const attributeErrors: Record<string, string> = {};
+  for (const [target, text] of Object.entries(shownMessages)) {
+    const key = attributeKeyForTarget(target);
+    if (key) attributeErrors[key] = text;
+  }
+  function markTouched(target: string) {
+    setTouchedTargets((prev) => (prev.has(target) ? prev : new Set(prev).add(target)));
+  }
+  function ringFor(target: string): string {
+    return highlightTarget === target ? "rounded-[10px] ring-2 ring-[#b3413a] ring-offset-2 ring-offset-surface" : "";
+  }
+  function fieldMessage(target: string) {
+    const text = shownMessages[target];
+    return text ? (
+      <p role="alert" className="text-xs text-[#b3413a] mt-1 mb-0">
+        {text}
+      </p>
+    ) : null;
+  }
+  const fieldFeedback: FieldFeedback = {
+    errors: attributeErrors,
+    highlightKey: highlightTarget ? attributeKeyForTarget(highlightTarget) : null,
+    onBlurField: (key) => {
+      markTouched(`attr:${key}`);
+      if (key === "fromBroker") markTouched("posted_by");
+    },
+  };
+  function flashTarget(target: string) {
+    setHighlightTarget(target);
+    window.setTimeout(() => setHighlightTarget((current) => (current === target ? null : current)), 2500);
+  }
+
+  // Phase 0 of docs/plans/post-details-step-experience.md: where on this step do sellers stall?
+  const detailsStartRef = useRef(0);
+  const firstTouchSentRef = useRef(false);
+  const lastTouchedRef = useRef<string | null>(null);
+  const leftViaPreviewRef = useRef(false);
+  const categoryRef = useRef<string | null>(null);
+  categoryRef.current = category;
+  useEffect(() => {
+    if (step !== "details") return;
+    detailsStartRef.current = Date.now();
+    firstTouchSentRef.current = false;
+    lastTouchedRef.current = null;
+    leftViaPreviewRef.current = false;
+    const sendExit = () => {
+      if (leftViaPreviewRef.current) return;
+      leftViaPreviewRef.current = true;
+      reportPostFieldEvent("details_exit", {
+        field: lastTouchedRef.current,
+        category: categoryRef.current,
+        ms: Date.now() - detailsStartRef.current,
+      });
+    };
+    window.addEventListener("pagehide", sendExit);
+    return () => {
+      window.removeEventListener("pagehide", sendExit);
+      sendExit();
+    };
+  }, [step]);
+  function onDetailsFocus(event: FocusEvent<HTMLElement>) {
+    const holder = (event.target as HTMLElement).closest<HTMLElement>('[id^="post-field-"]');
+    const target = holder ? holder.id.slice("post-field-".length) : null;
+    if (target) lastTouchedRef.current = target;
+    if (!firstTouchSentRef.current) {
+      firstTouchSentRef.current = true;
+      reportPostFieldEvent("first_touch", {
+        field: target,
+        category: categoryRef.current,
+        ms: Date.now() - detailsStartRef.current,
+      });
+    }
+  }
+  /** Preview with things left does not do nothing: it takes the seller to the first problem. */
+  function onPreviewTap() {
+    if (issues.length === 0) {
+      leftViaPreviewRef.current = true;
+      void onPreview();
+      return;
+    }
+    const first = issues[0];
+    setAttemptedPreview(true);
+    flashTarget(first.target);
+    scrollToTarget(first.target);
+    reportPostFieldEvent("preview_blocked", { field: first.target, category, left: issues.length });
+  }
+  function onChipTap() {
+    const first = issues[0];
+    if (!first) return;
+    flashTarget(first.target);
+    scrollToTarget(first.target);
+    reportPostFieldEvent("chip_tapped", { field: first.target, category, left: issues.length });
+  }
 
   // AI Generate's whole purpose is to fill title/description, so requiring them first would be
   // circular — hence `otherFieldsIssue` alone, not `detailsIssue`. No listingId sent at this
@@ -2138,12 +2237,24 @@ export function PostAdWizard({
       )}
 
       {step === "details" && category && transactionType && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4" onFocusCapture={onDetailsFocus}>
+          {issues.length > 0 && (
+            <div className="sticky top-[68px] z-30 max-w-[720px]">
+              <button
+                type="button"
+                onClick={onChipTap}
+                className="max-w-full inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3.5 py-1.5 text-[13px] text-text shadow-sm cursor-pointer"
+              >
+                <span className="font-bold text-[#b3413a] shrink-0">{issues.length} left</span>
+                <span className="truncate text-muted">Next: {issues[0].text}</span>
+              </button>
+            </div>
+          )}
           <h2 className="font-lora text-xl font-semibold text-text m-0 max-w-[720px]">
             Tell us about the {POST_CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()} you&apos;re{" "}
             {transactionType === "sell" ? "selling" : transactionType === "rent" ? "renting out" : "leasing out"}
           </h2>
-          <div className="max-w-[720px]">
+          <div id="post-field-location" className={`max-w-[720px] ${ringFor("location")}`}>
             <RequiredLabel text="Pin your exact location" />
             <p className="text-xs text-muted mt-0 mb-2">
               Search an address or drag the pin to the property. City and area are set from the pin, and buyers see
@@ -2160,6 +2271,7 @@ export function PostAdWizard({
             {pinLookupNote && (
               <p className="text-xs text-muted mt-1.5">{pinLookupNote}</p>
             )}
+            {fieldMessage("location")}
           </div>
 
           {pin && (
@@ -2225,9 +2337,10 @@ export function PostAdWizard({
               attributes={attributes}
               onAttributesChange={setAttributes}
               fieldNote={brokerageNote}
+              feedback={fieldFeedback}
               sectionExtras={{
                 pricing: (
-                  <div className="flex flex-col gap-3">
+                  <div id="post-field-price" className={`flex flex-col gap-3 ${ringFor("price")}`} onBlur={() => markTouched("price")}>
                     {priceUnitAreaField && (
                       <div className="flex items-center gap-2">
                         <button
@@ -2273,6 +2386,7 @@ export function PostAdWizard({
                           <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit) : null} />
                         )}
                         {priceIssue && <p className="text-xs text-[#b3413a] mt-1.5 m-0">{priceIssue}</p>}
+                        {!priceIssue && fieldMessage("price")}
                       </div>
                       <div className="flex-1">
                         <RequiredLabel text="Price qualifier" />
@@ -2293,7 +2407,7 @@ export function PostAdWizard({
             />
           </div>
 
-          <div className="max-w-[720px]" ref={photoSectionRef}>
+          <div id="post-field-photos" className={`max-w-[720px] ${ringFor("photos")}`} ref={photoSectionRef}>
             <RequiredLabel text={`Photos (${MIN_PHOTOS}-${MAX_PHOTOS})`} />
             {photos.length < MAX_PHOTOS && (
               // A styled label wrapping a hidden input rather than a bare <input type="file">.
@@ -2369,6 +2483,7 @@ export function PostAdWizard({
             {photoNotice && (photoNotice.kind === "file" || photos.length >= MAX_PHOTOS) && (
               <p className="text-[#b3413a] text-[13px] mt-2">{photoNotice.text}</p>
             )}
+            {fieldMessage("photos")}
             {error && (
               <p className="text-[#b3413a] text-[13px] mt-2">{error}</p>
             )}
@@ -2480,7 +2595,7 @@ export function PostAdWizard({
             )}
           </div>
 
-          <div>
+          <div id="post-field-title" className={ringFor("title")} onBlur={() => markTouched("title")}>
             <label className={labelClass}>
               Title <span className="text-[#b3413a]">*</span>
             </label>
@@ -2502,9 +2617,10 @@ export function PostAdWizard({
                 {title.length}/{TITLE_MAX_LENGTH}
               </span>
             </div>
+            {fieldMessage("title")}
           </div>
 
-          <div>
+          <div id="post-field-description" className={ringFor("description")} onBlur={() => markTouched("description")}>
             <label className={labelClass}>
               Description <span className="text-[#b3413a]">*</span>
             </label>
@@ -2521,14 +2637,16 @@ export function PostAdWizard({
               At least {DESCRIPTION_MIN_LENGTH} characters — ads with a real description get more responses.
             </p>
             {aiGenerateError && <p className="text-xs text-[#b3413a] mt-1">{aiGenerateError}</p>}
+            {fieldMessage("description")}
           </div>
 
           {/* Asked here, before Preview, not on the preview itself: there it sat under the ad card
             * and sellers kept tapping Post ad straight into "Tap Owner or Agent". */}
           {askSellerType && (
             <div
+              id="post-field-owner_type"
               ref={sellerTypeRef}
-              className={`flex flex-col gap-2 max-w-[720px] rounded-[12px] p-3 border-2 ${
+              className={`flex flex-col gap-2 max-w-[720px] rounded-[12px] p-3 border-2 ${highlightTarget === "owner_type" ? "ring-2 ring-[#b3413a] " : ""}${
                 sellerTypeMissing ? "border-[#b3413a] bg-[#fdf1f0]" : "border-border"
               }`}
             >
@@ -2569,8 +2687,8 @@ export function PostAdWizard({
               ← Back
             </button>
             <button
-              onClick={() => void onPreview()}
-              disabled={!detailsValid}
+              onClick={onPreviewTap}
+              disabled={preparingMedia}
               className={`ml-auto ${primaryButtonClass}`}
             >
               {preparingMedia ? "Preparing media…" : "Preview Ad"}
@@ -2581,6 +2699,7 @@ export function PostAdWizard({
               className={`m-0 -mt-2 max-w-[720px] text-right text-[13px] ${detailsIssue.missing ? "text-muted" : "text-[#b3413a] font-bold"}`}
             >
               To preview: {detailsIssue.text}
+              {issues.length > 1 ? ` (and ${issues.length - 1} more)` : ""}
             </p>
           )}
         </div>
