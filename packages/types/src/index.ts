@@ -971,13 +971,16 @@ export interface AdminConversationRowDto {
   lastMessageAt: string;
   messageCount: number;
   listing: { id: string; title: string; category: string; transactionType: string; cityName: string; area: string };
-  /** The buyer / enquirer. For moderation and announcement threads this is the listing's owner. */
+  /** Whoever opened the conversation: the buyer for an enquiry, the admin for a staff thread. Not always who wrote
+   * first (an owner can write into a chat the buyer only opened). */
   inquirer: { id: string; name: string | null; phone: string | null; email: string | null };
   /** The listing's owner (the poster). */
   poster: { id: string; name: string | null; phone: string | null; email: string | null };
+  /** Who wrote the first message, or null when nobody has written yet. The Messages screen's From and To follow this. */
+  firstSenderId: string | null;
   lastMessage: MessageDto | null;
-  /** Inquiries only: the last message is the buyer's and the owner has not read it. */
-  unreadByOwner: boolean;
+  /** The latest message has not been read by the person it was sent to. */
+  lastMessageUnread: boolean;
 }
 
 export interface AdminConversationRowsPage {

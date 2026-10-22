@@ -54,8 +54,8 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
         <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 20px" }}>
           Who messaged whom. {result.total.toLocaleString()} conversation{result.total === 1 ? "" : "s"} match the
           current filters. Click a row to read it, a name to see everything that person sent or received, or the listing
-          to open it. A green dot means the owner hasn&apos;t read the buyer&apos;s latest message. Reading here never
-          marks anything read.
+          to open it. From and To follow who wrote first, which is not always the person who opened the chat. A green dot
+          means the person it was sent to hasn&apos;t read the latest message. Reading here never marks anything read.
         </p>
 
         <form method="get">

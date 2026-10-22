@@ -485,6 +485,17 @@ export class MessagingService {
       }),
       this.prisma.conversation.count({ where }),
     ]);
+    // Who wrote first in each conversation. A conversation's inquirer is whoever opened it, which is not always who
+    // sent the first message (an owner can write into a chat the buyer only opened), so From/To follow this instead.
+    const firstMessages = rows.length
+      ? await this.prisma.message.findMany({
+          where: { conversationId: { in: rows.map((r) => r.id) } },
+          orderBy: [{ conversationId: 'asc' }, { createdAt: 'asc' }],
+          distinct: ['conversationId'],
+          select: { conversationId: true, senderId: true },
+        })
+      : [];
+    const firstSender = new Map(firstMessages.map((m) => [m.conversationId, m.senderId]));
     const items: AdminConversationRowDto[] = rows.map((c) => {
       const last = c.messages[0];
       return {
@@ -503,9 +514,9 @@ export class MessagingService {
         },
         inquirer: c.inquirer,
         poster: c.poster,
+        firstSenderId: firstSender.get(c.id) ?? null,
         lastMessage: last ? toMessageDto(last, { revealDeletedBody: true }) : null,
-        unreadByOwner:
-          c.type === 'inquiry' && last != null && last.senderId === c.inquirerId && last.readAt === null,
+        lastMessageUnread: last != null && last.readAt === null,
       };
     });
     return { items, total };

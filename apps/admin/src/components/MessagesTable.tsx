@@ -48,7 +48,7 @@ export function MessagesTable({ items, linkParams }: { items: AdminConversationR
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
         <thead>
           <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
-            {["Started", "From (buyer)", "To (owner)", "Listing", "Last message", "Msgs", ""].map((h) => (
+            {["Started", "From", "To", "Listing", "Last message", "Msgs", ""].map((h) => (
               <th key={h} style={thStyle}>
                 {h}
               </th>
@@ -58,6 +58,9 @@ export function MessagesTable({ items, linkParams }: { items: AdminConversationR
         <tbody>
           {items.map((c) => {
             const isOpen = expandedId === c.id;
+            // From and To follow who actually wrote first, not who opened the conversation.
+            const { from, to } = directionOf(c);
+            const lastSender = c.lastMessage ? partyById(c, c.lastMessage.senderId) : null;
             return (
               <Fragment key={c.id}>
                 <tr onClick={() => onToggle(c.id)} style={{ borderTop: "1px solid var(--border)", cursor: "pointer" }}>
@@ -68,10 +71,10 @@ export function MessagesTable({ items, linkParams }: { items: AdminConversationR
                     )}
                   </td>
                   <td style={tdStyle}>
-                    <PersonLink person={c.inquirer} linkParams={linkParams} unread={c.unreadByOwner} />
+                    <PersonLink person={from} role={roleOf(c, from)} linkParams={linkParams} />
                   </td>
                   <td style={tdStyle}>
-                    <PersonLink person={c.poster} linkParams={linkParams} />
+                    <PersonLink person={to} role={roleOf(c, to)} linkParams={linkParams} unread={c.lastMessageUnread} />
                   </td>
                   <td style={{ ...tdStyle, maxWidth: 240 }}>
                     <Link
@@ -86,7 +89,14 @@ export function MessagesTable({ items, linkParams }: { items: AdminConversationR
                     </div>
                   </td>
                   <td style={{ ...tdStyle, maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {c.lastMessage?.body ?? dash}
+                    {c.lastMessage ? (
+                      <>
+                        <span style={{ color: "var(--muted)" }}>{lastSender ? personLabel(lastSender) : "Staff"}: </span>
+                        {c.lastMessage.body}
+                      </>
+                    ) : (
+                      dash
+                    )}
                     <div style={{ fontSize: 11, color: "var(--muted)" }}>{formatDateTime(c.lastMessageAt)}</div>
                   </td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>{c.messageCount || dash}</td>
@@ -108,12 +118,38 @@ export function MessagesTable({ items, linkParams }: { items: AdminConversationR
   );
 }
 
-function PersonLink({ person, linkParams, unread }: { person: Person; linkParams: string; unread?: boolean }) {
+function partyById(row: AdminConversationRowDto, id: string): Person | null {
+  return id === row.inquirer.id ? row.inquirer : id === row.poster.id ? row.poster : null;
+}
+
+/** The two people in a conversation, ordered by who wrote first. With no message yet, the person who opened it. */
+function directionOf(row: AdminConversationRowDto): { from: Person; to: Person } {
+  const firstIsPoster = row.firstSenderId !== null && row.firstSenderId === row.poster.id;
+  return firstIsPoster ? { from: row.poster, to: row.inquirer } : { from: row.inquirer, to: row.poster };
+}
+
+/** A small label under a name: who this person is in the conversation. */
+function roleOf(row: AdminConversationRowDto, person: Person): string {
+  if (row.type !== "inquiry") return person.id === row.poster.id ? "owner" : "staff";
+  return person.id === row.poster.id ? "owner" : "buyer";
+}
+
+function PersonLink({
+  person,
+  role,
+  linkParams,
+  unread,
+}: {
+  person: Person;
+  role: string;
+  linkParams: string;
+  unread?: boolean;
+}) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
       {unread && (
         <span
-          title="The owner hasn't read this buyer's latest message"
+          title="Hasn't read the latest message yet"
           style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--green)", flexShrink: 0 }}
         />
       )}
@@ -126,7 +162,10 @@ function PersonLink({ person, linkParams, unread }: { person: Person; linkParams
         >
           {personLabel(person)}
         </Link>
-        {person.phone && person.name && <div style={{ fontSize: 11, color: "var(--muted)" }}>{person.phone}</div>}
+        <div style={{ fontSize: 11, color: "var(--muted)" }}>
+          {role}
+          {person.phone && person.name ? ` · ${person.phone}` : ""}
+        </div>
       </div>
     </div>
   );

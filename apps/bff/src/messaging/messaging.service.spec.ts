@@ -543,9 +543,10 @@ describe('MessagingService.listConversationsAsAdmin — the admin Messages scree
     ...overrides,
   });
 
-  function setup(rows: unknown[]) {
+  function setup(rows: unknown[], firstMessages: { conversationId: string; senderId: string }[] = [{ conversationId: 'c1', senderId: 'buyer1' }]) {
     const prisma = {
       conversation: { findMany: jest.fn().mockResolvedValue(rows), count: jest.fn().mockResolvedValue(rows.length) },
+      message: { findMany: jest.fn().mockResolvedValue(firstMessages) },
     } as unknown as PrismaService;
     const service = new MessagingService(prisma, notNotified, { recordInterest: jest.fn() } as never);
     return { service, prisma };
@@ -561,15 +562,27 @@ describe('MessagingService.listConversationsAsAdmin — the admin Messages scree
       inquirer: { name: 'Asha' },
       poster: { name: 'Ravi' },
       listing: { title: '2 BHK', cityName: 'Bengaluru', area: 'HSR Layout' },
-      unreadByOwner: true,
+      firstSenderId: 'buyer1',
+      lastMessageUnread: true,
     });
   });
 
-  it("includes staff threads only when asked for 'any', and never flags them as unread by the owner", async () => {
+  it("includes staff threads only when asked for 'any'", async () => {
     const { service, prisma } = setup([row({ type: 'moderation' })]);
     const result = await service.listConversationsAsAdmin({ type: 'any', limit: 25 });
     expect((prisma.conversation.findMany as jest.Mock).mock.calls[0][0].where).not.toHaveProperty('type');
-    expect(result.items[0].unreadByOwner).toBe(false);
+    expect(result.items[0].lastMessageUnread).toBe(true);
+  });
+
+  it('names who actually wrote first, which is not always who opened the conversation', async () => {
+    // The buyer opened the chat, but the owner wrote the first (and only) message.
+    const { service } = setup(
+      [row({ messages: [{ id: 'm1', conversationId: 'c1', senderId: 'owner1', body: 'Hello', createdAt: when, readAt: null, deletedAt: null, card: null }] })],
+      [{ conversationId: 'c1', senderId: 'owner1' }],
+    );
+    const [item] = (await service.listConversationsAsAdmin({ limit: 25 })).items;
+    expect(item.inquirer.id).toBe('buyer1');
+    expect(item.firstSenderId).toBe('owner1');
   });
 
   it('filters by either party, listing, date range and text', async () => {
@@ -593,10 +606,11 @@ describe('MessagingService.listConversationsAsAdmin — the admin Messages scree
   });
 
   it('shows a conversation with no messages by its start time', async () => {
-    const { service } = setup([row({ messages: [], _count: { messages: 0 } })]);
+    const { service } = setup([row({ messages: [], _count: { messages: 0 } })], []);
     const [item] = (await service.listConversationsAsAdmin({ limit: 25 })).items;
     expect(item.lastMessage).toBeNull();
     expect(item.lastMessageAt).toBe(when.toISOString());
-    expect(item.unreadByOwner).toBe(false);
+    expect(item.firstSenderId).toBeNull();
+    expect(item.lastMessageUnread).toBe(false);
   });
 });
