@@ -1,0 +1,48 @@
+# Blog outreach list and indexing steps (2026-10-22)
+
+Follows [`blog-backlink-content.md`](blog-backlink-content.md). The posts are live; this is the manual work that
+gets them found and cited. Nothing here is automated, and no real contact names are listed (we have none verified).
+
+## Indexing (Search Console)
+The sitemap at `https://www.bhavano.com/sitemap.xml` already lists every blog post, so if it is submitted nothing
+more is needed. To speed up the 11 new posts:
+1. Search Console → URL inspection → paste each URL → **Request indexing** (a small daily quota, so do a few a day).
+2. Later, Search Console → Performance → filter by page `/blog/` to see impressions and clicks per post.
+3. In admin Page visits, filter Source for `chatgpt.com`, `perplexity.ai`, `gemini.google.com`, `copilot.microsoft.com`
+   to see visits that arrived from AI assistants.
+
+New URLs: `what-does-bhk-mean`, `real-estate-terms-explained-india`, `security-deposit-for-rent-in-india`,
+`verify-property-owner-before-paying-token`, `freehold-vs-leasehold-property-india`,
+`society-maintenance-charges-explained`, `down-payment-for-a-home-loan`, `how-to-check-property-title-is-clear`,
+`how-to-calculate-rental-yield`, `stamp-duty-and-registration-charges-explained`,
+`capital-gains-tax-on-property-explained` (all under `/blog/`).
+
+## Who to ask, post by post
+Ask for a link only where the post genuinely helps that site's readers. Never pay for links or swap them in bulk.
+
+| Post | Who it helps | Where to find them (search these) |
+|---|---|---|
+| `security-deposit-for-rent-in-india`, `verify-property-owner-before-paying-token` | tenants, students, people relocating | relocation and "moving to <city>" blogs, college alumni and hostel groups, company HR relocation pages, tenant forums |
+| `what-does-bhk-mean`, `real-estate-terms-explained-india` | first-time renters and buyers, NRIs | NRI community sites, "first home" blogs, expat guides for Indian cities |
+| `down-payment-for-a-home-loan`, `how-to-calculate-rental-yield` | first-time buyers, small investors | personal-finance blogs, money newsletters, investor communities |
+| `how-to-check-property-title-is-clear`, `freehold-vs-leasehold-property-india`, `stamp-duty-and-registration-charges-explained` | buyers doing due diligence | property-law explainers, resident welfare associations, consumer-awareness groups |
+| `capital-gains-tax-on-property-explained` | sellers, NRIs | tax and CA practice blogs (offer it as a plain-language reference, not as advice) |
+| `society-maintenance-charges-explained` | apartment residents | resident association newsletters, society-management software blogs |
+
+Search patterns: `"moving to <city>" guide`, `"first time home buyer" India blog`, `"write for us" real estate India`,
+`resource page "home loan" India`, and broken or outdated links on pages that cover the same topic.
+
+## A short pitch to adapt
+> Hi <name>, I read your guide on <their page>. We published a plain-language explainer on <topic> that your readers
+> may find useful as a reference: <post URL>. It has no ads or sign-up. If it fits, a link would be welcome, and we are
+> happy to correct anything you think is unclear.
+
+For the calculators (EMI, down payment, rent vs buy, rent affordability, area converter) the pitch is "a free tool for
+your readers", which earns links more easily than a blog post.
+
+## Rules
+- The legal and tax posts (`how-to-check-property-title-is-clear`, `freehold-vs-leasehold-property-india`,
+  `stamp-duty-and-registration-charges-explained`, `capital-gains-tax-on-property-explained`) should be reviewed by a
+  qualified person before you promote them. Add a real "reviewed by" name once one exists.
+- Keep a simple log (page, contact, date asked, result) so nobody is asked twice.
+- Do not claim Bhavano verifies owners or documents; the posts and the trust page say what we do and do not check.
