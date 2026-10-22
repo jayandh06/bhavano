@@ -238,6 +238,11 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 
 type Step = "category" | "transactionType" | "details" | "review" | "offer" | "success";
 
+/** The first screen asks what the seller wants to do, then what they are listing. The old separate
+ * "transactionType" step is gone (a draft saved on it resumes on this screen); it stays in the Step type only
+ * so old drafts and funnel rows are still understood. "buy" is never postable. */
+const INTENT_OPTIONS: TransactionType[] = ["sell", "rent", "lease"];
+
 // Mirrors web PostAdWizard.tsx's own STEP_SYNTHETIC_PATH — kept in sync by hand, same as every
 // other web/mobile pair of these constants in this app.
 const STEP_SYNTHETIC_PATH: Record<Step, string | null> = {
@@ -499,7 +504,7 @@ export function PostAdWizard({
     setPhotoUris(draft.photoUris);
     setSelectedBoostPlan(draft.selectedBoostPlan);
     // The preview is only shown after the account check in onPreview, so resume one step back.
-    setStep(draft.step === "review" ? "details" : draft.step);
+    setStep(draft.step === "review" ? "details" : draft.step === "transactionType" ? "category" : draft.step);
   }
 
   // Releases the held-back "your ad is posted" message once the live screen is reached (Featured
@@ -874,14 +879,18 @@ export function PostAdWizard({
     // yet" apart from "explicitly skipped" (BoostPlanSelector's own Skip sets this back to null).
     setSelectedBoostPlan({ duration: 15, includeInstantAlerts: true });
     const postable = POSTABLE_TRANSACTION_TYPES[next];
-    if (postable.length === 1) {
-      setTransactionType(postable[0]);
-      setPriceQualifier(getPriceQualifierOptions(next, postable[0])[0]?.value ?? "");
+    // The intent may already be chosen (intent-first), or the category may allow only one thing (PG, plot,
+    // interiors), in which case there is nothing left to ask. Otherwise stay on this screen and wait for the
+    // intent, with the category highlighted.
+    const intent = transactionType && postable.includes(transactionType) ? transactionType : postable.length === 1 ? postable[0] : null;
+    if (intent) {
+      setTransactionType(intent);
+      setPriceQualifier(getPriceQualifierOptions(next, intent)[0]?.value ?? "");
+      if (intent !== "sell" && intent !== "lease") setPriceMode("total");
       setStep("details");
     } else {
       setTransactionType(null);
       setPriceQualifier("");
-      setStep("transactionType");
     }
   }
 
@@ -891,7 +900,13 @@ export function PostAdWizard({
     // Price-per-unit is sell/lease only — switching to rent must not carry a stale "perUnit"
     // mode forward into a combination the server would reject.
     if (next !== "sell" && next !== "lease") setPriceMode("total");
-    setStep("details");
+    if (category && POSTABLE_TRANSACTION_TYPES[category].includes(next)) {
+      setStep("details");
+    } else if (category) {
+      // The chosen category cannot be posted this way (rent a plot): ask again rather than carry it forward.
+      setCategory(null);
+      setPriceQualifier("");
+    }
   }
 
   async function pickPhotos() {
@@ -1672,8 +1687,7 @@ export function PostAdWizard({
   // (rather than each step computing its own bottom "Back" button, as before) is what lets a
   // single header back-arrow replace all three — see ScreenHeader below.
   function previousStep(): Step | null {
-    if (step === "transactionType") return "category";
-    if (step === "details") return category && POSTABLE_TRANSACTION_TYPES[category].length === 1 ? "category" : "transactionType";
+    if (step === "details") return "category";
     if (step === "review") return "details";
     return null;
   }
@@ -1689,7 +1703,7 @@ export function PostAdWizard({
     <>
     <View style={{ flex: 1 }}>
     <ScreenHeader
-      title="Post an Ad"
+      title={step === "details" ? "Add details" : step === "review" ? "Preview your ad" : "Post an Ad"}
       onBack={
         prevStep
           ? () => {
@@ -1713,11 +1727,11 @@ export function PostAdWizard({
         // every Android font/OS version (it showed up missing/wrong on real Android devices,
         // while iOS's SF fonts always had it). An SVG icon has no such dependency.
         <View style={[styles.stepper, { alignItems: "center" }]}>
-          {(["category", "transactionType", "details", "review"] as Step[]).map((s, i) => (
+          {(["category", "details", "review"] as Step[]).map((s, i) => (
             <View key={s} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               {i > 0 && <Icon name="chevronRight" size={11} color={colors.muted} />}
               <Text style={{ fontSize: 11, fontWeight: "700", color: step === s ? colors.green : colors.muted }}>
-                {i + 1}. {s === "category" ? "Category" : s === "transactionType" ? "Transaction" : s === "details" ? "Details" : "Preview Ad"}
+                {i + 1}. {s === "category" ? "What you're posting" : s === "details" ? "Details" : "Preview Ad"}
               </Text>
             </View>
           ))}
@@ -1825,36 +1839,59 @@ export function PostAdWizard({
               </Text>
             </View>
           )}
+          <View style={{ gap: 10 }}>
+            <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700" }}>What would you like to do?</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              {INTENT_OPTIONS.map((t) => (
+                <Pressable
+                  key={t}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: transactionType === t }}
+                  onPress={() => selectTransactionType(t)}
+                  style={[
+                    styles.optionButton,
+                    {
+                      flex: 1,
+                      minWidth: 90,
+                      justifyContent: "center",
+                      borderColor: transactionType === t ? colors.green : colors.border,
+                      backgroundColor: transactionType === t ? colors.surfaceAlt : "transparent",
+                    },
+                  ]}
+                >
+                  <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>{TRANSACTION_TYPE_LABELS[t]}</Text>
+                </Pressable>
+              ))}
+            </View>
+            {category && !transactionType ? (
+              <Text style={{ color: colors.muted, fontSize: 13 }}>
+                Now choose what you want to do with your {POST_CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()}.
+              </Text>
+            ) : null}
+          </View>
+          <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700", marginBottom: -12 }}>What are you listing?</Text>
           {POST_CATEGORY_GROUPS.map((group) => (
             <View key={group.title} style={{ gap: 10 }}>
               <Text style={[styles.groupHeading, { color: colors.textSoft }]}>{group.title.toUpperCase()}</Text>
-              {group.options.map((c) => (
+              {group.options.map((c) => {
+                // With an intent chosen, only the categories that can be posted that way stay available.
+                const available = !transactionType || POSTABLE_TRANSACTION_TYPES[c.value].includes(transactionType);
+                return (
                 <Pressable
                   key={c.value}
+                  disabled={!available}
+                  accessibilityState={{ disabled: !available }}
                   onPress={() => selectCategory(c.value)}
-                  style={[styles.optionButton, { borderColor: category === c.value ? colors.green : colors.border, backgroundColor: category === c.value ? colors.surfaceAlt : colors.surface }]}
+                  style={[styles.optionButton, { borderColor: category === c.value ? colors.green : colors.border, backgroundColor: category === c.value ? colors.surfaceAlt : colors.surface }, !available && { opacity: 0.4 }]}
                 >
                   {isIconName(c.iconName) && (
                     <Icon name={c.iconName} size={18} color={category === c.value ? colors.green : colors.textSoft} />
                   )}
                   <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>{c.label}</Text>
                 </Pressable>
-              ))}
+                );
+              })}
             </View>
-          ))}
-        </View>
-      )}
-
-      {step === "transactionType" && category && (
-        <View style={{ gap: 10 }}>
-          {POSTABLE_TRANSACTION_TYPES[category].map((t) => (
-            <Pressable
-              key={t}
-              onPress={() => selectTransactionType(t)}
-              style={[styles.optionButton, { borderColor: transactionType === t ? colors.green : colors.border, backgroundColor: transactionType === t ? colors.surfaceAlt : colors.surface }]}
-            >
-              <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>{TRANSACTION_TYPE_LABELS[t]}</Text>
-            </Pressable>
           ))}
         </View>
       )}
@@ -1869,6 +1906,10 @@ export function PostAdWizard({
 
       {step === "details" && category && transactionType && detailsReady && (
         <View style={{ gap: 4 }}>
+          <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700", marginBottom: 4 }}>
+            Tell us about the {POST_CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()} you&apos;re{" "}
+            {transactionType === "sell" ? "selling" : transactionType === "rent" ? "renting out" : "leasing out"}
+          </Text>
           <Text style={[styles.label, { color: colors.textSoft }]}>
             Pin your exact location
             <RequiredMark />
@@ -2332,6 +2373,7 @@ export function PostAdWizard({
 
       {step === "review" && category && transactionType && (
         <View style={{ gap: 12 }}>
+          <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700", textAlign: "center" }}>Does your ad look right?</Text>
           {/* What the actual browse-grid ListingCard will look like once this is posted — same
             * photo/badge/price/title/location/specs a buyer sees, not a plain text summary, so a
             * mistake (wrong cover photo, an odd-reading price, a spec that didn't come through) is

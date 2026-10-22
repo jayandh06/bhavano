@@ -184,7 +184,14 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 
 /** The step tracker's own display/jump order — "success" has no entry (the tracker is hidden by
  * then) and isn't a place `jumpToStep` can send you back to anyway. */
-const STEP_TRACKER_ORDER: Step[] = ["category", "transactionType", "details", "review"];
+const STEP_TRACKER_ORDER: Step[] = ["category", "details", "review"];
+
+/** The intents offered on the first screen. "buy" is never postable (a browsing tab, not a lister's action). */
+const INTENT_OPTIONS: TransactionType[] = ["sell", "rent", "lease"];
+
+/** The first screen asks what the seller wants to do, then what they are listing. The old separate
+ * "transactionType" step is gone (a draft saved on it resumes on this screen); "transactionType" stays in
+ * the Step type only so the funnel trail and the admin's pageTrail decoder keep understanding old rows. */
 
 type Step = "category" | "transactionType" | "details" | "review" | "offer" | "success";
 
@@ -603,7 +610,7 @@ export function PostAdWizard({
     setSelectedBoostPlan({ duration: 15, includeInstantAlerts: true });
     setTransactionType(presetType);
     setPriceQualifier(presetType ? (getPriceQualifierOptions(presetCategory, presetType)[0]?.value ?? "") : "");
-    setStep(presetType ? "details" : "transactionType");
+    setStep(presetType ? "details" : "category");
   }
 
   function applyDraft(saved: SavedDraft) {
@@ -636,7 +643,7 @@ export function PostAdWizard({
       });
     }
     // The preview is only shown after the account check in onPreview, so resume one step back.
-    setStep(draft.step === "review" ? "details" : draft.step);
+    setStep(draft.step === "review" ? "details" : draft.step === "transactionType" ? "category" : draft.step);
   }
 
   // The "your ad is posted" email/WhatsApp is held back until here (Featured paid, skipped or the
@@ -1165,16 +1172,18 @@ export function PostAdWizard({
     // yet" apart from "explicitly skipped" (BoostPlanSelector's own Skip sets this back to null).
     setSelectedBoostPlan({ duration: 15, includeInstantAlerts: true });
     const postable = POSTABLE_TRANSACTION_TYPES[next];
-    if (postable.length === 1) {
-      setTransactionType(postable[0]);
-      setPriceQualifier(
-        getPriceQualifierOptions(next, postable[0])[0]?.value ?? "",
-      );
+    // The intent may already be chosen (intent-first), or the category may only allow one thing (PG, plot,
+    // interiors), in which case there is nothing left to ask. Otherwise stay on this screen and wait for the
+    // intent, with the category highlighted.
+    const intent = transactionType && postable.includes(transactionType) ? transactionType : postable.length === 1 ? postable[0] : null;
+    if (intent) {
+      setTransactionType(intent);
+      setPriceQualifier(getPriceQualifierOptions(next, intent)[0]?.value ?? "");
+      if (intent !== "sell" && intent !== "lease") setPriceMode("total");
       setStep("details");
     } else {
       setTransactionType(null);
       setPriceQualifier("");
-      setStep("transactionType");
     }
   }
 
@@ -1188,7 +1197,13 @@ export function PostAdWizard({
     // Price-per-unit is sell/lease only — switching to rent must not carry a stale "perUnit" mode
     // forward into a combination the server would reject.
     if (next !== "sell" && next !== "lease") setPriceMode("total");
-    setStep("details");
+    if (category && POSTABLE_TRANSACTION_TYPES[category].includes(next)) {
+      setStep("details");
+    } else if (category) {
+      // The chosen category cannot be posted this way (rent a plot): ask again rather than carry it forward.
+      setCategory(null);
+      setPriceQualifier("");
+    }
   }
 
   async function onPhotosSelected(files: FileList | null) {
@@ -1998,12 +2013,10 @@ export function PostAdWizard({
           {STEP_TRACKER_ORDER.map((s, i) => {
             const label =
               s === "category"
-                ? "Category"
-                : s === "transactionType"
-                  ? "Transaction"
-                  : s === "details"
-                    ? "Details"
-                    : "Preview Ad";
+                ? "What you're posting"
+                : s === "details"
+                  ? "Details"
+                  : "Preview Ad";
             const isPast = i < currentStepIndex;
             return (
               <span key={s} className={`whitespace-nowrap ${step === s ? "text-green" : "text-muted"}`}>
@@ -2069,17 +2082,45 @@ export function PostAdWizard({
               </p>
             </div>
           )}
+          <div>
+            <h2 className="font-lora text-xl font-semibold text-text m-0 mb-2.5">What would you like to do?</h2>
+            <div className="flex flex-wrap gap-2.5">
+              {INTENT_OPTIONS.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  aria-pressed={transactionType === t}
+                  onClick={() => selectTransactionType(t)}
+                  className={transactionButtonClass(transactionType === t)}
+                >
+                  {TRANSACTION_TYPE_LABELS[t]}
+                </button>
+              ))}
+            </div>
+            {category && !transactionType && (
+              <p className="m-0 mt-2 text-[13px] text-muted">
+                Now choose what you want to do with your {POST_CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()}.
+              </p>
+            )}
+          </div>
+          <h2 className="font-lora text-xl font-semibold text-text m-0 -mb-2">What are you listing?</h2>
           {POST_CATEGORY_GROUPS.map((group) => (
             <div key={group.title}>
               <h3 className="text-[13px] font-bold text-text-soft uppercase tracking-wide m-0 mb-2.5">{group.title}</h3>
               {/* Two columns on a phone, three from sm up. Three fixed columns left roughly 100px
                 * per tile at 360px, which "Commercial space" and "Storage space" cannot fit. */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-                {group.options.map((c) => (
+                {group.options.map((c) => {
+                  // With an intent chosen, only the categories that can be posted that way stay available.
+                  const available = !transactionType || POSTABLE_TRANSACTION_TYPES[c.value].includes(transactionType);
+                  return (
                   <button
                     key={c.value}
+                    type="button"
+                    disabled={!available}
+                    title={available ? undefined : `Not available to ${TRANSACTION_TYPE_LABELS[transactionType!].toLowerCase()}`}
                     onClick={() => selectCategory(c.value)}
-                    className={optionButtonClass(category === c.value)}
+                    className={`${optionButtonClass(category === c.value)} ${available ? "" : "opacity-40 cursor-not-allowed"}`}
                   >
                     {isIconName(c.iconName) && (
                       <span className="text-lg shrink-0 text-green">
@@ -2088,42 +2129,20 @@ export function PostAdWizard({
                     )}
                     <span className="min-w-0">{c.label}</span>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {step === "transactionType" && category && (
-        <div className="flex flex-col gap-2.5">
-          <div className="flex flex-wrap gap-2.5">
-            {POSTABLE_TRANSACTION_TYPES[category].map((t) => (
-              <button
-                key={t}
-                onClick={() => selectTransactionType(t)}
-                className={transactionButtonClass(transactionType === t)}
-              >
-                {TRANSACTION_TYPE_LABELS[t]}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => setStep("category")}
-            // self-start: this button is a direct child of the flex-col above (unlike the
-            // details/review steps' Back buttons, which sit inside their own flex row next to
-            // another button) — without it, the column's default align-items: stretch stretches
-            // the button to the full row width, and a <button>'s centered default text alignment
-            // then makes "← Back" appear floating in the middle instead of at the left edge.
-            className={`${secondaryButtonClass} self-start mt-1`}
-          >
-            ← Back
-          </button>
-        </div>
-      )}
-
       {step === "details" && category && transactionType && (
         <div className="flex flex-col gap-4">
+          <h2 className="font-lora text-xl font-semibold text-text m-0 max-w-[720px]">
+            Tell us about the {POST_CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()} you&apos;re{" "}
+            {transactionType === "sell" ? "selling" : transactionType === "rent" ? "renting out" : "leasing out"}
+          </h2>
           <div className="max-w-[720px]">
             <RequiredLabel text="Pin your exact location" />
             <p className="text-xs text-muted mt-0 mb-2">
@@ -2544,13 +2563,7 @@ export function PostAdWizard({
 
           <div className="flex gap-2.5 max-w-[720px]">
             <button
-              onClick={() =>
-                setStep(
-                  POSTABLE_TRANSACTION_TYPES[category].length === 1
-                    ? "category"
-                    : "transactionType",
-                )
-              }
+              onClick={() => setStep("category")}
               className={secondaryButtonClass}
             >
               ← Back
@@ -2575,6 +2588,7 @@ export function PostAdWizard({
 
       {step === "review" && category && transactionType && (
         <div className={`w-full mx-auto ${showPublishPanelOnReview ? "max-w-6xl" : "max-w-[340px]"}`}>
+          <h2 className="font-lora text-xl font-semibold text-text m-0 mb-4 text-center">Does your ad look right?</h2>
           <div
             className={showPublishPanelOnReview ? "flex flex-col xl:flex-row gap-6 xl:items-start" : "flex flex-col gap-3"}
           >
