@@ -2293,7 +2293,7 @@ export function PostAdWizard({
         <div className="xl:grid xl:grid-cols-[minmax(0,820px)_340px] xl:gap-10 xl:items-start">
         <div className="flex flex-col gap-4 min-w-0" onFocusCapture={onDetailsFocus} onKeyDown={onDetailsKeyDown}>
           {issues.length > 0 && (
-            <div className="sticky top-[68px] z-30 max-w-[720px] xl:hidden">
+            <div className="sticky top-[68px] z-30 max-w-[720px]">
               <button
                 type="button"
                 onClick={onChipTap}
