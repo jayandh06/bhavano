@@ -63,12 +63,11 @@ Baseline first (Phase 0). Do not promise a number until we have it.
   `/post/error?stage=` decoded in `apps/admin/src/lib/pageTrail.ts`). Mobile already fires `post_step_view`; it needs the same field-level events as web.
 - One admin view: details to preview conversion and the top blocking fields by category and platform.
 
-### Phase 1: remove the wall (web and mobile, medium)
-1. **Essentials first.** Show the required fields (apartment: the 11) in one "Essentials" group at the top, in the order a seller thinks
-   about them (what, where, how big, how much). Put the rest under **"Add more details to get more enquiries"**, collapsed by default,
-   one collapsed section each (Furnishing, Amenities, Preferences, Other details), each showing "2 of 8 filled". Keep the completeness
-   bar, but make it count required **and** optional so it reads honestly. Risk: fewer optional fields may be filled. Mitigation: the
-   completeness nudge stays visible, Featured/AI copy continue to reward detail, and we watch completeness at publish in Phase 0 data.
+### Phase 1: guide through the long form (web and mobile, medium)
+1. **Keep every section open (decided 2026-10-22).** The optional sections (furnishing, amenities, preferences and the rest of the basics)
+   stay expanded, so listing quality does not drop. The wall is tackled with guidance instead of hiding: mark required fields clearly
+   (the red asterisk stays), keep the completeness bar, and use items 2 to 4 below. Revisit collapsing only if Phase 0 shows many sellers
+   leaving mid-form.
 2. **Show what is left.** A small "3 required left" chip near the top of the form (sticky on mobile), tapping which scrolls to and focuses
    the first missing field.
 3. **Preview never silently disabled.** Keep the button enabled. On tap with gaps: scroll to the first problem, outline it, and show an
@@ -110,11 +109,11 @@ Baseline first (Phase 0). Do not promise a number until we have it.
 - Test: unit tests on the "first missing field" and required-first ordering helpers (shared in `packages/types` so both apps use them),
   and a manual pass on one slow Android phone and one iPhone.
 
-## 6. Decisions needed from you
-1. Collapse the optional sections by default (recommended), or keep everything open and only add the "required left" guidance?
-2. Is it acceptable to ask for photos earlier in the step (Phase 2, item 8), or should the order stay as it is?
-3. Mobile as three screens (recommended) or one scrolling screen with the sticky progress bar only?
-4. Do you want the paste-your-ad idea (Phase 4) planned in detail now, or left for later?
+## 6. Decisions
+1. **Decided: keep all sections open** and add required-left guidance, jump-to-first-problem and per-field validation instead of collapsing.
+2. Open: is it acceptable to ask for photos earlier in the step (Phase 2, item 8), or should the order stay as it is?
+3. Open: mobile as three screens (recommended) or one scrolling screen with the sticky progress bar only?
+4. Open: plan the paste-your-ad idea (Phase 4) in detail now, or leave it for later?
 
 ## 7. Suggested order of work
 Phase 0 (about a week of analytics, nothing visible) → Phase 1 web → Phase 1 mobile (with a release) → Phase 2 → Phase 3 → Phase 4 only if
