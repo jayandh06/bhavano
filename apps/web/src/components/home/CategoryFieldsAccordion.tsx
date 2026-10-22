@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
 import type { FieldDef, FieldOption, FieldSection, ListingCompleteness } from "@bhavano/types/categoryFields";
 import {
@@ -63,6 +63,15 @@ function CheckboxDropdown({
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
+  // Escape closes the list, from anywhere while it is open.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   const selectedSet = new Set(selected);
   const label =
@@ -216,6 +225,32 @@ function CategoryFieldInput({
         selected={Array.isArray(value) ? value : []}
         onChange={onChange}
       />
+    );
+  }
+
+  // Three or four short choices read faster as buttons you can see than as a dropdown you have to open.
+  // A field that is not required can be cleared by tapping the chosen one again.
+  if (field.type === "select" && field.options && field.options.length >= 3 && field.options.length <= 4 && field.options.every((o) => o.label.length <= 14)) {
+    return (
+      <div role="radiogroup" aria-label={field.label} className="flex flex-wrap gap-1.5">
+        {field.options.map((opt) => {
+          const selected = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(selected && !field.required ? "" : opt.value)}
+              className={`rounded-lg border px-3 py-2 text-[13px] font-bold cursor-pointer ${
+                selected ? "border-green bg-green/10 text-text" : "border-border bg-surface text-text-soft hover:border-green"
+              }`}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
     );
   }
 

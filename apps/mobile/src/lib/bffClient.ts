@@ -1,4 +1,5 @@
 import type { AppVersionSettingsDto } from "@bhavano/types/appVersion";
+import type { LastListingDetailsDto } from "@bhavano/types/listingReuse";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
@@ -776,6 +777,11 @@ export function fetchMyListing(accessToken: string, id: string): Promise<Listing
 /** Fields an owner can change after posting — see UpdateListingInput's own doc comment. Category/
  * transactionType/city/area are deliberately not here: same as web, changing what a listing
  * fundamentally *is* isn't part of "edit," see EditListingForm.tsx's identical omission. */
+/** The seller's latest ad in a category, for "Use details from your last ad" on the posting form. */
+export function fetchLastListingDetails(accessToken: string, category: string): Promise<LastListingDetailsDto | null> {
+  return authedBffFetch(accessToken, `/users/me/listings/last-details?category=${encodeURIComponent(category)}`);
+}
+
 export function updateListing(accessToken: string, id: string, input: UpdateListingInput): Promise<ListingDetailDto> {
   return authedBffFetch(accessToken, `/listings/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 }

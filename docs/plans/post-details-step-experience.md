@@ -153,3 +153,39 @@ Not yet deployed or tried in a browser or on a device; types, unit tests (BFF, a
   focused. Mobile selects that open the option sheet are not marked "touched" until Preview is tapped.
 - No flag yet: the behaviour change ships to everyone. The plan's flag idea is left for if the numbers fall.
 - The mobile changes need a store build or OTA; web ships first.
+
+## 9. Built: Phase 2 and Phase 3 (2026-10-22), web and mobile
+Not yet deployed or tried in a browser or on a device; typechecks and unit tests pass (BFF 328 listings tests, web 75).
+
+**Phase 2**
+- **Item 5, reuse the last ad.** BFF `GET /users/me/listings/last-details?category=` returns the seller's latest ad in that category
+  (attributes only). `reuseAttributes` (`@bhavano/types/listingReuse`, tested) copies **only** furnishing, amenities, preferences,
+  brokerage terms and Posted by, into blanks, never over typing and only values the form still offers. Property facts (size, floor,
+  bedrooms, price, photos, title) are never copied, so no wrong fact can be published by accident. Web and mobile show "Use details from
+  your last ad?" with a Fill them in button, then say what was filled.
+- **Item 6, smarter defaults.** Deliberately limited: counts already start at zero and the price qualifier already defaults by category.
+  BHK-linked bathrooms and balconies were **not** added, because they would guess a required fact; item 5 covers repeat sellers instead.
+- **Item 7, chips.** Web select fields with 3 or 4 short options render as buttons (tap the chosen one again to clear an optional field);
+  14 fields across categories. Yes/No toggles, steppers, units inside the field and the right number keyboards already existed. Mobile
+  already used segmented buttons for up to 3 short options.
+- **Item 8, photos earlier.** Photos moved to right after the location on web and mobile (video stays further down). The decision in
+  section 6 was taken as agreed with this request.
+- **Item 9, visible autosave.** "Draft saved on this device at HH:MM" under the heading (web) and in the progress header (mobile). The
+  existing "We restored the ad you were writing" banner already covers coming back, with Start a new ad instead.
+
+**Phase 3**
+- **Desktop (xl and wider):** two columns, the form on the left and a sticky rail on the right with a **live preview card** (the real
+  `ListingPreviewCard` with the current values) and the **checklist** of what is left (each line scrolls to its field) plus the optional
+  completeness. Hidden below xl, where the sticky "N left" chip remains. **Keyboard:** Enter in a single-line box moves to the next
+  field (not in textareas, selects, buttons or the map search); Escape closes the multi-select list; Tab order follows the page.
+- **Mobile:** Details is three screens with a progress bar: **Location and photos**, **About the property**, **Title and description**
+  (the plan's grouping, adjusted so photos come early). A bar pinned to the bottom has **Back** and **Next** (the last is **Preview Ad**),
+  with "N left on this screen: Next: ..." above it. Next moves on only when the screen is complete; otherwise it shows what is missing and
+  scrolls to it. The header back arrow steps back through the screens. `detailsPartOfTarget` (tested) maps a problem to its screen, so
+  Preview can jump to a problem on an earlier screen.
+
+**Known gaps and notes**
+- `preview_blocked` is now also sent when Next is blocked on a mobile screen, with the field that blocked it.
+- No feature flag (as in Phase 1). Compare Details to Preview before and after in admin Post-ad funnel.
+- Mobile needs a store build or OTA. Wizard behaviour is not covered by automated UI tests; do a manual pass on one slow Android phone
+  and one iPhone, and a desktop at 1280px and wider, before widening any rollout.

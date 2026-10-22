@@ -60,6 +60,7 @@ import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName, type IconName } from "../Icon";
 import { CompletenessMeter } from "./CompletenessMeter";
 import {
+  fetchLastListingDetails,
   BffError,
   createListing,
   fetchAiGenerateUsage,
@@ -72,7 +73,8 @@ import {
 } from "../../lib/bffClient";
 import { INDIAN_LANGUAGE_LABELS, INDIAN_LANGUAGES, type AiGenerateUsageDto, type IndianLanguage } from "@bhavano/types/listingCopyAssist";
 import { getAnalyticsSessionId, recordAppPageView } from "../../lib/analyticsSession";
-import { postDetailsIssues } from "@bhavano/types/postDetailsIssues";
+import { detailsPartOfTarget, postDetailsIssues } from "@bhavano/types/postDetailsIssues";
+import { reuseAttributes, type LastListingDetailsDto } from "@bhavano/types/listingReuse";
 import { postFieldEventPath, type PostFieldEvent } from "@bhavano/types/postFieldEvents";
 import { logPostAdSuccess, logPostError, logPostLoginRequired, logPostStepView } from "../../lib/firebaseAnalytics";
 import {
@@ -609,6 +611,7 @@ export function PostAdWizard({
         photoUris,
         selectedBoostPlan,
       });
+      setDraftSavedAt(Date.now());
     }, 400);
     return () => clearTimeout(timer);
   }, [
@@ -632,6 +635,7 @@ export function PostAdWizard({
 
   function startOver() {
     void clearPostAdDraft();
+    setDetailsPart(0);
     setPhotoUris([]);
     setCategory(null);
     setTransactionType(null);
@@ -1358,6 +1362,15 @@ export function PostAdWizard({
   // Which problems to put a message under: a field's own message once the seller has left it, and every message
   // after a blocked Preview tap.
   const [attemptedPreview, setAttemptedPreview] = useState(false);
+  // Details is three short screens (docs/plans/post-details-step-experience.md, Phase 3): where it is and what it
+  // looks like, the property's details, then the title and description.
+  const [detailsPart, setDetailsPart] = useState<0 | 1 | 2>(0);
+  // "Use details from your last ad" (Phase 2), one fetch per category.
+  const [lastAd, setLastAd] = useState<LastListingDetailsDto | null>(null);
+  const [lastAdCopied, setLastAdCopied] = useState<string[] | null>(null);
+  const lastAdFetchedFor = useRef<string | null>(null);
+  // Visible autosave (Phase 2): the form is already saved on this device; say so.
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
   const [touchedTargets, setTouchedTargets] = useState<ReadonlySet<string>>(new Set());
   const shownMessages: Record<string, string> = {};
   for (const issue of issues) {
@@ -1432,6 +1445,18 @@ export function PostAdWizard({
     reportFieldEvent("first_touch", { ms: Date.now() - detailsStartRef.current });
     return false;
   }
+  const PART_TITLES = ["Location and photos", "About the property", "Title and description"] as const;
+  const partIssues = issues.filter((issue) => detailsPartOfTarget(issue.target) === detailsPart);
+  /** Scrolls to a problem, switching to its screen first when it is on another one. */
+  function goToTarget(target: string) {
+    const part = detailsPartOfTarget(target);
+    if (part !== detailsPart) {
+      setDetailsPart(part);
+      setTimeout(() => scrollToTarget(target), 150);
+    } else {
+      scrollToTarget(target);
+    }
+  }
   /** Preview with things left does not do nothing: it takes the seller to the first problem. */
   function onPreviewTap() {
     if (issues.length === 0) {
@@ -1440,13 +1465,64 @@ export function PostAdWizard({
       return;
     }
     setAttemptedPreview(true);
-    scrollToTarget(issues[0].target);
+    goToTarget(issues[0].target);
     reportFieldEvent("preview_blocked", { field: issues[0].target, left: issues.length });
   }
   function onChipTap() {
-    if (!issues[0]) return;
-    scrollToTarget(issues[0].target);
-    reportFieldEvent("chip_tapped", { field: issues[0].target, left: issues.length });
+    const first = partIssues[0] ?? issues[0];
+    if (!first) return;
+    goToTarget(first.target);
+    reportFieldEvent("chip_tapped", { field: first.target, left: issues.length });
+  }
+  /** Next moves on once this screen is complete; with something left it shows what and takes the seller to it. */
+  function onPartNext() {
+    if (detailsPart === 2) {
+      onPreviewTap();
+      return;
+    }
+    if (partIssues.length === 0) {
+      setDetailsPart((detailsPart + 1) as 0 | 1 | 2);
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+      return;
+    }
+    setAttemptedPreview(true);
+    scrollToTarget(partIssues[0].target);
+    reportFieldEvent("preview_blocked", { field: partIssues[0].target, left: issues.length });
+  }
+  function onPartBack() {
+    if (detailsPart === 0) {
+      setStep("category");
+      return;
+    }
+    setDetailsPart((detailsPart - 1) as 0 | 1 | 2);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }
+
+  // "Use details from your last ad" (Phase 2). Shown only if it would fill something in, never overwrites typing.
+  useEffect(() => {
+    if (step !== "details" || !category || !accessToken) return;
+    if (lastAdFetchedFor.current === category) return;
+    lastAdFetchedFor.current = category;
+    void fetchLastListingDetails(accessToken, category)
+      .then((result) => {
+        if (result) setLastAd(result);
+      })
+      .catch(() => {
+        // Only ever a convenience.
+      });
+  }, [step, category, accessToken]);
+  const lastAdPreview =
+    lastAd && category && lastAd.category === category && transactionType && lastAdCopied === null
+      ? reuseAttributes(category, transactionType, attributes, lastAd.attributes)
+      : null;
+  function useLastAd() {
+    if (!lastAdPreview || !category) return;
+    const labels = lastAdPreview.copiedKeys
+      .map((key) => CATEGORY_FIELD_CONFIG[category].find((f) => f.key === key)?.label)
+      .filter((l): l is string => !!l);
+    setAttributes(lastAdPreview.attributes);
+    setLastAdCopied(labels);
+    reportFieldEvent("chip_tapped", { field: "reuse_last_ad", left: lastAdPreview.copiedKeys.length });
   }
 
   // AI Generate's whole purpose is to fill title/description, so requiring them first would be
@@ -1813,6 +1889,10 @@ export function PostAdWizard({
       onBack={
         prevStep
           ? () => {
+              if (step === "details" && detailsPart > 0) {
+                onPartBack();
+                return;
+              }
               if (step === "review") {
                 setError(null);
                 setSellerTypeMissing(false);
@@ -2016,6 +2096,42 @@ export function PostAdWizard({
             Tell us about the {POST_CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()} you&apos;re{" "}
             {transactionType === "sell" ? "selling" : transactionType === "rent" ? "renting out" : "leasing out"}
           </Text>
+          <View style={{ marginBottom: 6 }}>
+            <Text style={{ fontSize: 12, fontWeight: "700", color: colors.green }}>
+              Part {detailsPart + 1} of 3 · {PART_TITLES[detailsPart]}
+            </Text>
+            <View style={{ flexDirection: "row", gap: 4, marginTop: 6 }}>
+              {[0, 1, 2].map((i) => (
+                <View key={i} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: i <= detailsPart ? colors.green : colors.border }} />
+              ))}
+            </View>
+            {draftSavedAt !== null && (
+              <Text style={{ fontSize: 11.5, color: colors.muted, marginTop: 6 }}>
+                Draft saved on this device at {new Date(draftSavedAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}
+              </Text>
+            )}
+          </View>
+          {lastAdPreview && lastAdPreview.copiedKeys.length > 0 && (
+            <View style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceAlt, borderRadius: 10, padding: 12, gap: 8, marginBottom: 6 }}>
+              <Text style={{ color: colors.text, fontSize: 13 }}>
+                <Text style={{ fontWeight: "700" }}>Use details from your last ad? </Text>
+                We can fill in {lastAdPreview.copiedKeys.length} {lastAdPreview.copiedKeys.length === 1 ? "answer" : "answers"} (furnishing,
+                amenities, preferences and how you let or sell). Size, price and photos stay yours to enter.
+              </Text>
+              <Pressable onPress={useLastAd} style={[styles.reviewButton, { borderWidth: 1, borderColor: colors.border, alignSelf: "flex-start", paddingVertical: 8 }]}>
+                <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13 }}>Fill them in</Text>
+              </Pressable>
+            </View>
+          )}
+          {lastAdCopied && lastAdCopied.length > 0 && detailsPart === 1 && (
+            <Text style={{ fontSize: 12, color: colors.green, marginBottom: 6 }}>
+              Filled in from your last ad: {lastAdCopied.slice(0, 5).join(", ")}
+              {lastAdCopied.length > 5 ? ` and ${lastAdCopied.length - 5} more` : ""}. Check them and change anything that differs.
+            </Text>
+          )}
+
+          {detailsPart === 0 && (
+            <>
           <View ref={anchor("location")} collapsable={false} />
           <Text style={[styles.label, { color: colors.textSoft }]}>
             Pin your exact location
@@ -2095,98 +2211,6 @@ export function PostAdWizard({
           ) : null}
 
           {msg("location")}
-
-          {/* No Specs box, as on the website: the card's chips come from the category fields below
-            * (deriveCardSpecs), so a typed "3 Beds" only repeated them in another spelling. */}
-          <View style={[styles.divider, { borderColor: colors.border }]}>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
-              {POST_CATEGORIES.find((c) => c.value === category)?.label} details
-            </Text>
-            {category && transactionType && (
-              <CompletenessMeter completeness={listingCompleteness(category, transactionType, attributes)} />
-            )}
-            {/* Grouped into the config's own sections (pricing, basics, preferences, …) in
-                SECTION_ORDER, the same helper the desktop wizard uses and the same order it now
-                renders in — Plot's "plotDetails" section comes before "pricing" there since the
-                price toggle depends on the area/unit chosen in it, and `sections` (see its own
-                comment above) puts them in that same order here. */}
-            {sections.map(({ section, label, fields }) => (
-            <View key={section}>
-            <Text
-              style={[
-                styles.sectionHeading,
-                { color: colors.green, backgroundColor: colors.surfaceAlt, borderLeftColor: colors.green },
-              ]}
-            >
-              {label}
-            </Text>
-            {section === "pricing" && (
-              <View style={{ gap: 4, marginBottom: 4 }}>
-                {priceUnitAreaField && (
-                  <View style={styles.chipRow}>
-                    <Pressable
-                      onPress={() => setPriceMode("total")}
-                      style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "total" ? colors.surfaceAlt : "transparent" }]}
-                    >
-                      <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>Total price</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => setPriceMode("perUnit")}
-                      style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "perUnit" ? colors.surfaceAlt : "transparent" }]}
-                    >
-                      <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>
-                        Price per {areaUnitShortLabel(currentAreaUnit, 1)}
-                      </Text>
-                    </Pressable>
-                  </View>
-                )}
-                <View ref={anchor("price")} collapsable={false} />
-                <Text style={[styles.label, { color: colors.textSoft }]}>
-                  {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹)` : "Price (₹)"}
-                  <RequiredMark />
-                </Text>
-                <TextInput
-                  value={price}
-                  onChangeText={(v) => setPrice(clampPrice(v, transactionType))}
-                  keyboardType="number-pad"
-                  placeholder="e.g. 25000"
-                  placeholderTextColor={colors.muted}
-                  style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
-                />
-                <PriceWordsHint
-                  value={price}
-                  suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
-                />
-                {pricedPerUnit && (
-                  <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit) : null} />
-                )}
-                {price.length > 0 && !priceIsValid(price, category) ? (
-                  <Text style={styles.fieldError}>Enter a price greater than 0.</Text>
-                ) : priceIssue ? (
-                  <Text style={styles.fieldError}>{priceIssue}</Text>
-                ) : (
-                  msg("price")
-                )}
-                <Text style={[styles.label, { color: colors.textSoft }]}>Price qualifier *</Text>
-                <View style={styles.chipRow}>
-                  {getPriceQualifierOptions(category, transactionType).map((opt) => (
-                    <Pressable
-                      key={opt.value}
-                      onPress={() => setPriceQualifier(opt.value)}
-                      style={[styles.chip, { borderColor: colors.border, backgroundColor: priceQualifier === opt.value ? colors.surfaceAlt : "transparent" }]}
-                    >
-                      <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>{opt.label}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            )}
-            {/* Two per row: these are mostly one-word labels over a small control, so a full-width
-                row wasted most of its width and made the section three screens long. */}
-            {fields.length > 0 && <View style={styles.attrGrid}>{fields.flatMap(renderFieldCells)}</View>}
-            </View>
-            ))}
-          </View>
 
           <View ref={anchor("photos")} collapsable={false} />
           <Text style={[styles.label, { color: colors.textSoft }]}>
@@ -2296,6 +2320,108 @@ export function PostAdWizard({
 
           {error && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{error}</Text>}
 
+            </>
+          )}
+
+          {detailsPart === 1 && (
+            <>
+          {/* No Specs box, as on the website: the card's chips come from the category fields below
+            * (deriveCardSpecs), so a typed "3 Beds" only repeated them in another spelling. */}
+          <View style={[styles.divider, { borderColor: colors.border }]}>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
+              {POST_CATEGORIES.find((c) => c.value === category)?.label} details
+            </Text>
+            {category && transactionType && (
+              <CompletenessMeter completeness={listingCompleteness(category, transactionType, attributes)} />
+            )}
+            {/* Grouped into the config's own sections (pricing, basics, preferences, …) in
+                SECTION_ORDER, the same helper the desktop wizard uses and the same order it now
+                renders in — Plot's "plotDetails" section comes before "pricing" there since the
+                price toggle depends on the area/unit chosen in it, and `sections` (see its own
+                comment above) puts them in that same order here. */}
+            {sections.map(({ section, label, fields }) => (
+            <View key={section}>
+            <Text
+              style={[
+                styles.sectionHeading,
+                { color: colors.green, backgroundColor: colors.surfaceAlt, borderLeftColor: colors.green },
+              ]}
+            >
+              {label}
+            </Text>
+            {section === "pricing" && (
+              <View style={{ gap: 4, marginBottom: 4 }}>
+                {priceUnitAreaField && (
+                  <View style={styles.chipRow}>
+                    <Pressable
+                      onPress={() => setPriceMode("total")}
+                      style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "total" ? colors.surfaceAlt : "transparent" }]}
+                    >
+                      <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>Total price</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setPriceMode("perUnit")}
+                      style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "perUnit" ? colors.surfaceAlt : "transparent" }]}
+                    >
+                      <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>
+                        Price per {areaUnitShortLabel(currentAreaUnit, 1)}
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
+                <View ref={anchor("price")} collapsable={false} />
+                <Text style={[styles.label, { color: colors.textSoft }]}>
+                  {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹)` : "Price (₹)"}
+                  <RequiredMark />
+                </Text>
+                <TextInput
+                  value={price}
+                  onChangeText={(v) => setPrice(clampPrice(v, transactionType))}
+                  keyboardType="number-pad"
+                  placeholder="e.g. 25000"
+                  placeholderTextColor={colors.muted}
+                  style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+                />
+                <PriceWordsHint
+                  value={price}
+                  suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
+                />
+                {pricedPerUnit && (
+                  <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit) : null} />
+                )}
+                {price.length > 0 && !priceIsValid(price, category) ? (
+                  <Text style={styles.fieldError}>Enter a price greater than 0.</Text>
+                ) : priceIssue ? (
+                  <Text style={styles.fieldError}>{priceIssue}</Text>
+                ) : (
+                  msg("price")
+                )}
+                <Text style={[styles.label, { color: colors.textSoft }]}>Price qualifier *</Text>
+                <View style={styles.chipRow}>
+                  {getPriceQualifierOptions(category, transactionType).map((opt) => (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => setPriceQualifier(opt.value)}
+                      style={[styles.chip, { borderColor: colors.border, backgroundColor: priceQualifier === opt.value ? colors.surfaceAlt : "transparent" }]}
+                    >
+                      <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>{opt.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
+            {/* Two per row: these are mostly one-word labels over a small control, so a full-width
+                row wasted most of its width and made the section three screens long. */}
+            {fields.length > 0 && <View style={styles.attrGrid}>{fields.flatMap(renderFieldCells)}</View>}
+            </View>
+            ))}
+          </View>
+
+            </>
+          )}
+
+          {detailsPart === 2 && (
+            <>
           {/* Governs the combined AI Generate button below. Replaces English (unlike the
               Featured-regenerate banner's own picker further down, which is additive) — see
               generationLanguage's own comment above. */}
@@ -2469,28 +2595,11 @@ export function PostAdWizard({
             </View>
           )}
 
-          <View style={styles.navRow}>
-            <Pressable
-              onPress={onPreviewTap}
-              style={[styles.reviewButton, { backgroundColor: colors.green }]}
-            >
-              <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Preview Ad</Text>
-            </Pressable>
-          </View>
-          {detailsIssue && (
-            <Text
-              style={{
-                color: detailsIssue.missing ? colors.muted : "#c0554b",
-                fontWeight: detailsIssue.missing ? "400" : "700",
-                fontSize: 13,
-                textAlign: "right",
-                marginTop: 6,
-              }}
-            >
-              To preview: {detailsIssue.text}
-              {issues.length > 1 ? ` (and ${issues.length - 1} more)` : ""}
-            </Text>
+            </>
           )}
+
+          {/* Room for the Back / Next bar pinned below. */}
+          <View style={{ height: 150 }} />
         </View>
       )}
 
@@ -2915,37 +3024,52 @@ export function PostAdWizard({
         </View>
       )}
     </KeyboardAwareScrollView>
-    {step === "details" && detailsReady && issues.length > 0 && (
-      <Pressable
-        onPress={onChipTap}
-        accessibilityRole="button"
-        accessibilityLabel={`${issues.length} left. Next: ${issues[0].text}`}
+    {step === "details" && detailsReady && (
+      <View
         style={{
           position: "absolute",
-          left: 12,
-          right: 12,
-          bottom: 12,
-          flexDirection: "row",
-          alignItems: "center",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          paddingHorizontal: 12,
+          paddingTop: 10,
+          paddingBottom: 12,
           gap: 8,
-          paddingVertical: 10,
-          paddingHorizontal: 14,
-          borderRadius: 999,
-          borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: colors.surface,
-          elevation: 4,
-          shadowColor: "#000",
-          shadowOpacity: 0.12,
-          shadowRadius: 6,
-          shadowOffset: { width: 0, height: 2 },
+          backgroundColor: colors.bg,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
         }}
       >
-        <Text style={{ color: "#b3413a", fontWeight: "700", fontSize: 13 }}>{issues.length} left</Text>
-        <Text style={{ color: colors.muted, fontSize: 13, flex: 1 }} numberOfLines={1}>
-          Next: {issues[0].text}
-        </Text>
-      </Pressable>
+        {partIssues.length > 0 && (
+          <Pressable
+            onPress={onChipTap}
+            accessibilityRole="button"
+            accessibilityLabel={`${partIssues.length} left on this screen. Next: ${partIssues[0].text}`}
+            style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+          >
+            <Text style={{ color: "#b3413a", fontWeight: "700", fontSize: 13 }}>{partIssues.length} left</Text>
+            <Text style={{ color: colors.muted, fontSize: 13, flex: 1 }} numberOfLines={1}>
+              Next: {partIssues[0].text}
+            </Text>
+          </Pressable>
+        )}
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <Pressable
+            onPress={onPartBack}
+            style={[styles.reviewButton, { borderWidth: 1, borderColor: colors.border, flex: 1, alignItems: "center", paddingHorizontal: 12 }]}
+          >
+            <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>Back</Text>
+          </Pressable>
+          <Pressable
+            onPress={onPartNext}
+            style={[styles.reviewButton, { backgroundColor: colors.green, flex: 2, alignItems: "center", paddingHorizontal: 12 }]}
+          >
+            <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>
+              {detailsPart < 2 ? "Next" : "Preview Ad"}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
     )}
     </View>
 

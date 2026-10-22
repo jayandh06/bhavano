@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FocusEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import Link from "next/link";
 import type {
   BoostPlanSelection,
@@ -20,6 +20,7 @@ import {
   brokerageFeeNote,
   CATEGORY_FIELD_CONFIG,
   defaultAttributesFor,
+  listingCompleteness,
   pruneHiddenAttributes,
 } from "@bhavano/types/categoryFields";
 import { fromBrokerDefault, hasFromBrokerField, sellerTypeFromBroker } from "@bhavano/types/sellerType";
@@ -43,6 +44,7 @@ import { MAX_PHOTOS, MAX_PHOTO_BYTES, MIN_PHOTOS, PHOTO_LIMITS } from "@bhavano/
 import { audienceFor, reachLabelFor } from "@bhavano/types/audience";
 import { reportPostAction } from "@/lib/postActionTrail";
 import { reportPostFieldEvent } from "@/lib/postFieldTrail";
+import { reuseAttributes, type LastListingDetailsDto } from "@bhavano/types/listingReuse";
 import { attributeKeyForTarget, scrollToTarget } from "@/lib/postDetailsFocus";
 import { postDetailsIssues } from "@bhavano/types/postDetailsIssues";
 import { FEATURED_BENEFITS } from "@bhavano/types/featuredBenefits";
@@ -57,6 +59,7 @@ import {
   createListingAction,
   fetchMyListingAction,
   updateListingAction,
+  lastListingDetailsAction,
   uploadPhotoAction,
 } from "@/app/actions/listings";
 import {
@@ -756,6 +759,7 @@ export function PostAdWizard({
         attributes,
         selectedBoostPlan,
       });
+      setDraftSavedAt(Date.now());
     }, 400);
     return () => clearTimeout(timer);
   }, [
@@ -1486,6 +1490,37 @@ export function PostAdWizard({
   const [attemptedPreview, setAttemptedPreview] = useState(false);
   const [touchedTargets, setTouchedTargets] = useState<ReadonlySet<string>>(new Set());
   const [highlightTarget, setHighlightTarget] = useState<string | null>(null);
+
+  // "Use details from your last ad": one fetch per category when the seller is signed in. Shown only if it would
+  // actually fill something in, and never overwrites what has been typed (docs/plans/post-details-step-experience.md,
+  // Phase 2).
+  const [lastAd, setLastAd] = useState<LastListingDetailsDto | null>(null);
+  const [lastAdCopied, setLastAdCopied] = useState<string[] | null>(null);
+  const lastAdFetchedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (step !== "details" || !category || !token || assistedMode) return;
+    if (lastAdFetchedFor.current === category) return;
+    lastAdFetchedFor.current = category;
+    void lastListingDetailsAction(category).then((result) => {
+      if (result) setLastAd(result);
+    });
+  }, [step, category, token, assistedMode]);
+  const lastAdPreview =
+    lastAd && category && lastAd.category === category && transactionType && lastAdCopied === null
+      ? reuseAttributes(category, transactionType, attributes, lastAd.attributes)
+      : null;
+  function useLastAd() {
+    if (!lastAdPreview || !category) return;
+    const labels = lastAdPreview.copiedKeys
+      .map((key) => CATEGORY_FIELD_CONFIG[category].find((f) => f.key === key)?.label)
+      .filter((l): l is string => !!l);
+    setAttributes(lastAdPreview.attributes);
+    setLastAdCopied(labels);
+    reportPostFieldEvent("chip_tapped", { field: "reuse_last_ad", category, left: lastAdPreview.copiedKeys.length });
+  }
+
+  // Visible autosave: the form is already saved on this device (post-ad-draft-autosave.md); say so.
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
   const shownMessages: Record<string, string> = {};
   for (const issue of issues) {
     if ((attemptedPreview || touchedTargets.has(issue.target)) && !(issue.target in shownMessages)) {
@@ -1552,6 +1587,24 @@ export function PostAdWizard({
       sendExit();
     };
   }, [step]);
+/** Enter in a single-line box moves to the next field instead of doing nothing. Left alone in a textarea (where it
+   * is a new line), on buttons, in selects, and in the map's address search (where it chooses a suggestion). */
+  function onDetailsKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return;
+    const target = event.target as HTMLElement;
+    if (!(target instanceof HTMLInputElement)) return;
+    if (!["text", "number", "tel", "email", "search"].includes(target.type)) return;
+    if (target.closest("#post-field-location")) return;
+    const all = Array.from(
+      event.currentTarget.querySelectorAll<HTMLElement>(
+        "input:not([type=hidden]):not([type=file]):not([type=checkbox]):not([type=radio]):not([disabled]), select:not([disabled]), textarea:not([disabled])",
+      ),
+    ).filter((el) => el.offsetParent !== null && !el.closest("#post-field-location"));
+    const next = all[all.indexOf(target) + 1];
+    if (!next) return;
+    event.preventDefault();
+    next.focus();
+  }
   function onDetailsFocus(event: FocusEvent<HTMLElement>) {
     const holder = (event.target as HTMLElement).closest<HTMLElement>('[id^="post-field-"]');
     const target = holder ? holder.id.slice("post-field-".length) : null;
@@ -2237,7 +2290,8 @@ export function PostAdWizard({
       )}
 
       {step === "details" && category && transactionType && (
-        <div className="flex flex-col gap-4" onFocusCapture={onDetailsFocus}>
+        <div className="xl:grid xl:grid-cols-[minmax(0,820px)_340px] xl:gap-10 xl:items-start">
+        <div className="flex flex-col gap-4 min-w-0" onFocusCapture={onDetailsFocus} onKeyDown={onDetailsKeyDown}>
           {issues.length > 0 && (
             <div className="sticky top-[68px] z-30 max-w-[720px]">
               <button
@@ -2254,6 +2308,30 @@ export function PostAdWizard({
             Tell us about the {POST_CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()} you&apos;re{" "}
             {transactionType === "sell" ? "selling" : transactionType === "rent" ? "renting out" : "leasing out"}
           </h2>
+          {draftSavedAt !== null && (
+            <p className="m-0 -mt-2 text-xs text-muted max-w-[720px]" aria-live="polite">
+              Draft saved on this device at{" "}
+              {new Date(draftSavedAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}
+            </p>
+          )}
+          {lastAdPreview && lastAdPreview.copiedKeys.length > 0 && (
+            <div className="max-w-[720px] rounded-xl border border-border bg-surface-alt/60 px-4 py-3 flex flex-wrap items-center gap-3">
+              <p className="m-0 text-[13px] text-text flex-1 min-w-[220px]">
+                <span className="font-bold">Use details from your last ad?</span> We can fill in{" "}
+                {lastAdPreview.copiedKeys.length} {lastAdPreview.copiedKeys.length === 1 ? "answer" : "answers"} (furnishing,
+                amenities, preferences and how you let or sell). Size, price and photos stay yours to enter.
+              </p>
+              <button type="button" onClick={useLastAd} className={secondaryButtonClass}>
+                Fill them in
+              </button>
+            </div>
+          )}
+          {lastAdCopied && lastAdCopied.length > 0 && (
+            <p className="m-0 text-xs text-green max-w-[720px]" role="status">
+              Filled in from your last ad: {lastAdCopied.slice(0, 5).join(", ")}
+              {lastAdCopied.length > 5 ? ` and ${lastAdCopied.length - 5} more` : ""}. Check them and change anything that differs.
+            </p>
+          )}
           <div id="post-field-location" className={`max-w-[720px] ${ringFor("location")}`}>
             <RequiredLabel text="Pin your exact location" />
             <p className="text-xs text-muted mt-0 mb-2">
@@ -2322,6 +2400,88 @@ export function PostAdWizard({
               )}
             </div>
           )}
+
+          <div id="post-field-photos" className={`max-w-[720px] ${ringFor("photos")}`} ref={photoSectionRef}>
+            <RequiredLabel text={`Photos (${MIN_PHOTOS}-${MAX_PHOTOS})`} />
+            {photos.length < MAX_PHOTOS && (
+              // A styled label wrapping a hidden input rather than a bare <input type="file">.
+              // The native control renders as a small grey "Choose files" button that is easy to
+              // scroll past — on the one step where skipping it costs the listing most, since an
+              // ad with no photo is the one nobody opens.
+              <UploadZone
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onFiles={(files) => void onPhotosSelected(files)}
+                icon="camera"
+                label={preparingPhotos ? "Preparing photos…" : photos.length > 0 ? "Add more photos" : "Add photos"}
+                hint={`JPG, PNG or WebP · up to ${PHOTO_SIZE_LABEL} each · ${MAX_PHOTOS - photos.length} more allowed`}
+              />
+            )}
+            {/* An extra, not a restriction: 3-6 photos and a video stay free (docs/plans/featured-ad-benefits-and-media-limits.md). */}
+            {!assistedMode && (
+              <div className="mt-2 rounded-lg border border-[color:var(--gold)]/50 bg-[color:var(--gold)]/10 px-3 py-2 text-xs text-text">
+                <span className="font-bold text-[color:var(--gold)]">&#10024; Make it Featured to show more</span>
+                <span className="block mt-0.5">
+                  {photos.length >= MAX_PHOTOS ? `You’ve added ${MAX_PHOTOS} photos. ` : ""}
+                  Featured ads can have up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos of up to 3 minutes each. You can upgrade right after you post.
+                </span>
+              </div>
+            )}
+            {duplicatePhotoNos.length > 0 && (
+              <p className="text-xs text-[#b3413a] font-bold mt-1.5 mb-0">
+                {duplicatePhotoNos.length === 1 ? "The photo outlined in red" : "The photos outlined in red"} appear{duplicatePhotoNos.length === 1 ? "s" : ""} to
+                already be in use on another listing — remove {duplicatePhotoNos.length === 1 ? "it" : "them"} or replace with a different photo.
+              </p>
+            )}
+            {photos.length > 0 && (
+              <div className="flex flex-wrap gap-2.5 mt-2.5">
+                {photos.map((photo, i) => (
+                  <div key={photo.previewUrl} className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photo.previewUrl}
+                      alt={`Photo ${i + 1}`}
+                      className={`h-[100px] w-[100px] object-cover rounded-lg ${
+                        duplicatePhotoNos.includes(i + 1) ? "ring-2 ring-[#b3413a] ring-offset-2" : ""
+                      }`}
+                    />
+                    {/* Top-left, same placement/style EditListingPhotos uses for the same job
+                      * post-creation — index 0 is the cover by construction (see
+                      * onSetCoverPhoto), no separate field to check. */}
+                    {i === 0 ? (
+                      <span className="absolute top-1 left-1 bg-green text-on-green text-[10px] font-bold px-1.5 py-0.5 rounded">
+                        Cover
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onSetCoverPhoto(i)}
+                        title="Make this the cover photo"
+                        className="absolute top-1 left-1 bg-black/55 text-white text-[10px] font-bold px-1.5 py-0.5 rounded border-0 cursor-pointer"
+                      >
+                        ☆ Cover
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => onRemovePhoto(i)}
+                      className="absolute -top-1.5 -right-1.5 w-[22px] h-[22px] rounded-full border-0 bg-surface text-[#b3413a] font-bold cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* The "only added the first N" note is only true while the list is still full; the moment a
+              * photo is removed it is stale, so it is hidden as well as cleared. */}
+            {photoNotice && (photoNotice.kind === "file" || photos.length >= MAX_PHOTOS) && (
+              <p className="text-[#b3413a] text-[13px] mt-2">{photoNotice.text}</p>
+            )}
+            {fieldMessage("photos")}
+            {error && (
+              <p className="text-[#b3413a] text-[13px] mt-2">{error}</p>
+            )}
+          </div>
 
           {/* No "specs" box. The card's chips are derived from the category fields right below,
             * which the seller is about to fill in — asking again produced "3bhk", "3 BHK" and
@@ -2405,88 +2565,6 @@ export function PostAdWizard({
                 ),
               }}
             />
-          </div>
-
-          <div id="post-field-photos" className={`max-w-[720px] ${ringFor("photos")}`} ref={photoSectionRef}>
-            <RequiredLabel text={`Photos (${MIN_PHOTOS}-${MAX_PHOTOS})`} />
-            {photos.length < MAX_PHOTOS && (
-              // A styled label wrapping a hidden input rather than a bare <input type="file">.
-              // The native control renders as a small grey "Choose files" button that is easy to
-              // scroll past — on the one step where skipping it costs the listing most, since an
-              // ad with no photo is the one nobody opens.
-              <UploadZone
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                onFiles={(files) => void onPhotosSelected(files)}
-                icon="camera"
-                label={preparingPhotos ? "Preparing photos…" : photos.length > 0 ? "Add more photos" : "Add photos"}
-                hint={`JPG, PNG or WebP · up to ${PHOTO_SIZE_LABEL} each · ${MAX_PHOTOS - photos.length} more allowed`}
-              />
-            )}
-            {/* An extra, not a restriction: 3-6 photos and a video stay free (docs/plans/featured-ad-benefits-and-media-limits.md). */}
-            {!assistedMode && (
-              <div className="mt-2 rounded-lg border border-[color:var(--gold)]/50 bg-[color:var(--gold)]/10 px-3 py-2 text-xs text-text">
-                <span className="font-bold text-[color:var(--gold)]">&#10024; Make it Featured to show more</span>
-                <span className="block mt-0.5">
-                  {photos.length >= MAX_PHOTOS ? `You’ve added ${MAX_PHOTOS} photos. ` : ""}
-                  Featured ads can have up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos of up to 3 minutes each. You can upgrade right after you post.
-                </span>
-              </div>
-            )}
-            {duplicatePhotoNos.length > 0 && (
-              <p className="text-xs text-[#b3413a] font-bold mt-1.5 mb-0">
-                {duplicatePhotoNos.length === 1 ? "The photo outlined in red" : "The photos outlined in red"} appear{duplicatePhotoNos.length === 1 ? "s" : ""} to
-                already be in use on another listing — remove {duplicatePhotoNos.length === 1 ? "it" : "them"} or replace with a different photo.
-              </p>
-            )}
-            {photos.length > 0 && (
-              <div className="flex flex-wrap gap-2.5 mt-2.5">
-                {photos.map((photo, i) => (
-                  <div key={photo.previewUrl} className="relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={photo.previewUrl}
-                      alt={`Photo ${i + 1}`}
-                      className={`h-[100px] w-[100px] object-cover rounded-lg ${
-                        duplicatePhotoNos.includes(i + 1) ? "ring-2 ring-[#b3413a] ring-offset-2" : ""
-                      }`}
-                    />
-                    {/* Top-left, same placement/style EditListingPhotos uses for the same job
-                      * post-creation — index 0 is the cover by construction (see
-                      * onSetCoverPhoto), no separate field to check. */}
-                    {i === 0 ? (
-                      <span className="absolute top-1 left-1 bg-green text-on-green text-[10px] font-bold px-1.5 py-0.5 rounded">
-                        Cover
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => onSetCoverPhoto(i)}
-                        title="Make this the cover photo"
-                        className="absolute top-1 left-1 bg-black/55 text-white text-[10px] font-bold px-1.5 py-0.5 rounded border-0 cursor-pointer"
-                      >
-                        ☆ Cover
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => onRemovePhoto(i)}
-                      className="absolute -top-1.5 -right-1.5 w-[22px] h-[22px] rounded-full border-0 bg-surface text-[#b3413a] font-bold cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {/* The "only added the first N" note is only true while the list is still full; the moment a
-              * photo is removed it is stale, so it is hidden as well as cleared. */}
-            {photoNotice && (photoNotice.kind === "file" || photos.length >= MAX_PHOTOS) && (
-              <p className="text-[#b3413a] text-[13px] mt-2">{photoNotice.text}</p>
-            )}
-            {fieldMessage("photos")}
-            {error && (
-              <p className="text-[#b3413a] text-[13px] mt-2">{error}</p>
-            )}
           </div>
 
           <div className="max-w-[720px]">
@@ -2702,6 +2780,63 @@ export function PostAdWizard({
               {issues.length > 1 ? ` (and ${issues.length - 1} more)` : ""}
             </p>
           )}
+        </div>
+        <aside
+          aria-label="Live preview and checklist"
+          className="hidden xl:flex flex-col gap-4 sticky top-[88px] self-start"
+        >
+          <div>
+            <p className="m-0 mb-2 text-[13px] font-bold text-muted">How your ad will look</p>
+            <ListingPreviewCard
+              photoUrls={photos.map((p) => p.previewUrl)}
+              category={category}
+              transactionType={transactionType}
+              title={title.trim() || "Your title appears here"}
+              price={price}
+              priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
+              priceArea={priceArea}
+              priceQualifier={priceQualifier}
+              areaName={areaQuery}
+              cityName={cities.find((c) => c.id === cityId)?.name ?? ""}
+              attributes={attributes}
+            />
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <p className="m-0 mb-2 text-[13px] font-bold text-text">
+              {issues.length === 0 ? "Everything needed is filled in" : `${issues.length} left before you can preview`}
+            </p>
+            {issues.length > 0 && (
+              <ul className="m-0 p-0 list-none flex flex-col gap-1.5">
+                {issues.slice(0, 8).map((issue) => (
+                  <li key={issue.target + issue.text}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        flashTarget(issue.target);
+                        scrollToTarget(issue.target);
+                      }}
+                      className="w-full text-left bg-transparent border-0 p-0 text-[13px] text-text-soft hover:text-green cursor-pointer"
+                    >
+                      <span className="text-[#b3413a]" aria-hidden="true">&bull; </span>
+                      {issue.text}
+                    </button>
+                  </li>
+                ))}
+                {issues.length > 8 && <li className="text-xs text-muted">and {issues.length - 8} more</li>}
+              </ul>
+            )}
+            {(() => {
+              const completeness = listingCompleteness(category, transactionType, attributes);
+              return completeness.total > 0 ? (
+                <p className="m-0 mt-3 text-xs text-muted">
+                  {completeness.missing.length === 0
+                    ? "Optional details: all added."
+                    : `Optional details: ${completeness.percent}% added. Each one helps buyers find your ad.`}
+                </p>
+              ) : null;
+            })()}
+          </div>
+        </aside>
         </div>
       )}
 

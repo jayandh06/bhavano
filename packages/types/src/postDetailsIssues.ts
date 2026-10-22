@@ -121,3 +121,11 @@ export function issueMessages(issues: DetailsIssue[]): Record<string, string> {
   for (const issue of issues) if (!(issue.target in out)) out[issue.target] = issue.text;
   return out;
 }
+
+/** The three short screens the mobile app splits Details into: 0 location and photos, 1 the property's details and
+ * price, 2 title and description. Web keeps one page; this is how a problem maps to a screen. */
+export function detailsPartOfTarget(target: string): 0 | 1 | 2 {
+  if (target === "location" || target === "photos") return 0;
+  if (target === "owner_type" || target === "assisted" || target === "title" || target === "description") return 2;
+  return 1;
+}

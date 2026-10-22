@@ -54,3 +54,6 @@ export declare function firstDetailsIssue(issues: DetailsIssue[]): DetailsIssue 
 export declare function hasBlockingOtherIssue(issues: DetailsIssue[]): boolean;
 /** target to message, for putting a message under each field. */
 export declare function issueMessages(issues: DetailsIssue[]): Record<string, string>;
+/** The three short screens the mobile app splits Details into: 0 location and photos, 1 the property's details and
+ * price, 2 title and description. Web keeps one page; this is how a problem maps to a screen. */
+export declare function detailsPartOfTarget(target: string): 0 | 1 | 2;

@@ -6,6 +6,7 @@ exports.postDetailsIssues = postDetailsIssues;
 exports.firstDetailsIssue = firstDetailsIssue;
 exports.hasBlockingOtherIssue = hasBlockingOtherIssue;
 exports.issueMessages = issueMessages;
+exports.detailsPartOfTarget = detailsPartOfTarget;
 const categoryFields_1 = require("./categoryFields");
 exports.ATTR_TARGET_PREFIX = "attr:";
 function attributeTarget(fieldKey) {
@@ -83,4 +84,13 @@ function issueMessages(issues) {
         if (!(issue.target in out))
             out[issue.target] = issue.text;
     return out;
+}
+/** The three short screens the mobile app splits Details into: 0 location and photos, 1 the property's details and
+ * price, 2 title and description. Web keeps one page; this is how a problem maps to a screen. */
+function detailsPartOfTarget(target) {
+    if (target === "location" || target === "photos")
+        return 0;
+    if (target === "owner_type" || target === "assisted" || target === "title" || target === "description")
+        return 2;
+    return 1;
 }

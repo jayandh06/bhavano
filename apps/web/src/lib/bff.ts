@@ -62,6 +62,7 @@ import type {
   UserProfileDto,
 } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import type { LastListingDetailsDto } from "@bhavano/types/listingReuse";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import type { CreateSupportTicketResponse } from "@bhavano/types/support";
 import type { RequirementFeedDto, RequirementFeedSummaryDto } from "@bhavano/types/requirementFeed";
@@ -510,6 +511,10 @@ export function fetchContactRevealBalance(accessToken: string): Promise<ContactR
 export function fetchPaymentHistory(accessToken: string, cursor?: string): Promise<PaymentHistoryPage> {
   const params = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
   return authedBffFetch(accessToken, `/users/me/payments${params}`, { cache: "no-store" });
+}
+
+export function fetchLastListingDetails(accessToken: string, category: string): Promise<LastListingDetailsDto | null> {
+  return authedBffFetch(accessToken, `/users/me/listings/last-details?category=${encodeURIComponent(category)}`, { cache: "no-store" });
 }
 
 export function updateListing(accessToken: string, listingId: string, input: UpdateListingInput): Promise<ListingDetailDto> {

@@ -26,6 +26,8 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
 import { ListingsService } from '../listings/listings.service';
+import { CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
+import type { LastListingDetailsDto } from '@bhavano/types/listingReuse';
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import { PaymentsService } from '../payments/payments.service';
 import { UsersService } from './users.service';
@@ -182,6 +184,19 @@ export class UsersController {
   @Get('listings')
   myListings(@CurrentUser() user: RequestUser): Promise<ListingDetailDto[]> {
     return this.listingsService.listMine(user.id);
+  }
+
+  /** The owner's latest ad in a category, for "Use details from your last ad" on the posting form. A literal
+   * segment, declared before `listings/:id` so it is not read as an id. */
+  @Get('listings/last-details')
+  async lastListingDetails(
+    @Query('category') category: string | undefined,
+    @CurrentUser() user: RequestUser,
+  ): Promise<LastListingDetailsDto | null> {
+    if (!category || !Object.prototype.hasOwnProperty.call(CATEGORY_FIELD_CONFIG, category)) {
+      throw new BadRequestException('category is required');
+    }
+    return this.listingsService.lastDetailsFor(user.id, category as keyof typeof CATEGORY_FIELD_CONFIG);
   }
 
   @Get('listings/:id')

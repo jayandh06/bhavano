@@ -229,6 +229,10 @@
       "types": "./dist/postFieldEvents.d.ts",
       "default": "./dist/postFieldEvents.js"
     },
+    "./listingReuse": {
+      "types": "./dist/listingReuse.d.ts",
+      "default": "./dist/listingReuse.js"
+    },
     "./areaOverview": {
       "types": "./dist/areaOverview.d.ts",
       "default": "./dist/areaOverview.js"

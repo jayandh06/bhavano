@@ -122,6 +122,7 @@ import { postAdValueRupees } from '../ads/post-ad-value';
 import { ContactRevealService, type ContactRevealState } from '../contact-reveal/contact-reveal.service';
 import { PlatformFeeSettingsService } from '../plans/platform-fee-settings.service';
 import { platformFeeApplies } from '@bhavano/types/platformFeePricing';
+import type { LastListingDetailsDto } from '@bhavano/types/listingReuse';
 import { scrubPhonesInText } from './scrub-listing-phones';
 import { BULK_IMPORT_OWNER_PHONE, isBulkImportOwner } from './bulk-import-owner';
 import { getPostedConfirmationDelayMinutes } from './posted-confirmation-settings';
@@ -2429,6 +2430,23 @@ export class ListingsService {
       pendingCheckoutListingId,
       activeListingCount,
       expiringWithinDaysCount,
+    };
+  }
+
+/** The owner's most recent ad in `category` (any status that is theirs and not a placeholder), with its raw
+   * attributes, for the posting form's "Use details from your last ad". Only attributes leave here; the caller picks
+   * the safe ones (`reuseAttributes` in @bhavano/types/listingReuse). Null when they have no earlier ad. */
+  async lastDetailsFor(userId: string, category: ListingCategory): Promise<LastListingDetailsDto | null> {
+    const last = await this.prisma.listing.findFirst({
+      where: { ownerId: userId, category, publishState: { not: 'awaiting_claim' } },
+      orderBy: { createdAt: 'desc' },
+      select: { category: true, transactionType: true, attributes: true },
+    });
+    if (!last) return null;
+    return {
+      category: last.category,
+      transactionType: last.transactionType,
+      attributes: (last.attributes as Record<string, unknown> | null) ?? {},
     };
   }
 

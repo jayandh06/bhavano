@@ -11,6 +11,7 @@ import type {
   UpdateListingInput,
 } from "@bhavano/types";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
+import type { LastListingDetailsDto } from "@bhavano/types/listingReuse";
 import { ListingSlotCapError } from "@/lib/listingSlotErrors";
 import { DuplicatePhotoError } from "@/lib/duplicatePhotoErrors";
 import { auth } from "@/auth";
@@ -28,6 +29,7 @@ import {
   deleteOwnListingPhoto,
   fetchMyListings,
   fetchMyListing,
+  fetchLastListingDetails,
   recordView,
   renewListing,
   revealContact,
@@ -259,6 +261,18 @@ export async function fetchMyListingAction(listingId: string): Promise<ListingDe
   if (!session?.accessToken) return null;
   try {
     return await fetchMyListing(session.accessToken, listingId);
+  } catch {
+    return null;
+  }
+}
+
+/** The seller's latest ad in a category, for "Use details from your last ad". Null when not signed in, when they
+ * have none, or on any failure: it is only ever a convenience. */
+export async function lastListingDetailsAction(category: string): Promise<LastListingDetailsDto | null> {
+  const session = await auth();
+  if (!session?.accessToken) return null;
+  try {
+    return await fetchLastListingDetails(session.accessToken, category);
   } catch {
     return null;
   }

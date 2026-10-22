@@ -7,6 +7,7 @@ import {
 } from '@bhavano/types/categoryFields';
 import {
   attributeTarget,
+  detailsPartOfTarget,
   firstDetailsIssue,
   hasBlockingOtherIssue,
   issueMessages,
@@ -166,5 +167,18 @@ describe('summarizePostFieldEvents', () => {
     expect(summary.medianSecondsToFirstTouch).toBe(6);
     expect(summary.blockers[0]).toEqual({ field: 'photos', category: 'apartment', sessions: 2, taps: 3 });
     expect(summary.exits).toEqual([{ field: 'price', sessions: 1, medianSeconds: 30 }]);
+  });
+});
+
+describe('detailsPartOfTarget', () => {
+  it('puts location and photos first, title and description last, and everything else in the middle', () => {
+    expect(detailsPartOfTarget('location')).toBe(0);
+    expect(detailsPartOfTarget('photos')).toBe(0);
+    expect(detailsPartOfTarget('title')).toBe(2);
+    expect(detailsPartOfTarget('description')).toBe(2);
+    expect(detailsPartOfTarget('owner_type')).toBe(2);
+    expect(detailsPartOfTarget('price')).toBe(1);
+    expect(detailsPartOfTarget('posted_by')).toBe(1);
+    expect(detailsPartOfTarget('attr:carpetAreaSqft')).toBe(1);
   });
 });
