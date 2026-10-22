@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { StaticPageLayout } from "@/components/home/StaticPageLayout";
 import { JsonLd } from "@/components/JsonLd";
 import { BlogBody } from "@/components/blog/BlogBody";
-import { POSTS, bylineFor, getPost, sortedPosts } from "@/lib/blog/posts";
+import { POSTS, bylineFor, getPost, relatedPosts } from "@/lib/blog/posts";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 
@@ -56,7 +56,7 @@ export default async function BlogPostPage({ params }: Props) {
   if (!post) notFound();
 
   const url = `${SITE_URL}/blog/${post.slug}`;
-  const more = sortedPosts().filter((p) => p.slug !== post.slug).slice(0, 3);
+  const more = relatedPosts(post, 4);
 
   return (
     <StaticPageLayout title={post.title} updated={formatDate(post.updated ?? post.published)}>
@@ -99,7 +99,7 @@ export default async function BlogPostPage({ params }: Props) {
 
       {more.length > 0 && (
         <section>
-          <h2 className="text-[15px] font-bold text-text m-0 mb-2">More from the blog</h2>
+          <h2 className="text-[15px] font-bold text-text m-0 mb-2">Related guides</h2>
           <ul className="m-0 pl-5 flex flex-col gap-1">
             {more.map((p) => (
               <li key={p.slug}>

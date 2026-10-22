@@ -46,3 +46,16 @@ your readers", which earns links more easily than a blog post.
   qualified person before you promote them. Add a real "reviewed by" name once one exists.
 - Keep a simple log (page, contact, date asked, result) so nobody is asked twice.
 - Do not claim Bhavano verifies owners or documents; the posts and the trust page say what we do and do not check.
+
+## Faster discovery, built (2026-10-22)
+- **Related guides on every post.** The old "More from the blog" showed the same three newest posts under every post.
+  It is now "Related guides": up to four posts, chosen by the post's own link graph (posts it links to, posts that link
+  back to it) then same format, then newest (`relatedPosts` in `apps/web/src/lib/blog/posts.ts`, tested). Each post now
+  has its own internal links, so crawlers reach the whole set. The homepage already lists the four newest guides and the
+  footer links to the blog index, so those were left alone.
+- **IndexNow (Bing, Yandex and others; not Google).** The key file is `apps/web/public/<32 hex>.txt` (its content is
+  the same key; it is public by design). `scripts/indexnow-ping.mjs` tells those engines which URLs are new or changed:
+  `--dry-run` lists them, no argument sends the sitemap's blog URLs, `--all` sends every sitemap URL, or pass URLs. **Run
+  it after the deploy that publishes the key file**, because the engines fetch the key from the live site; a 403 means the
+  file is not live yet. Run it again after you add or change posts. Bing's index feeds ChatGPT search and Copilot.
+- Still manual: Search Console "Request indexing" per URL, and submitting the site in Bing Webmaster Tools.

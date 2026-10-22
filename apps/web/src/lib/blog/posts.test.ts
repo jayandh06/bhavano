@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_BYLINE, POSTS, bylineFor, getPost, parseInline, sortedPosts, type BlogBlock } from "./posts";
+import { DEFAULT_BYLINE, POSTS, bylineFor, getPost, parseInline, relatedPosts, sortedPosts, type BlogBlock } from "./posts";
 
 /** Routes a post may link to. Every link in a post is hand-typed, so a typo would ship a dead link
  * to readers and crawlers; this list is the set of real pages (checked against the live site when
@@ -149,5 +149,28 @@ describe("parseInline", () => {
   it("leaves text without links alone and ignores external-looking targets", () => {
     expect(parseInline("plain")).toEqual([{ kind: "text", text: "plain" }]);
     expect(parseInline("[x](https://example.com)")).toEqual([{ kind: "text", text: "[x](https://example.com)" }]);
+  });
+});
+
+describe("relatedPosts", () => {
+  it("never includes the post itself and returns the requested number", () => {
+    for (const post of POSTS) {
+      const related = relatedPosts(post, 4);
+      expect(related.length, post.slug).toBe(4);
+      expect(related.map((p) => p.slug), post.slug).not.toContain(post.slug);
+      expect(new Set(related.map((p) => p.slug)).size, post.slug).toBe(related.length);
+    }
+  });
+
+  it("puts a post it links to first", () => {
+    const rentYield = getPost("how-to-calculate-rental-yield")!;
+    const related = relatedPosts(rentYield, 6).map((p) => p.slug);
+    expect(related).toContain("stamp-duty-and-registration-charges-explained");
+    expect(related).toContain("home-loan-emi-explained");
+  });
+
+  it("gives different posts different sets, not the same newest few everywhere", () => {
+    const sets = POSTS.map((p) => relatedPosts(p, 4).map((r) => r.slug).sort().join(","));
+    expect(new Set(sets).size).toBeGreaterThan(POSTS.length / 3);
   });
 });
