@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
   // protection 403s any /_next/* request whose Origin isn't localhost or the bound host.
   allowedDevOrigins: ["local.bhavano.com"],
   experimental: {
+    // Caps the build's worker processes when NEXT_BUILD_CPUS is set (the Docker build sets it). The default is
+    // one per core, and 15 workers collecting page data at once ran the Docker/WSL builder out of memory on a
+    // 32 GB laptop (the builder died with "error reading from server: EOF"). Has no effect at runtime.
+    ...(process.env.NEXT_BUILD_CPUS ? { cpus: Number(process.env.NEXT_BUILD_CPUS) } : {}),
     // Server Actions cap request bodies at 1MB by default, which a single 5MB screenshot on the
     // Contact Us form blows past before any of our code runs. Sized for the form's own ceiling
     // (3 x 5MB, 10MB total) plus field overhead — see docs/plans/contact-us-support-form.md.

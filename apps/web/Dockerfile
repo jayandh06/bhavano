@@ -31,6 +31,8 @@ COPY --from=pruner /app/out/json/ .
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 COPY --from=pruner /app/out/full/ .
+# Fewer Next build workers, so the build fits in the Docker/WSL builder's memory (see next.config.ts).
+ENV NEXT_BUILD_CPUS=4
 RUN --mount=type=cache,id=turbo-cache,target=/app/.turbo \
     --mount=type=cache,id=next-cache-web,target=/app/apps/web/.next/cache \
     pnpm turbo run build --filter=@bhavano/web...
