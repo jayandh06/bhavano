@@ -960,6 +960,31 @@ export interface AdminConversationsPage {
   total: number;
 }
 
+export type AdminConversationType = "inquiry" | "moderation" | "announcement";
+
+/** One row of the admin Messages screen (every conversation on the platform, not one listing's). */
+export interface AdminConversationRowDto {
+  id: string;
+  type: AdminConversationType;
+  createdAt: string;
+  /** Time of the newest message, or the conversation's start when it has none. */
+  lastMessageAt: string;
+  messageCount: number;
+  listing: { id: string; title: string; category: string; transactionType: string; cityName: string; area: string };
+  /** The buyer / enquirer. For moderation and announcement threads this is the listing's owner. */
+  inquirer: { id: string; name: string | null; phone: string | null; email: string | null };
+  /** The listing's owner (the poster). */
+  poster: { id: string; name: string | null; phone: string | null; email: string | null };
+  lastMessage: MessageDto | null;
+  /** Inquiries only: the last message is the buyer's and the owner has not read it. */
+  unreadByOwner: boolean;
+}
+
+export interface AdminConversationRowsPage {
+  items: AdminConversationRowDto[];
+  total: number;
+}
+
 export interface FlagListingInput {
   /** The discrepancy explained to the owner — posted as the first message of the
    * moderation thread between them and the flagging admin. */

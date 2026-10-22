@@ -527,3 +527,76 @@ describe('MessagingService.getConversation — blocked flag', () => {
     await expect(service.getConversation('c1', 'poster1')).resolves.toMatchObject({ blocked: false });
   });
 });
+
+describe('MessagingService.listConversationsAsAdmin — the admin Messages screen', () => {
+  const when = new Date('2026-10-20T10:00:00Z');
+  const row = (overrides: Record<string, unknown> = {}) => ({
+    id: 'c1',
+    type: 'inquiry',
+    inquirerId: 'buyer1',
+    createdAt: when,
+    inquirer: { id: 'buyer1', name: 'Asha', phone: '9000000001', email: null },
+    poster: { id: 'owner1', name: 'Ravi', phone: '9000000002', email: null },
+    listing: { id: 'l1', title: '2 BHK', category: 'apartment', transactionType: 'rent', city: { name: 'Bengaluru' }, area: { name: 'HSR Layout' } },
+    messages: [{ id: 'm1', conversationId: 'c1', senderId: 'buyer1', body: 'Is it available?', createdAt: when, readAt: null, deletedAt: null, card: null }],
+    _count: { messages: 3 },
+    ...overrides,
+  });
+
+  function setup(rows: unknown[]) {
+    const prisma = {
+      conversation: { findMany: jest.fn().mockResolvedValue(rows), count: jest.fn().mockResolvedValue(rows.length) },
+    } as unknown as PrismaService;
+    const service = new MessagingService(prisma, notNotified, { recordInterest: jest.fn() } as never);
+    return { service, prisma };
+  }
+
+  it('lists buyer enquiries by default and maps who messaged whom', async () => {
+    const { service, prisma } = setup([row()]);
+    const result = await service.listConversationsAsAdmin({ limit: 25 });
+    expect((prisma.conversation.findMany as jest.Mock).mock.calls[0][0].where).toMatchObject({ type: 'inquiry' });
+    expect(result.total).toBe(1);
+    expect(result.items[0]).toMatchObject({
+      messageCount: 3,
+      inquirer: { name: 'Asha' },
+      poster: { name: 'Ravi' },
+      listing: { title: '2 BHK', cityName: 'Bengaluru', area: 'HSR Layout' },
+      unreadByOwner: true,
+    });
+  });
+
+  it("includes staff threads only when asked for 'any', and never flags them as unread by the owner", async () => {
+    const { service, prisma } = setup([row({ type: 'moderation' })]);
+    const result = await service.listConversationsAsAdmin({ type: 'any', limit: 25 });
+    expect((prisma.conversation.findMany as jest.Mock).mock.calls[0][0].where).not.toHaveProperty('type');
+    expect(result.items[0].unreadByOwner).toBe(false);
+  });
+
+  it('filters by either party, listing, date range and text', async () => {
+    const { service, prisma } = setup([]);
+    await service.listConversationsAsAdmin({
+      userId: 'u1',
+      listingId: 'l9',
+      from: '2026-10-01T00:00:00.000+05:30',
+      to: '2026-10-02T23:59:59.999+05:30',
+      q: 'asha',
+      limit: 10,
+      offset: 20,
+    });
+    const args = (prisma.conversation.findMany as jest.Mock).mock.calls[0][0];
+    expect(args.where.OR).toEqual([{ inquirerId: 'u1' }, { posterId: 'u1' }]);
+    expect(args.where.listingId).toBe('l9');
+    expect(args.where.createdAt.gte).toBeInstanceOf(Date);
+    expect(args.where.AND[0].OR).toHaveLength(3);
+    expect(args.skip).toBe(20);
+    expect(args.take).toBe(10);
+  });
+
+  it('shows a conversation with no messages by its start time', async () => {
+    const { service } = setup([row({ messages: [], _count: { messages: 0 } })]);
+    const [item] = (await service.listConversationsAsAdmin({ limit: 25 })).items;
+    expect(item.lastMessage).toBeNull();
+    expect(item.lastMessageAt).toBe(when.toISOString());
+    expect(item.unreadByOwner).toBe(false);
+  });
+});

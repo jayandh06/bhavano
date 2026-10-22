@@ -445,7 +445,13 @@ export default async function ListingModerationPage({
 
         <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, marginTop: 20, background: "var(--surface)" }}>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>
-            Messages ({conversations.total})
+            Messages ({conversations.total}){" "}
+            <Link
+              href={`/messages?listingId=${encodeURIComponent(id)}&type=any&from=&to=`}
+              style={{ color: "var(--green)", fontSize: 12.5, fontWeight: 700, marginLeft: 8 }}
+            >
+              Open in Messages &rarr;
+            </Link>
           </div>
           <ConversationsTable
             listingId={id}

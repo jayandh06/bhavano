@@ -7,6 +7,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type {
+  AdminConversationRowDto,
+  AdminConversationRowsPage,
   AdminConversationsPage,
   ConversationDetailDto,
   ConversationSummaryDto,
@@ -414,6 +416,108 @@ export class MessagingService {
       }),
       total,
     };
+  }
+
+  /** Every conversation on the platform for the admin Messages screen: who messaged whom, about which
+   * listing, with filters. Newest-started first. Buyer enquiries by default; `type: 'any'` adds the staff
+   * moderation and announcement threads. Read-only, and never marks anything read. */
+  async listConversationsAsAdmin(query: {
+    type?: 'inquiry' | 'moderation' | 'announcement' | 'any';
+    from?: string;
+    to?: string;
+    userId?: string;
+    listingId?: string;
+    q?: string;
+    offset?: number;
+    limit: number;
+  }): Promise<AdminConversationRowsPage> {
+    const text = query.q?.trim();
+    const personMatch = (text: string): Prisma.UserWhereInput => ({
+      OR: [
+        { name: { contains: text, mode: 'insensitive' } },
+        { phone: { contains: text } },
+        { email: { contains: text, mode: 'insensitive' } },
+      ],
+    });
+    const type = query.type ?? 'inquiry';
+    const where: Prisma.ConversationWhereInput = {
+      ...(type === 'any' ? {} : { type }),
+      ...(query.listingId ? { listingId: query.listingId } : {}),
+      ...(query.from || query.to
+        ? {
+            createdAt: {
+              ...(query.from ? { gte: new Date(query.from) } : {}),
+              ...(query.to ? { lte: new Date(query.to) } : {}),
+            },
+          }
+        : {}),
+      ...(query.userId ? { OR: [{ inquirerId: query.userId }, { posterId: query.userId }] } : {}),
+      ...(text
+        ? {
+            AND: [
+              {
+                OR: [
+                  { inquirer: personMatch(text) },
+                  { poster: personMatch(text) },
+                  { listing: { title: { contains: text, mode: 'insensitive' } } },
+                ],
+              },
+            ],
+          }
+        : {}),
+    };
+    const userSelect = { id: true, name: true, phone: true, email: true } as const;
+    const [rows, total] = await Promise.all([
+      this.prisma.conversation.findMany({
+        where,
+        include: {
+          inquirer: { select: userSelect },
+          poster: { select: userSelect },
+          listing: {
+            select: { id: true, title: true, category: true, transactionType: true, city: { select: { name: true } }, area: { select: { name: true } } },
+          },
+          messages: { orderBy: { createdAt: 'desc' }, take: 1 },
+          _count: { select: { messages: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: query.offset ?? 0,
+        take: query.limit,
+      }),
+      this.prisma.conversation.count({ where }),
+    ]);
+    const items: AdminConversationRowDto[] = rows.map((c) => {
+      const last = c.messages[0];
+      return {
+        id: c.id,
+        type: c.type,
+        createdAt: c.createdAt.toISOString(),
+        lastMessageAt: (last?.createdAt ?? c.createdAt).toISOString(),
+        messageCount: c._count.messages,
+        listing: {
+          id: c.listing.id,
+          title: c.listing.title,
+          category: c.listing.category,
+          transactionType: c.listing.transactionType,
+          cityName: c.listing.city.name,
+          area: c.listing.area.name,
+        },
+        inquirer: c.inquirer,
+        poster: c.poster,
+        lastMessage: last ? toMessageDto(last, { revealDeletedBody: true }) : null,
+        unreadByOwner:
+          c.type === 'inquiry' && last != null && last.senderId === c.inquirerId && last.readAt === null,
+      };
+    });
+    return { items, total };
+  }
+
+  /** Admin-only read of any one conversation's thread (inquiry, moderation or announcement), for the Messages
+   * screen. Like `getMessagesAsAdmin` it never calls `markRead`, so looking never counts as the owner replying. */
+  async getConversationMessagesAsAdmin(conversationId: string): Promise<MessageDto[]> {
+    const conversation = await this.prisma.conversation.findUnique({ where: { id: conversationId }, select: { id: true } });
+    if (!conversation) throw new NotFoundException('Conversation not found');
+    const messages = await this.prisma.message.findMany({ where: { conversationId }, orderBy: { createdAt: 'asc' } });
+    return messages.map((m) => toMessageDto(m, { revealDeletedBody: true }));
   }
 
   /** Admin-only read of one buyer-inquiry thread — `getMessages` above can't be reused here since

@@ -10,6 +10,7 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string }[] }[] 
     links: [
       { href: "/", label: "Listings" },
       { href: "/requirements", label: "Requirements" },
+      { href: "/messages", label: "Messages" },
       { href: "/notification-log", label: "Notification log" },
       { href: "/area-overviews", label: "Area overviews" },
       { href: "/city-overviews", label: "City overviews" },

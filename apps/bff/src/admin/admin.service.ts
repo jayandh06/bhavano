@@ -392,6 +392,14 @@ export class AdminService {
     );
   }
 
+  listConversations(query: Parameters<MessagingService['listConversationsAsAdmin']>[0]) {
+    return this.messagingService.listConversationsAsAdmin(query);
+  }
+
+  getConversationMessages(conversationId: string) {
+    return this.messagingService.getConversationMessagesAsAdmin(conversationId);
+  }
+
   getListingConversationMessages(
     listingId: string,
     conversationId: string,

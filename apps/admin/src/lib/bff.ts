@@ -20,6 +20,7 @@ import type {
 import type { PostEntrySource } from "@bhavano/types/postEntry";
 import type { NotificationDaySummaryDto, NotificationLogEntryDto } from "@bhavano/types/notificationLog";
 import type {
+  AdminConversationRowsPage,
   AdminConversationsPage,
   AdminDiscountCodesPage,
   AdminListingsPage,
@@ -488,6 +489,36 @@ export function fetchListingNotificationHistory(
   listingId: string,
 ): Promise<NotificationLogEntryDto[]> {
   return authedBffFetch(accessToken, `/admin/listings/${listingId}/notifications`, {
+    cache: "no-store",
+  });
+}
+
+/** The admin Messages screen: every conversation, with filters. `from`/`to` are full ISO instants (IST day
+ * bounds), like the other list screens. */
+export interface AdminConversationsQuery {
+  type?: "inquiry" | "moderation" | "announcement" | "any";
+  from?: string;
+  to?: string;
+  userId?: string;
+  listingId?: string;
+  q?: string;
+  offset?: number;
+  limit?: number;
+}
+
+export function fetchAdminConversations(
+  accessToken: string,
+  query: AdminConversationsQuery = {},
+): Promise<AdminConversationRowsPage> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
+  return authedBffFetch(accessToken, `/admin/conversations?${params.toString()}`, { cache: "no-store" });
+}
+
+export function fetchAnyConversationMessages(accessToken: string, conversationId: string): Promise<MessageDto[]> {
+  return authedBffFetch(accessToken, `/admin/conversations/${encodeURIComponent(conversationId)}/messages`, {
     cache: "no-store",
   });
 }

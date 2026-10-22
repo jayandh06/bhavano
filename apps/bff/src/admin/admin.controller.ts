@@ -1,6 +1,7 @@
 import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { SEND_WINDOW_MESSAGE, isWithinPromotionalSendWindow } from '../outreach/send-window';
 import type {
+  AdminConversationRowsPage,
   AdminConversationsPage,
   AdminDiscountCodesPage,
   AdminListingsPage,
@@ -59,6 +60,7 @@ import { CreateAssistedListingDto } from './dto/create-assisted-listing.dto';
 import { ListListingEngagementDto } from './dto/list-listing-engagement.dto';
 import { ListListingEditHistoryDto } from './dto/list-listing-edit-history.dto';
 import { ListListingConversationsDto } from './dto/list-listing-conversations.dto';
+import { ListAdminConversationsDto } from './dto/list-admin-conversations.dto';
 import { FlagListingDto } from './dto/flag-listing.dto';
 import { SetReviewedDto } from './dto/set-reviewed.dto';
 import { SetListingStatusDto } from './dto/set-listing-status.dto';
@@ -322,6 +324,17 @@ export class AdminController {
       query.offset ?? 0,
       query.limit,
     );
+  }
+
+  /** Every conversation, with filters: the admin Messages screen. */
+  @Get('conversations')
+  listConversations(@Query() query: ListAdminConversationsDto): Promise<AdminConversationRowsPage> {
+    return this.adminService.listConversations(query);
+  }
+
+  @Get('conversations/:conversationId/messages')
+  getConversationMessages(@Param('conversationId') conversationId: string): Promise<MessageDto[]> {
+    return this.adminService.getConversationMessages(conversationId);
   }
 
   @Get('listings/:id/conversations')

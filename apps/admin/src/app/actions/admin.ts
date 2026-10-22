@@ -29,6 +29,7 @@ import {
   approveListing,
   deleteListing,
   fetchListingById,
+  fetchAnyConversationMessages,
   fetchListingConversationMessages,
   fetchNotificationDayDetail,
   fetchSessionTrail,
@@ -396,6 +397,19 @@ export async function fetchConversationMessagesAction(
   const { accessToken } = await requireAdmin();
   try {
     const messages = await fetchListingConversationMessages(accessToken, listingId, conversationId);
+    return { success: true, messages };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to load messages" };
+  }
+}
+
+/** The Messages screen's row-expand: any conversation's thread by id (enquiry or staff thread). */
+export async function fetchAnyConversationMessagesAction(
+  conversationId: string,
+): Promise<{ success: true; messages: MessageDto[] } | { success: false; error: string }> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const messages = await fetchAnyConversationMessages(accessToken, conversationId);
     return { success: true, messages };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to load messages" };

@@ -193,7 +193,16 @@ export function UsersTable({ users, searchParams }: { users: UserSummaryDto[]; s
                 >
                   {u.contactRevealsLeft}
                 </td>
-                <td style={{ ...tdStyle, textAlign: "right" }}>{u.enquiries || dash}</td>
+                <td style={{ ...tdStyle, textAlign: "right" }}>
+                  {/* Everything this person sent or received, all time (empty from/to = no date limit). */}
+                  <Link
+                    href={`/messages?userId=${encodeURIComponent(u.id)}&userLabel=${encodeURIComponent(u.name ?? u.phone ?? u.email ?? u.id)}&type=any&from=&to=`}
+                    title="See this person's messages"
+                    style={{ color: "var(--green)", fontWeight: 700 }}
+                  >
+                    {u.enquiries || "Messages"}
+                  </Link>
+                </td>
                 <td style={tdStyle}>{u.cityName ?? dash}</td>
                 <td style={tdStyle}>
                   {u.welcomed ? (
