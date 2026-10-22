@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ActivityIndicator, Alert, findNodeHandle, Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { PHOTO_LIMITS } from "@bhavano/types/photoLimits";
 import { audienceFor, reachLabelFor } from "@bhavano/types/audience";
 import { FEATURED_BENEFITS } from "@bhavano/types/featuredBenefits";
+import { goLiveTimeText } from "@bhavano/types/goLive";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
@@ -1394,20 +1395,25 @@ export function PostAdWizard({
 
   // Scroll to a target: each one has a small anchor view (or its own field cell) registered here.
   const targetRefs = useRef<Record<string, View | null>>({});
+  /** The first thing in the scroll content (the step indicator), the zero point scrollToTarget measures from. */
+  const contentTopRef = useRef<View | null>(null);
   const anchor = (target: string) => (el: View | null) => {
     targetRefs.current[target] = el;
   };
   function scrollToTarget(target: string) {
     const key = target === "posted_by" ? "attr:fromBroker" : target === "brokerage" ? "price" : target;
     const el = targetRefs.current[key];
-    const scroller = scrollRef.current;
-    const handle = scroller ? findNodeHandle(scroller) : null;
-    if (!el || !handle) return;
-    el.measureLayout(
-      handle,
-      (_x, y) => scroller?.scrollTo({ y: Math.max(0, y - 90), animated: true }),
-      () => {},
-    );
+    const top = contentTopRef.current;
+    if (!el || !top) return;
+    // Not el.measureLayout(findNodeHandle(scroller), …): on the new architecture that throws
+    // "ref.measureLayout must be called with a ref to a native component", because the scroller
+    // here is a wrapper component, not a native view. Measuring both on screen and subtracting
+    // gives the same offset from the top of the content, with no native-view requirement.
+    top.measureInWindow((_tx, topY) => {
+      el.measureInWindow((_x, elY) => {
+        scrollRef.current?.scrollTo({ y: Math.max(0, elY - topY - 90), animated: true });
+      });
+    });
   }
 
   // Phase 0 of docs/plans/post-details-step-experience.md: where on this step do sellers stall?
@@ -1912,7 +1918,7 @@ export function PostAdWizard({
         // depends on the device's own font having that glyph at all, which isn't guaranteed on
         // every Android font/OS version (it showed up missing/wrong on real Android devices,
         // while iOS's SF fonts always had it). An SVG icon has no such dependency.
-        <View style={[styles.stepper, { alignItems: "center" }]}>
+        <View ref={contentTopRef} style={[styles.stepper, { alignItems: "center" }]}>
           {(["category", "details", "review"] as Step[]).map((s, i) => (
             <View key={s} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               {i > 0 && <Icon name="chevronRight" size={11} color={colors.muted} />}
@@ -2831,12 +2837,27 @@ export function PostAdWizard({
             <View style={[styles.celebrateCircle, { backgroundColor: `${colors.green}1a` }]}>
               <Icon name="celebrate" size={26} color={colors.green} />
             </View>
-            <Text style={{ fontFamily: "serif", fontSize: 20, fontWeight: "700", color: colors.text, textAlign: "center" }}>
-              Your ad is live!
-            </Text>
-            <Text style={{ fontSize: 13, color: colors.muted, textAlign: "center" }}>
-              It&rsquo;s now visible to {audienceFor(createdListing.category, createdListing.transactionType)} searching your area.
-            </Text>
+            {createdListing.publishState === "scheduled" && createdListing.publishAt && !createdListing.isBoosted ? (
+              <>
+                <Text style={{ fontFamily: "serif", fontSize: 20, fontWeight: "700", color: colors.text, textAlign: "center" }}>
+                  Your ad is posted!
+                </Text>
+                <Text style={{ fontSize: 13, color: colors.muted, textAlign: "center" }}>
+                  It goes live at {goLiveTimeText(createdListing.publishAt)}, when it becomes visible to{" "}
+                  {audienceFor(createdListing.category, createdListing.transactionType)} searching your area. Make it
+                  Featured to go live right now.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={{ fontFamily: "serif", fontSize: 20, fontWeight: "700", color: colors.text, textAlign: "center" }}>
+                  Your ad is live!
+                </Text>
+                <Text style={{ fontSize: 13, color: colors.muted, textAlign: "center" }}>
+                  It&rsquo;s now visible to {audienceFor(createdListing.category, createdListing.transactionType)} searching your area.
+                </Text>
+              </>
+            )}
           </View>
 
           {previewBoostDisplay?.showSelectorOnPreview && Platform.OS !== "ios" ? (

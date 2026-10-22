@@ -125,7 +125,11 @@ import { platformFeeApplies } from '@bhavano/types/platformFeePricing';
 import type { LastListingDetailsDto } from '@bhavano/types/listingReuse';
 import { scrubPhonesInText } from './scrub-listing-phones';
 import { BULK_IMPORT_OWNER_PHONE, isBulkImportOwner } from './bulk-import-owner';
-import { getPostedConfirmationDelayMinutes } from './posted-confirmation-settings';
+import {
+  getPostedConfirmationDelayMinutes,
+  getPostedTimingSettings,
+  scheduledPublishAt,
+} from './posted-confirmation-settings';
 import { assistedClaimCutoff, assistedClaimUrl, maskClaimPhone } from './assisted-listing';
 
 /** `create`'s admin-assisted mode — see ListingsService.createAssisted. */
@@ -1626,7 +1630,29 @@ export class ListingsService {
     this.referralsService.recordFirstApprovedAdIfReferred(ownerId).catch(() => undefined);
   }
 
-  /** Idempotent — flips `pending_checkout` → `live` and runs deferred post-live side effects. */
+  /** Flips every `scheduled` ad whose time has come to live, running the same post-live side effects
+   * as a normal publish (saved-search alerts, the ads conversion, the "your ad is posted" message).
+   * Called by ScheduledPublishJob every minute. Returns how many went live. */
+  async publishDueScheduled(now: Date = new Date()): Promise<number> {
+    const due = await this.prisma.listing.findMany({
+      where: { publishState: 'scheduled', publishAt: { lte: now } },
+      select: { id: true },
+      orderBy: { publishAt: 'asc' },
+      take: 100,
+    });
+    let published = 0;
+    for (const { id } of due) {
+      try {
+        await this.completePendingPublish(id);
+        published += 1;
+      } catch (error) {
+        this.logger.error(`Scheduled go-live failed for ${id}: ${error instanceof Error ? error.message : error}`);
+      }
+    }
+    return published;
+  }
+
+  /** Idempotent — flips `pending_checkout` or `scheduled` → `live` and runs deferred post-live side effects. */
   async completePendingPublish(listingId: string, trackingAuthorized?: boolean): Promise<void> {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
@@ -1635,10 +1661,13 @@ export class ListingsService {
     if (!listing || listing.publishState === 'live') return;
 
     const publishedAt = new Date();
-    await this.prisma.listing.update({
-      where: { id: listingId },
-      data: { publishState: 'live', publishedAt },
+    // Conditional, so the scheduled-publish job and a payment webhook that arrive together cannot
+    // both run the post-live side effects: only the one that actually flips the row carries on.
+    const flipped = await this.prisma.listing.updateMany({
+      where: { id: listingId, publishState: { not: 'live' } },
+      data: { publishState: 'live', publishedAt, publishAt: null },
     });
+    if (flipped.count === 0) return;
 
     const owner = await this.prisma.user.findUnique({
       where: { id: listing.ownerId },
@@ -1822,6 +1851,18 @@ export class ListingsService {
       (platformFeeApplies(input.category, platformFeeSettings) || wantsBoost);
     const now = new Date();
 
+    // Hold a free ad off the site until the Posted confirmation time has passed (admin → Posted
+    // confirmation, "keep the ad off the site"). Only ads posted by a seller from the website or
+    // app (they carry a session id): never an admin-assisted listing, a bulk import or outreach
+    // post, nor one already waiting on checkout, which goes live when it is paid. Paying for
+    // Featured releases it at once (see PaymentsService.fulfilPaidPayment).
+    const timing =
+      !pendingCheckout && !assisted && input.sessionId && owner?.phone !== BULK_IMPORT_OWNER_PHONE
+        ? await getPostedTimingSettings(this.prisma)
+        : null;
+    const publishAt = scheduledPublishAt(now, timing);
+    const scheduled = publishAt !== null;
+
     // Full mobiles in free text bypass contact-reveal — mask before persist so the stored
     // title/description never publish a dialable number. See docs/plans/mask-phones-in-listing-text.md.
     const title = scrubPhonesInText(input.title.trim());
@@ -1866,8 +1907,13 @@ export class ListingsService {
               adminReviewed: true,
             }
           : {
-              publishState: pendingCheckout ? ('pending_checkout' as const) : ('live' as const),
-              publishedAt: pendingCheckout ? null : now,
+              publishState: pendingCheckout
+                ? ('pending_checkout' as const)
+                : scheduled
+                  ? ('scheduled' as const)
+                  : ('live' as const),
+              publishedAt: pendingCheckout || scheduled ? null : now,
+              publishAt,
             }),
         // A post-creation addPhoto atomically increments this — see the field's own doc comment
         // in schema.prisma for why it must start at least as high as any photoNo already in use.
@@ -1937,7 +1983,7 @@ export class ListingsService {
 
     const isBulkImportOwner = owner?.phone === BULK_IMPORT_OWNER_PHONE;
 
-    if (!pendingCheckout && !assisted) {
+    if (!pendingCheckout && !scheduled && !assisted) {
       await this.runPostLiveSideEffects(
         listing,
         owner,
@@ -4002,6 +4048,7 @@ export class ListingsService {
       status: listing.status,
       publishState: listing.publishState,
       publishedAt: listing.publishedAt?.toISOString() ?? null,
+      publishAt: listing.publishAt?.toISOString() ?? null,
       moderationState: listing.moderationState,
       adminReviewed: listing.adminReviewed,
       moderatedAt: listing.moderatedAt?.toISOString() ?? null,

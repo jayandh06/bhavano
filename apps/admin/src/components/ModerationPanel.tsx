@@ -177,7 +177,7 @@ export function ModerationPanel({
         </button>
       </div>
 
-      {publishState === "pending_checkout" && (
+      {(publishState === "pending_checkout" || publishState === "scheduled") && (
         <div
           style={{
             border: "1.5px solid var(--danger)",
@@ -187,9 +187,19 @@ export function ModerationPanel({
           }}
         >
           <p style={{ fontSize: 13, color: "var(--text-soft)", margin: "0 0 10px" }}>
-            This ad is <strong>not live</strong> — publish payment is still pending. Override only
-            when the fee was waived or settled offline; the owner will see a note in the
-            moderation thread.
+            {publishState === "scheduled" ? (
+              <>
+                This ad is <strong>scheduled</strong> — it is held off the site until the Posted
+                confirmation time passes. Publishing now puts it live straight away; the owner will see a
+                note in the moderation thread.
+              </>
+            ) : (
+              <>
+                This ad is <strong>not live</strong> — publish payment is still pending. Override only
+                when the fee was waived or settled offline; the owner will see a note in the
+                moderation thread.
+              </>
+            )}
           </p>
           {!showForcePublishBox ? (
             <button
@@ -197,7 +207,7 @@ export function ModerationPanel({
               disabled={pending}
               style={primaryButtonStyle}
             >
-              Publish without payment
+              {publishState === "scheduled" ? "Publish now" : "Publish without payment"}
             </button>
           ) : (
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

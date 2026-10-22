@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import type { ListingDetailDto, ListingStatus, MyReferralsDto } from "@bhavano/types";
 import { listingPriceText } from "@bhavano/types/priceWords";
+import { goLiveTimeText } from "@bhavano/types/goLive";
 import { postHref } from "@/lib/postHref";
 import { auth } from "@/auth";
 import { BffAuthError, fetchMyListings, fetchMyReferrals, fetchProfile, previewBoostPricing } from "@/lib/bff";
@@ -249,6 +250,11 @@ function MyListingRow({
           {isPendingPublish && (
             <span className="text-[11px] font-bold rounded-md px-2 py-0.5 border border-[#b3413a] text-[#b3413a]">
               Not live — payment pending
+            </span>
+          )}
+          {item.publishState === "scheduled" && item.publishAt && (
+            <span className="text-[11px] font-bold rounded-md px-2 py-0.5 border border-gold text-gold">
+              Going live at {goLiveTimeText(item.publishAt)}
             </span>
           )}
           {item.isBoosted && (

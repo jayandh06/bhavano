@@ -40,6 +40,7 @@ import type {
   SearchDemandPage,
   SendPostedNotificationResponseDto,
   SendWelcomeResponseDto,
+  PostedConfirmationSettingsDto,
   SessionTrailDto,
   UserActivityDto,
 } from '@bhavano/types';
@@ -481,14 +482,14 @@ export class AdminController {
   }
 
   @Get('posted-confirmation-settings')
-  getPostedConfirmationSettings(): Promise<{ delayMinutes: number }> {
+  getPostedConfirmationSettings(): Promise<PostedConfirmationSettingsDto> {
     return this.adminService.getPostedConfirmationSettings();
   }
 
   @Patch('posted-confirmation-settings')
   updatePostedConfirmationSettings(
     @Body() dto: UpdatePostedConfirmationSettingsDto,
-  ): Promise<{ delayMinutes: number }> {
+  ): Promise<PostedConfirmationSettingsDto> {
     return this.adminService.updatePostedConfirmationSettings(dto);
   }
 

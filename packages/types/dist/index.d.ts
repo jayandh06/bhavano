@@ -10,7 +10,7 @@ export type ListingStatus = "active" | "sold" | "rented" | "deactivated";
 /** Whether a newly created listing is visible in browse and has fired post-live side effects.
  * `awaiting_claim`: an admin prepared it for a seller, hidden until that seller claims it — see
  * docs/plans/admin-assisted-posting.md. */
-export type ListingPublishState = "live" | "pending_checkout" | "awaiting_claim";
+export type ListingPublishState = "live" | "pending_checkout" | "awaiting_claim" | "scheduled";
 export type ListingCondition = "new" | "used";
 /** How the ad itself was created. "direct" (the owner posted it through the wizard) is the
  * only path that exists today and the default for every row; "manual"/"google_api" are for
@@ -214,10 +214,12 @@ export interface ListingDetailDto extends ListingCardDto {
      * `price` string back into a number for editing. */
     priceUnit: AreaUnit | null;
     status: ListingStatus;
-    /** `pending_checkout` listings are owner-visible only until publish payment completes. */
+    /** `pending_checkout` and `scheduled` listings are owner-visible only until they go live. */
     publishState: ListingPublishState;
-    /** When the ad actually went live — null while `publishState` is `pending_checkout`. */
+    /** When the ad actually went live — null while `publishState` is `pending_checkout` or `scheduled`. */
     publishedAt: string | null;
+    /** When a `scheduled` ad is due to go live (Posted confirmation time); null otherwise. */
+    publishAt: string | null;
     moderationState: ModerationState;
     adminReviewed: boolean;
     moderatedAt: string | null;
@@ -1774,6 +1776,8 @@ export type UpdateSavedSearchSettingsInput = SavedSearchSettingsDto;
  * back so the seller reaches the Featured offer first. 0 sends at post time. */
 export interface PostedConfirmationSettingsDto {
     delayMinutes: number;
+    /** Also keep a free ad off the site for `delayMinutes` (publishState `scheduled`). */
+    holdAdLive: boolean;
 }
 /** What an owner is shown about demand matching their own inventory — deliberately carries no
  * seeker identity at all. The contact path is the plan's messaging-first flow, not this. */

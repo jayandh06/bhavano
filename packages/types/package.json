@@ -61,6 +61,10 @@
       "types": "./dist/appVersion.d.ts",
       "default": "./dist/appVersion.js"
     },
+    "./goLive": {
+      "types": "./dist/goLive.d.ts",
+      "default": "./dist/goLive.js"
+    },
     "./areaUnit": {
       "types": "./dist/areaUnit.d.ts",
       "default": "./dist/areaUnit.js"

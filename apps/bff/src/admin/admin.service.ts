@@ -33,6 +33,7 @@ import type {
   SearchDemandPage,
   SearchDemandRowDto,
   SendWelcomeResultDto,
+  PostedConfirmationSettingsDto,
   SessionTrailDto,
   UserActivityDto,
   UserLoginHistoryPage,
@@ -78,10 +79,7 @@ import { ListRequirementsDto } from './dto/list-requirements.dto';
 import { UpdateRequirementDto } from './dto/update-requirement.dto';
 import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings.dto';
 import { UpdatePostedConfirmationSettingsDto } from './dto/update-posted-confirmation-settings.dto';
-import {
-  getPostedConfirmationDelayMinutes,
-  setPostedConfirmationDelayMinutes,
-} from '../listings/posted-confirmation-settings';
+import { getPostedTimingSettings, setPostedTimingSettings } from '../listings/posted-confirmation-settings';
 import { UpdateSavedSearchDto } from './dto/update-saved-search.dto';
 import { ListUsersDto, UserSort } from './dto/list-users.dto';
 import { AdminPaymentSort, ListPaymentsDto } from './dto/list-payments.dto';
@@ -489,6 +487,7 @@ export class AdminService {
     if (!existing) throw new NotFoundException(`Listing ${id} not found`);
 
     const wasPending = existing.publishState === 'pending_checkout';
+    const wasScheduled = existing.publishState === 'scheduled';
     await this.listingsService.completePendingPublish(id);
 
     if (wasPending) {
@@ -497,6 +496,8 @@ export class AdminService {
         adminId,
         'An admin published this ad without payment (fee waived / settled offline).',
       );
+    } else if (wasScheduled) {
+      await this.sendModerationMessage(id, adminId, 'An admin published this ad ahead of its scheduled time.');
     }
 
     return this.listingsService.findOne(id, { id: adminId, role: 'admin' });
@@ -2470,14 +2471,12 @@ export class AdminService {
     await this.prisma.requirement.update({ where: { id }, data: dto });
   }
 
-  async getPostedConfirmationSettings(): Promise<{ delayMinutes: number }> {
-    return { delayMinutes: await getPostedConfirmationDelayMinutes(this.prisma) };
+  getPostedConfirmationSettings(): Promise<PostedConfirmationSettingsDto> {
+    return getPostedTimingSettings(this.prisma);
   }
 
-  async updatePostedConfirmationSettings(
-    dto: UpdatePostedConfirmationSettingsDto,
-  ): Promise<{ delayMinutes: number }> {
-    return { delayMinutes: await setPostedConfirmationDelayMinutes(this.prisma, dto.delayMinutes) };
+  updatePostedConfirmationSettings(dto: UpdatePostedConfirmationSettingsDto): Promise<PostedConfirmationSettingsDto> {
+    return setPostedTimingSettings(this.prisma, dto);
   }
 
   getSavedSearchSettings(): Promise<SavedSearchSettingsDto> {

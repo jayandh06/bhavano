@@ -18,8 +18,9 @@ export default async function PostedConfirmationSettingsPage() {
           When a seller posts an ad, the &quot;your ad is posted&quot; email or WhatsApp is held back so they
           see the Featured offer first. It is sent as soon as they reach the &quot;Your ad is live!&quot; screen
           (Featured bought, skipped, or the payment window closed). This is how long to wait before
-          sending it anyway, for sellers who close the page without getting there. See
-          docs/plans/post-ad-acknowledgement.md.
+          sending it anyway, for sellers who close the page without getting there. The same wait can
+          also keep the ad itself off the site, below. See docs/plans/post-ad-acknowledgement.md and
+          docs/plans/scheduled-go-live.md.
         </p>
         <PostedConfirmationSettingsForm initial={settings} />
       </div>

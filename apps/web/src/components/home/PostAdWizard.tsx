@@ -23,6 +23,7 @@ import {
   listingCompleteness,
   pruneHiddenAttributes,
 } from "@bhavano/types/categoryFields";
+import { goLiveTimeText } from "@bhavano/types/goLive";
 import { fromBrokerDefault, hasFromBrokerField, sellerTypeFromBroker } from "@bhavano/types/sellerType";
 import { areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import {
@@ -3112,10 +3113,23 @@ export function PostAdWizard({
               <Icon name="celebrate" />
             </span>
             <div>
-              <div className="font-lora text-xl sm:text-2xl font-bold text-text">Your ad is live!</div>
-              <p className="text-sm text-muted mt-1 mb-0">
-                It&apos;s now visible to {audienceFor(createdListing.category, createdListing.transactionType)} searching your area.
-              </p>
+              {createdListing.publishState === "scheduled" && createdListing.publishAt && !createdListing.isBoosted ? (
+                <>
+                  <div className="font-lora text-xl sm:text-2xl font-bold text-text">Your ad is posted!</div>
+                  <p className="text-sm text-muted mt-1 mb-0">
+                    It goes live at {goLiveTimeText(createdListing.publishAt)}, when it becomes visible to{" "}
+                    {audienceFor(createdListing.category, createdListing.transactionType)} searching your area. Make it
+                    Featured to go live right now.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="font-lora text-xl sm:text-2xl font-bold text-text">Your ad is live!</div>
+                  <p className="text-sm text-muted mt-1 mb-0">
+                    It&apos;s now visible to {audienceFor(createdListing.category, createdListing.transactionType)} searching your area.
+                  </p>
+                </>
+              )}
             </div>
           </div>
 

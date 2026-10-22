@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsInt, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
 import { MAX_POSTED_CONFIRMATION_DELAY_MINUTES } from '../../listings/posted-confirmation-settings';
 
 export class UpdatePostedConfirmationSettingsDto {
@@ -11,4 +11,9 @@ export class UpdatePostedConfirmationSettingsDto {
   @Min(0)
   @Max(MAX_POSTED_CONFIRMATION_DELAY_MINUTES)
   delayMinutes!: number;
+
+  /** Also keep a free ad off the site for that long (see docs/plans/scheduled-go-live.md). */
+  @IsOptional()
+  @IsBoolean()
+  holdAdLive?: boolean;
 }

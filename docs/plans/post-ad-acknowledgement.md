@@ -173,3 +173,8 @@ the Featured offer. Now (`PostedConfirmationService`, `apps/bff/src/listings/pos
   ads published in the last 6 hours that came from a browser/app post, so it never mails a backlog.
 - Clients that don't send the flag (older mobile builds, outreach, admin) still get it at post time.
 - The delay is set only in the admin app (Settings → Posted confirmation); there is no env var. It is read from the database on each post and each sweep, so a change applies to the next ad without a restart.
+
+## 2026-10-22: the wait can also hold the ad itself
+The same Posted confirmation wait can now keep a free ad off the site until it passes (an opt-in
+checkbox on that admin page). The message is then sent when the ad goes live. See
+[`scheduled-go-live.md`](scheduled-go-live.md).

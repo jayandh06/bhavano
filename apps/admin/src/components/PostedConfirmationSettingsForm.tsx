@@ -8,6 +8,7 @@ const MAX_MINUTES = 1440;
 
 export function PostedConfirmationSettingsForm({ initial }: { initial: PostedConfirmationSettingsDto }) {
   const [delayMinutes, setDelayMinutes] = useState(String(initial.delayMinutes));
+  const [holdAdLive, setHoldAdLive] = useState(initial.holdAdLive);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -17,7 +18,7 @@ export function PostedConfirmationSettingsForm({ initial }: { initial: PostedCon
   async function onSave() {
     setSaving(true);
     setMessage(null);
-    const result = await updatePostedConfirmationSettingsAction({ delayMinutes: parsed });
+    const result = await updatePostedConfirmationSettingsAction({ delayMinutes: parsed, holdAdLive });
     setSaving(false);
     setMessage(
       result.success
@@ -54,6 +55,31 @@ export function PostedConfirmationSettingsForm({ initial }: { initial: PostedCon
           website and the latest app hold the message back; older app versions still send it at post
           time.
         </p>
+      </div>
+
+      <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Keep the ad off the site until then</div>
+        <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={holdAdLive}
+            onChange={(e) => setHoldAdLive(e.target.checked)}
+            style={{ marginTop: 3 }}
+          />
+          <span>
+            <span style={{ display: "block", fontSize: 13.5, fontWeight: 700 }}>
+              Don&rsquo;t show a free ad to buyers until the wait above has passed
+            </span>
+            <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginTop: 2, maxWidth: 560 }}>
+              Instead of going live the moment it is posted, a free ad goes live after the same number of
+              minutes, and the &ldquo;your ad is posted&rdquo; message goes out then. The seller sees
+              &ldquo;Going live at …&rdquo;. Paying for Featured puts the ad live at once, and you can
+              publish one early from its admin page. Ads that need a posting fee, admin-assisted ads and
+              bulk imports are not held. Off by default. Needs the latest website and app to show the
+              wording; older apps just see the ad as not live yet.
+            </span>
+          </span>
+        </label>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

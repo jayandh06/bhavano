@@ -5,7 +5,7 @@ Generated 15 Oct 2026. **Nothing here has been applied to the Google Ads account
 ## How these were chosen
 
 - Every phrase speaks as someone **with a property to offer**: "sell my…", "rent out my…", "lease out my…", "list my…", "post free … ad", "find tenants for my…". A seeker names where they are hunting ("flats for rent in koramangala"); an owner names what they own.
-- No "near me", no bare `for rent` / `for sale` phrasing, no city or locality names. Those are the seeker signals the 2026-10 audit removed (see [google-ads-keyword-audit-2026-10.md](google-ads-keyword-audit-2026-10.md)). Location is handled by campaign geo targeting.
+- No "near me", no bare `for rent` / `for sale` phrasing, and no **bare** city or locality names ("pg in bangalore"). Those are the seeker signals the 2026-10 audit removed (see [google-ads-keyword-audit-2026-10.md](google-ads-keyword-audit-2026-10.md)). A city is allowed only inside owner wording; see "City-named owner keywords" below.
 - All 122 phrases were run through `classify()` in `ads_intent.py`, the classifier `ads_retarget_owners.py` uses to pause seeker keywords: **none is read as a seeker**. 95 read as owner; 27 come back "unknown" ("lease out…", "find tenants for…"), which that script leaves alone rather than pauses, because it has no markers for those wordings yet.
 - Use **phrase match** to start, like the existing poster campaigns, and review search terms weekly.
 
@@ -35,6 +35,25 @@ Generated 15 Oct 2026. **Nothing here has been applied to the Google Ads account
 | Commercial | Rent | Rent Out 2.4 | `rent out my shop`, `rent out my office`, `list my commercial property for rent`, `put my shop on rent`, `give my office on rent`, `find tenants for my shop` |
 | Commercial | Lease | Lease 3.1 | `lease out my shop`, `lease my office space`, `give my shop on lease`, `lease my showroom`, `list my office space for lease` |
 | Any category | Any | Generic Post Ad Intent | `free property listing site`, `post property ad free`, `list my property free`, `property listing site for owners`, `sell property without broker`, `rent property without broker`, `where to post property ad`, `how to list my property online`, `post free property ad`, `advertise my property for free` |
+
+## City-named owner keywords (Metro-Rent Out, 2026-10-22)
+
+**Why.** Last 30 days: generic owner keywords in Metro-Rent Out cost about Rs 24-30 a click; the city-named seeker groups cost Rs 13-15 (Bengaluru Rent Seekers Rs 15, Pune Rs 13). The owner's observation: location words are cheaper than generic ones. The seeker groups converted almost nothing (1 conversion in 227 Bengaluru clicks) because their searchers want a place, not to post one. So the aim is cheap city clicks from people who **own** something.
+
+**Rule.** Pair the city with owner wording: `rent out my flat in bangalore`, never `flat in bangalore` or `pg in bangalore`. In this campaign, city search terms that leaked through (`pg in madhapur hyderabad`, `best pg in bangalore`, `coliving pg in pune`) were all seekers with 0 conversions.
+
+**What `ads_add_owner_city_keywords.py` adds** (phrase match, enabled; 96 keywords):
+- Cities: bengaluru, bangalore, hyderabad, chennai, mumbai, delhi, pune, kolkata.
+- 2.1 House/Apartment: `rent out my flat in`, `rent out my house in`, `list my house for rent in`, `post my house for rent in`, `post rental property in`, `list my flat for rent in`.
+- 2.2 PG: `list my pg in`, `post pg ad in`.
+- 2.4 Commercial: `rent out my shop in`, `rent out my office in`, `rent out my warehouse in`, `list my commercial property for rent in`.
+- Guards: each phrase must not classify as "seeker" in `ads_intent.classify()` (this caught `find tenants for my flat in <city>`, which has no owner marker, so it was replaced by `list my flat for rent in`); existing keywords and ones blocked by a negative are skipped. Dry run and Google `--validate` both clean.
+
+**Not changed:** ads and landing pages (still generic), bidding, geo targeting, Other-Metro.
+
+**To check after about a week:** search terms for seeker leakage (add exact negatives); CPA, not CPC, per city; whether the campaign's location targeting covers each city (a keyword for a city outside it will not serve); whether city-specific ad copy or `/post?city=<slug>` landing is worth adding. Status: **applied 2026-10-22** (96 keywords enabled; a re-run reports nothing left to add). First review of search terms and CPA around 2026-10-29.
+
+**Status check, 2026-10-22 (same day):** all 96 showed "Under review" plus low search volume (`RARELY_SERVED`), expected for new, long phrases (six words, fixed word order). Review normally clears within about a day. **Fallback, prepared but NOT applied:** `python ads_add_owner_city_keywords.py --variant short` adds 80 shorter phrases (8 cities x 10): `rent out flat|house <city>`, `post rental property <city>`, `post property <city>` (2.1); `list my pg <city>`, `post pg <city>` (2.2); `rent out shop|office|warehouse <city>`, `post commercial property <city>` (2.4). Dry run clean, none skipped or blocked. Decide after 24-48 hours: if most long phrases are still low volume, apply `--variant short`; add exact negatives for any seeker terms that leak. Never move these to broad match.
 
 ## Pair with these negatives (exact) in the poster campaigns
 

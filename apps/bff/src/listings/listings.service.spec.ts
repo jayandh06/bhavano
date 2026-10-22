@@ -2925,6 +2925,8 @@ describe('ListingsService.completePendingPublish — recovering the posting sess
   // get a listing into pending_checkout in the first place.
   function makeService(listingOverrides: Record<string, unknown> = {}) {
     const recordPageView = jest.fn().mockResolvedValue(undefined);
+    const updateMany = jest.fn().mockResolvedValue({ count: 1 });
+    const findMany = jest.fn().mockResolvedValue([]);
     const prisma = {
       listing: {
         findUnique: jest.fn().mockResolvedValue({
@@ -2946,6 +2948,8 @@ describe('ListingsService.completePendingPublish — recovering the posting sess
           ...listingOverrides,
         }),
         update: jest.fn().mockResolvedValue(undefined),
+        updateMany: updateMany,
+        findMany: findMany,
       },
       user: {
         findUnique: jest.fn().mockResolvedValue({
@@ -2986,7 +2990,7 @@ describe('ListingsService.completePendingPublish — recovering the posting sess
       analyticsService,
       referralsService,
     );
-    return { service, recordPageView };
+    return { service, recordPageView, updateMany, findMany, notificationsService };
   }
 
   it('records /post/success against the session captured when the listing was first created', async () => {
@@ -3003,6 +3007,55 @@ describe('ListingsService.completePendingPublish — recovering the posting sess
     await service.completePendingPublish('listing1');
 
     expect(recordPageView).not.toHaveBeenCalled();
+  });
+
+  it('does nothing more when another caller already put the ad live (no double side effects)', async () => {
+    const { service, recordPageView, updateMany } = makeService({ publishState: 'scheduled' });
+    updateMany.mockResolvedValue({ count: 0 });
+
+    await service.completePendingPublish('listing1');
+
+    expect(recordPageView).not.toHaveBeenCalled();
+  });
+
+  it('flips a scheduled ad live and clears its publishAt', async () => {
+    const { service, updateMany } = makeService({ publishState: 'scheduled' });
+
+    await service.completePendingPublish('listing1');
+
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: 'listing1', publishState: { not: 'live' } },
+      data: expect.objectContaining({ publishState: 'live', publishAt: null }),
+    });
+  });
+
+  describe('publishDueScheduled', () => {
+    it('publishes each scheduled ad whose time has come, and only those', async () => {
+      const { service, findMany } = makeService({ publishState: 'scheduled' });
+      findMany.mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
+      const publish = jest.spyOn(service, 'completePendingPublish').mockResolvedValue(undefined);
+      const now = new Date('2026-10-22T10:00:00Z');
+
+      const published = await service.publishDueScheduled(now);
+
+      expect(findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { publishState: 'scheduled', publishAt: { lte: now } } }),
+      );
+      expect(publish).toHaveBeenCalledTimes(2);
+      expect(published).toBe(2);
+    });
+
+    it('carries on past an ad that fails to publish', async () => {
+      const { service, findMany } = makeService({ publishState: 'scheduled' });
+      findMany.mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
+      const publish = jest
+        .spyOn(service, 'completePendingPublish')
+        .mockRejectedValueOnce(new Error('boom'))
+        .mockResolvedValueOnce(undefined);
+
+      expect(await service.publishDueScheduled()).toBe(1);
+      expect(publish).toHaveBeenCalledTimes(2);
+    });
   });
 });
 

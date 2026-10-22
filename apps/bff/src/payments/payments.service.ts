@@ -1039,7 +1039,9 @@ export class PaymentsService {
         where: { id: payment.listingId },
         select: { publishState: true },
       });
-      if (held?.publishState === 'pending_checkout') {
+      // A scheduled ad (held off the site for the Posted confirmation time) goes live as soon as
+      // Featured is paid, since the seller has just paid to be seen.
+      if (held?.publishState === 'pending_checkout' || held?.publishState === 'scheduled') {
         await this.listingsService.completePendingPublish(payment.listingId, payment.adsTrackingAuthorized ?? undefined);
       }
       const boostedUntil = await this.activateListingBoost(payment.listingId, payment.boostDays, payment.id);

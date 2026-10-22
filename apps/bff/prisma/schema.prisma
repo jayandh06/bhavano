@@ -39,6 +39,10 @@ enum ListingPublishState {
   /// Prepared by an admin for a seller (claimPhoneE164) and hidden until that seller claims it.
   /// See docs/plans/admin-assisted-posting.md.
   awaiting_claim
+  /// Posted free and held off the site until publishAt (Posted confirmation time, when "keep the ad
+  /// off the site" is on). A job flips it to live; paying for Featured flips it at once. See
+  /// docs/plans/scheduled-go-live.md.
+  scheduled
 }
 
 enum ListingCondition {
@@ -614,6 +618,8 @@ model Listing {
   /// Gates browse visibility and deferred post-live side effects until publish checkout completes.
   publishState         ListingPublishState      @default(live)
   publishedAt          DateTime?
+  /// When a `scheduled` ad is due to go live; null otherwise.
+  publishAt            DateTime?
   moderationState      ModerationState          @default(approved)
   adminReviewed        Boolean                  @default(false)
   moderatedAt          DateTime?
@@ -724,6 +730,7 @@ model Listing {
   @@index([cityId, category])
   @@index([cityId, transactionType])
   @@index([expiresAt])
+  @@index([publishState, publishAt])
   @@index([boostedUntil])
   @@index([ownerId])
   @@index([createdAt])
@@ -2498,6 +2505,10 @@ model SavedSearchSetting {
 model PostedConfirmationSetting {
   id           String   @id
   delayMinutes Int      @default(60)
+  /// When true, a free ad posted from the website or app is also kept off the site for delayMinutes
+  /// (publishState scheduled) instead of going live at once. Off by default so deploying changes
+  /// nothing until an admin turns it on.
+  holdAdLive   Boolean  @default(false)
   updatedAt    DateTime @updatedAt
 }
 

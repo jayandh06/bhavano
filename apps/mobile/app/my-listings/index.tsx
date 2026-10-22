@@ -4,6 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { listingPriceText } from "@bhavano/types/priceWords";
+import { goLiveTimeText } from "@bhavano/types/goLive";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useMyListingsQuery } from "../../src/lib/queries";
@@ -120,6 +121,13 @@ export default function MyListingsScreen() {
                     <View style={[styles.badge, { borderColor: "#b3413a" }]}>
                       <Text style={{ fontSize: 11, fontWeight: "700", color: "#b3413a" }}>
                         Not live — payment pending
+                      </Text>
+                    </View>
+                  )}
+                  {item.publishState === "scheduled" && item.publishAt && (
+                    <View style={[styles.badge, { borderColor: colors.gold }]}>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: colors.gold }}>
+                        Going live at {goLiveTimeText(item.publishAt)}
                       </Text>
                     </View>
                   )}

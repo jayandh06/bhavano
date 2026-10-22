@@ -851,6 +851,7 @@ function ListingStatusBadge({
       {publishState === "pending_checkout" && (
         <Badge label="Not live — payment pending" color="var(--danger)" />
       )}
+      {publishState === "scheduled" && <Badge label="Scheduled — not live yet" color="var(--muted)" />}
       {publishState === "awaiting_claim" && (
         <Badge label="Not live — awaiting seller claim" color="var(--danger)" />
       )}

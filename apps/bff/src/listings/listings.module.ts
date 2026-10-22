@@ -21,12 +21,13 @@ import { ReferralsModule } from '../referrals/referrals.module';
 import { QuickResponderService } from './quick-responder.service';
 import { PostedConfirmationService } from './posted-confirmation.service';
 import { PostedConfirmationJob } from './posted-confirmation.job';
+import { ScheduledPublishJob } from './scheduled-publish.job';
 import { PostedConfirmationController } from './posted-confirmation.controller';
 
 @Module({
   imports: [ModerationModule, RateLimitModule, NotificationsModule, SavedSearchesModule, LocationsModule, StorageModule, ListingSlotsModule, AdsModule, ContactRevealModule, PlansModule, PushModule, AnalyticsModule, ReferralsModule],
   controllers: [ListingsController, PostedConfirmationController],
-  providers: [ListingsService, ListingPhotosService, AssistedListingExpiryJob, LoginNudgeService, QuickResponderService, PostedConfirmationService, PostedConfirmationJob],
+  providers: [ListingsService, ListingPhotosService, AssistedListingExpiryJob, LoginNudgeService, QuickResponderService, PostedConfirmationService, PostedConfirmationJob, ScheduledPublishJob],
   exports: [ListingsService, ListingPhotosService, LoginNudgeService],
 })
 export class ListingsModule {}
