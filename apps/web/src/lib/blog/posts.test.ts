@@ -59,6 +59,9 @@ const KNOWN_ROUTES = new Set([
   "/blog/capital-gains-tax-on-property-explained",
   "/blog/how-to-find-reliable-tenants",
   "/blog/rent-or-buy-questions",
+  "/chennai/pg",
+  "/blog/womens-pg-checklist",
+  "/blog/pg-hunting-checklist",
   "/blog/how-to-sell-property-online-in-india",
 ]);
 

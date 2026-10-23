@@ -79,6 +79,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           data={{
             "@type": "Organization",
             name: SITE_NAME,
+            // The name people type and say. Lets search and AI tools tie "Bhavano.com" and "Bhavano" to one brand.
+            alternateName: ["Bhavano.com"],
+            logo: `${SITE_URL}/logo.png`,
+            areaServed: { "@type": "Country", name: "India" },
             // Machine-readable brand → registered-entity link, for the automated scrapes that
             // DLT/telco and payment-aggregator verification run against the homepage.
             legalName: LEGAL_ENTITY.legalName,

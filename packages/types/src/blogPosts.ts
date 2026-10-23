@@ -2270,6 +2270,87 @@ export const POSTS: BlogPost[] = [
       },
     ],
   },
+  {
+    slug: "womens-pg-checklist",
+    title: "Women-only PG: what to check before you book, in any Indian city",
+    description:
+      "How to choose a safe women-only PG: what to check on safety, rooms, food, location, costs and rules, and what to get in writing before you pay a deposit.",
+    published: "2026-10-23",
+    format: "Checklist",
+    readingMinutes: 6,
+    body: [
+      {
+        type: "note",
+        text: "General information to help you decide, not legal advice. Check every detail yourself, and visit in person before you pay. Bhavano does not inspect PGs. See what we do and do not check on our [trust page](/trust).",
+      },
+      { type: "h2", text: "What should I check before booking a women-only PG?" },
+      {
+        type: "p",
+        text: "Check five things: safety, the room and facilities, food, the location and your daily commute, and the total monthly cost with the house rules. A PG can look good in photos and feel very different once you live there, so visit in person, in the evening, before you pay anything. This list works in any city, from Chennai and Bengaluru to Pune and Delhi NCR.",
+      },
+      { type: "h2", text: "How do I check that a PG is safe?" },
+      {
+        type: "ul",
+        items: [
+          "Confirm it is genuinely women-only and ask who runs it: an owner who lives on site, a manager or a warden.",
+          "Look for working locks, a secure entrance, CCTV in common areas, and a record of who visits.",
+          "Ask what the night-entry rule is, who is on duty overnight, and whom to call in an emergency.",
+          "Go back in the evening. Check the street lighting, how the neighbourhood feels after dark, and whether autos and buses are easy to find.",
+          "Speak to current residents about how safe they feel and how complaints are handled.",
+        ],
+      },
+      { type: "h2", text: "What should I look for in the room and facilities?" },
+      {
+        type: "ul",
+        items: [
+          "See the exact bed you would get, not a sample room. Check light, ventilation, the mattress, a cupboard, a desk and charging points.",
+          "Decide between single, double or triple sharing, and ask who your roommates would be and whether the management can change them later.",
+          "Test the bathroom, water pressure and hot water. Ask how many people share each bathroom.",
+          "Check the Wi-Fi speed where your bed is, plus the laundry arrangements and the fan or AC.",
+          "Ask how often rooms and bathrooms are cleaned, and look at the common areas for signs.",
+        ],
+      },
+      { type: "h2", text: "What should I ask about food?" },
+      {
+        type: "ul",
+        items: [
+          "Which meals are included, and at what times? Is there a weekly menu?",
+          "Is the drinking water filtered? Can you see the kitchen?",
+          "Can you cook, keep a fridge, or order food in?",
+          "What happens if you miss a meal or are away for a few days?",
+        ],
+      },
+      { type: "h2", text: "How do I judge the location and commute?" },
+      {
+        type: "p",
+        text: "Pick a PG close to your office, college or the bus or metro route you will use daily. Test the journey at the time you will actually travel, not just on a map. Also check the walk to shops, a pharmacy and a clinic, and think about traffic and waterlogging in the rains. If you are new to the city, our [guide to moving to a new city](/moving-to-a-new-city) covers the other things to settle early.",
+      },
+      { type: "h2", text: "What is the real monthly cost, and what rules should I get in writing?" },
+      {
+        type: "p",
+        text: "Do not compare PGs on rent alone. Ask for every charge in writing: rent per person or per room, food, electricity and AC, Wi-Fi, laundry, housekeeping and the deposit. Then ask for the rules in writing too.",
+      },
+      {
+        type: "ul",
+        items: [
+          "The curfew, and what happens if you return late from a shift.",
+          "Visitor rules, including whether family can visit and whether anyone can stay overnight.",
+          "The notice period, and any penalty for leaving early.",
+          "How much deposit you pay, when it is returned and what can be deducted. See [how a security deposit works](/blog/security-deposit-for-rent-in-india).",
+          "Whether the rent can rise during your stay, and whether you get a signed agreement and receipts. See [rental agreement questions](/blog/rental-agreement-questions).",
+        ],
+      },
+      { type: "h2", text: "How do I find women-only PGs on Bhavano?" },
+      {
+        type: "p",
+        text: "Bhavano is an Indian property marketplace where PG owners and managers list directly. Open [PG listings](/pg), pick your city and area, and look at each listing's details, which show the sharing types, meals and price, and, where the owner has filled it in, who the PG is for (men, women or co-ed). For example, you can browse the [PG listings in Chennai](/chennai/pg). Message the poster to ask the questions above, and then visit before you pay.",
+      },
+      {
+        type: "p",
+        text: "Before you pay a deposit, read [how to verify an owner](/blog/verify-property-owner-before-paying-token) and [how to spot a bad property ad](/blog/spotting-a-bad-property-ad). For the full visit checklist, see our [PG hunting checklist](/blog/pg-hunting-checklist). If you run a women's PG, you can [list it on Bhavano](/post).",
+      },
+    ],
+  },
 ];
 
 export function getPost(slug: string): BlogPost | undefined {
