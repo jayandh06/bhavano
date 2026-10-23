@@ -39,3 +39,12 @@ at that moment.
   page says so; turn the hold on after the new app is the common version.
 - The edit-listing page and the admin listings table show only a plain "Scheduled" state, not the
   time.
+
+## Update 2026-10-23: a "Going live" tab in Listing moderation
+Scheduled ads were already returned by the admin listing query (nothing filters on publish state), but they sat among the
+day's other ads and nothing said when they would go live. Listing moderation now has a **Going live** tab (publish state
+`scheduled`, no date window like Awaiting claim), and the status badge reads "Scheduled — goes live <time>"
+(`AdminListingRowDto.publishAt`). From there an ad opens like any other, so it can be edited, deleted or released with
+"Publish now". Checked on production on 2026-10-23: one scheduled ad ("Test test test") existed and passed the default
+filters, so the earlier "not showing" report may have come from the default Needs review tab or the one-day window; if a
+scheduled ad is still missing from All listings, send its link.

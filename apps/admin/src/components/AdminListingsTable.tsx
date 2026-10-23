@@ -207,6 +207,7 @@ export function AdminListingsTable({
         <ListingStatusBadge
           status={item.status}
           publishState={item.publishState}
+          publishAt={item.publishAt ?? null}
         />
       ),
       defaultVisible: true,
@@ -833,9 +834,11 @@ const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
 function ListingStatusBadge({
   status,
   publishState,
+  publishAt,
 }: {
   status: ListingStatus;
   publishState: ListingPublishState;
+  publishAt: string | null;
 }) {
   const statusLabel = LISTING_STATUS_LABELS[status];
   const statusColor =
@@ -851,7 +854,12 @@ function ListingStatusBadge({
       {publishState === "pending_checkout" && (
         <Badge label="Not live — payment pending" color="var(--danger)" />
       )}
-      {publishState === "scheduled" && <Badge label="Scheduled — not live yet" color="var(--muted)" />}
+      {publishState === "scheduled" && (
+        <Badge
+          label={publishAt ? `Scheduled — goes live ${formatDateTime(publishAt)}` : "Scheduled — not live yet"}
+          color="var(--muted)"
+        />
+      )}
       {publishState === "awaiting_claim" && (
         <Badge label="Not live — awaiting seller claim" color="var(--danger)" />
       )}

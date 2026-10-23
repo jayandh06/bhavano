@@ -2891,8 +2891,13 @@ export function PostAdWizard({
               <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Featuring…</Text>
             </View>
           ) : !showRegenerateBanner && !iosBoostDone ? (
-            <Pressable onPress={() => setStep("offer")} style={{ alignItems: "center", paddingVertical: 6 }}>
-              <Text style={{ fontSize: 13, fontWeight: "700", color: colors.green }}>Make it Featured →</Text>
+            <Pressable
+              onPress={() => setStep("offer")}
+              style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3, paddingVertical: 6 }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: "700", color: colors.green }}>Make it Featured</Text>
+              {/* A vector icon, not a "→" text glyph: some Android fonts lack the arrow and draw "'n". */}
+              <Icon name="chevronRight" size={13} color={colors.green} />
             </Pressable>
           ) : null}
 

@@ -17,12 +17,13 @@ import { Pagination } from "@/components/Pagination";
 import { AdminListingsTable } from "@/components/AdminListingsTable";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 
-type FilterTab = "needsReview" | "flagged" | "awaitingClaim" | "all";
+type FilterTab = "needsReview" | "flagged" | "awaitingClaim" | "scheduled" | "all";
 
 const TABS: { value: FilterTab; label: string }[] = [
   { value: "needsReview", label: "Needs review" },
   { value: "flagged", label: "Flagged" },
   { value: "awaitingClaim", label: "Awaiting claim" },
+  { value: "scheduled", label: "Going live" },
   { value: "all", label: "All listings" },
 ];
 
@@ -34,6 +35,8 @@ function tabToQuery(tab: FilterTab): {
   if (tab === "needsReview") return { adminReviewed: false };
   if (tab === "flagged") return { moderationState: "flagged" };
   if (tab === "awaitingClaim") return { publishState: "awaiting_claim" };
+  // Free ads held off the site until their Posted confirmation time (Settings -> Posted confirmation).
+  if (tab === "scheduled") return { publishState: "scheduled" };
   return {};
 }
 
@@ -64,9 +67,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // confirmed with the user that this applies to Listings too, so the moderation queue defaults
   // to "created today" rather than unbounded history. Doesn't redirect the URL to show it.
   // Awaiting claim is a short list (unclaimed ads are deleted after 14 days) that staff need in
-  // full, so it gets no default window.
-  const createdFrom = str(sp.createdFrom) ?? (tab === "awaitingClaim" ? undefined : daysAgoIST(1));
-  const createdTo = str(sp.createdTo) ?? (tab === "awaitingClaim" ? undefined : todayIST());
+  // full, so it gets no default window. Neither do the ads that are about to go live.
+  const noDefaultWindow = tab === "awaitingClaim" || tab === "scheduled";
+  const createdFrom = str(sp.createdFrom) ?? (noDefaultWindow ? undefined : daysAgoIST(1));
+  const createdTo = str(sp.createdTo) ?? (noDefaultWindow ? undefined : todayIST());
   const updatedFrom = str(sp.updatedFrom);
   const updatedTo = str(sp.updatedTo);
   // Bulk imports are hidden unless the admin chose otherwise (see lib/bulkImportFilter.ts).

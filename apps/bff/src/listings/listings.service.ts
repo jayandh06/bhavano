@@ -1183,6 +1183,7 @@ export class ListingsService {
       title: listing.title,
       status: listing.status,
       publishState: listing.publishState,
+      publishAt: listing.publishAt?.toISOString() ?? null,
       moderationState: listing.moderationState,
       adminReviewed: listing.adminReviewed,
       category: listing.category,

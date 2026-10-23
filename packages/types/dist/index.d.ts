@@ -742,6 +742,8 @@ export interface AdminListingRowDto {
     status: ListingStatus;
     /** Separate from `status` — `pending_checkout` means the ad is not buyer-visible yet. */
     publishState: ListingPublishState;
+    /** When a `scheduled` ad goes live (ISO); null for every other state. */
+    publishAt?: string | null;
     moderationState: ModerationState;
     adminReviewed: boolean;
     category: ListingCategory;
