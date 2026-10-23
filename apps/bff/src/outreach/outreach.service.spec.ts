@@ -379,7 +379,14 @@ describe('guessGender', () => {
     ['Downtown Co-Living PG', ['coed', 'men', 'women']],
     ['Cozy Co living Hub', ['coed', 'men', 'women']],
     ['Nova Colive PG', ['coed', 'men', 'women']],
-    ["Women's Paradise PG", []], // "women" must not trip the men-keyword regex via substring
+    ["Women's Paradise PG", ['women']], // and "women" must not trip the men-keyword regex via substring
+    ['Raksha Womens PG', ['women']],
+    ["Sri Sai Women's PG", ['women']],
+    ['Nakshatra Ladies Residency', ['women']],
+    ['Mens PG', ['men']],
+    ["Men's PG", ['men']],
+    ['Men and Women PG', ['men', 'women']],
+    ['Kongu Paying Guest for Ladies', ['women']],
     ['Regular PG near station', []],
     ['Amenities PG', []], // must not match "men" inside "Amenities"
   ])('%s -> %j', (name, expected) => {

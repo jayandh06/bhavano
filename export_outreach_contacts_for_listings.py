@@ -44,8 +44,10 @@ DEFAULT_TRANSACTION_TYPE = {"pg": "rent", "coworking": "rent"}
 # NOT matching bare "men"/"women": "women" itself contains "men" as a substring, so that would
 # tag every women-only PG as also-for-men. \b word boundaries additionally stop a keyword from
 # matching inside an unrelated longer word.
-MEN_NAME_KEYWORDS = re.compile(r"\b(gents?|boys?)\b", re.IGNORECASE)
-WOMEN_NAME_KEYWORDS = re.compile(r"\b(ladies|girls?)\b", re.IGNORECASE)
+# Updated 2026-10-23: "men" and "women" (with an optional 's) now match as whole words; \b stops "men" matching inside
+# "women" or "Amenities". Mirrors outreach.service.ts's guessGender(); the older note above is superseded by this.
+MEN_NAME_KEYWORDS = re.compile(r"\b(gents?|boys?|men'?s?)\b", re.IGNORECASE)
+WOMEN_NAME_KEYWORDS = re.compile(r"\b(ladies|girls?|women'?s?|woman'?s?)\b", re.IGNORECASE)
 # Covers "coliving", "co-living", "co living", "colive", "co-live", "co live".
 COLIVING_NAME_KEYWORDS = re.compile(r"\bco[\s-]?liv(?:e|ing)\b", re.IGNORECASE)
 

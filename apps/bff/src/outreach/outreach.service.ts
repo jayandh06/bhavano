@@ -74,8 +74,11 @@ const MAX_SCRAPED_PHOTOS = 6;
  * also-for-men. \b word boundaries additionally stop a keyword matching inside an unrelated
  * longer word. See that function's own test cases (verified in this session) before changing
  * either side without changing both. */
-const MEN_NAME_KEYWORDS = /\b(gents?|boys?)\b/i;
-const WOMEN_NAME_KEYWORDS = /\b(ladies|girls?)\b/i;
+// Updated 2026-10-23: "men" and "women" (with an optional 's) now match as whole words. \b stops "men" matching inside
+// "women" or "Amenities", so a women-only PG is not also tagged for men, and PGs named just "Women's PG" or "Womens PG"
+// (common in Chennai) are no longer missed. The older note above about bare "men"/"women" is superseded by this.
+const MEN_NAME_KEYWORDS = /\b(gents?|boys?|men'?s?)\b/i;
+const WOMEN_NAME_KEYWORDS = /\b(ladies|girls?|women'?s?|woman'?s?)\b/i;
 const COLIVING_NAME_KEYWORDS = /\bco[\s-]?liv(?:e|ing)\b/i;
 
 /** googlePlaceId-prefixed filenames — matches get_pg_coworking_leads.py's download_photos()

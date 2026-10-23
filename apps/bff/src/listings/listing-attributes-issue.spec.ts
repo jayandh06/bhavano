@@ -196,3 +196,31 @@ describe('listingAttributesIssue', () => {
     );
   });
 });
+
+describe('PG "Preferred for" is required, except for bulk imports', () => {
+  const service = Object.create(ListingsService.prototype) as {
+    assertValidAttributes: (
+      c: ListingCategory,
+      t: TransactionType,
+      a: Record<string, unknown>,
+      notRequired?: ReadonlySet<string>,
+    ) => void;
+  };
+
+  it('rejects a PG that does not say who it is for', () => {
+    expect(() => service.assertValidAttributes('pg', 'rent', { sharingType: ['single'] })).toThrow(/Preferred for is required/);
+    expect(() => service.assertValidAttributes('pg', 'rent', { sharingType: ['single'], gender: [] })).toThrow(
+      /Preferred for is required/,
+    );
+  });
+
+  it('accepts a PG that does', () => {
+    expect(() => service.assertValidAttributes('pg', 'rent', { sharingType: ['single'], gender: ['women'] })).not.toThrow();
+  });
+
+  it('lets a bulk import leave it blank for the claiming owner, but still checks everything else', () => {
+    const waived = new Set(['gender']);
+    expect(() => service.assertValidAttributes('pg', 'rent', { sharingType: ['single'] }, waived)).not.toThrow();
+    expect(() => service.assertValidAttributes('pg', 'rent', { gender: ['men'] }, waived)).toThrow(/Sharing type is required/);
+  });
+});

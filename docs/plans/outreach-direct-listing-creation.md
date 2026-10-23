@@ -77,3 +77,10 @@ large selection.
 - **CSV pipeline removal.** `bulk_upload_listings.py`/`export_outreach_contacts_for_listings.py`
   are untouched and still available for a fuller, hand-curated bulk upload if that's ever wanted
   instead.
+
+## Update 2026-10-23: "Preferred for" is now required for PGs, with a bulk-import exemption
+A PG's `gender` ("Preferred for") became a required answer for every normal poster. `create()` still takes no bypass flag from
+`createListingFromContact`, but it now waives that one required field when the input carries a `claimContactId` (a bulk import), so a
+scraped PG whose name says nothing about who it is for can still be created, and the claiming owner answers it later. Everything else
+`assertValidAttributes` requires is unchanged. The name guess also learned "women", "women's" and "men's" (see
+`pg-operator-outreach-chennai.md`).

@@ -44,3 +44,9 @@ only Delhi NCR and Pune for women, Bengaluru, Delhi NCR and Pune for men).
   working-women communities, PG owner groups. Models name brands that several independent sources name.
 - Repeat a fixed set of prompts monthly (with and without "Bhavano") and record whether the brand is named and cited; watch visits
   from `chatgpt.com` in Page visits.
+
+## Update 2026-10-23: supply first
+Decided: do not build the gender pages yet. Instead (1) "Preferred for" is now required for PGs
+(`packages/types/src/categoryFields.ts`; bulk imports exempt in `ListingsService.create`), and (2) the Chennai / Adyar operator outreach
+plan is in `pg-operator-outreach-chennai.md`. Old app builds still show the field as optional and get the server's "Preferred for is
+required" message; the 1.3.0 build shows it as required.

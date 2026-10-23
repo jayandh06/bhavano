@@ -517,6 +517,9 @@ export function roundRobinByGroup<T>(rows: T[], keyFor: (row: T) => string): T[]
   return result;
 }
 
+/** Required answers a bulk import may leave blank for the claiming owner to fill in. */
+const BULK_IMPORT_OPTIONAL_KEYS: ReadonlySet<string> = new Set(['gender']);
+
 /** How far a pin an owner sets on their own listing may be from the centre of the city it is filed under. */
 const OWNER_PIN_MAX_KM_FROM_CITY = 120;
 
@@ -1801,6 +1804,9 @@ export class ListingsService {
       input.category,
       input.transactionType,
       declaredSellerType.attributes,
+      // A bulk import is built from a scraped business name, which often says nothing about who a PG is for; the
+      // claiming owner answers it later. Every other path must say who the PG is for.
+      input.claimContactId ? BULK_IMPORT_OPTIONAL_KEYS : undefined,
     );
     const attributes = this.normalizeAttributes(input.category, declaredSellerType.attributes);
     this.assertValidPriceQualifier(
@@ -3664,6 +3670,8 @@ export class ListingsService {
     category: ListingCategory,
     transactionType: TransactionType,
     attributes: Record<string, unknown>,
+    /** Field keys whose "required" is waived for this call (bulk imports only). */
+    notRequired?: ReadonlySet<string>,
   ): void {
     for (const field of CATEGORY_FIELD_CONFIG[category]) {
       const value = attributes[field.key];
@@ -3701,7 +3709,7 @@ export class ListingsService {
         }
       }
 
-      if (!field.required) continue;
+      if (!field.required || notRequired?.has(field.key)) continue;
       const legacyValue =
         field.key === 'carpetAreaSqft' ? attributes.sqft : undefined;
       // An empty array is "missing" for a required multi-select field (e.g. sharingType) just

@@ -1014,6 +1014,11 @@ exports.CATEGORY_FIELD_CONFIG = {
                 { value: "women", label: "Women" },
                 { value: "coed", label: "Co-ed" },
             ],
+            // Required from 2026-10-23. Half of the live PGs had no answer, and "women-only PG in <area>" is the question
+            // renters (and AI assistants) ask first, so a PG that does not say who it is for cannot be found for it.
+            // Bulk imports are exempt (the claiming owner fills it in): see ListingsService.create. Older app builds
+            // still show it as optional and get the server's "Preferred for is required" message instead.
+            required: true,
         },
         {
             key: "meals",

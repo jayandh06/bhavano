@@ -87,10 +87,16 @@ describe('a multi-select gating another field', () => {
 });
 
 describe('validation of the new fields', () => {
-  const pg = { sharingType: ['single'] };
+  const pg = { sharingType: ['single'], gender: ['women'] };
 
   it('accepts a PG without any of the new optional fields', () => {
     expect(listingAttributesIssue('pg', 'rent', pg)).toBeNull();
+  });
+
+  it('asks who a PG is for: men, women or co-ed', () => {
+    expect(listingAttributesIssue('pg', 'rent', { sharingType: ['single'] })).toMatch(/Preferred for/);
+    expect(listingAttributesIssue('pg', 'rent', { sharingType: ['single'], gender: [] })).toMatch(/Preferred for/);
+    expect(listingAttributesIssue('pg', 'rent', { sharingType: ['single'], gender: ['coed'] })).toBeNull();
   });
 
   it('rejects an option the field does not offer', () => {
