@@ -23,7 +23,7 @@ const LISTING_CATEGORIES: ListingCategory[] = [
 const MODERATION_STATES: ModerationState[] = ['approved', 'flagged'];
 const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
 const LISTING_STATUSES: ListingStatus[] = ['active', 'sold', 'rented', 'deactivated'];
-const PUBLISH_STATES: ListingPublishState[] = ['live', 'pending_checkout', 'awaiting_claim'];
+const PUBLISH_STATES: ListingPublishState[] = ['live', 'pending_checkout', 'awaiting_claim', 'scheduled'];
 /** `exclude` hides listings created by the bulk-import tools (still owned by the Bulk Import account); `only` shows just those. */
 export const BULK_IMPORT_FILTERS = ['exclude', 'only'] as const;
 export type BulkImportFilter = (typeof BULK_IMPORT_FILTERS)[number];
