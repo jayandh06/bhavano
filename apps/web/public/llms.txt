@@ -1,0 +1,53 @@
+# Bhavano
+
+> Bhavano (bhavano.com) is an Indian property and rentals marketplace. It lists homes and spaces to buy, rent or lease — apartments, houses, villas, plots, commercial space, coworking, storage and PG (paying-guest) accommodation — plus furniture. Listings can be browsed without logging in, and every listing is checked before it goes live. Operated by Finfolia Technologies LLP.
+
+Listings are organised by city, then locality, then category. Every listing has its own server-rendered page with price (or "contact for price"), location, photos and attributes.
+
+## URL structure
+
+- City: https://www.bhavano.com/{city} (for example /bengaluru, /chennai, /pune)
+- Browse a category in a city: https://www.bhavano.com/{city}/{buy|rent-lease}/{apartment|house|villa|plot|...}, for example https://www.bhavano.com/bengaluru/buy/apartment
+- A single listing: https://www.bhavano.com/{city}/{locality}/{rent-lease|buy}/{category}/{listing-slug}
+- All cities: https://www.bhavano.com/cities
+
+## Main pages
+
+- [Home](https://www.bhavano.com): search and browse all categories
+- [Cities](https://www.bhavano.com/cities): every city with listings
+- [About](https://www.bhavano.com/about): who runs Bhavano
+- [Trust and safety](https://www.bhavano.com/trust): how listings are checked and how to avoid bad ads
+- [Help](https://www.bhavano.com/help): FAQs for buyers, renters and owners
+- [Moving to a new city](https://www.bhavano.com/moving-to-a-new-city): relocation guide
+- [Contact](https://www.bhavano.com/contact)
+
+## Guides
+
+- [Blog index](https://www.bhavano.com/blog)
+- [PG hunting checklist](https://www.bhavano.com/blog/pg-hunting-checklist)
+- [Rental agreement questions](https://www.bhavano.com/blog/rental-agreement-questions)
+- [Spotting a bad property ad](https://www.bhavano.com/blog/spotting-a-bad-property-ad)
+- [Flat viewing checklist](https://www.bhavano.com/blog/flat-viewing-checklist)
+- [Coworking or small office](https://www.bhavano.com/blog/coworking-or-small-office)
+- [Rent or buy: questions to ask](https://www.bhavano.com/blog/rent-or-buy-questions)
+- [Home loan EMI explained](https://www.bhavano.com/blog/home-loan-emi-explained)
+- [Carpet, built-up and super built-up area](https://www.bhavano.com/blog/carpet-built-up-super-built-up-area)
+- [RERA explained for home buyers](https://www.bhavano.com/blog/rera-explained-for-home-buyers)
+- [Buying a plot checklist](https://www.bhavano.com/blog/buying-a-plot-checklist)
+- [How to sell your house or flat online](https://www.bhavano.com/blog/how-to-sell-your-house-or-flat-online)
+
+## Free tools
+
+- [Tools index](https://www.bhavano.com/tools)
+- [EMI calculator](https://www.bhavano.com/tools/emi-calculator)
+- [Rent vs buy calculator](https://www.bhavano.com/tools/rent-vs-buy-calculator)
+- [Rent affordability calculator](https://www.bhavano.com/tools/rent-affordability-calculator)
+- [Home loan eligibility calculator](https://www.bhavano.com/tools/home-loan-eligibility-calculator)
+- [Down payment calculator](https://www.bhavano.com/tools/down-payment-calculator)
+- [Area unit converter](https://www.bhavano.com/tools/area-unit-converter)
+
+## Optional
+
+- [Sitemap](https://www.bhavano.com/sitemap.xml)
+- Contact: support@bhavano.com
+- Android app: https://play.google.com/store/apps/details?id=com.finfolia.bhavano

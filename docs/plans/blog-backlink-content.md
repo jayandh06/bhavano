@@ -114,8 +114,10 @@ advice" note on the legal ones. The topics are not covered by the earlier 24 pos
   hedged; have a qualified person read them and add a real "reviewed by" name when one exists.
 - **Already in place:** every post gets `BlogPosting` and `BreadcrumbList` JSON-LD and is in the sitemap
   automatically; `robots.ts` does not block AI crawlers. The mobile app bundles the same posts (next release).
-- **Not done:** an `llms.txt` file (optional, and `robots`/sitemap-adjacent changes need confirmation), and
-  `FAQPage` markup on these posts (the blog renderer has no FAQ block; question headings carry the structure).
+- **Done 2026-10-23:** `apps/web/public/llms.txt` (static; site summary, URL structure, main pages, guides,
+  tools). Added after Semrush Site Audit flagged "Llms.txt not found" in its AI Search Health checks.
+  It is hand-maintained: add new blog posts or tools to it when they ship.
+- **Not done:** `FAQPage` markup on these posts (the blog renderer has no FAQ block; question headings carry the structure).
 - **How to tell if it worked:** in Page visits, filter Source for `chatgpt.com`, `perplexity.ai`, `gemini.google.com`
   and `copilot.microsoft.com`; in Search Console, look at impressions on the six new URLs after a few weeks.
 
