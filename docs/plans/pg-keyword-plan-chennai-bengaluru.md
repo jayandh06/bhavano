@@ -2,8 +2,8 @@
 
 Source: Semrush keyword research pulled 2026-10-23 (India database; top 40 rows each for "pg in chennai"
 and "pg in bangalore"). Raw rows: [`docs/semrush/pg-keywords.csv`](../semrush/pg-keywords.csv). Intent
-codes: 0 = commercial/transactional, 1 = informational, 3 = navigational (0 means "not classified" in
-some rows; treat as a rent search).
+codes (Semrush): 0 = commercial, 1 = informational, 2 = navigational, 3 = transactional. Most PG locality
+terms are commercial (0), i.e. people comparing options before choosing.
 
 ## What the data says
 
