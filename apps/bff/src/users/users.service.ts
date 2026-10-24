@@ -106,7 +106,8 @@ export class UsersService {
       where: { id: userId },
       data: {
         ...(dto.name !== undefined ? { name: dto.name } : {}),
-        ...(dto.cityId !== undefined ? { cityId: dto.cityId } : {}),
+        // Choosing a city (or clearing it) is the user's own answer, so it is no longer an IP guess.
+        ...(dto.cityId !== undefined ? { cityId: dto.cityId, cityFromIp: false } : {}),
         ...(dto.sellerType !== undefined ? { sellerType: dto.sellerType } : {}),
         ...(agencyName !== undefined ? { agencyName } : {}),
         ...(reraNumber !== undefined ? { reraNumber } : {}),

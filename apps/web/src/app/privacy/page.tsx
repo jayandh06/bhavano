@@ -79,7 +79,9 @@ export default function PrivacyPage() {
             <strong>Technical data:</strong> your IP address, the page you first arrived on, and the pages or screens
             you visit during that session, to investigate abuse and understand how people use the Platform. We derive
             an approximate city, region and country from your IP address using a local lookup database. This is a
-            coarse estimate used only for our own internal reporting, never to choose what you see.
+            coarse estimate. We use it for our own internal reporting and, if you have not chosen a city for your
+            profile, to suggest one when we ask, or to set one if you skip the question. You can change it at any
+            time. It is never used to choose what you see on the home page.
           </li>
           <li>
             <strong>Advertising attribution:</strong> if you reach Bhavano by clicking one of our Google ads, we store

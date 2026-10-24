@@ -1084,6 +1084,11 @@ export function confirmAccountMerge(
   });
 }
 
+/** The city to pre-select in the profile city step, guessed from this person's visit IPs. */
+export function fetchSuggestedCity(accessToken: string): Promise<{ city: City | null }> {
+  return authedBffFetch(accessToken, "/users/me/suggested-city");
+}
+
 export function fetchProfileNudge(accessToken: string): Promise<ProfileNudgeDto> {
   return authedBffFetch(accessToken, "/users/me/profile-nudge");
 }

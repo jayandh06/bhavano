@@ -398,6 +398,9 @@ model User {
   role                        UserRole                   @default(user)
   cityId                      String?
   city                        City?                      @relation(fields: [cityId], references: [id])
+  /// True while `cityId` was filled in from the visitor's IP (an approximate guess) because they
+  /// skipped the city question; false once they pick one themselves. See docs/plans/profile-city-from-ip.md.
+  cityFromIp                  Boolean                    @default(false)
   createdAt                   DateTime                   @default(now())
   /**
    * Non-null once the first-login welcome email/SMS/WhatsApp has been dispatched — gates

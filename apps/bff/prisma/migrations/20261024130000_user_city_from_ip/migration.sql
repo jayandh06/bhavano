@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "cityFromIp" BOOLEAN NOT NULL DEFAULT false;

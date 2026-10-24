@@ -686,6 +686,11 @@ export function sendOtp(phone: string, channel?: OtpChannel): Promise<{ success:
   return bffFetch("/auth/otp/send", { method: "POST", body: JSON.stringify({ phone, channel }) });
 }
 
+/** The city to pre-select in the profile city step, guessed from this person's visit IPs. */
+export function fetchSuggestedCity(accessToken: string): Promise<{ city: City | null }> {
+  return authedBffFetch(accessToken, "/users/me/suggested-city", { cache: "no-store" });
+}
+
 export function fetchProfileNudge(accessToken: string): Promise<ProfileNudgeDto> {
   return authedBffFetch(accessToken, "/users/me/profile-nudge", { cache: "no-store" });
 }

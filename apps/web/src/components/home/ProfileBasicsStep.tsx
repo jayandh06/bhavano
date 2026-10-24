@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AccountMergeSummary, City, LinkIdentifierResult } from "@bhavano/types";
 import { linkPhoneAction, sendOtpAction } from "@/app/actions/auth";
 import { searchCitiesAction } from "@/app/actions/locations";
+import { fetchSuggestedCityAction } from "@/app/actions/users";
 import {
   confirmAccountMergeAction,
   requestEmailCodeAction,
@@ -134,6 +135,10 @@ export function ProfileBasicsStep({
   const [cityResults, setCityResults] = useState<City[]>([]);
   const [showCityResults, setShowCityResults] = useState(false);
   const [cityNoResults, setCityNoResults] = useState(false);
+  // True while the shown city is our guess from the person's location, not their own pick.
+  const [citySuggested, setCitySuggested] = useState(false);
+  const cityIdRef = useRef<string | null>(cityId);
+  cityIdRef.current = cityId;
 
   const [phase, setPhase] = useState<Phase>(verifyPhoneOnly ? "askPhone" : "details");
   const [secondaryDone, setSecondaryDone] = useState(initial.needSecondary === null);
@@ -154,6 +159,22 @@ export function ProfileBasicsStep({
     setPhase(verifyPhoneOnly ? "askPhone" : "details");
   }, [initial, verifyPhoneOnly]);
 
+  // Someone with no city yet gets one pre-selected from where their visits came from. Only a
+  // suggestion: it is saved when they continue, and they can change it first.
+  useEffect(() => {
+    if (verifyPhoneOnly || initial.cityId) return;
+    let cancelled = false;
+    void fetchSuggestedCityAction().then((city) => {
+      if (cancelled || !city || cityIdRef.current) return;
+      setCityId(city.id);
+      setCityName(city.name);
+      setCitySuggested(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [initial.cityId, verifyPhoneOnly]);
+
   async function onCityQueryChange(value: string) {
     setCityQuery(value);
     setCityNoResults(false);
@@ -169,6 +190,7 @@ export function ProfileBasicsStep({
   }
 
   function selectCity(city: City) {
+    setCitySuggested(false);
     setCityId(city.id);
     setCityName(city.name);
     setCityQuery("");
@@ -177,6 +199,7 @@ export function ProfileBasicsStep({
   }
 
   function clearCity() {
+    setCitySuggested(false);
     setCityId(null);
     setCityName(null);
     setCityQuery("");
@@ -507,12 +530,17 @@ export function ProfileBasicsStep({
         Preferred city <span className="font-normal">(optional)</span>
       </label>
       {cityName && !cityQuery ? (
-        <div className="flex items-center gap-2 border border-border rounded-[9px] px-3.5 py-3 mb-1">
-          <span className="flex-1 text-base sm:text-sm text-text font-bold">{cityName}</span>
-          <button type="button" onClick={clearCity} className="bg-transparent border-0 text-muted cursor-pointer text-sm">
-            Change
-          </button>
-        </div>
+        <>
+          <div className="flex items-center gap-2 border border-border rounded-[9px] px-3.5 py-3 mb-1">
+            <span className="flex-1 text-base sm:text-sm text-text font-bold">{cityName}</span>
+            <button type="button" onClick={clearCity} className="bg-transparent border-0 text-muted cursor-pointer text-sm">
+              Change
+            </button>
+          </div>
+          {citySuggested && (
+            <p className="text-[12px] text-muted m-0 mb-1">Picked from your approximate location. Change it if it isn&apos;t right.</p>
+          )}
+        </>
       ) : (
         <div className="relative">
           <input

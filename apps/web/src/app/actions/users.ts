@@ -1,6 +1,6 @@
 "use server";
 
-import type { LinkIdentifierResult, ProfileNudgeDto, UpdateProfileInput, UserProfileDto } from "@bhavano/types";
+import type { City, LinkIdentifierResult, ProfileNudgeDto, UpdateProfileInput, UserProfileDto } from "@bhavano/types";
 import { auth } from "@/auth";
 import {
   BffAuthError,
@@ -9,6 +9,7 @@ import {
   fetchProfile,
   fetchProfileNudge,
   fetchSellerAttention,
+  fetchSuggestedCity,
   requestEmailCode,
   snoozeProfileNudge,
   updateProfile,
@@ -139,6 +140,18 @@ export async function deleteAccountAction(
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Couldn't delete the account" };
+  }
+}
+
+/** The city to pre-select in the profile city step (a guess from the person's visit IPs). Null when
+ * there is none; nothing is saved by asking. */
+export async function fetchSuggestedCityAction(): Promise<City | null> {
+  const session = await auth();
+  if (!isAccessTokenValid(session?.accessToken)) return null;
+  try {
+    return (await fetchSuggestedCity(session.accessToken)).city;
+  } catch {
+    return null;
   }
 }
 

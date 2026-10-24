@@ -26,6 +26,8 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
 import { ListingsService } from '../listings/listings.service';
+import { UserCityFromIpService } from './user-city-from-ip.service';
+import type { City } from '@bhavano/types';
 import { CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
 import type { LastListingDetailsDto } from '@bhavano/types/listingReuse';
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
@@ -52,6 +54,7 @@ export class UsersController {
     private readonly accountDeletion: AccountDeletionService,
     private readonly contactRevealService: ContactRevealService,
     private readonly paymentsService: PaymentsService,
+    private readonly userCityFromIp: UserCityFromIpService,
   ) {}
 
   @Get()
@@ -65,6 +68,13 @@ export class UsersController {
     @Body() dto: UpdateProfileDto,
   ): Promise<UserProfileDto> {
     return this.usersService.updateProfile(user.id, dto);
+  }
+
+  /** The city to pre-select in the "where are you?" step, guessed from this person's visit IPs.
+   * Only a suggestion: nothing is saved until they confirm. Null when there is no usable guess. */
+  @Get('suggested-city')
+  suggestedCity(@CurrentUser() user: RequestUser): Promise<{ city: City | null }> {
+    return this.userCityFromIp.suggestFor(user.id).then((city) => ({ city }));
   }
 
   /** Whether the deferred profile-completion dialog should show + what to ask for — see

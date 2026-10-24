@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type TextInput } from "react-native";
 import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import type { AccountMergeSummary, City, LinkIdentifierResult } from "@bhavano/types";
@@ -7,6 +7,7 @@ import {
   confirmAccountMerge,
   friendlyErrorMessage,
   fetchCities,
+  fetchSuggestedCity,
   linkPhone,
   requestEmailCode,
   sendOtp,
@@ -134,6 +135,10 @@ export function ProfileBasicsStep({
   const [cityQuery, setCityQuery] = useState("");
   const [cityResults, setCityResults] = useState<City[]>([]);
   const [cityNoResults, setCityNoResults] = useState(false);
+  // True while the shown city is our guess from the person's location, not their own pick.
+  const [citySuggested, setCitySuggested] = useState(false);
+  const cityIdRef = useRef<string | null>(cityId);
+  cityIdRef.current = cityId;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -156,6 +161,25 @@ export function ProfileBasicsStep({
     setPhase(verifyPhoneOnly ? "askPhone" : "details");
   }, [initial, verifyPhoneOnly]);
 
+  // Someone with no city yet gets one pre-selected from where their visits came from. Only a
+  // suggestion: it is saved when they continue, and they can change it first.
+  useEffect(() => {
+    if (verifyPhoneOnly || initial.cityId) return;
+    let cancelled = false;
+    fetchSuggestedCity(accessToken)
+      .then(({ city }) => {
+        if (cancelled || !city || cityIdRef.current) return;
+        setCityId(city.id);
+        setCityName(city.name);
+        setSelectedCity(city);
+        setCitySuggested(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [initial.cityId, verifyPhoneOnly, accessToken]);
+
   async function onCityQueryChange(value: string) {
     setCityQuery(value);
     setCityNoResults(false);
@@ -169,6 +193,7 @@ export function ProfileBasicsStep({
   }
 
   function selectCity(city: City) {
+    setCitySuggested(false);
     setCityId(city.id);
     setCityName(city.name);
     setSelectedCity(city);
@@ -178,6 +203,7 @@ export function ProfileBasicsStep({
   }
 
   function clearCity() {
+    setCitySuggested(false);
     setCityId(null);
     setCityName(null);
     setSelectedCity(null);
@@ -584,12 +610,19 @@ export function ProfileBasicsStep({
         Preferred city <Text style={{ fontWeight: "400" }}>(optional)</Text>
       </Text>
       {cityName && !cityQuery ? (
+        <>
         <View style={[styles.pickedRow, { borderColor: colors.border }]}>
           <Text style={{ flex: 1, fontWeight: "700", fontSize: 14, color: colors.text }}>{cityName}</Text>
           <Pressable onPress={clearCity}>
             <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Change</Text>
           </Pressable>
         </View>
+        {citySuggested && (
+          <Text style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>
+            Picked from your approximate location. Change it if it isn&rsquo;t right.
+          </Text>
+        )}
+        </>
       ) : (
         <>
           <BottomSheetTextInput

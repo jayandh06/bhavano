@@ -10,6 +10,8 @@ import { EmailVerificationService } from './email-verification.service';
 import { AccountMergeService } from './account-merge.service';
 import { AccountDeletionService } from './account-deletion.service';
 import { AuthModule } from '../auth/auth.module';
+import { UserCityFromIpService } from './user-city-from-ip.service';
+import { UserCityFromIpJob } from './user-city-from-ip.job';
 
 @Module({
   // forwardRef both ways: AuthService needs AccountMergeService for linkPhone, and
@@ -28,6 +30,8 @@ import { AuthModule } from '../auth/auth.module';
     EmailVerificationService,
     AccountMergeService,
     AccountDeletionService,
+    UserCityFromIpService,
+    UserCityFromIpJob,
   ],
   exports: [AccountMergeService, AccountDeletionService],
 })
