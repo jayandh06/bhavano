@@ -28,6 +28,7 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string }[] }[] 
     label: "Analytics",
     links: [
       { href: "/page-visits", label: "Page visits" },
+      { href: "/analytics/campaigns", label: "Campaign analytics" },
       { href: "/post-funnel", label: "Post funnel" },
       { href: "/listing-performance", label: "Listing performance" },
       { href: "/search-demand", label: "Search demand" },

@@ -70,3 +70,36 @@ Slicers on all: date range, platform (web / app), device, city (from IP), new vs
 2. Does "converted" mean sign-up, a posted ad, or a payment, or all three shown side by side (proposed)?
 3. Is cost and ROAS wanted now (phase 3 early) or after the funnel page?
 4. Should bots appear in the numbers by default, or be hidden with a toggle (proposed: hidden, with a toggle)?
+
+## Built: phase 1 (2026-10-24)
+Requirement added by the owner: the page works by **date range, with sorting and filtering**. Decisions
+taken to ship it (all changeable): bots hidden by default with a Traffic filter; conversion steps shown
+side by side; attribution by **same session** only (first touch and last paid click are phase 2).
+
+- **Page:** Admin → Analytics → *Campaign analytics* (`/analytics/campaigns`).
+- **Date range:** IST date pickers with 1 / 7 / 15 / 30 day presets, default 7 days.
+- **Group by:** campaign, ad group, ad, source / medium, or landing page. Campaign and ad group rows
+  are links that drill down (campaign to its ad groups, ad group to its ads); a banner shows the
+  drill-down with a way back.
+- **Filters:** traffic (humans, JS-confirmed, everything, crawlers, unclassified), platform (website /
+  app), device, arrived from (paid ad clicks / not from an ad), conversions (rows with or without
+  one), a name-or-id search, and a minimum number of visits.
+- **Sorting:** every column, ascending or descending, including the three percentages (sign-up,
+  posted, paid, each of visits). Default: visits, largest first.
+- **Columns:** visits, bots, engaged (2+ pages), reached `/post`, sign-ups, ads posted, paid,
+  revenue (rupees), and the three rates. A totals row covers every matching row, not only those shown.
+- **Rows without a campaign id** appear by source (`google / organic`, `direct / none`, `google-play /
+  organic`) so non-ad traffic is visible next to the campaigns.
+- **Code:** `GET /admin/analytics/campaigns` (`apps/bff/src/campaign-analytics`, one parameterised SQL
+  query plus in-memory sort and filter), shared types in `@bhavano/types/campaignAnalytics`, the page
+  in `apps/admin/src/app/analytics/campaigns`.
+- **Counting rules:** a session counts as a sign-up when the person's account was created within 24
+  hours of the session starting; as paid when that person had a paid `Payment` within 24 hours of it;
+  as posted when a listing's `createSessionId` is the session. Engaged and reached-`/post` come from
+  that session's `PageView` rows.
+- **Checked:** unit tests for the query shape and the sort, filter and totals logic; the SQL was run
+  against a throwaway Postgres with the real schema and sample rows (campaign, ad group, source,
+  landing, platform and traffic splits all gave the expected counts).
+
+Not yet: first-touch and last-paid-click models, cohorts, ad cost and clicks, the conversion upload
+log, keywords (phases 2 to 4 above).

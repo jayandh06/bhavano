@@ -2,6 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { AppVersionSettingsDto } from "@bhavano/types/appVersion";
+import type { CampaignAnalyticsDto, CampaignAnalyticsGroupByDto } from "@bhavano/types/campaignAnalytics";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
@@ -925,6 +926,31 @@ export function unfreezeReferrals(accessToken: string, userId: string, note?: st
     method: "POST",
     body: JSON.stringify({ note }),
   });
+}
+
+export interface CampaignAnalyticsQuery {
+  from?: string;
+  to?: string;
+  groupBy?: CampaignAnalyticsGroupByDto;
+  traffic?: "humans" | "js_confirmed" | "any" | "bots" | "unclassified";
+  platform?: "any" | "web" | "app";
+  deviceType?: string;
+  paid?: "any" | "paid" | "organic";
+  converted?: "any" | "yes" | "no";
+  campaignId?: string;
+  adGroupId?: string;
+  search?: string;
+  minVisits?: number;
+  sort?: string;
+}
+
+/** Visits by campaign / ad group / ad / source / landing page, and what each went on to do. */
+export function fetchCampaignAnalytics(accessToken: string, query: CampaignAnalyticsQuery = {}): Promise<CampaignAnalyticsDto> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== "" && !(typeof value === "number" && Number.isNaN(value))) params.set(key, String(value));
+  }
+  return authedBffFetch(accessToken, `/admin/analytics/campaigns?${params.toString()}`, { cache: "no-store" });
 }
 
 export function fetchAppVersionSettings(accessToken: string): Promise<AppVersionSettingsDto> {
