@@ -17,6 +17,7 @@ exports.getPost = getPost;
 exports.sortedPosts = sortedPosts;
 exports.bylineFor = bylineFor;
 exports.parseInline = parseInline;
+const builderGuides_1 = require("./builderGuides");
 exports.DEFAULT_BYLINE = "Bhavano Editorial Team";
 exports.POSTS = [
     {
@@ -2290,6 +2291,8 @@ exports.POSTS = [
             },
         ],
     },
+    // "Established builders in <city>" guides: kept in their own file so each correction is one line.
+    ...builderGuides_1.BUILDER_GUIDES,
 ];
 function getPost(slug) {
     return exports.POSTS.find((p) => p.slug === slug);

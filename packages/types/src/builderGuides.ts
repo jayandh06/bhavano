@@ -1,11 +1,8 @@
 import type { BlogBlock, BlogPost } from "./blogPosts";
 
-/** DRAFT blog posts: "established builders in <city>" for the 11 main cities.
- *
- * Deliberately NOT part of POSTS (blogPosts.ts), so nothing here is published, in the sitemap or in
- * the app until someone has checked the company facts. To publish after review, add
- * `...BUILDER_GUIDE_DRAFTS` to the end of POSTS, add `reviewedBy` for the real people who checked
- * them, and ship. See docs/plans/builder-guides.md and docs/plans/builder-guides-review.md.
+/** Blog posts: "established builders in <city>" for the 11 main cities, appended to POSTS in
+ * blogPosts.ts. Published 2026-10-24 with the site owner as reviewer. Before changing a name or a
+ * line here, read docs/plans/builder-guides.md and docs/plans/builder-guides-review.md.
  *
  * Framing, by decision (2026-10-24): builders are listed alphabetically, never ranked, and no post
  * says "best" or "top". Each builder gets one short, neutral line (where it is based and the kind
@@ -282,13 +279,16 @@ function body(guide: CityGuide): BlogBlock[] {
   ];
 }
 
-export const BUILDER_GUIDE_DRAFTS: BlogPost[] = GUIDES.map((guide) => ({
+export const BUILDER_GUIDES: BlogPost[] = GUIDES.map((guide) => ({
   slug: `builders-in-${guide.citySlug}`,
   title: `Established builders in ${guide.city}: who to look at and how to check them`,
   description: `Developers active in ${guide.city}, listed alphabetically, and a step-by-step way to check any builder before you pay.`,
   published: BUILDER_GUIDE_PUBLISHED,
   format: "Guide",
   readingMinutes: 5,
+  // The person who read the builder lines and the city notes and confirmed them. Only ever a real
+  // person who did so, per the authorship rules at the top of blogPosts.ts.
+  reviewedBy: [{ name: "Jayandhan Rajasundaram" }],
   body: body(guide),
 }));
 

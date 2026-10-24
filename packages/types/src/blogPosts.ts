@@ -11,6 +11,8 @@
  *
  * Inline links inside text use [label](/path) and are rendered by the post page. */
 
+import { BUILDER_GUIDES } from "./builderGuides";
+
 export type BlogBlock =
   | { type: "p"; text: string }
   | { type: "h2"; text: string }
@@ -2351,6 +2353,8 @@ export const POSTS: BlogPost[] = [
       },
     ],
   },
+  // "Established builders in <city>" guides: kept in their own file so each correction is one line.
+  ...BUILDER_GUIDES,
 ];
 
 export function getPost(slug: string): BlogPost | undefined {

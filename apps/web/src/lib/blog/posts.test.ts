@@ -63,6 +63,25 @@ const KNOWN_ROUTES = new Set([
   "/blog/womens-pg-checklist",
   "/blog/pg-hunting-checklist",
   "/blog/how-to-sell-property-online-in-india",
+  // The "established builders in <city>" guides: each city's page (all return 200 on the live site)
+  // and the explainers they point to.
+  "/bengaluru",
+  "/mumbai",
+  "/delhi-ncr",
+  "/pune",
+  "/hyderabad",
+  "/chennai",
+  "/kolkata",
+  "/ahmedabad",
+  "/jaipur",
+  "/lucknow",
+  "/coimbatore",
+  "/blog/rera-explained-for-home-buyers",
+  "/blog/property-approvals-documents-checklist",
+  "/blog/construction-stage-to-buy-from-builder",
+  "/blog/a-khata-b-khata-bengaluru",
+  "/blog/bda-approved-sites-bengaluru",
+  "/blog/dtcp-approved-plots-explained",
 ]);
 
 function textsOf(block: BlogBlock): string[] {

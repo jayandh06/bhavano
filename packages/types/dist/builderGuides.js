@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BUILDER_GUIDE_SOURCE = exports.BUILDER_GUIDE_DRAFTS = exports.BUILDER_GUIDE_PUBLISHED = void 0;
+exports.BUILDER_GUIDE_SOURCE = exports.BUILDER_GUIDES = exports.BUILDER_GUIDE_PUBLISHED = void 0;
 const GUIDES = [
     {
         citySlug: "bengaluru",
@@ -238,13 +238,16 @@ function body(guide) {
         },
     ];
 }
-exports.BUILDER_GUIDE_DRAFTS = GUIDES.map((guide) => ({
+exports.BUILDER_GUIDES = GUIDES.map((guide) => ({
     slug: `builders-in-${guide.citySlug}`,
     title: `Established builders in ${guide.city}: who to look at and how to check them`,
     description: `Developers active in ${guide.city}, listed alphabetically, and a step-by-step way to check any builder before you pay.`,
     published: exports.BUILDER_GUIDE_PUBLISHED,
     format: "Guide",
     readingMinutes: 5,
+    // The person who read the builder lines and the city notes and confirmed them. Only ever a real
+    // person who did so, per the authorship rules at the top of blogPosts.ts.
+    reviewedBy: [{ name: "Jayandhan Rajasundaram" }],
     body: body(guide),
 }));
 /** For tests and the review sheet: the raw entries behind each post. */
