@@ -5,6 +5,7 @@ import { buildPageHref, parsePage, parsePageSize, str } from "@/lib/searchParams
 import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
 import { OutreachContactsList } from "@/components/OutreachContactsList";
 import { ImportContactsPanel } from "@/components/ImportContactsPanel";
+import { ClaimReminderPanel } from "@/components/ClaimReminderPanel";
 import { Pagination } from "@/components/Pagination";
 import { SelectField } from "@/components/SelectField";
 
@@ -100,6 +101,17 @@ export default async function OutreachContactsPage({
         </p>
 
         <ImportContactsPanel cities={cities} />
+
+        <ClaimReminderPanel
+          filters={{ cityId, areaId, status, businessCategory, placesFetchLogId }}
+          filterLabel={[
+            cities.find((c) => c.id === cityId)?.name,
+            areas.find((a) => a.id === areaId)?.name,
+            businessCategory,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        />
 
         {placesFetchLogId && (
           <div

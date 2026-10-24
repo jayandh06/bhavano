@@ -110,12 +110,13 @@ import {
   ListCampaignSendsDto,
   ListOutreachCampaignsDto,
   ListOutreachContactsDto,
+  ClaimReminderAudienceDto,
   OptOutDto,
   CreatePlacesFetchLogDto,
   UpdatePlacesFetchLogCountsDto,
   UpdateOutreachCampaignDto,
 } from './dto/outreach.dto';
-import { OutreachService } from '../outreach/outreach.service';
+import { OutreachService, type ClaimReminderAudience } from '../outreach/outreach.service';
 import { OutreachCampaignJob } from '../outreach/outreach-campaign.job';
 import { ReferralsAdminService } from '../referrals/referrals-admin.service';
 import {
@@ -672,6 +673,14 @@ export class AdminController {
   @Get('outreach/contacts')
   listOutreachContacts(@Query() query: ListOutreachContactsDto): Promise<OutreachContactsPage> {
     return this.outreachService.listContacts(query);
+  }
+
+  /** Who a claim reminder (the second or third claim message) would go to, given the filters — a
+   * preview that sends nothing. The admin then sends them in small batches through
+   * outreach/contacts/:id/send-claim-verification. */
+  @Get('outreach/contacts/claim-reminder-audience')
+  claimReminderAudience(@Query() query: ClaimReminderAudienceDto): Promise<ClaimReminderAudience> {
+    return this.outreachService.claimReminderAudience(query);
   }
 
   @Get('outreach/contacts/categories')

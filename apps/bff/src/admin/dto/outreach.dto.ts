@@ -47,6 +47,18 @@ export class ListOutreachContactsDto {
   @IsOptional() @IsString() sort?: string;
 }
 
+export class ClaimReminderAudienceDto {
+  @IsOptional() @IsString() cityId?: string;
+  @IsOptional() @IsString() areaId?: string;
+  @IsOptional() @IsString() status?: string;
+  @IsOptional() @IsString() businessCategory?: string;
+  @IsOptional() @IsString() placesFetchLogId?: string;
+  /** 2 = the second claim message, 3 = the third, up to the sixth. */
+  @IsOptional() @Type(() => Number) @IsInt() @Min(2) @Max(6) reminderNumber?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(90) minDaysSinceLast?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(300) limit?: number;
+}
+
 export class OutreachContactInputDto {
   @IsString() name!: string;
   @IsOptional() @IsString() phone?: string;

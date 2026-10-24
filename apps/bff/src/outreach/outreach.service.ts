@@ -149,6 +149,26 @@ export function buildContactOrderBy(sort?: string): Prisma.OutreachContactOrderB
   }
 }
 
+export interface ClaimReminderAudienceQuery {
+  cityId?: string;
+  areaId?: string;
+  status?: string;
+  businessCategory?: string;
+  placesFetchLogId?: string;
+  /** 2 = send the second claim message, 3 = the third… Default 2. */
+  reminderNumber?: number;
+  /** Skip anyone messaged more recently than this. Default 7. */
+  minDaysSinceLast?: number;
+  /** How many contacts to return for this run. Default 100. */
+  limit?: number;
+}
+
+export interface ClaimReminderAudience {
+  /** Everyone matching, before the limit. */
+  total: number;
+  items: { id: string; name: string }[];
+}
+
 @Injectable()
 export class OutreachService {
   constructor(
@@ -235,6 +255,50 @@ export class OutreachService {
       items: rows.map((row) => this.toContactDto(row)),
       total,
     };
+  }
+
+  /** Who a claim reminder would go to: contacts whose linked listing is still unclaimed and who
+   * have been sent the claim message exactly `reminderNumber - 1` times (2 = the second message,
+   * 3 = the third), narrowed by the same filters as the contacts list, and not messaged within
+   * `minDaysSinceLast` days. Only decides *who*; each contact is then sent through
+   * sendClaimVerification, which still enforces opt-out, suppression and missing details. Returns
+   * the first `limit` (longest-waiting first) and how many matched in all, so the admin sees the
+   * size of what the cap leaves out. */
+  async claimReminderAudience(query: ClaimReminderAudienceQuery): Promise<ClaimReminderAudience> {
+    const { cityId, areaId, status, businessCategory, placesFetchLogId } = query;
+    const reminderNumber = query.reminderNumber ?? 2;
+    const minDaysSinceLast = query.minDaysSinceLast ?? 7;
+    const limit = query.limit ?? 100;
+    const cutoff = new Date(Date.now() - minDaysSinceLast * 24 * 60 * 60 * 1000);
+
+    const where: Prisma.OutreachContactWhereInput = {
+      ...(cityId ? { cityId } : {}),
+      ...(areaId ? { areaId } : {}),
+      ...(status ? { status: status as OutreachContact['status'] } : {}),
+      ...(businessCategory ? { businessCategory } : {}),
+      ...(placesFetchLogId ? { placesFetchLogId } : {}),
+      claimedListing: { is: { claimedAt: null } },
+      contactedCount: reminderNumber - 1,
+      AND: [
+        { consentState: { not: 'opted_out' } },
+        // The claim message names the city and area, so a contact without both can't be sent one.
+        { cityId: { not: null } },
+        { areaId: { not: null } },
+        { OR: [{ phoneE164: { not: null } }, { email: { not: null } }] },
+        { OR: [{ lastContactedAt: null }, { lastContactedAt: { lte: cutoff } }] },
+      ],
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.outreachContact.findMany({
+        where,
+        select: { id: true, name: true },
+        orderBy: [{ lastContactedAt: { sort: 'asc', nulls: 'first' } }, { id: 'asc' }],
+        take: limit,
+      }),
+      this.prisma.outreachContact.count({ where }),
+    ]);
+    return { total, items };
   }
 
   /** Distinct `businessCategory` values actually present, for the admin filter dropdown —

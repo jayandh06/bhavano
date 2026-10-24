@@ -1044,6 +1044,36 @@ export function fetchOutreachContacts(
   return authedBffFetch(accessToken, `/admin/outreach/contacts?${params.toString()}`, { cache: "no-store" });
 }
 
+export interface ClaimReminderAudienceQuery {
+  cityId?: string;
+  areaId?: string;
+  status?: string;
+  businessCategory?: string;
+  placesFetchLogId?: string;
+  reminderNumber?: number;
+  minDaysSinceLast?: number;
+  limit?: number;
+}
+
+export interface ClaimReminderAudience {
+  total: number;
+  items: { id: string; name: string }[];
+}
+
+/** Who a second/third claim message would go to, for the given filters. Sends nothing. */
+export function fetchClaimReminderAudience(
+  accessToken: string,
+  query: ClaimReminderAudienceQuery,
+): Promise<ClaimReminderAudience> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value != null && value !== "") params.set(key, String(value));
+  }
+  return authedBffFetch(accessToken, `/admin/outreach/contacts/claim-reminder-audience?${params.toString()}`, {
+    cache: "no-store",
+  });
+}
+
 /** Distinct businessCategory values actually present, for the filter dropdown — see
  * OutreachService.listBusinessCategories's doc comment for why this stays derived from data
  * rather than a hardcoded list. */

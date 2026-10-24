@@ -9,6 +9,7 @@ import type {
 } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
+  fetchClaimReminderAudience,
   applyDeliveryReport,
   createCampaign,
   createListingFromContact,
@@ -19,7 +20,7 @@ import {
   sendClaimVerification,
   updateCampaign,
 } from "@/lib/bff";
-import type { DeliveryReportResult } from "@/lib/bff";
+import type { ClaimReminderAudience, ClaimReminderAudienceQuery, DeliveryReportResult } from "@/lib/bff";
 import type { ActionResult } from "./admin";
 
 export async function optOutContactAction(contactId: string): Promise<ActionResult> {
@@ -45,6 +46,22 @@ export async function importContactsAction(input: ImportOutreachContactsInput): 
     return { success: true, result };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Import failed" };
+  }
+}
+
+export type ClaimReminderPreviewResult =
+  | { success: true; audience: ClaimReminderAudience }
+  | { success: false; error: string };
+
+/** Who would get the second/third claim message under these filters. Sends nothing. */
+export async function previewClaimReminderAudienceAction(
+  query: ClaimReminderAudienceQuery,
+): Promise<ClaimReminderPreviewResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    return { success: true, audience: await fetchClaimReminderAudience(accessToken, query) };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Could not load the audience" };
   }
 }
 

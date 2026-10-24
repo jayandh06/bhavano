@@ -929,3 +929,53 @@ describe('OutreachService.listContacts — admin filters', () => {
     expect(where).not.toHaveProperty('contactedCount');
   });
 });
+
+describe('OutreachService.claimReminderAudience — who a second/third claim message goes to', () => {
+  it('picks unclaimed, not-opted-out contacts messaged exactly reminderNumber - 1 times and quiet for N days', async () => {
+    const { service, prisma } = makeService();
+    (prisma.outreachContact.findMany as jest.Mock).mockResolvedValue([{ id: 'c1', name: 'Sunrise PG' }]);
+    (prisma.outreachContact.count as jest.Mock).mockResolvedValue(42);
+
+    const result = await service.claimReminderAudience({
+      cityId: 'blr',
+      businessCategory: 'pg',
+      reminderNumber: 3,
+      minDaysSinceLast: 10,
+      limit: 50,
+    });
+
+    expect(result).toEqual({ total: 42, items: [{ id: 'c1', name: 'Sunrise PG' }] });
+    const call = (prisma.outreachContact.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.take).toBe(50);
+    expect(call.where).toMatchObject({
+      cityId: 'blr',
+      businessCategory: 'pg',
+      claimedListing: { is: { claimedAt: null } },
+      contactedCount: 2,
+    });
+    expect(call.where.AND).toEqual(
+      expect.arrayContaining([
+        { consentState: { not: 'opted_out' } },
+        { cityId: { not: null } },
+        { areaId: { not: null } },
+      ]),
+    );
+    // "Quiet for 10 days": never messaged, or last messaged at least 10 days ago.
+    const quiet = call.where.AND.find((c: { OR?: unknown[] }) => c.OR?.some((o) => 'lastContactedAt' in (o as object)));
+    const cutoff = (quiet.OR[1] as { lastContactedAt: { lte: Date } }).lastContactedAt.lte.getTime();
+    expect(Math.abs(cutoff - (Date.now() - 10 * DAY_MS))).toBeLessThan(5_000);
+    expect(quiet.OR[0]).toEqual({ lastContactedAt: null });
+  });
+
+  it('defaults to the second message, a week apart, 100 at a time', async () => {
+    const { service, prisma } = makeService();
+    (prisma.outreachContact.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.outreachContact.count as jest.Mock).mockResolvedValue(0);
+
+    await service.claimReminderAudience({});
+
+    const call = (prisma.outreachContact.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.take).toBe(100);
+    expect(call.where.contactedCount).toBe(1);
+  });
+});
