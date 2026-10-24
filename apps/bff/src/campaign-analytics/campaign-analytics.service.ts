@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { CampaignAnalyticsDto, CampaignAnalyticsRowDto } from '@bhavano/types/campaignAnalytics';
 import { PrismaService } from '../prisma/prisma.service';
-import { AD_GROUP_NAMES, CAMPAIGN_NAMES } from '../ads/campaign-names';
+import { AD_GROUP_NAMES, AD_NAMES, CAMPAIGN_NAMES } from '../ads/campaign-names';
 import type { CampaignAnalyticsGroupBy, CampaignAnalyticsQueryDto, CampaignAnalyticsSortColumn } from './campaign-analytics.dto';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -146,6 +146,7 @@ function labelFor(key: string, groupBy: CampaignAnalyticsGroupBy): string {
   if (key.startsWith(SOURCE_KEY_PREFIX)) return key.slice(SOURCE_KEY_PREFIX.length);
   if (groupBy === 'campaign') return CAMPAIGN_NAMES[key] ?? key;
   if (groupBy === 'adGroup') return AD_GROUP_NAMES[key] ?? key;
+  if (groupBy === 'ad') return AD_NAMES[key] ?? key;
   return key;
 }
 

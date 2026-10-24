@@ -86,6 +86,13 @@ describe('toRow', () => {
     expect(row.campaignId).toBeNull();
   });
 
+  it('names an ad by its headlines, and keeps an unknown ad as its number', () => {
+    expect(toRow(raw({ key: '827486614269', adGroupId: '199595834373' }), 'ad').label).toBe(
+      'Post House For Rent / List Flat For Rent Online (...4269)',
+    );
+    expect(toRow(raw({ key: '111', adGroupId: null }), 'ad').label).toBe('111');
+  });
+
   it('turns database bigints into numbers', () => {
     expect(toRow(raw({ visits: BigInt(7), revenuePaise: null }), 'campaign')).toMatchObject({ visits: 7, revenue: 0 });
   });
