@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { StaticPageLayout } from "@/components/home/StaticPageLayout";
 import { JsonLd } from "@/components/JsonLd";
+import { BlogCover } from "@/components/blog/BlogCover";
 import { bylineFor, sortedPosts } from "@/lib/blog/posts";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
@@ -51,13 +52,16 @@ export default function BlogIndexPage() {
           <li key={post.slug}>
             <Link
               href={`/blog/${post.slug}`}
-              className="block rounded-xl border border-border bg-surface px-5 py-4 no-underline"
+              className="flex flex-col sm:flex-row gap-4 rounded-xl border border-border bg-surface p-4 no-underline"
             >
-              <span className="text-[11.5px] font-bold uppercase tracking-[0.04em] text-green">{post.format}</span>
-              <h2 className="font-lora text-[19px] font-semibold text-text m-0 mt-1">{post.title}</h2>
-              <p className="m-0 mt-1.5 text-text-soft">{post.description}</p>
-              <span className="mt-2 block text-[12.5px] text-muted">
-                {bylineFor(post)} · {formatDate(post.published)} · {post.readingMinutes} min read
+              <BlogCover post={post} decorative className="sm:w-[210px] sm:shrink-0 sm:self-start rounded-lg overflow-hidden" />
+              <span className="block min-w-0">
+                <span className="text-[11.5px] font-bold uppercase tracking-[0.04em] text-green">{post.format}</span>
+                <h2 className="font-lora text-[19px] font-semibold text-text m-0 mt-1">{post.title}</h2>
+                <p className="m-0 mt-1.5 text-text-soft">{post.description}</p>
+                <span className="mt-2 block text-[12.5px] text-muted">
+                  {bylineFor(post)} · {formatDate(post.published)} · {post.readingMinutes} min read
+                </span>
               </span>
             </Link>
           </li>

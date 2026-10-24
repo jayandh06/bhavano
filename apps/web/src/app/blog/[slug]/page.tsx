@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { StaticPageLayout } from "@/components/home/StaticPageLayout";
 import { JsonLd } from "@/components/JsonLd";
 import { BlogBody } from "@/components/blog/BlogBody";
+import { BlogCover } from "@/components/blog/BlogCover";
 import { POSTS, bylineFor, getPost, relatedPosts } from "@/lib/blog/posts";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
@@ -31,6 +32,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: post.description,
       publishedTime: post.published,
       ...(post.updated && { modifiedTime: post.updated }),
+      // Only a real photograph can be a share image; the drawn covers are SVG, which social sites
+      // do not render, so those articles keep the site-wide image.
+      ...(post.cover && { images: [{ url: post.cover.src, width: 1200, height: 630, alt: post.cover.alt }] }),
     },
   };
 }
@@ -66,6 +70,7 @@ export default async function BlogPostPage({ params }: Props) {
           headline: post.title,
           description: post.description,
           url,
+          ...(post.cover && { image: `${SITE_URL}${post.cover.src}` }),
           mainEntityOfPage: url,
           datePublished: post.published,
           dateModified: post.updated ?? post.published,
@@ -94,6 +99,23 @@ export default async function BlogPostPage({ params }: Props) {
           All articles
         </Link>
       </p>
+
+      <figure className="m-0">
+        <BlogCover post={post} eager className="max-w-[760px] rounded-xl overflow-hidden" />
+        {post.cover?.credit && (
+          <figcaption className="mt-1.5 text-[11.5px] text-muted">
+            Photo:{" "}
+            {post.cover.creditUrl ? (
+              <a href={post.cover.creditUrl} rel="noopener noreferrer nofollow" className="underline">
+                {post.cover.credit}
+              </a>
+            ) : (
+              post.cover.credit
+            )}
+            {post.cover.licence ? ` (${post.cover.licence})` : ""}
+          </figcaption>
+        )}
+      </figure>
 
       <BlogBody blocks={post.body} />
 

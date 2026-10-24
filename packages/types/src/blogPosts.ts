@@ -39,6 +39,10 @@ export interface BlogPost {
    * each person has confirmed they reviewed it, and describe their role honestly: a reviewer who is
    * not a lawyer must not be presented as one, however legal the topic. */
   reviewedBy?: { name: string; role?: string }[];
+  /** A real photograph for this article, shown instead of the drawn cover (blogCovers.ts). Set only
+   * for a photo whose licence allows commercial use, with its source recorded in
+   * docs/plans/blog-image-credits.md. `src` is a path under /blog/covers/, 1200 by 630. */
+  cover?: { src: string; alt: string; credit?: string; creditUrl?: string; licence?: string };
   body: BlogBlock[];
 }
 

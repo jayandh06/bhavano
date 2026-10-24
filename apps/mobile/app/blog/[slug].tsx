@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { bylineFor, getPost, sortedPosts } from "@bhavano/types/blogPosts";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { BlogBody } from "../../src/components/home/BlogBody";
+import { BlogCover } from "../../src/components/home/BlogCover";
 import { P, StaticPageLayout } from "../../src/components/home/StaticPageLayout";
 
 function formatDate(iso: string): string {
@@ -44,6 +45,13 @@ export default function BlogPostScreen() {
         {post.author?.role ? `, ${post.author.role}` : ""}
         {post.reviewedBy && post.reviewedBy.length > 0 ? ` · Reviewed by ${reviewersLine(post.reviewedBy)}` : ""} · {post.readingMinutes} min read
       </Text>
+      <BlogCover post={post} radius={12} />
+      {post.cover?.credit && (
+        <Text style={{ fontSize: 11.5, color: colors.muted, marginTop: -12 }}>
+          Photo: {post.cover.credit}
+          {post.cover.licence ? ` (${post.cover.licence})` : ""}
+        </Text>
+      )}
       <BlogBody blocks={post.body} />
       {more.length > 0 && (
         <View style={{ gap: 8 }}>

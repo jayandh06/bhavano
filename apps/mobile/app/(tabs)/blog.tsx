@@ -4,6 +4,7 @@ import { sortedPosts } from "@bhavano/types/blogPosts";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useTabHeader } from "../../src/components/home/useTabHeader";
 import { P, StaticPageLayout } from "../../src/components/home/StaticPageLayout";
+import { BlogCover } from "../../src/components/home/BlogCover";
 
 // Mirrors apps/web/src/app/blog/page.tsx. The posts themselves are shared, in @bhavano/types.
 export default function BlogIndexScreen() {
@@ -17,8 +18,9 @@ export default function BlogIndexScreen() {
         <Pressable
           key={post.slug}
           onPress={() => router.push({ pathname: "/blog/[slug]", params: { slug: post.slug } })}
-          style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, gap: 6, backgroundColor: colors.surface }}
+          style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, gap: 8, backgroundColor: colors.surface }}
         >
+          <BlogCover post={post} decorative />
           <Text style={{ fontSize: 12, fontWeight: "700", color: colors.green }}>
             {post.format} · {post.readingMinutes} min read
           </Text>
