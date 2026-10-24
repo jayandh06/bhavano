@@ -307,6 +307,13 @@ export const POSTS: BlogPost[] = [
     updated: "2026-10-21",
     format: "Guide",
     readingMinutes: 6,
+    cover: {
+      src: "/blog/covers/rent-or-buy-questions.webp",
+      alt: "A hand holding a set of keys on a house-shaped key ring in front of an open door",
+      credit: "Jakub Żerdzicki on Unsplash",
+      creditUrl: "https://unsplash.com/photos/a-hand-holding-a-key-to-a-door-3HfGnyPfWqQ",
+      licence: "Unsplash License",
+    },
     body: [
       {
         type: "note",
@@ -1898,6 +1905,13 @@ export const POSTS: BlogPost[] = [
     published: "2026-10-21",
     format: "Explainer",
     readingMinutes: 5,
+    cover: {
+      src: "/blog/covers/society-maintenance-charges-explained.webp",
+      alt: "The upper floors of an apartment block with balconies and air-conditioner units against a pale sky",
+      credit: "Dylan Mullins on Unsplash",
+      creditUrl: "https://unsplash.com/photos/white-high-rise-building-during-daytime-0_e-H1eGf_A",
+      licence: "Unsplash License",
+    },
     body: [
       {
         type: "p",

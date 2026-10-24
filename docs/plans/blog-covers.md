@@ -43,3 +43,7 @@ where a good, licensed one exists. A cover on every article and on the blog list
 - The drawings are deliberately simple and diagrammatic; they are not AI-generated pictures. If
   photographic or AI-generated images are wanted, produce them with an image tool and add them through
   the photo slot.
+
+## Photos in use
+
+Two articles carry a photograph instead of a drawn cover (see `blog-image-credits.md`): `rent-or-buy-questions` and `society-maintenance-charges-explained`. Every other article, including the builder guides, keeps its drawn cover. A test checks that each photo file exists, is WebP under 110 KB, has alt text and a credit, and has a row in the credits file.

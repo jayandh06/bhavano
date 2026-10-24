@@ -1,3 +1,5 @@
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { POSTS } from "@bhavano/types/blogPosts";
 import { COVER_MOTIFS, COVER_PALETTES, coverFor, motifFor, type CoverShape } from "@bhavano/types/blogCovers";
@@ -97,5 +99,40 @@ describe("blog covers", () => {
     const used = new Set(POSTS.map((p) => motifFor(p.slug)));
     expect(used.size).toBeGreaterThanOrEqual(10);
     for (const motif of used) expect(COVER_MOTIFS).toContain(motif);
+  });
+});
+
+describe("blog cover photographs", () => {
+  const withPhoto = POSTS.filter((p) => p.cover);
+  const credits = readFileSync(join(process.cwd(), "../../docs/plans/blog-image-credits.md"), "utf8");
+
+  it("each points at a file that exists, is WebP and is small", () => {
+    for (const post of withPhoto) {
+      const file = join(process.cwd(), "public", post.cover!.src);
+      expect(existsSync(file), `${post.slug}: ${post.cover!.src}`).toBe(true);
+      expect(post.cover!.src.endsWith(".webp")).toBe(true);
+      expect(statSync(file).size).toBeLessThanOrEqual(110_000);
+    }
+  });
+
+  it("each has alt text, a credit, a source link and a licence", () => {
+    for (const post of withPhoto) {
+      const c = post.cover!;
+      expect(c.alt.length, post.slug).toBeGreaterThan(10);
+      expect(c.credit, post.slug).toBeTruthy();
+      expect(c.creditUrl, post.slug).toMatch(/^https:\/\/unsplash\.com\/photos\//);
+      expect(c.licence, post.slug).toBeTruthy();
+    }
+  });
+
+  it("each is recorded in docs/plans/blog-image-credits.md", () => {
+    for (const post of withPhoto) {
+      expect(credits, post.slug).toContain(post.slug);
+      expect(credits, post.slug).toContain(post.cover!.creditUrl!);
+    }
+  });
+
+  it("builder guides keep their drawn covers", () => {
+    for (const post of withPhoto) expect(post.slug.startsWith("established-builders")).toBe(false);
   });
 });
