@@ -65,6 +65,10 @@
       "types": "./dist/goLive.d.ts",
       "default": "./dist/goLive.js"
     },
+    "./pageViewQuery": {
+      "types": "./dist/pageViewQuery.d.ts",
+      "default": "./dist/pageViewQuery.js"
+    },
     "./areaUnit": {
       "types": "./dist/areaUnit.d.ts",
       "default": "./dist/areaUnit.js"

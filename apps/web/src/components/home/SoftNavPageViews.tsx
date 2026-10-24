@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { sanitizePageViewQuery } from "@bhavano/types/pageViewQuery";
 
 /**
  * Records soft `<Link>` / `router.push` navigations into the same PageView trail that middleware
@@ -20,30 +21,34 @@ import { usePathname } from "next/navigation";
  */
 export function SoftNavPageViews() {
   const pathname = usePathname();
+  // Filter changes on the same page (a bedrooms chip, a price) only change the query string, so
+  // the trail watches that too. Cleaned of ad ids and tokens before it leaves the browser.
+  const query = sanitizePageViewQuery(useSearchParams().toString());
   const lastRecorded = useRef<string | null>(null);
   const pastFirstPaint = useRef(false);
 
   useEffect(() => {
     if (!pathname) return;
 
+    const here = query ? `${pathname}?${query}` : pathname;
     if (!pastFirstPaint.current) {
       pastFirstPaint.current = true;
-      lastRecorded.current = pathname;
+      lastRecorded.current = here;
       return;
     }
 
-    if (lastRecorded.current === pathname) return;
-    lastRecorded.current = pathname;
+    if (lastRecorded.current === here) return;
+    lastRecorded.current = here;
 
     void fetch("/api/analytics/pageview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: pathname }),
+      body: JSON.stringify({ path: pathname, query: query ?? undefined }),
       keepalive: true,
     }).catch(() => {
       // Offline or navigated away mid-flight — same stance as JsConfirmation.
     });
-  }, [pathname]);
+  }, [pathname, query]);
 
   return null;
 }

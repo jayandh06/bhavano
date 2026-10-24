@@ -1197,6 +1197,10 @@ model PageView {
   id        String   @id @default(cuid())
   sessionId String
   path      String
+  /// The filters and options in the URL (bedrooms=2&minPrice=15000), cleaned of ad ids, referral
+  /// codes and tokens by sanitizePageViewQuery. Null when the page had none worth keeping, and for
+  /// every row written before this column existed. See docs/plans/page-visit-query-strings.md.
+  query     String?
   createdAt DateTime @default(now())
 
   @@index([sessionId, createdAt])

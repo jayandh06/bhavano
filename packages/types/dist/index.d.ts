@@ -1049,6 +1049,8 @@ export interface PageVisitsPage {
 /** One page view within a session's trail — see the BFF's `PageView` model. */
 export interface PageViewDto {
     path: string;
+    /** The cleaned URL filters (bedrooms=2&minPrice=15000), or null. Rows before 2026-10-24 have none. */
+    query: string | null;
     createdAt: string;
 }
 /** A session's full page-view trail plus the same summary `page-visits` shows for its one Visit

@@ -9,6 +9,13 @@ export class RecordPageViewDto {
   @MaxLength(500)
   path!: string;
 
+  /** The page's query string (filters in the URL). Cleaned again on the server before it is
+   * stored, so a client that sends an ad id or a token cannot get it saved. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  query?: string;
+
   /** Only used if this session turns out to have no Visit row yet — see
    * AnalyticsService.backfillMissingVisit. Never stored on the PageView row itself, which is
    * deliberately just (sessionId, path, createdAt). Optional so an older web build that doesn't

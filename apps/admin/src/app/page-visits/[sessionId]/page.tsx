@@ -4,7 +4,7 @@ import type { DeviceType } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchSessionTrail } from "@/lib/bff";
 import { formatDateTime } from "@/lib/formatDateTime";
-import { trailEntry, trailEntryHref } from "@/lib/pageTrail";
+import { trailEntry, trailEntryHref, trailPath } from "@/lib/pageTrail";
 
 const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
   desktop: "Desktop",
@@ -124,7 +124,7 @@ export default async function SessionTrailPage({ params }: { params: Promise<{ s
             {pageViews.map((pv, i) => {
               const prev = i > 0 ? pageViews[i - 1] : null;
               const gapMs = prev ? new Date(pv.createdAt).getTime() - new Date(prev.createdAt).getTime() : null;
-              const href = trailEntryHref(pv.path);
+              const href = trailEntryHref(pv.path, pv.query);
               return (
                 <div
                   key={`${pv.path}-${pv.createdAt}-${i}`}
@@ -132,7 +132,7 @@ export default async function SessionTrailPage({ params }: { params: Promise<{ s
                     display: "flex",
                     alignItems: "flex-start",
                     gap: 12,
-                    border: trailEntry(pv.path).isError ? "1px solid var(--danger)" : "1px solid var(--border)",
+                    border: trailEntry(trailPath(pv)).isError ? "1px solid var(--danger)" : "1px solid var(--border)",
                     borderRadius: 9,
                     padding: "10px 14px",
                     background: "var(--surface)",
@@ -152,10 +152,10 @@ export default async function SessionTrailPage({ params }: { params: Promise<{ s
                     {i + 1}.{" "}
                     {href ? (
                       <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "var(--green)" }}>
-                        {trailEntry(pv.path).text}
+                        {trailEntry(trailPath(pv)).text}
                       </a>
                     ) : (
-                      trailEntry(pv.path).text
+                      trailEntry(trailPath(pv)).text
                     )}
                   </div>
                 </div>

@@ -1,3 +1,4 @@
+import { readablePageViewQuery } from "@bhavano/types/pageViewQuery";
 import { parsePostFieldEventPath, POST_FIELD_PATH_PREFIX, postFieldTargetLabel } from "@bhavano/types/postFieldEvents";
 
 /** Which on-site link sent a visitor to `/post` — decodes the `?from=` query param every
@@ -240,6 +241,7 @@ function appInstallLabel(path: string): string {
 
 const SITE_URL = "https://www.bhavano.com";
 
+
 const EVENT_MARKER_PREFIXES = [
   "/login-nudge",
   "/post/action",
@@ -254,7 +256,14 @@ const EVENT_MARKER_PREFIXES = [
 /** The real page to open for a trail entry, or null for an event marker (see trailEntry above) —
  * those aren't pages anyone can visit, just an event encoded as a path, so there's nothing to
  * link to. */
-export function trailEntryHref(path: string): string | null {
+export function trailEntryHref(path: string, query?: string | null): string | null {
   if (EVENT_MARKER_PREFIXES.some((prefix) => path.startsWith(prefix))) return null;
-  return `${SITE_URL}${path}`;
+  return `${SITE_URL}${path}${query ? `?${query}` : ""}`;
+}
+
+/** What to show for a page view: the path with the filters that were on it, read as words
+ * (/bengaluru/rent-lease?bedrooms=2&minPrice=15000). Event markers keep their own encoding in the
+ * path, so they pass through unchanged. */
+export function trailPath(pv: { path: string; query?: string | null }): string {
+  return pv.query ? `${pv.path}?${readablePageViewQuery(pv.query)}` : pv.path;
 }

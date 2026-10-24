@@ -179,7 +179,7 @@ describe('AnalyticsService', () => {
       });
 
       expect(pageViewCreate).toHaveBeenCalledWith({
-        data: { sessionId: 's-lost', path: '/bengaluru/koramangala' },
+        data: { sessionId: 's-lost', path: '/bengaluru/koramangala', query: null },
       });
       const sql = sqlOf(executeRaw);
       // This writer owns no column another writer could want, so DO NOTHING is the whole of its
@@ -219,7 +219,43 @@ describe('AnalyticsService', () => {
       const { prisma, pageViewCreate } = makePrisma();
       await new AnalyticsService(prisma, geoIp).recordPageView({ sessionId: 's1', path: '/favourites' });
 
-      expect(pageViewCreate).toHaveBeenCalledWith({ data: { sessionId: 's1', path: '/favourites' } });
+      expect(pageViewCreate).toHaveBeenCalledWith({ data: { sessionId: 's1', path: '/favourites', query: null } });
+    });
+
+    it('stores the filters in the URL, cleaned of ad ids, referral codes and tracking tags', async () => {
+      const { prisma, pageViewCreate } = makePrisma();
+      await new AnalyticsService(prisma, geoIp).recordPageView({
+        sessionId: 's1',
+        path: '/bengaluru/rent-lease',
+        query: 'bedrooms=2&minPrice=15000&gclid=Cj0K&utm_source=google&ref=user123&area=HSR%20Layout',
+      });
+
+      expect(pageViewCreate).toHaveBeenCalledWith({
+        data: { sessionId: 's1', path: '/bengaluru/rent-lease', query: 'bedrooms=2&minPrice=15000&area=HSR%20Layout' },
+      });
+    });
+
+    it('treats the same page with different filters as a different view', async () => {
+      const { prisma, pageViewFindFirst } = makePrisma();
+      await new AnalyticsService(prisma, geoIp).recordPageView({
+        sessionId: 's1',
+        path: '/bengaluru/rent-lease',
+        query: 'bedrooms=3',
+      });
+
+      const args = pageViewFindFirst.mock.calls[0][0] as { where: Record<string, unknown> };
+      expect(args.where).toMatchObject({ sessionId: 's1', path: '/bengaluru/rent-lease', query: 'bedrooms=3' });
+    });
+
+    it('stores nothing for a query made only of tracking params', async () => {
+      const { prisma, pageViewCreate } = makePrisma();
+      await new AnalyticsService(prisma, geoIp).recordPageView({
+        sessionId: 's1',
+        path: '/',
+        query: 'gclid=abc&utm_medium=cpc&campaignid=1',
+      });
+
+      expect(pageViewCreate).toHaveBeenCalledWith({ data: { sessionId: 's1', path: '/', query: null } });
     });
 
     it('still records the page view when no ip/userAgent is sent', async () => {

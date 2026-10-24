@@ -1432,7 +1432,7 @@ export class AdminService {
         pageViewCount,
         sessionLogins,
       },
-      pageViews: pageViews.map((p) => ({ path: p.path, createdAt: p.createdAt.toISOString() })),
+      pageViews: pageViews.map((p) => ({ path: p.path, query: p.query, createdAt: p.createdAt.toISOString() })),
     };
   }
 

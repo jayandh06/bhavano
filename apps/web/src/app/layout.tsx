@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Lora, Manrope } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider } from "next-themes";
@@ -137,7 +138,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <JsConfirmation />
                 <SessionUserLink />
                 <VisitEntryRecorder />
-                <SoftNavPageViews />
+                {/* useSearchParams inside needs a Suspense boundary; it renders nothing either way. */}
+                <Suspense fallback={null}>
+                  <SoftNavPageViews />
+                </Suspense>
                 <SignupConversionTracker />
                 <ProfileCompletionBanner />
                 <ProfileCompletionDialog />

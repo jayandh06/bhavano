@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RecordVisitDto } from './dto/record-visit.dto';
+import { sanitizePageViewQuery } from '@bhavano/types/pageViewQuery';
 import { RecordPageViewDto } from './dto/record-pageview.dto';
 import { RecordSearchDto } from './dto/record-search.dto';
 import { GeoIpService } from './geoip.service';
@@ -154,10 +155,13 @@ export class AnalyticsService {
    * duplication measured on 2026-09-16 on its own. Indexed by `@@index([sessionId, createdAt])`,
    * so it's one cheap lookup on a write path that is already fire-and-forget. */
   async recordPageView(dto: RecordPageViewDto): Promise<void> {
+    const query = sanitizePageViewQuery(dto.query);
     const duplicate = await this.prisma.pageView.findFirst({
       where: {
         sessionId: dto.sessionId,
         path: dto.path,
+        // The same page with different filters is a different view; only an identical one repeats.
+        query,
         createdAt: { gte: new Date(Date.now() - PAGE_VIEW_DEDUPE_MS) },
       },
       select: { id: true },
@@ -165,7 +169,7 @@ export class AnalyticsService {
     // Nothing else to do: the view this duplicates already ran the backfill below.
     if (duplicate) return;
 
-    await this.prisma.pageView.create({ data: { sessionId: dto.sessionId, path: dto.path } });
+    await this.prisma.pageView.create({ data: { sessionId: dto.sessionId, path: dto.path, query } });
     await this.backfillMissingVisit(dto);
   }
 

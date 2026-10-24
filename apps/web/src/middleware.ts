@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { NextFetchEvent } from "next/server";
 import { isBotUserAgent } from "@bhavano/types/botUserAgent";
+import { sanitizePageViewQuery } from "@bhavano/types/pageViewQuery";
 import { citySlugForRoute } from "@/lib/cityFromRoute";
 
 const ACQUISITION_COOKIE = "bhavano_acq";
@@ -254,6 +255,8 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
       body: JSON.stringify({
         sessionId,
         path: request.nextUrl.pathname,
+        // Which filters the page was showing: /rent-lease alone does not say what was looked at.
+        query: sanitizePageViewQuery(request.nextUrl.search) ?? undefined,
         ip: clientIp(request),
         userAgent: request.headers.get("user-agent") ?? undefined,
       }),

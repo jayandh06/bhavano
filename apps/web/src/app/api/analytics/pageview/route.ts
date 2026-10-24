@@ -17,15 +17,16 @@ export async function POST(request: Request): Promise<NextResponse> {
   const sessionId = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!sessionId) return new NextResponse(null, { status: 204 });
 
-  let body: { path?: unknown };
+  let body: { path?: unknown; query?: unknown };
   try {
-    body = (await request.json()) as { path?: unknown };
+    body = (await request.json()) as { path?: unknown; query?: unknown };
   } catch {
     return new NextResponse(null, { status: 204 });
   }
 
   const path = typeof body.path === "string" ? body.path.slice(0, 500) : "";
   if (!path.startsWith("/")) return new NextResponse(null, { status: 204 });
+  const query = typeof body.query === "string" ? body.query.slice(0, 1000) : undefined;
 
   try {
     await fetch(`${BFF_URL}/analytics/pageview`, {
@@ -34,6 +35,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       body: JSON.stringify({
         sessionId,
         path,
+        query,
         userAgent: request.headers.get("user-agent") ?? undefined,
       }),
     });
