@@ -30,3 +30,5 @@ server or client components, so no SEO impact. Cards and inputs are opaque, so t
 
 The mobile app still has its flat background. The same tile can be drawn with `react-native-svg`
 behind the screens; it would ship in the next app release.
+
+Page wrappers (`min-h-screen bg-bg`, on every page) paint solid cream over the body, so `globals.css` also puts the body tile on `.min-h-screen.bg-bg`. Without that the body trellis never showed on the listing area.

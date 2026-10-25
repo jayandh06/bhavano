@@ -82,6 +82,11 @@
   .trellis-head {
     background-image: var(--trellis-head);
   }
+  /* Every page wraps its content in `min-h-screen … bg-bg`, which paints solid over the body and
+   * would hide the body's own tile, so the page wrapper carries the same tile. */
+  .min-h-screen.bg-bg {
+    background-image: var(--trellis-body);
+  }
   .ic {
     display: inline-block;
     flex-shrink: 0;
