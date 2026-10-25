@@ -174,3 +174,13 @@ transaction type** (`/<city-slug>/rent-lease` or `/<city-slug>/buy`; slugs hyder
   (needs a `/<slug>/rent-lease` and `/<slug>/buy` page on the site).
 - Not changed: budget (₹350/day, shared by 14 ad groups now), bidding (portfolio Target CPA), negatives, the Bengaluru, Pune
   and Kolkata ad groups, or which Buy groups are enabled.
+
+## Update 2026-10-25 — own bidding, off the poster target
+
+Metro-Seeker Intent was moved off the shared `Bhavano-TargetCPA` portfolio to **Maximise clicks with a ₹25 max CPC**
+(its recent average CPC was about ₹13.5). Reason: the shared target is built around "Post ad success", which seekers
+almost never produce (2 conversions on ₹5.6k in October), so Target CPA had nothing to learn from and could throttle
+delivery. Judge the pilot from the database (saved searches, requirements, messages), not from Google's conversion
+count. The shared portfolio target went from ₹135 to ₹180 at the same time (poster cost per conversion was about
+₹224). Rollback: set the campaign's bidding strategy back to portfolio `12257987260`, and the portfolio target back
+to ₹135.
