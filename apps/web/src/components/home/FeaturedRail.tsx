@@ -32,9 +32,11 @@ export function FeaturedRail({ items }: { items: ListingCardDto[] }) {
           * what lets each card actually fill that height instead of sitting at its natural size
           * inside a now-taller wrapper, with its own Contact button pinned to the bottom via
           * mt-auto rather than wherever its own (title-length-dependent) content happened to end. */}
-        {items.map((item) => (
+        {/* The first card's photo is the page's LCP element on a phone; the next two are on screen
+          * on a wide one. Everything past them stays lazy. */}
+        {items.map((item, index) => (
           <div key={item.id} className="shrink-0 snap-start w-[250px] sm:w-[290px]">
-            <ListingCard item={item} fixedHeight />
+            <ListingCard item={item} fixedHeight imageLoading={index === 0 ? "preload" : index < 3 ? "eager" : undefined} />
           </div>
         ))}
       </FeaturedRailScroller>

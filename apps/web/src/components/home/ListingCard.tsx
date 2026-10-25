@@ -25,9 +25,14 @@ export function ListingCard({
    * there aren't side by side in one view the way a rail's are, so natural, varying card heights
    * never look wrong the way they do here. */
   fixedHeight = false,
+  /** For cards that are on screen at first paint: "preload" is the page's likely LCP image (it is
+   * fetched at high priority from the HTML), "eager" just stops it waiting to be lazy-loaded. Every
+   * other card keeps Next's default lazy loading. */
+  imageLoading,
 }: {
   item: ListingCardDto;
   fixedHeight?: boolean;
+  imageLoading?: "preload" | "eager";
 }) {
   const { requireLogin } = useAuthGate();
   const { buyCredits } = useBuyCredits();
@@ -220,6 +225,8 @@ export function ListingCard({
             fill
             sizes="(max-width: 768px) 100vw, 400px"
             className="object-cover"
+            preload={imageLoading === "preload"}
+            loading={imageLoading === "eager" ? "eager" : undefined}
           />
         )}
         {/* The resting hint that there's more than one photo, on every device — including the
