@@ -62,7 +62,7 @@ function LocationBlock({
   );
 
   const viewAll = viewAllHref && (
-    <Link href={viewAllHref} prefetch={false} className="text-green font-bold inline-block mt-2.5">
+    <Link href={viewAllHref} prefetch={false} className="font-bold inline-block mt-2.5">
       {viewAllLabel ?? "View all →"}
     </Link>
   );
@@ -81,14 +81,14 @@ function LocationBlock({
   return (
     <div>
       <div className="hidden sm:block">
-        <div className="font-bold text-[13px] text-text mb-2.5">{heading}</div>
+        <div className="font-bold text-[13px] text-on-green mb-2.5">{heading}</div>
         {columns}
         {viewAll}
       </div>
       <details className="sm:hidden group">
-        <summary className="font-bold text-[13px] text-text mb-2.5 cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center gap-1.5">
+        <summary className="font-bold text-[13px] text-on-green mb-2.5 cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center gap-1.5">
           {heading}
-          <span className="text-[10px] text-muted transition-transform group-open:rotate-180">▾</span>
+          <span className="text-[10px] text-on-green/75 transition-transform group-open:rotate-180">▾</span>
         </summary>
         <div className="mt-2.5">
           {columns}
@@ -141,15 +141,15 @@ export async function Footer({
     .map((city) => ({ key: city.id, label: city.name, href: buildBrowsePath({ cityName: city.name }) }));
 
   return (
-    <section className="bg-surface-alt trellis-foot border-t border-border py-12 px-8">
+    <section className="bg-green trellis-band text-on-green [&_a]:text-on-green [&_a:hover]:underline border-t border-[color:var(--gold)]/30 py-12 px-8">
       <div className="max-w-[1280px] mx-auto flex flex-wrap justify-between gap-8">
         <div className="max-w-[260px]">
-          <div className="font-lora font-bold text-lg text-green mb-1.5">Bhavano</div>
+          <div className="font-lora font-bold text-lg text-on-green mb-1.5">Bhavano</div>
           {/* Brand → legal entity link, on every page. DLT/telco header verification (and payment
               aggregator onboarding) rejects a site that names only the brand — see
               docs/plans/finfolia-entity-disclosure.md. */}
-          <p className="text-[12.5px] text-text-soft leading-[1.6] m-0 mb-1.5">{ENTITY_TAGLINE}</p>
-          <p className="text-[13px] text-text-soft leading-[1.6] m-0">
+          <p className="text-[12.5px] text-on-green/85 leading-[1.6] m-0 mb-1.5">{ENTITY_TAGLINE}</p>
+          <p className="text-[13px] text-on-green/85 leading-[1.6] m-0">
             Verified listings to buy, rent or lease houses, apartments, villas, plots, coworking desks, commercial
             spaces and PG accommodation across India — no login needed to browse.
           </p>
@@ -157,7 +157,7 @@ export async function Footer({
         {currentCityName && <LocationBlock heading={`Areas in ${currentCityName}`} items={areaItems} />}
         <LocationBlock heading="Browse Cities" items={cityItems} viewAllHref="/cities" viewAllLabel="View all cities →" />
         <div>
-          <div className="font-bold text-[13px] text-text mb-2.5">Company</div>
+          <div className="font-bold text-[13px] text-on-green mb-2.5">Company</div>
           {/* prefetch={false} on the whole footer, same reasoning as the location lists above —
             * a footer is on every page, so every one of these is a wasted uncached render on
             * almost every page view. /post additionally must not be prefetched for correctness:
@@ -173,7 +173,7 @@ export async function Footer({
           </div>
         </div>
         <div>
-          <div className="font-bold text-[13px] text-text mb-2.5">Get the app</div>
+          <div className="font-bold text-[13px] text-on-green mb-2.5">Get the app</div>
           {/* Desktop gets a QR (a phone camera is the easy way from there); phones and tablets
             * get the Play badge, which opens the Play Store app directly. */}
           {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
@@ -185,12 +185,12 @@ export async function Footer({
             loading="lazy"
             className="hidden lg:block rounded bg-white"
           />
-          <p className="hidden lg:block text-[12px] text-muted mt-1.5 mb-0 max-w-[120px]">Scan with your Android phone</p>
+          <p className="hidden lg:block text-[12px] text-on-green/75 mt-1.5 mb-0 max-w-[120px]">Scan with your Android phone</p>
           <GooglePlayBadge placement="footer" height={44} className="inline-block lg:hidden" />
         </div>
       </div>
-      <div className="max-w-[1280px] mx-auto mt-8 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-4">
-        <span className="text-xs text-muted">{entityCopyright(2026)}</span>
+      <div className="max-w-[1280px] mx-auto mt-8 pt-5 border-t border-on-green/20 flex flex-wrap items-center justify-between gap-4">
+        <span className="text-xs text-on-green/75">{entityCopyright(2026)}</span>
         <div className="flex gap-5 text-xs">
           <Link href="/about" prefetch={false}>About Us</Link>
           <Link href="/trust" prefetch={false}>Trust &amp; Safety</Link>

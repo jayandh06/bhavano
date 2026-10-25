@@ -11,8 +11,9 @@ diamond trellis). It is our own SVG, so there is no photo, download or licence t
 | Surface | Where | Light | Dark |
 |---|---|---|---|
 | Top bar | the green strip in `components/home/Header.tsx` (`trellis-band`) | light lines and dots on green | dark lines and dots on the brighter green, about half as strong |
-| Page | `body` in `globals.css` | green hairlines, gold flowers on cream | light hairlines, dim gold flowers on near-black |
-| Footer | `components/home/Footer.tsx` (`trellis-foot`) | the page tile on the beige footer | the page tile on the dark footer |
+| Logo/search row and tab row | the `<header>` background and the tab row in `Header.tsx` (`--trellis-head`) | green hairlines, gold flowers, a touch stronger than the page | light hairlines, dim gold flowers |
+| Page | `body` in `globals.css` (`--trellis-body`) | green hairlines, gold flowers on cream | light hairlines, dim gold flowers on near-black |
+| Footer | `components/home/Footer.tsx` (`trellis-band`) | deep green with the top bar's trellis; text and links switch to `on-green` | the brighter green, same quieter trellis |
 
 Dark mode is quieter on purpose: a light line on near-black glows, so lines are about 0.025 opacity
 and flowers about 0.09 (light mode: 0.07 and 0.30).
