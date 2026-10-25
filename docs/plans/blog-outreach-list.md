@@ -59,3 +59,20 @@ your readers", which earns links more easily than a blog post.
   it after the deploy that publishes the key file**, because the engines fetch the key from the live site; a 403 means the
   file is not live yet. Run it again after you add or change posts. Bing's index feeds ChatGPT search and Copilot.
 - Still manual: Search Console "Request indexing" per URL, and submitting the site in Bing Webmaster Tools.
+
+## Backlink baseline (Semrush, 2026-10-25)
+| Domain | Authority Score | Backlinks | Referring domains |
+|---|---|---|---|
+| bhavano.com | 9 | 132 (67 follow, 65 nofollow) | 115 |
+| commonfloor.com | 65 | 118,737 | 5,911 |
+| quikr.com | 58 | 2,313,216 | 12,166 |
+| nobroker.in | 86 | 399,376 | 11,223 |
+| housing.com | 87 | 1,481,492 | 18,597 |
+| magicbricks.com | 91 | 1,105,216 | 12,955 |
+| 99acres.com | 92 | 2,687,049 | 12,468 |
+
+- The 25 highest-scoring referring domains of bhavano.com are almost all junk: SEO-directory and link-farm sites, spam shops, adult and
+  pharmacy pages. The best has an Authority Score of 14. So Bhavano has effectively **no real backlinks yet**; the 115 domains are noise.
+- Semrush returned no data for "backlink competitors" of bhavano.com (the profile is too small to match), so a gap analysis needs
+  named competitors, not a Semrush suggestion.
+- Re-run the overview monthly. A useful target: 30 genuine referring domains (real sites a person would visit) in six months.
