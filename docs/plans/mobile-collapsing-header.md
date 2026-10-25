@@ -169,3 +169,5 @@ layered bar + account dropdown (room for words there).
       because demo photo URLs carry a `?t=` query string not listed in `images.localPatterns`
       (Next 16). Pre-existing, unrelated to this work, but blocks a local visual check of the
       homepage — use `/help` or fix the env.
+
+> Superseded for the mobile scroll behaviour by `mobile-cls-collapsing-header.md`: the header is no longer swapped for the bar on the first pixel of scroll (that caused a ~0.16 layout shift each way); it scrolls away and the bar takes over once it is gone.

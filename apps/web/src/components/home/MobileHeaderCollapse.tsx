@@ -7,8 +7,8 @@ import { Icon } from "./Icon";
  * Mobile-only (`< sm`) progressive collapse for the site header.
  *
  * Desktop renders `children` — the full server-rendered header — untouched; this component adds
- * nothing there. On a phone, once the page is scrolled past the top the tall pinned header is
- * swapped for a ~52px bar: `[☰] [🔍] logo ········· Post ad`. The `☰` opens a drawer holding the
+ * nothing there. On a phone the full header is not pinned: it scrolls away with the page, and once
+ * it has scrolled out of view a fixed ~52px bar takes over: `[☰] [🔍] logo ········· Post ad`. The `☰` opens a drawer holding the
  * city picker, category links, the utility links, the account menu, and the theme toggle —
  * every one of them server-rendered in `drawer`, so this leaf only toggles visibility. The `🔍`
  * drops an "extended header" strip below the bar holding the same `SearchBar` passed in as
@@ -16,11 +16,13 @@ import { Icon } from "./Icon";
  * only lives in `children`. That is the whole reason it exists: Header.tsx stays a Server
  * Component and the SEO-relevant markup never moves into a client-only fetch.
  *
- * Collapse is driven by an IntersectionObserver sentinel, not a scroll handler.
+ * Collapse is driven by an IntersectionObserver sentinel (placed right after the header), not a
+ * scroll handler.
  *
- * v1 limitation: swapping the ~140px header for the ~52px bar snaps the page up once per
- * collapse. A height/opacity transition is the planned refinement — see
- * docs/plans/mobile-collapsing-header.md.
+ * Nothing in the page moves when the bar appears or goes: the header stays in the flow and the bar
+ * is `fixed`, so it overlays the content. Earlier the header was removed (and a spacer added) as
+ * soon as you scrolled a pixel, which shifted the page by ~140px each way and produced a mobile
+ * CLS of 0.62 — see docs/plans/mobile-cls-collapsing-header.md.
  */
 export function MobileHeaderCollapse({
   children,
@@ -47,7 +49,9 @@ export function MobileHeaderCollapse({
     const el = sentinelRef.current;
     if (!el) return;
     const io = new IntersectionObserver(([entry]) => {
-      const nextCollapsed = !entry.isIntersecting;
+      // Collapsed once the header has scrolled off the top (the sentinel sits just below it),
+      // not merely whenever the sentinel is out of view.
+      const nextCollapsed = !entry.isIntersecting && entry.boundingClientRect.top < 0;
       setCollapsed(nextCollapsed);
       // The drawer/search panel only live inside the collapsed bar, so scrolling back up must
       // dismiss them.
@@ -106,22 +110,15 @@ export function MobileHeaderCollapse({
 
   return (
     <>
-      <div ref={sentinelRef} aria-hidden className="h-px w-full" />
-
       {/* `display: contents` so this wrapper adds no box of its own — otherwise it becomes the
         * containing block for the sticky <header> inside `children`, shrinking its sticky range
         * to this wrapper's ~150px height and unpinning it as soon as you scroll (the util bar
-        * scrolling away while identity/search/tabs stay put is the behaviour this restores).
-        * When collapsed on a phone, `max-sm:hidden`'s media rule overrides `contents` with
-        * `display: none`. */}
-      <div className={collapsed ? "contents max-sm:hidden" : "contents"}>{children}</div>
+        * scrolling away while identity/search/tabs stay put is the behaviour this restores on
+        * desktop). On a phone the header is not sticky at all (see Header.tsx). */}
+      <div className="contents">{children}</div>
 
-      {/* Reserves the fixed bar's height in flow (only when it's actually shown: mobile +
-        * collapsed) so page content isn't hidden behind it. */}
-      {collapsed && <div aria-hidden className="sm:hidden h-[52px]" />}
-      {/* Same reservation for the extended search panel below the bar — an approximation of its
-        * rendered height (SearchBar's own ~50px plus this panel's padding), not a measured value. */}
-      {collapsed && searchOpen && <div aria-hidden className="sm:hidden h-[70px]" />}
+      {/* Marks the bottom of the header: when it scrolls above the viewport the bar takes over. */}
+      <div ref={sentinelRef} aria-hidden className="h-px w-full" />
 
       <div
         className={`sm:hidden fixed top-0 inset-x-0 z-40 bg-[linear-gradient(180deg,var(--surface),var(--bg))] border-b border-border shadow-[0_2px_8px_rgba(11,61,46,0.09)] ${

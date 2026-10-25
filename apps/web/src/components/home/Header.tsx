@@ -150,7 +150,7 @@ export function Header({
         * tone — a soft downward shadow gives it the separation the sticky position implies.
         * Dropped on mobile only (`max-sm:`): the sub-category chip row (CategoryTabs) is the
         * last thing inside this header there, and this line sat directly under it. */}
-      <header className="bg-[image:var(--trellis-head),linear-gradient(180deg,var(--surface),var(--bg))] max-sm:border-b-0 border-b border-border sticky top-0 z-40 max-sm:shadow-none shadow-[0_2px_8px_rgba(11,61,46,0.09)]">
+      <header className="bg-[image:var(--trellis-head),linear-gradient(180deg,var(--surface),var(--bg))] max-sm:border-b-0 border-b border-border sm:sticky sm:top-0 z-40 max-sm:shadow-none shadow-[0_2px_8px_rgba(11,61,46,0.09)]">
         {/* Two explicit rows. The first is identity — logo and account — and the second is what
           * a visitor acts on. This started as one row that wrapped on a phone, which worked but
           * left the layout dependent on how the widths happened to add up; stating the rows means
