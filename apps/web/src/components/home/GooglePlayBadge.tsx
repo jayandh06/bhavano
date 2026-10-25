@@ -38,6 +38,8 @@ export function GooglePlayBadge({
         alt="Get it on Google Play"
         width={Math.round(height * BADGE_ASPECT)}
         height={height}
+        // Footer and cards sit below the first screen, and width/height are set, so there is no layout shift.
+        loading="lazy"
         className="block"
       />
     </a>

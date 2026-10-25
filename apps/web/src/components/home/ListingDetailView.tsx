@@ -197,6 +197,9 @@ export async function ListingDetailView({
                 <img
                   src={staticMapUrl(listing.lat, listing.lng)}
                   alt={`Approximate location of ${listing.title}`}
+                  // Below the fold on a phone: do not let it compete with the hero photo for the first bytes.
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-[180px] object-cover rounded-xl"
                 />
                 <a

@@ -54,6 +54,11 @@ export default async function PostAdPage({
   // listing exists yet at posting time, so only Agent Pro (not a boost) can elevate this.
   // Defaults to the base tier if the profile fetch fails — a video-limit hiccup should never
   // block posting a listing entirely.
+  // The wizard's city list is only the fallback for a pin outside every city we list, so it needs the markets we serve
+  // (37 of the 758 cities in the table), plus the city already chosen. Sending all of them put about 200 KB of city data
+  // into the page's HTML. A draft or a pin that resolves to another city adds it on arrival (see applyDraft/onPinChange).
+  const wizardCities = allCities.filter((c) => c.isServed || c.id === city?.id);
+
   const profile = loggedIn ? await fetchProfile(accessToken).catch(() => null) : null;
   const videoEntitlement = resolveVideoEntitlement(profile ?? { agentProUntil: null });
 
@@ -91,7 +96,7 @@ export default async function PostAdPage({
         <div>
           <PostAdWizard
             key={`${city?.id ?? "none"}:${presetCategory ?? ""}:${presetTransactionType ?? ""}`}
-            cities={allCities}
+            cities={wizardCities}
             defaultCityId={city?.id}
             accessToken={accessToken}
             loggedIn={loggedIn}
