@@ -163,6 +163,8 @@ function visitOrderBy(
 const nullsLast = (direction: 'asc' | 'desc') => ({ sort: direction, nulls: 'last' }) as const;
 
 const PAGE_VISIT_ORDER_BY: Record<PageVisitSort, Prisma.VisitOrderByWithRelationInput[]> = {
+  lastActivity_desc: [{ lastActivityAt: nullsLast('desc') }, { createdAt: 'desc' }, { id: 'asc' }],
+  lastActivity_asc: [{ lastActivityAt: nullsLast('asc') }, { createdAt: 'asc' }, { id: 'asc' }],
   createdAt_desc: [{ createdAt: 'desc' }, { id: 'asc' }],
   createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
   user_asc: visitOrderBy({ userId: nullsLast('asc') }),
@@ -834,8 +836,19 @@ export class AdminService {
             : traffic === 'unclassified'
               ? { isBot: null }
               : {}),
+      // "Active in the window", not "started in it": a session cookie lives for weeks, so a visitor who comes back days
+      // later is still the same row. A row with no lastActivityAt yet is read as its start time.
       ...(from || to
-        ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
+        ? {
+            AND: [
+              {
+                OR: [
+                  { lastActivityAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } },
+                  { lastActivityAt: null, createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } },
+                ],
+              },
+            ],
+          }
         : {}),
       ...(identity === 'anonymous'
         ? { userId: null }
@@ -881,8 +894,8 @@ export class AdminService {
       SELECT COUNT(pv.id)::int AS views, COUNT(DISTINCT v."sessionId")::int AS sessions
       FROM "Visit" v
       LEFT JOIN "PageView" pv ON pv."sessionId" = v."sessionId"
-      WHERE (${from}::timestamptz IS NULL OR v."createdAt" >= ${from}::timestamptz)
-        AND (${to}::timestamptz IS NULL OR v."createdAt" <= ${to}::timestamptz)
+      WHERE (${from}::timestamptz IS NULL OR COALESCE(v."lastActivityAt", v."createdAt") >= ${from}::timestamptz)
+        AND (${to}::timestamptz IS NULL OR COALESCE(v."lastActivityAt", v."createdAt") <= ${to}::timestamptz)
         AND (${traffic ?? null}::text IS NULL
              OR (${traffic}::text = 'any')
              OR (${traffic}::text = 'humans' AND v."isBot" = false)
@@ -894,7 +907,7 @@ export class AdminService {
       this.prisma.visit.findMany({
         where,
         include: { user: { select: { name: true, phone: true, email: true, deletedAt: true } } },
-        orderBy: PAGE_VISIT_ORDER_BY[sort ?? 'createdAt_desc'],
+        orderBy: PAGE_VISIT_ORDER_BY[sort ?? 'lastActivity_desc'],
         skip: offset ?? 0,
         take: limit,
       }),
@@ -947,6 +960,7 @@ export class AdminService {
         id: row.id,
         sessionId: row.sessionId,
         createdAt: row.createdAt.toISOString(),
+        lastActivityAt: (row.lastActivityAt ?? row.createdAt).toISOString(),
         userId: row.userId,
         userName: row.user?.name ?? null,
         userPhone: row.user?.phone ?? null,
@@ -2357,13 +2371,14 @@ export class AdminService {
    * purpose-specific audit-trail rows this payment actually created (see AdminPaymentDto's own
    * doc comment), so it's resolved here per-row rather than in the query itself. */
   async listPayments(query: ListPaymentsDto): Promise<AdminPaymentsPage> {
-    const { offset, from, to, userId, purpose, status, listingTitle, source, sort, limit } = query;
+    const { offset, from, to, userId, listingId, purpose, status, listingTitle, source, sort, limit } = query;
 
     const where: Prisma.PaymentWhereInput = {
       ...(from || to
         ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
         : {}),
       ...(userId ? { userId } : {}),
+      ...(listingId ? { listingId } : {}),
       ...(purpose ? { purpose } : {}),
       ...(status ? { status } : {}),
       ...(source ? { source } : {}),

@@ -30,7 +30,7 @@ import { PageVisitsTable } from "@/components/PageVisitsTable";
 import { FullPageLink } from "@/components/FullPageLink";
 /** What the BFF falls back to with no `?sort=` — named here so the Time column's header still
  * shows its ▼ before anything has been clicked. */
-const DEFAULT_SORT: AdminPageVisitSort = "createdAt_desc";
+const DEFAULT_SORT: AdminPageVisitSort = "lastActivity_desc";
 
 const IDENTITY_OPTIONS: { value: AdminPageVisitIdentity; label: string }[] = [
   { value: "any", label: "All visits" },
@@ -206,7 +206,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
               </SelectField>
             </Field>
 
-            <Field label="Date range (IST)">
+            <Field label="Active in range (IST)">
               <DateRangeFilter basePath="/page-visits" sp={sp} currentFrom={from} currentTo={to}>
                 <Field label="From (IST)">
                   <input type="date" name="from" defaultValue={from} style={dateInputStyle} />
@@ -245,7 +245,10 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
               <thead>
                 <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
                   <th style={thStyle}>
-                    <SortableHeader label="Time (IST)" href={sortHref("createdAt")} direction={sortDir("createdAt")} />
+                    <SortableHeader label="Last active (IST)" href={sortHref("lastActivity")} direction={sortDir("lastActivity")} />
+                    <div style={{ fontSize: 10.5, fontWeight: 400, color: "var(--muted)" }}>
+                      <SortableHeader label="started" href={sortHref("createdAt")} direction={sortDir("createdAt")} />
+                    </div>
                   </th>
                   <th style={thStyle}>
                     <SortableHeader label="User" href={sortHref("user")} direction={sortDir("user")} />

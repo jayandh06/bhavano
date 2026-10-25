@@ -4,6 +4,7 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import { BoostBundlePicker } from "./BoostBundlePicker";
+import { reportPostAction } from "@/lib/postActionTrail";
 
 /**
  * One shared "boost this ad" screen for the whole app. Each `BoostButton` used to inline its own
@@ -56,6 +57,12 @@ export function BoostProvider({ children }: { children: ReactNode }) {
   function boost(options: BoostOptions) {
     setOpts(options);
     setOpen(true);
+    reportPostAction("boost", "opened");
+  }
+
+  function closeWithoutBuying() {
+    setOpen(false);
+    reportPostAction("boost", "closed");
   }
 
   return (
@@ -64,7 +71,7 @@ export function BoostProvider({ children }: { children: ReactNode }) {
 
       {open && opts && (
         <div
-          onClick={() => setOpen(false)}
+          onClick={closeWithoutBuying}
           className="fixed inset-0 bg-[var(--modal-scrim)] z-[110] flex items-center justify-center p-5"
         >
           <div
@@ -77,13 +84,14 @@ export function BoostProvider({ children }: { children: ReactNode }) {
               category={opts.category}
               initialPricing={opts.initialPricing}
               source={opts.source}
+              onEvent={(event, days) => reportPostAction("boost", event, days != null ? { days } : undefined)}
               onActivating={() => {
                 setOpen(false);
                 opts.onActivating?.();
               }}
             />
             <button
-              onClick={() => setOpen(false)}
+              onClick={closeWithoutBuying}
               className="mt-3 w-full bg-transparent border-0 text-muted text-[13px] font-bold cursor-pointer"
             >
               Cancel

@@ -190,6 +190,17 @@ describe('AnalyticsService', () => {
       );
     });
 
+    it('marks the session as active now, so Page visits can show a visitor who comes back days later', async () => {
+      const { prisma, executeRaw } = makePrisma();
+      await new AnalyticsService(prisma, geoIp).recordPageView({ sessionId: 's-old', path: '/my-listings' });
+
+      // Call 0 is the insert-if-absent backfill; call 1 stamps the activity time.
+      const sql = sqlOf(executeRaw, 1);
+      expect(sql).toContain('UPDATE "Visit" SET "lastActivityAt" = now()');
+      expect(sql).toContain('WHERE "sessionId" =');
+      expect(paramsOf(executeRaw, 1)).toEqual(['s-old']);
+    });
+
     it('writes no attribution, so a recovered row stays distinguishable from a real one', async () => {
       const { prisma, executeRaw } = makePrisma();
       await new AnalyticsService(prisma, geoIp).recordPageView({ sessionId: 's-lost', path: '/' });

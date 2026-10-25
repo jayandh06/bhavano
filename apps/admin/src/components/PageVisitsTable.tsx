@@ -68,7 +68,12 @@ export function PageVisitsTable({
         return (
           <Fragment key={v.id}>
             <tr style={{ borderTop: "1px solid var(--border)" }}>
-              <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{formatDateTime(v.createdAt)}</td>
+              <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                {formatDateTime(v.lastActivityAt ?? v.createdAt)}
+                {v.lastActivityAt && v.lastActivityAt.slice(0, 10) !== v.createdAt.slice(0, 10) && (
+                  <div style={{ fontSize: 10.5, color: "var(--muted)" }}>started {formatDateTime(v.createdAt)}</div>
+                )}
+              </td>
               <td style={tdStyle}>
                 <SessionUsers visit={v} />
               </td>

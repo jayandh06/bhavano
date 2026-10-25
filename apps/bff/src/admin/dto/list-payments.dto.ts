@@ -68,6 +68,11 @@ export class ListPaymentsDto {
   @IsString()
   userId?: string;
 
+  /** One listing's purchases, for the Purchases panel on the admin listing page. */
+  @IsOptional()
+  @IsString()
+  listingId?: string;
+
   @IsOptional()
   @IsIn(ADMIN_PAYMENT_PURPOSE_VALUES)
   purpose?: AdminPaymentPurposeFilter;

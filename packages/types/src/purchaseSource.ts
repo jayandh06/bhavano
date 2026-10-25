@@ -6,8 +6,10 @@
  *
  * - `admin_boost_message`: the Boost button (or, in older app versions, the plain link) in the
  *   in-app "Bhavano Admin" Boost message — see docs/plans/admin-in-app-boost-message.md.
+ * - `my_listings`: the Boost button on a listing in My listings (web or app), i.e. the seller came back on their own
+ * rather than through the post flow or the admin message.
  */
-export const PURCHASE_SOURCES = ["admin_boost_message"] as const;
+export const PURCHASE_SOURCES = ["admin_boost_message", "my_listings"] as const;
 
 export type PurchaseSource = (typeof PURCHASE_SOURCES)[number];
 
@@ -19,4 +21,5 @@ export function parsePurchaseSource(value: string | null | undefined): PurchaseS
 
 export const PURCHASE_SOURCE_LABELS: Record<PurchaseSource, string> = {
   admin_boost_message: "Admin boost message",
+  my_listings: "My listings",
 };

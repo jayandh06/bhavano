@@ -38,6 +38,8 @@ const POST_STEP_LABELS: Record<string, string> = {
  * live!" screen, written by the web wizard (apps/web/src/lib/postActionTrail.ts). Event names to
  * readable text; an unknown one is shown as-is. */
 const POST_ACTION_LABELS: Record<string, string> = {
+  opened: "opened the Featured screen",
+  closed: "closed it without buying",
   plan_selected: "chose a plan",
   pay_tapped: "tapped Pay",
   paid: "paid",
@@ -134,7 +136,8 @@ export function trailEntry(path: string): { text: string; isError: boolean } {
   if (path.startsWith("/post/action")) {
     try {
       const params = new URL(path, "https://x.invalid").searchParams;
-      const screen = params.get("screen") === "offer" ? "Featured offer" : "Ad live";
+      const screenParam = params.get("screen");
+      const screen = screenParam === "offer" ? "Featured offer" : screenParam === "boost" ? "Featured upgrade" : "Ad live";
       const event = params.get("event") ?? "unknown";
       const days = params.get("days");
       const what = POST_ACTION_LABELS[event] ?? event;

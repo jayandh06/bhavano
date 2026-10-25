@@ -144,6 +144,7 @@ export type AdminLoginSort = `${AdminLoginSortField}_asc` | `${AdminLoginSortFie
  * one asc/desc pair per sortable column, driving the page-visits table's header sort toggles.
  * No `pageViewCount` pair: see that constant's own comment for why it can't be ordered on. */
 export type AdminPageVisitSortField =
+  | "lastActivity"
   | "createdAt"
   | "user"
   | "city"
@@ -687,6 +688,8 @@ export interface PaymentsQuery {
   from?: string;
   to?: string;
   userId?: string;
+  /** One listing's purchases (the admin listing page's Purchases panel). */
+  listingId?: string;
   purpose?: PaymentPurpose;
   status?: PaymentStatus;
   listingTitle?: string;

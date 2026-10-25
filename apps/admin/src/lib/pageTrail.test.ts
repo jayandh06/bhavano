@@ -163,6 +163,13 @@ describe("trailEntryHref", () => {
 });
 
 describe("trailEntry — /post/action clicks", () => {
+  it("reads a Featured upgrade from My listings, outside the post flow", () => {
+    expect(trailEntry("/post/action?screen=boost&event=opened")).toEqual({ text: "Featured upgrade — opened the Featured screen", isError: false });
+    expect(trailEntry("/post/action?screen=boost&event=pay_tapped&days=30")).toEqual({ text: "Featured upgrade — tapped Pay (30 days)", isError: false });
+    expect(trailEntry("/post/action?screen=boost&event=paid&days=30")).toEqual({ text: "Featured upgrade — paid (30 days)", isError: false });
+    expect(trailEntry("/post/action?screen=boost&event=closed")).toEqual({ text: "Featured upgrade — closed it without buying", isError: false });
+  });
+
   it("reads a Featured-offer click as a sentence", () => {
     expect(trailEntry("/post/action?screen=offer&event=pay_tapped&days=15")).toEqual({
       text: "Featured offer \u2014 tapped Pay (15 days)",

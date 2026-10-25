@@ -111,14 +111,14 @@ export class AnalyticsService {
     await this.prisma.$executeRaw`
       INSERT INTO "Visit" (
         "id", "sessionId", "source", "medium", "campaign", "gclid", "campaignId", "adGroupId",
-        "adId", "landingPath", "ip", "ipCity", "ipRegion", "ipCountry", "deviceType", "os", "isBot"
+        "adId", "landingPath", "ip", "ipCity", "ipRegion", "ipCountry", "deviceType", "os", "isBot", "lastActivityAt"
       ) VALUES (
         ${newVisitId()}, ${dto.sessionId}, ${dto.source ?? null}, ${dto.medium ?? null},
         ${dto.campaign ?? null}, ${dto.gclid ?? null}, ${dto.campaignId ?? null},
         ${dto.adGroupId ?? null}, ${dto.adId ?? null}, ${dto.landingPath ?? null},
         ${dto.ip ?? null}, ${geo?.city ?? null}, ${geo?.region ?? null}, ${geo?.country ?? null},
         ${deviceTypeFromUserAgent(dto.userAgent, dto.fromApp ?? false) ?? null},
-        ${osFromUserAgent(dto.userAgent)}, ${isBot}
+        ${osFromUserAgent(dto.userAgent)}, ${isBot}, now()
       )
       ON CONFLICT ("sessionId") DO UPDATE SET
         "source"      = CASE WHEN "Visit"."source" IS NULL THEN EXCLUDED."source"      ELSE "Visit"."source"      END,
@@ -171,6 +171,9 @@ export class AnalyticsService {
 
     await this.prisma.pageView.create({ data: { sessionId: dto.sessionId, path: dto.path, query } });
     await this.backfillMissingVisit(dto);
+    // The session is still alive: this is what the admin Page visits screen sorts and filters on, so a visitor who comes
+    // back days later (the session cookie outlives the day it started) shows up on the day they came back.
+    await this.prisma.$executeRaw`UPDATE "Visit" SET "lastActivityAt" = now() WHERE "sessionId" = ${dto.sessionId}`;
   }
 
   /**

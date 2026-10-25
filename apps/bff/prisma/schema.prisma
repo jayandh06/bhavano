@@ -1174,9 +1174,17 @@ model Visit {
    */
   os            String?
   createdAt     DateTime  @default(now())
+  /**
+   * When this session last did anything: the time of its newest page view (or its start, with none). A browser
+   * session cookie lives for weeks, so a visitor can come back days later under the same row; `createdAt` stays
+   * the day it started, and this is the day it was last seen. The admin Page visits screen filters and sorts on it.
+   * Null only on a row the backfill missed; read it as `createdAt` then.
+   */
+  lastActivityAt DateTime?
 
   @@index([userId])
   @@index([createdAt])
+  @@index([lastActivityAt])
 }
 
 /**

@@ -36,7 +36,8 @@ export function BoostButton({
 
   return (
     <button
-      onClick={() => boost({ listingId, category, onActivating: () => setPendingActivation(true) })}
+      // Always from My listings, so the purchase is counted as that (the post flow has its own picker).
+      onClick={() => boost({ listingId, category, source: "my_listings", onActivating: () => setPendingActivation(true) })}
       className={className}
     >
       <Icon name="boost" /> Feature Ad

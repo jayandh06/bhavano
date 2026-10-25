@@ -8,6 +8,8 @@ import { DEVICE_TYPES, OS_FAMILIES } from '../../analytics/device-type';
  * AdminService.listPageVisits), so ordering by it would need a join/denormalised counter rather
  * than an orderBy. */
 const PAGE_VISIT_SORT_VALUES = [
+  'lastActivity_desc',
+  'lastActivity_asc',
   'createdAt_desc',
   'createdAt_asc',
   'user_asc',

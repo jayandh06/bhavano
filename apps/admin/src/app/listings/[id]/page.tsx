@@ -10,6 +10,7 @@ import {
   fetchListingEngagement,
   fetchListingNotificationHistory,
   fetchListingOwner,
+  fetchPayments,
   fetchMessages,
   fetchThread,
 } from "@/lib/bff";
@@ -17,6 +18,7 @@ import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from 
 import { ModerationPanel } from "@/components/ModerationPanel";
 import { RotatablePhotoGrid } from "@/components/RotatablePhotoGrid";
 import { ConversationsTable } from "@/components/ConversationsTable";
+import { PurchasesPanel } from "@/components/PurchasesPanel";
 import { Pagination } from "@/components/Pagination";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
 
@@ -148,7 +150,7 @@ export default async function ListingModerationPage({
   const historyPage = parsePage(str(sp.historyPage));
   const historyLimit = parsePageSize(str(sp.historyLimit));
 
-  const [thread, owner, engagement, conversations, history, notificationHistory] = await Promise.all([
+  const [thread, owner, engagement, conversations, history, notificationHistory, purchases] = await Promise.all([
     fetchThread(accessToken, id),
     fetchListingOwner(accessToken, id),
     fetchListingEngagement(accessToken, id, {
@@ -164,6 +166,7 @@ export default async function ListingModerationPage({
       limit: historyLimit,
     }),
     fetchListingNotificationHistory(accessToken, id),
+    fetchPayments(accessToken, { listingId: id, limit: 25 }).catch(() => ({ items: [], total: 0 })),
   ]);
   const messages = await fetchMessages(accessToken, thread.id);
   const likedTotalPages = Math.max(1, Math.ceil(engagement.total / likedLimit));
@@ -440,6 +443,15 @@ export default async function ListingModerationPage({
             pageSize={likedLimit}
             sp={sp}
             paramNames={LIKED_PARAM_NAMES}
+          />
+        </div>
+
+        <div style={{ marginTop: 20 }}>
+          <PurchasesPanel
+            items={purchases.items}
+            total={purchases.total}
+            showPerson
+            seeAllHref={`/subscriptions?listingTitle=${encodeURIComponent(listing.title)}&from=&to=`}
           />
         </div>
 

@@ -8,7 +8,9 @@
  * `/post/offer` or `/post/success`: the admin funnel counts sessions by path prefix, and a click
  * must not read as another arrival at that step. Decoded by the admin app's `trailEntry()`.
  * Best-effort and fire-and-forget: a dropped write must never affect the screen. */
-export type PostActionScreen = "offer" | "live";
+// "boost" is the Featured dialog opened from My listings (or a deep link), outside the post flow, so a purchase made
+// days after posting still leaves a trail in Page visits (docs/plans/admin-purchases-trail.md).
+export type PostActionScreen = "offer" | "live" | "boost";
 
 export function reportPostAction(screen: PostActionScreen, event: string, detail?: { days?: number }) {
   const days = detail?.days != null ? `&days=${detail.days}` : "";

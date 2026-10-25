@@ -10,12 +10,15 @@ exports.parsePurchaseSource = parsePurchaseSource;
  *
  * - `admin_boost_message`: the Boost button (or, in older app versions, the plain link) in the
  *   in-app "Bhavano Admin" Boost message — see docs/plans/admin-in-app-boost-message.md.
+ * - `my_listings`: the Boost button on a listing in My listings (web or app), i.e. the seller came back on their own
+ * rather than through the post flow or the admin message.
  */
-exports.PURCHASE_SOURCES = ["admin_boost_message"];
+exports.PURCHASE_SOURCES = ["admin_boost_message", "my_listings"];
 exports.PURCHASE_SOURCE_PARAM = "src";
 function parsePurchaseSource(value) {
     return exports.PURCHASE_SOURCES.find((source) => source === value);
 }
 exports.PURCHASE_SOURCE_LABELS = {
     admin_boost_message: "Admin boost message",
+    my_listings: "My listings",
 };

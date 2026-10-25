@@ -969,6 +969,8 @@ export interface PageVisitDto {
      * the admin page-visits screen links through to fetch a session's full page-view trail. */
     sessionId: string;
     createdAt: string;
+    /** When the session last did anything (newest page view); the start time when it never did. */
+    lastActivityAt?: string;
     userId: string | null;
     userName: string | null;
     userPhone: string | null;

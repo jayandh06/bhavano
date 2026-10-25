@@ -3,11 +3,12 @@ import { notFound } from "next/navigation";
 import type { ActivityEventDto, AdminUserListingDto, DeviceType, VisitDto } from "@bhavano/types";
 import { postedByLabel } from "@bhavano/types/sellerType";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { fetchCities, fetchUserActivity, fetchUserSavedSearches } from "@/lib/bff";
+import { fetchCities, fetchPayments, fetchUserActivity, fetchUserSavedSearches } from "@/lib/bff";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
 import { DeleteUserPanel } from "@/components/DeleteUserPanel";
 import { AgentStatusPanel } from "@/components/AgentStatusPanel";
 import { UserSavedSearchesPanel } from "@/components/UserSavedSearchesPanel";
+import { PurchasesPanel } from "@/components/PurchasesPanel";
 
 const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
   desktop: "Desktop",
@@ -42,10 +43,12 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
   const { accessToken } = await requireAdmin();
   const { id } = await params;
 
-  const [activity, savedSearches, cities] = await Promise.all([
+  const [activity, savedSearches, cities, purchases] = await Promise.all([
     fetchUserActivity(accessToken, id).catch(() => null),
     fetchUserSavedSearches(accessToken, id),
     fetchCities(undefined, true),
+    // Everything this person bought or started to buy, so an upgrade made days after posting is visible here.
+    fetchPayments(accessToken, { userId: id, limit: 25 }).catch(() => ({ items: [], total: 0 })),
   ]);
   if (!activity) notFound();
 
@@ -168,6 +171,14 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
             ))}
           </div>
         )}
+
+        <h2 style={{ fontSize: 15, fontWeight: 700, margin: "24px 0 12px" }}>Purchases</h2>
+        <PurchasesPanel
+          items={purchases.items}
+          total={purchases.total}
+          showListing
+          seeAllHref={`/subscriptions?userId=${encodeURIComponent(id)}&from=&to=`}
+        />
 
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: "24px 0 12px" }}>Visit history</h2>
         {visits.length === 0 ? (

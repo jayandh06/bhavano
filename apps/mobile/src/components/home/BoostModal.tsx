@@ -12,7 +12,14 @@ import {
 import { useAppTheme } from "../../theme/ThemeContext";
 import { createBoostOrder, fetchPlanPricing, previewBoostPricing } from "../../lib/bffClient";
 import { isRazorpayUserCancel, razorpayFailureMessage } from "../../lib/razorpayNative";
+import { recordAppPageView } from "../../lib/analyticsSession";
 import { ReferralFreeBoost } from "./ReferralFreeBoost";
+
+/** One step of a Featured purchase made from My listings, written as a synthetic page visit so the admin trail shows it
+ * (same `/post/action` path the post flow uses, with screen=boost). Fire-and-forget. */
+function trackBoost(event: string, days?: number) {
+  void recordAppPageView(`/post/action?screen=boost&event=${event}${days ? `&days=${days}` : ""}`);
+}
 
 /**
  * Native equivalent of the website's `BoostProvider` modal — same duration/price picker, same
@@ -54,6 +61,7 @@ export function BoostModal({
 
   useEffect(() => {
     if (!visible) return;
+    trackBoost("opened");
     let cancelled = false;
     fetchPlanPricing()
       .then((pricing) => {
@@ -74,11 +82,14 @@ export function BoostModal({
   async function onSelectDuration(days: BoostDurationDays) {
     setPending(true);
     setError(null);
+    trackBoost("pay_tapped", days);
     try {
-      const order = await createBoostOrder(accessToken, listingId, days);
+      // source: counted as a My listings purchase (the post flow and the admin message have their own).
+      const order = await createBoostOrder(accessToken, listingId, days, undefined, undefined, "my_listings");
 
       // Agent Pro's monthly credit — boost applied server-side, no checkout at all.
       if (order.activated) {
+        trackBoost("activated", days);
         onActivating();
         onClose();
         return;
@@ -98,11 +109,16 @@ export function BoostModal({
         description: `Feature this ad for ${days} days`,
       });
 
+      trackBoost("paid", days);
       onActivating();
       onClose();
     } catch (e) {
       // Native SDK reports dismiss / mid-auth exit as a rejection — see razorpayNative.ts.
-      if (!isRazorpayUserCancel(e)) setError(razorpayFailureMessage(e));
+      if (isRazorpayUserCancel(e)) trackBoost("cancelled", days);
+      else {
+        trackBoost("error", days);
+        setError(razorpayFailureMessage(e));
+      }
     } finally {
       setPending(false);
     }
