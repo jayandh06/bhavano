@@ -76,3 +76,20 @@ your readers", which earns links more easily than a blog post.
 - Semrush returned no data for "backlink competitors" of bhavano.com (the profile is too small to match), so a gap analysis needs
   named competitors, not a Semrush suggestion.
 - Re-run the overview monthly. A useful target: 30 genuine referring domains (real sites a person would visit) in six months.
+
+## Backlink gap (Semrush, 2026-10-25): sites that link to all of 99acres, housing.com, nobroker.in and magicbricks.com, but not to bhavano.com
+Sorted by how many of the four link to them, then Authority Score. Most of the top rows are giants that cannot be "earned"
+(apple.com, google.com, yahoo.com, bing.com, wikipedia.org, amazonaws.com, alibaba.com, indeed.com, grokipedia.com): ignore them.
+The realistic ones, by type:
+
+| Type | Domains | How to get the link |
+|---|---|---|
+| App and web-app directories | appbrain.com, webcatalog.io, uptodown.com, aptoide.com | List the Android app and the website. AppBrain reads the Play Store; WebCatalog takes web-app submissions. The APK stores (Uptodown, Aptoide) host app files, so only do it if you are happy with copies outside Play. |
+| Company profiles | crunchbase.com, glassdoor.co.in / glassdoor.com, zoominfo.com | Create or claim the company profile and add the website. Glassdoor needs employee reviews to look real. |
+| Indian startup and news media | yourstory.com, indiatimes.com, hindustantimes.com, moneycontrol.com, freepressjournal.in, gadgets360.com, opindia.com | Needs a news hook: a launch, a data story ("women's PG supply by city"), a founder article. YourStory takes contributed pieces. Do not buy placements. |
+| Indian legal and proptech writing | ipleaders.in, aurumproptech.in | Offer the RERA / khata / title-check / stamp-duty explainers as guest articles, or ask to be listed in proptech roundups. |
+| Publishing platforms | medium.com, substack.com, home.blog | Republish a shortened version of a guide with a link and a canonical or "originally published" note. Links are usually nofollow but bring readers. |
+| Developer and tools lists | apify.com, accio.com, explodingtopics.com | Low priority. |
+
+Bhavano has zero of these today (`bhavano.com` column is 0 on every row). Start with the profile and directory links (a day's work,
+free), then the guest articles, then the news pitch.
