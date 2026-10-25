@@ -285,6 +285,8 @@ export function ListingCard({
           />
           <button
             onClick={onToggleFavourite}
+            aria-label={isFavourited ? "Remove from favourites" : "Save to favourites"}
+            aria-pressed={isFavourited}
             className={`w-8 h-8 rounded-full bg-[#ffffffee] border-none cursor-pointer text-[15px] ${
               isFavourited ? "text-[#c0554b]" : "text-[#3a3a3a]"
             }`}

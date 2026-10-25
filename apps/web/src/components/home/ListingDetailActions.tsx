@@ -138,6 +138,8 @@ export function ListingDetailActions({
         <button
           onClick={onToggleFavourite}
           title="Favourite"
+          aria-label={isFavourited ? "Remove from favourites" : "Save to favourites"}
+          aria-pressed={isFavourited}
           className={`flex-1 bg-surface border-[1.5px] border-border rounded-lg py-2.5 text-[17px] cursor-pointer flex flex-col items-center gap-0.5 ${
             isFavourited ? "text-[#c0554b]" : ""
           }`}
