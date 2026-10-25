@@ -108,7 +108,7 @@ export function Header({
         />
       }
     >
-      <div className="bg-green text-on-green text-[13px] py-1.5 border-b border-[color:var(--gold)]/30">
+      <div className="bg-green trellis-band text-on-green text-[13px] py-1.5 border-b border-[color:var(--gold)]/30">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-0.5 sm:gap-0">
           {/* Hidden on phones, where it cost a whole line of a small screen to say something a
             * visitor who just tapped an ad does not need. Deliberately `hidden` rather than

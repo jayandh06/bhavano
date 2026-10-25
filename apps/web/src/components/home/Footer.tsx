@@ -141,7 +141,7 @@ export async function Footer({
     .map((city) => ({ key: city.id, label: city.name, href: buildBrowsePath({ cityName: city.name }) }));
 
   return (
-    <section className="bg-surface-alt border-t border-border py-12 px-8">
+    <section className="bg-surface-alt trellis-foot border-t border-border py-12 px-8">
       <div className="max-w-[1280px] mx-auto flex flex-wrap justify-between gap-8">
         <div className="max-w-[260px]">
           <div className="font-lora font-bold text-lg text-green mb-1.5">Bhavano</div>
