@@ -10,13 +10,14 @@ diamond trellis). It is our own SVG, so there is no photo, download or licence t
 
 | Surface | Where | Light | Dark |
 |---|---|---|---|
-| Top bar | the green strip in `components/home/Header.tsx` (`trellis-band`) | light lines and dots on green | dark lines and dots on the brighter green, about half as strong |
-| Logo/search row and tab row | the `<header>` background and the tab row in `Header.tsx` (`--trellis-head`) | green hairlines, gold flowers, a touch stronger than the page | light hairlines, dim gold flowers |
-| Page | `body` in `globals.css` (`--trellis-body`) | green hairlines, gold flowers on cream | light hairlines, dim gold flowers on near-black |
-| Footer | `components/home/Footer.tsx` (`trellis-band`) | deep green with the top bar's trellis; text and links switch to `on-green` | the brighter green, same quieter trellis |
+| Top bar | the green strip in `components/home/Header.tsx` (`trellis-band`) | darker-than-green lines and dots | very faint dark lines on the brighter green |
+| Logo/search row | the `<header>` background in `Header.tsx` (`--trellis-head`) | green hairlines, gold flowers, a touch stronger than the page | light hairlines, dim gold flowers |
+| Category tab row | `Header.tsx` | plain, no trellis | plain |
+| Page | `body` in `globals.css` (`--trellis-body`) | very faint green hairlines, gold flowers on cream | very faint light hairlines, dim gold flowers on near-black |
+| Footer | `components/home/Footer.tsx` (`trellis-band`) | deep green with the top bar's dark trellis; text and links switch to `on-green` | the brighter green, same faint trellis |
 
-Dark mode is quieter on purpose: a light line on near-black glows, so lines are about 0.025 opacity
-and flowers about 0.09 (light mode: 0.07 and 0.30).
+Everything is deliberately faint: light mode lines 0.045 to 0.06 and flowers 0.2 to 0.24 (green
+bands 0.2 and 0.26, darker than the green); dark mode roughly a third of that.
 
 ## How it works
 

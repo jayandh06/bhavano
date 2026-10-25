@@ -208,7 +208,7 @@ export function Header({
         {/* A distinct warm-sand band rather than a continuation of the header ground — the
           * category row reads as its own strip, and the gold accents in CategoryTabs sit on a
           * tone that isn't the same near-white as everything above. */}
-        <div className="bg-surface-alt trellis-head border-t border-border">
+        <div className="bg-surface-alt border-t border-border">
           <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
             <Suspense fallback={categoryTabsFallback}>
               <CategoryTabs active={activeCategory} cityName={cityName} currentSegments={currentSegments} />
