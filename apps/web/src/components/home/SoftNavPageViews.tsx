@@ -4,6 +4,9 @@ import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { sanitizePageViewQuery } from "@bhavano/types/pageViewQuery";
 
+/** Quiet time a filter change must have before it is logged. */
+const QUERY_SETTLE_MS = 1500;
+
 /**
  * Records soft `<Link>` / `router.push` navigations into the same PageView trail that middleware
  * writes for full document loads.
@@ -16,6 +19,10 @@ import { sanitizePageViewQuery } from "@bhavano/types/pageViewQuery";
  * document load that brought the visitor here. Only later pathname changes are pinged. Same-path
  * within 2s is still dropped by AnalyticsService.recordPageView's dedupe.
  *
+ * A change of page is logged at once, but a change that is only the query string (a filter) waits for `QUERY_SETTLE_MS` of quiet and
+ * logs the final state once: ticking through an area list pushed a new URL per tick and one session logged 405 views in 12 minutes.
+ * The BFF also caps a session at 30 views a minute.
+ *
  * Renders nothing; mounted in the root layout next to JsConfirmation so every route is covered
  * without wrapping page content in a client boundary.
  */
@@ -26,6 +33,7 @@ export function SoftNavPageViews() {
   const query = sanitizePageViewQuery(useSearchParams().toString());
   const lastRecorded = useRef<string | null>(null);
   const pastFirstPaint = useRef(false);
+  const lastPathname = useRef<string | null>(null);
 
   useEffect(() => {
     if (!pathname) return;
@@ -34,20 +42,32 @@ export function SoftNavPageViews() {
     if (!pastFirstPaint.current) {
       pastFirstPaint.current = true;
       lastRecorded.current = here;
+      lastPathname.current = pathname;
       return;
     }
 
     if (lastRecorded.current === here) return;
-    lastRecorded.current = here;
 
-    void fetch("/api/analytics/pageview", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: pathname, query: query ?? undefined }),
-      keepalive: true,
-    }).catch(() => {
-      // Offline or navigated away mid-flight — same stance as JsConfirmation.
-    });
+    const send = () => {
+      lastRecorded.current = here;
+      void fetch("/api/analytics/pageview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: pathname, query: query ?? undefined }),
+        keepalive: true,
+      }).catch(() => {
+        // Offline or navigated away mid-flight — same stance as JsConfirmation.
+      });
+    };
+
+    // A different page is logged now; the same page with a different filter waits until the filter stops changing.
+    if (lastPathname.current !== pathname) {
+      lastPathname.current = pathname;
+      send();
+      return;
+    }
+    const timer = setTimeout(send, QUERY_SETTLE_MS);
+    return () => clearTimeout(timer);
   }, [pathname, query]);
 
   return null;

@@ -14,6 +14,14 @@ import { deviceTypeFromUserAgent, osFromUserAgent } from './device-type';
  * a person genuinely returning to a page still gets counted, long enough to absorb a burst. */
 const PAGE_VIEW_DEDUPE_MS = 2_000;
 
+/** A person cannot read more than this many pages in a minute. One Google-ad session logged 405 views in 12 minutes, up to 88 a
+ * minute, from a filter that re-logged the same results page on every tick; past this the extra views are dropped, not stored.
+ * Kept in memory per session (one BFF process): a restart forgets the window, which only ever lets a few extra rows through. */
+export const PAGE_VIEWS_PER_SESSION_PER_MINUTE = 30;
+const PAGE_VIEW_WINDOW_MS = 60_000;
+/** When the window map grows past this many sessions, drop the idle ones. */
+const PAGE_VIEW_WINDOW_PRUNE_AT = 5_000;
+
 /**
  * Why every `Visit` write in this file is raw SQL rather than Prisma's typed API.
  *
@@ -75,6 +83,9 @@ function isBotFor(userAgent: string | undefined, fromApp: boolean | undefined): 
 
 @Injectable()
 export class AnalyticsService {
+  /** sessionId to the timestamps of its page views in the last minute. */
+  private readonly recentPageViews = new Map<string, number[]>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly geoIp: GeoIpService,
@@ -155,6 +166,7 @@ export class AnalyticsService {
    * duplication measured on 2026-09-16 on its own. Indexed by `@@index([sessionId, createdAt])`,
    * so it's one cheap lookup on a write path that is already fire-and-forget. */
   async recordPageView(dto: RecordPageViewDto): Promise<void> {
+    if (this.overPageViewCap(dto.sessionId)) return;
     const query = sanitizePageViewQuery(dto.query);
     const duplicate = await this.prisma.pageView.findFirst({
       where: {
@@ -174,6 +186,25 @@ export class AnalyticsService {
     // The session is still alive: this is what the admin Page visits screen sorts and filters on, so a visitor who comes
     // back days later (the session cookie outlives the day it started) shows up on the day they came back.
     await this.prisma.$executeRaw`UPDATE "Visit" SET "lastActivityAt" = now() WHERE "sessionId" = ${dto.sessionId}`;
+  }
+
+  /** True when this session has already logged `PAGE_VIEWS_PER_SESSION_PER_MINUTE` views in the last minute; the view is then not
+   * stored. Counts attempts that are let through, not the dropped ones, so a session that slows down is back under the cap within a
+   * minute. */
+  overPageViewCap(sessionId: string, now: number = Date.now()): boolean {
+    const recent = (this.recentPageViews.get(sessionId) ?? []).filter((t) => now - t < PAGE_VIEW_WINDOW_MS);
+    if (recent.length >= PAGE_VIEWS_PER_SESSION_PER_MINUTE) {
+      this.recentPageViews.set(sessionId, recent);
+      return true;
+    }
+    recent.push(now);
+    this.recentPageViews.set(sessionId, recent);
+    if (this.recentPageViews.size > PAGE_VIEW_WINDOW_PRUNE_AT) {
+      for (const [id, times] of this.recentPageViews) {
+        if (times.length === 0 || now - times[times.length - 1] >= PAGE_VIEW_WINDOW_MS) this.recentPageViews.delete(id);
+      }
+    }
+    return false;
   }
 
   /**

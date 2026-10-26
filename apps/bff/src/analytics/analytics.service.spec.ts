@@ -169,6 +169,22 @@ describe('AnalyticsService', () => {
   });
 
   describe('recordPageView', () => {
+    it("stops storing a session's views once it passes 30 in a minute, and counts again after the minute", async () => {
+      const { prisma, pageViewCreate } = makePrisma();
+      const service = new AnalyticsService(prisma, geoIp);
+      for (let i = 0; i < 40; i += 1) {
+        await service.recordPageView({ sessionId: 's-burst', path: `/bengaluru/rent-lease`, query: `areas=${i}` });
+      }
+      expect(pageViewCreate).toHaveBeenCalledTimes(30);
+
+      // Another session is not affected by it.
+      await service.recordPageView({ sessionId: 's-other', path: '/' });
+      expect(pageViewCreate).toHaveBeenCalledTimes(31);
+
+      // A minute later the same session is back under the cap.
+      expect(service.overPageViewCap('s-burst', Date.now() + 61_000)).toBe(false);
+    });
+
     it('records the view and inserts the visit row only if absent', async () => {
       const { prisma, pageViewCreate, executeRaw } = makePrisma();
       await new AnalyticsService(prisma, geoIp).recordPageView({
