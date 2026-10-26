@@ -129,3 +129,36 @@ export function detailsPartOfTarget(target: string): 0 | 1 | 2 {
   if (target === "owner_type" || target === "assisted" || target === "title" || target === "description") return 2;
   return 1;
 }
+
+const PREVIEW_LABEL_BY_TARGET: Record<string, string> = {
+  location: "Set the location",
+  posted_by: "Choose Owner or Broker",
+  price: "Add a price",
+  brokerage: "Fix the brokerage",
+  photos: "Add photos",
+  owner_type: "Choose Owner or Agent",
+  assisted: "Fix the seller details",
+  title: "Add a title",
+  description: "Add a description",
+};
+
+/** The Preview button's text while things are left: it names the first one (and how many more) instead of saying
+ * "Preview Ad" and then refusing, which is what sellers tapped to find out what was missing. Falls back to the
+ * plain label when nothing is left. See docs/plans/post-details-step-experience.md, section 10. */
+export function previewButtonLabel(issues: DetailsIssue[]): string {
+  const first = issues[0];
+  if (!first) return "Preview Ad";
+  const short = PREVIEW_LABEL_BY_TARGET[first.target] ?? "Fill the required details";
+  return issues.length > 1 ? `${short} (+${issues.length - 1} more)` : short;
+}
+
+/** How many problems sit in each target's section, for the "N left" badge on a section header. `attr:<key>` targets
+ * are looked up by field key; the shared Price input lives in the pricing section. */
+export function issueCountForFields(issues: DetailsIssue[], fieldKeys: string[], includePrice = false): number {
+  const keys = new Set(fieldKeys.map(attributeTarget));
+  if (includePrice) {
+    keys.add("price");
+    keys.add("brokerage");
+  }
+  return issues.filter((issue) => keys.has(issue.target)).length;
+}

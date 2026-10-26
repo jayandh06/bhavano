@@ -47,7 +47,7 @@ import { reportPostAction } from "@/lib/postActionTrail";
 import { reportPostFieldEvent } from "@/lib/postFieldTrail";
 import { reuseAttributes, type LastListingDetailsDto } from "@bhavano/types/listingReuse";
 import { attributeKeyForTarget, scrollToTarget } from "@/lib/postDetailsFocus";
-import { postDetailsIssues } from "@bhavano/types/postDetailsIssues";
+import { postDetailsIssues, previewButtonLabel } from "@bhavano/types/postDetailsIssues";
 import { FEATURED_BENEFITS } from "@bhavano/types/featuredBenefits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
@@ -346,10 +346,20 @@ function StepTracker({ step, entry, loggedIn }: { step: Step; entry: string; log
   return null;
 }
 
-function RequiredLabel({ text }: { text: string }) {
+/** "Required" in words, not just an asterisk: sellers kept tapping Preview to find out what was needed (photos, title and
+ * description were most of the blocked taps). Turns into a green tick once the field is satisfied. */
+function RequiredPill({ done, text = "Required" }: { done?: boolean; text?: string }) {
+  return done ? (
+    <span className="ml-1.5 align-middle rounded-full bg-green/10 px-2 py-0.5 text-[11px] font-bold text-green">&#10003; Added</span>
+  ) : (
+    <span className="ml-1.5 align-middle rounded-full bg-[#fdf1f0] px-2 py-0.5 text-[11px] font-bold text-[#b3413a]">{text}</span>
+  );
+}
+
+function RequiredLabel({ text, done, pill }: { text: string; done?: boolean; pill?: string }) {
   return (
     <label className={labelClass}>
-      {text} <span className="text-[#b3413a]">*</span>
+      {text} <RequiredPill done={done} text={pill} />
     </label>
   );
 }
@@ -1550,6 +1560,7 @@ export function PostAdWizard({
   const fieldFeedback: FieldFeedback = {
     errors: attributeErrors,
     highlightKey: highlightTarget ? attributeKeyForTarget(highlightTarget) : null,
+    issues,
     onBlurField: (key) => {
       markTouched(`attr:${key}`);
       if (key === "fromBroker") markTouched("posted_by");
@@ -2403,7 +2414,11 @@ export function PostAdWizard({
           )}
 
           <div id="post-field-photos" className={`max-w-[720px] ${ringFor("photos")}`} ref={photoSectionRef}>
-            <RequiredLabel text={`Photos (${MIN_PHOTOS}-${MAX_PHOTOS})`} />
+            <RequiredLabel
+              text={`Photos (${MIN_PHOTOS}-${MAX_PHOTOS})`}
+              done={photos.length >= MIN_PHOTOS}
+              pill={`Required: at least ${MIN_PHOTOS} (${photos.length} added)`}
+            />
             {photos.length < MAX_PHOTOS && (
               // A styled label wrapping a hidden input rather than a bare <input type="file">.
               // The native control renders as a small grey "Choose files" button that is easy to
@@ -2676,7 +2691,7 @@ export function PostAdWizard({
 
           <div id="post-field-title" className={ringFor("title")} onBlur={() => markTouched("title")}>
             <label className={labelClass}>
-              Title <span className="text-[#b3413a]">*</span>
+              Title <RequiredPill done={!issues.some((i) => i.target === "title")} text={`Required: at least ${TITLE_MIN_LENGTH} characters`} />
             </label>
             {/* Counter sits beside the input — reads as attached to the text box it's counting.
               * Counts up rather than down, so it reads as progress rather than a warning, and
@@ -2701,7 +2716,7 @@ export function PostAdWizard({
 
           <div id="post-field-description" className={ringFor("description")} onBlur={() => markTouched("description")}>
             <label className={labelClass}>
-              Description <span className="text-[#b3413a]">*</span>
+              Description <RequiredPill done={!issues.some((i) => i.target === "description")} text={`Required: at least ${DESCRIPTION_MIN_LENGTH} characters`} />
             </label>
             <textarea
               required
@@ -2768,9 +2783,11 @@ export function PostAdWizard({
             <button
               onClick={onPreviewTap}
               disabled={preparingMedia}
-              className={`ml-auto ${primaryButtonClass}`}
+              // While things are left the button names the first one and is outlined, so it reads as "not yet" and
+              // not as a button that fails; it stays tappable (the tap scrolls to the problem).
+              className={`ml-auto ${issues.length > 0 && !preparingMedia ? outlineButtonClass : primaryButtonClass}`}
             >
-              {preparingMedia ? "Preparing media…" : "Preview Ad"}
+              {preparingMedia ? "Preparing media…" : previewButtonLabel(issues)}
             </button>
           </div>
           {detailsIssue && !preparingMedia && (

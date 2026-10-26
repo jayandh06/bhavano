@@ -57,3 +57,10 @@ export declare function issueMessages(issues: DetailsIssue[]): Record<string, st
 /** The three short screens the mobile app splits Details into: 0 location and photos, 1 the property's details and
  * price, 2 title and description. Web keeps one page; this is how a problem maps to a screen. */
 export declare function detailsPartOfTarget(target: string): 0 | 1 | 2;
+/** The Preview button's text while things are left: it names the first one (and how many more) instead of saying
+ * "Preview Ad" and then refusing, which is what sellers tapped to find out what was missing. Falls back to the
+ * plain label when nothing is left. See docs/plans/post-details-step-experience.md, section 10. */
+export declare function previewButtonLabel(issues: DetailsIssue[]): string;
+/** How many problems sit in each target's section, for the "N left" badge on a section header. `attr:<key>` targets
+ * are looked up by field key; the shared Price input lives in the pricing section. */
+export declare function issueCountForFields(issues: DetailsIssue[], fieldKeys: string[], includePrice?: boolean): number;

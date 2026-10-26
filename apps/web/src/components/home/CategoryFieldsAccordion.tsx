@@ -11,6 +11,7 @@ import {
   SECTION_ORDER,
 } from "@bhavano/types/categoryFields";
 import { clampDigits } from "@bhavano/types/listingLimits";
+import { issueCountForFields, type DetailsIssue } from "@bhavano/types/postDetailsIssues";
 import { POSTED_BY_FORM_LABEL, POSTED_BY_FORM_OPTIONS } from "@bhavano/types/sellerType";
 import { AREA_UNIT_LABELS, type AreaUnit } from "@bhavano/types/areaUnit";
 import { fieldClass, labelClass } from "@/lib/formStyles";
@@ -431,6 +432,8 @@ export interface FieldFeedback {
   errors: Record<string, string>;
   highlightKey: string | null;
   onBlurField: (key: string) => void;
+  /** Everything still wrong on the step, so each section header can say how many of its fields are left. */
+  issues?: DetailsIssue[];
 }
 
 /** Gives one field an address for "scroll to it" (`post-field-attr:<key>`), reports when focus leaves it, and
@@ -752,6 +755,15 @@ export function CategoryFieldsAccordion({
         >
           <summary className="font-bold text-[13px] text-text cursor-pointer px-4 py-3">
             {label}
+            {(() => {
+              if (!feedback?.issues) return null;
+              const left = issueCountForFields(feedback.issues, fields.map((f) => f.key), section === "pricing");
+              return left > 0 ? (
+                <span className="ml-2 rounded-full bg-[#fdf1f0] px-2 py-0.5 text-[11px] font-bold text-[#b3413a]">{left} left</span>
+              ) : fields.some((f) => f.required) || section === "pricing" ? (
+                <span className="ml-2 rounded-full bg-green/10 px-2 py-0.5 text-[11px] font-bold text-green">&#10003;</span>
+              ) : null;
+            })()}
           </summary>
           {(() => {
             const extra = section !== "other" ? sectionExtras?.[section] : undefined;

@@ -224,3 +224,16 @@ form, and nothing says "required" until Preview is tapped. The red asterisk is t
 field. Today: 183 taps over 80 sessions; photos 51% of blocked sessions. Success is photos and description dropping out of the top three.
 
 **Order:** 1, 3 and 4 together (small, shared labels, web first), then 2, then 5 and 6. Mobile app changes need a store build or OTA.
+
+### Built (2026-10-26): items 1, 3 and 4 of section 10, web and mobile app
+Not yet deployed or tried on a device; web, mobile and BFF typechecks pass and the shared-helper tests pass (13).
+- **Item 1, "Required" in words.** Location, Photos, Title and Description carry a red pill ("Required: at least 3 (1 added)",
+  "Required: at least N characters") that turns into a green "Added" once satisfied. The red asterisk stays on the other fields.
+- **Item 3, section badges.** Each section header shows "N left" (red) or a green tick when it holds required fields and none are left.
+  `issueCountForFields` (shared) counts by field key; Price and brokerage count toward Pricing. Web: `CategoryFieldsAccordion`
+  (`FieldFeedback.issues`). Mobile: the section loop in `PostAdWizard.tsx`.
+- **Item 4, the button names the gap.** `previewButtonLabel` (shared): "Add photos (+2 more)", "Add a title", and so on; plain
+  "Preview Ad" when nothing is left. While things are left the button is outlined, not filled, and stays tappable (it still scrolls to
+  the problem). On the app, Next shows the same label for the problems on that screen.
+- Still to do from section 10: item 2 (the checklist at the top on phones), 5 (AI helper as the main action, prefilled title), 6
+  (large camera/gallery photo target). Compare blocked taps and Details to Preview in admin Post-ad funnel after release.

@@ -10,8 +10,11 @@ import {
   detailsPartOfTarget,
   firstDetailsIssue,
   hasBlockingOtherIssue,
+  issueCountForFields,
+  previewButtonLabel,
   issueMessages,
   postDetailsIssues,
+  type DetailsIssue,
   type DetailsIssueInput,
 } from '@bhavano/types/postDetailsIssues';
 import { parsePostFieldEventPath, postFieldEventPath } from '@bhavano/types/postFieldEvents';
@@ -180,5 +183,23 @@ describe('detailsPartOfTarget', () => {
     expect(detailsPartOfTarget('price')).toBe(1);
     expect(detailsPartOfTarget('posted_by')).toBe(1);
     expect(detailsPartOfTarget('attr:carpetAreaSqft')).toBe(1);
+  });
+});
+
+describe('previewButtonLabel and issueCountForFields', () => {
+  const issue = (target: string): DetailsIssue => ({ target, text: target, missing: true, group: 'other' });
+
+  it('says Preview Ad when nothing is left and names the first problem otherwise', () => {
+    expect(previewButtonLabel([])).toBe('Preview Ad');
+    expect(previewButtonLabel([issue('photos')])).toBe('Add photos');
+    expect(previewButtonLabel([issue('photos'), issue('title'), issue('description')])).toBe('Add photos (+2 more)');
+    expect(previewButtonLabel([issue('attr:carpetAreaSqft')])).toBe('Fill the required details');
+  });
+
+  it('counts a section\'s problems by field key, with price and brokerage in pricing', () => {
+    const issues = [issue('attr:carpetAreaSqft'), issue('attr:floor'), issue('price'), issue('photos')];
+    expect(issueCountForFields(issues, ['carpetAreaSqft', 'totalFloors'])).toBe(1);
+    expect(issueCountForFields(issues, ['floor'], true)).toBe(2);
+    expect(issueCountForFields(issues, [])).toBe(0);
   });
 });

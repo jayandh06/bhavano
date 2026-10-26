@@ -74,7 +74,7 @@ import {
 } from "../../lib/bffClient";
 import { INDIAN_LANGUAGE_LABELS, INDIAN_LANGUAGES, type AiGenerateUsageDto, type IndianLanguage } from "@bhavano/types/listingCopyAssist";
 import { getAnalyticsSessionId, recordAppPageView } from "../../lib/analyticsSession";
-import { detailsPartOfTarget, postDetailsIssues } from "@bhavano/types/postDetailsIssues";
+import { detailsPartOfTarget, issueCountForFields, postDetailsIssues, previewButtonLabel } from "@bhavano/types/postDetailsIssues";
 import { reuseAttributes, type LastListingDetailsDto } from "@bhavano/types/listingReuse";
 import { postFieldEventPath, type PostFieldEvent } from "@bhavano/types/postFieldEvents";
 import { logPostAdSuccess, logPostError, logPostLoginRequired, logPostStepView } from "../../lib/firebaseAnalytics";
@@ -114,6 +114,16 @@ type SavedDraft = NonNullable<Awaited<ReturnType<typeof loadPostAdDraft>>>;
  * marker the way the website's colored one does. */
 function RequiredMark() {
   return <Text style={{ color: "#b3413a" }}> *</Text>;
+}
+
+/** "Required" in words (not just the asterisk) on the big blocks, turning into a green tick once satisfied: photos, title and
+ * description were most of the Preview taps that got blocked. Same idea as the website's RequiredPill. */
+function RequiredPill({ done, text = "Required" }: { done?: boolean; text?: string }) {
+  return done ? (
+    <Text style={{ color: "#2f7d4f", fontWeight: "700", fontSize: 12 }}>  ✓ Added</Text>
+  ) : (
+    <Text style={{ color: "#b3413a", fontWeight: "700", fontSize: 12 }}>  {text}</Text>
+  );
 }
 
 /** "saved today" / "saved yesterday" / "saved 3 days ago" (drafts expire after 7 days). */
@@ -2141,7 +2151,7 @@ export function PostAdWizard({
           <View ref={anchor("location")} collapsable={false} />
           <Text style={[styles.label, { color: colors.textSoft }]}>
             Pin your exact location
-            <RequiredMark />
+            <RequiredPill done={!issues.some((i) => i.target === "location")} />
           </Text>
           <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 6 }}>
             Search an address or drag the pin to the property. City and area are set from the pin, and buyers see the map on your ad.
@@ -2221,7 +2231,7 @@ export function PostAdWizard({
           <View ref={anchor("photos")} collapsable={false} />
           <Text style={[styles.label, { color: colors.textSoft }]}>
             Photos ({MIN_PHOTOS}-{MAX_PHOTOS})
-            <RequiredMark />
+            <RequiredPill done={photoUris.length >= MIN_PHOTOS} text={`Required: at least ${MIN_PHOTOS} (${photoUris.length} added)`} />
           </Text>
           {photoUris.length < MAX_PHOTOS && (
             <Pressable onPress={pickPhotos} style={[styles.photoButton, { borderColor: colors.green, backgroundColor: colors.surfaceAlt }]}>
@@ -2354,6 +2364,11 @@ export function PostAdWizard({
               ]}
             >
               {label}
+              {(() => {
+                const left = issueCountForFields(issues, fields.map((f) => f.key), section === "pricing");
+                if (left > 0) return <Text style={{ color: "#b3413a", fontSize: 12 }}>  {left} left</Text>;
+                return fields.some((f) => f.required) || section === "pricing" ? <Text style={{ color: "#2f7d4f", fontSize: 12 }}>  ✓</Text> : null;
+              })()}
             </Text>
             {section === "pricing" && (
               <View style={{ gap: 4, marginBottom: 4 }}>
@@ -2495,7 +2510,7 @@ export function PostAdWizard({
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <Text style={[styles.label, { color: colors.textSoft, marginTop: 0, marginBottom: 0 }]}>
               Title
-              <RequiredMark />
+              <RequiredPill done={!issues.some((i) => i.target === "title")} />
             </Text>
             {/* Counts up rather than down, so it reads as progress instead of a warning, and
                 turns amber before the cap rather than at it — running out mid-sentence is worth
@@ -2527,7 +2542,7 @@ export function PostAdWizard({
           <View ref={anchor("description")} collapsable={false} />
           <Text style={[styles.label, { color: colors.textSoft }]}>
             Description
-            <RequiredMark />
+            <RequiredPill done={!issues.some((i) => i.target === "description")} />
           </Text>
           <TextInput
             value={description}
@@ -3088,10 +3103,16 @@ export function PostAdWizard({
           </Pressable>
           <Pressable
             onPress={onPartNext}
-            style={[styles.reviewButton, { backgroundColor: colors.green, flex: 2, alignItems: "center", paddingHorizontal: 12 }]}
+            style={[
+              styles.reviewButton,
+              // Outlined while things are left on this screen: it names the first one and stays tappable (the tap scrolls to it).
+              partIssues.length > 0
+                ? { borderWidth: 1.5, borderColor: colors.green, flex: 2, alignItems: "center", paddingHorizontal: 12 }
+                : { backgroundColor: colors.green, flex: 2, alignItems: "center", paddingHorizontal: 12 },
+            ]}
           >
-            <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>
-              {detailsPart < 2 ? "Next" : "Preview Ad"}
+            <Text style={{ color: partIssues.length > 0 ? colors.green : colors.onGreen, fontWeight: "700", fontSize: 14 }} numberOfLines={1}>
+              {partIssues.length > 0 ? previewButtonLabel(partIssues) : detailsPart < 2 ? "Next" : "Preview Ad"}
             </Text>
           </Pressable>
         </View>
