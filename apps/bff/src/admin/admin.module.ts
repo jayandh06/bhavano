@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { BoostNudgeJob } from './boost-nudge.job';
+import { BoostFollowupJob } from './boost-followup.job';
+import { FeaturedExpiryReminderJob } from './featured-expiry-reminder.job';
 import { ListingsModule } from '../listings/listings.module';
 import { MessagingModule } from '../messaging/messaging.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -29,6 +31,6 @@ import { ReferralsModule } from '../referrals/referrals.module';
     ReferralsModule,
   ],
   controllers: [AdminController],
-  providers: [AdminService, BoostNudgeJob],
+  providers: [AdminService, BoostNudgeJob, BoostFollowupJob, FeaturedExpiryReminderJob],
 })
 export class AdminModule {}

@@ -96,7 +96,15 @@ import { CAMPAIGN_NAMES, AD_GROUP_NAMES } from '../ads/campaign-names';
 import { PushService } from '../push/push.service';
 import { MessagingGateway } from '../messaging/messaging.gateway';
 import { STAFF_SENDER_LABEL } from '../messaging/messaging.service';
-import { boostMessagePath, buildBoostMessageBody, buildBoostMessageCard, type BoostMessageInput } from './boost-message';
+import {
+  boostMessagePath,
+  buildBoostMessageBody,
+  buildBoostMessageCard,
+  buildExpiryReminderBody,
+  buildExpiryReminderCard,
+  expiryReminderPath,
+  type BoostMessageInput,
+} from './boost-message';
 import { normalizedPhoneDigitsForSearch, buildUserSearchOr } from './user-search';
 import { isListingBoosted } from '../listings/listing-boost.util';
 
@@ -1852,7 +1860,7 @@ export class AdminService {
    */
   async sendBoostPromotion(
     listingIds: string[],
-    opts: { channel?: 'outbound' | 'in_app'; adminId?: string } = {},
+    opts: { channel?: 'outbound' | 'in_app'; adminId?: string; skipCooldown?: boolean } = {},
   ): Promise<SendPostedNotificationResponseDto> {
     const inApp = opts.channel === 'in_app';
     if (inApp && !opts.adminId) throw new BadRequestException('An in-app message needs a sending admin');
@@ -1917,7 +1925,9 @@ export class AdminService {
         results.push({ listingId, success: false, error: 'Already boosted' });
         continue;
       }
-      if (listing.notificationLogs.length > 0) {
+      // The staged follow-ups (4 hours, 1 day, 3 days after posting) are meant to follow one another inside the cooldown;
+      // they keep their own once-per-stage rule and minimum gap (BoostFollowupJob).
+      if (!opts.skipCooldown && listing.notificationLogs.length > 0) {
         results.push({
           listingId,
           success: false,
@@ -2057,6 +2067,45 @@ export class AdminService {
         providerMessageId: message.id,
       },
     });
+  }
+
+  /** The "your Featured ad is ending" in-app message (docs/plans/featured-expiry-reminder.md): same announcement thread, push and
+   * unread update as the Boost message, with a Renew button. Returns false when the ad is gone or not worth messaging. The caller
+   * (FeaturedExpiryReminderJob) owns the once-per-period rule; this writes the log row it reads. */
+  async sendFeaturedExpiryReminder(listingId: string, daysLeft: 3 | 1, adminId: string): Promise<boolean> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      include: { city: true, area: true, owner: { select: { phone: true } } },
+    });
+    if (!listing || !listing.boostedUntil || listing.owner.phone === BULK_IMPORT_OWNER_PHONE) return false;
+    const boostPrices = await this.boostPricingSettingsService.getSettings();
+    const renewDays = promoBoostDays(boostPrices);
+    const input = {
+      title: listing.title,
+      location: `${listing.area.name}, ${listing.city.name}`,
+      daysLeft,
+      endsOn: formatOfferEnd(listing.boostedUntil),
+      renewDays,
+      renewPrice: boostPriceFor(listing.category, renewDays, boostPrices),
+      renewLink: `${process.env.PUBLIC_SITE_URL ?? 'https://www.bhavano.com'}${expiryReminderPath(listing.id)}`,
+    };
+    const imageUrl = await this.messagingService.getListingPushImageUrl(listing.id).catch(() => undefined);
+    const { conversationId, message, recipientId, listingTitle } = await this.messagingService.sendAnnouncement(
+      listing.id,
+      adminId,
+      buildExpiryReminderBody(input),
+      buildExpiryReminderCard(input, { id: listing.id, category: listing.category, imageUrl: imageUrl ?? null }),
+    );
+    this.deliverStaffMessage({ conversationId, message, recipientId, listingId: listing.id, listingTitle, imageUrl });
+    await this.prisma.listingNotificationLog.create({
+      data: {
+        listingId: listing.id,
+        kind: daysLeft === 3 ? 'featured_expiry_3d' : 'featured_expiry_1d',
+        channel: IN_APP_CHANNEL,
+        providerMessageId: message.id,
+      },
+    });
+    return true;
   }
 
   /** Merges several tables that each already carry a userId-ish field + timestamp (logins,

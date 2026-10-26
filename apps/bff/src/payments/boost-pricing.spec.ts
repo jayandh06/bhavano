@@ -321,6 +321,32 @@ describe('PaymentsService.createBoostOrder — redeeming a referral credit', () 
     expect(result).toEqual({ paymentId: 'pay1', amount: 0, currency: 'INR', activated: true });
   });
 
+  it('adds a renewal to the days the ad still has, instead of replacing them', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-10-26T05:00:00Z'));
+    try {
+      const { service, prisma } = makePaymentsWithReferralCredit({ id: 'batch1', daysGranted: 3 });
+      const endsIn2Days = new Date('2026-10-28T05:00:00Z');
+      (prisma.listing.findUnique as jest.Mock).mockResolvedValue({
+        id: 'l1',
+        ownerId: 'u1',
+        category: 'apartment',
+        boostedUntil: endsIn2Days,
+      });
+
+      await service.createBoostOrder('u1', 'l1', 7, undefined, {}, true);
+
+      // 2 days left + the 3-day credit = 5 days from now, not 3.
+      expect(prisma.listingBoost.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ boostedUntil: new Date('2026-10-31T05:00:00Z') }),
+      });
+      expect(prisma.listing.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ boostedUntil: new Date('2026-10-31T05:00:00Z') }) }),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('refuses the order outright when no credit is available, rather than silently charging', async () => {
     const { service, razorpayCreate, referralsService } = makePaymentsWithReferralCredit(null);
 

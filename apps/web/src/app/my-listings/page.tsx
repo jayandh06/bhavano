@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import type { ListingDetailDto, ListingStatus, MyReferralsDto } from "@bhavano/types";
+import { featuredEndsSoon } from "@bhavano/types/featuredRenewal";
 import { listingPriceText } from "@bhavano/types/priceWords";
 import { goLiveTimeText } from "@bhavano/types/goLive";
 import { postHref } from "@/lib/postHref";
@@ -300,6 +301,10 @@ function MyListingRow({
             {canRenew && <RenewButton listingId={item.id} />}
             {item.status === "active" && !item.isBoosted && (
               <BoostButton listingId={item.id} category={item.category} />
+            )}
+            {/* A Featured ad shows no button until its last 3 days, when it offers a renewal that adds to the days left. */}
+            {item.status === "active" && item.isBoosted && featuredEndsSoon(item.boostedUntil) && (
+              <BoostButton listingId={item.id} category={item.category} label="Renew Feature" />
             )}
             {item.status === "active" && (
               <>

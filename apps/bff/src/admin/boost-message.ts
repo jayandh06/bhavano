@@ -2,6 +2,7 @@ import type { BoostOfferMessageCardDto, ListingCategory } from '@bhavano/types';
 import { PURCHASE_SOURCE_PARAM, type PurchaseSource } from '@bhavano/types/purchaseSource';
 
 const ADMIN_BOOST_MESSAGE_SOURCE: PurchaseSource = 'admin_boost_message';
+const FEATURED_EXPIRY_SOURCE: PurchaseSource = 'featured_expiry_message';
 
 /** The in-app "Bhavano Admin" Boost message — see docs/plans/admin-in-app-boost-message.md.
  *
@@ -82,6 +83,64 @@ export function buildBoostMessageCard(
 
 /** Where the message's Boost button (and the plain-text link) goes: the boost dialog for this ad,
  * tagged so the payment is recorded as coming from this message. */
-export function boostMessagePath(listingId: string): string {
-  return `/my-listings?openBoost=${listingId}&${PURCHASE_SOURCE_PARAM}=${ADMIN_BOOST_MESSAGE_SOURCE}`;
+export function boostMessagePath(listingId: string, source: PurchaseSource = ADMIN_BOOST_MESSAGE_SOURCE): string {
+  return `/my-listings?openBoost=${listingId}&${PURCHASE_SOURCE_PARAM}=${source}`;
+}
+
+/** The "your Featured ad is ending" reminder, sent 3 days and 1 day before the Feature period ends — see
+ * docs/plans/featured-expiry-reminder.md. Same shape as the Boost offer (a card plus a plain-text body whose first sentence is the
+ * push preview), so every current web and app build draws it. */
+export interface ExpiryReminderInput {
+  title: string;
+  /** "Area, City". */
+  location: string;
+  /** 3 or 1. */
+  daysLeft: number;
+  /** "29 October", in IST. */
+  endsOn: string;
+  renewDays: number;
+  /** What the seller will be charged for a renewal (plain price; checkout applies any code). */
+  renewPrice: number;
+  renewLink: string;
+}
+
+function endsPhrase(daysLeft: number): string {
+  return daysLeft <= 1 ? 'tomorrow' : `in ${daysLeft} days`;
+}
+
+function expiryParagraphs({ renewDays, renewPrice }: ExpiryReminderInput): string[] {
+  return [
+    `After that it goes back to the normal order and loses the Featured badge. Your ad stays live and free either way.`,
+    `Renew for ${renewDays} days at ₹${renewPrice}. The days you have left are kept: the new period starts when this one ends.`,
+    `One-time payment, no subscription.`,
+  ];
+}
+
+export function buildExpiryReminderBody(input: ExpiryReminderInput): string {
+  const opening = `Your Featured ad "${input.title}" ends ${endsPhrase(input.daysLeft)} (${input.endsOn}). Renew to keep it above other listings.`;
+  return [opening, ...expiryParagraphs(input), `Renew Feature: ${input.renewLink}`].join('\n\n');
+}
+
+export function buildExpiryReminderCard(
+  input: ExpiryReminderInput,
+  listing: { id: string; category: ListingCategory; imageUrl: string | null },
+): BoostOfferMessageCardDto {
+  return {
+    kind: 'boost_offer',
+    listingId: listing.id,
+    category: listing.category,
+    title: input.title,
+    location: input.location,
+    imageUrl: listing.imageUrl,
+    headline: `Your Featured ad ends ${endsPhrase(input.daysLeft)}`,
+    offerNote: `Ends ${input.endsOn} · renewing adds to the days you have left`,
+    paragraphs: expiryParagraphs(input),
+    ctaLabel: `Renew Feature · ₹${input.renewPrice}`,
+    ctaPath: boostMessagePath(listing.id, FEATURED_EXPIRY_SOURCE),
+  };
+}
+
+/** Where the reminder's Renew link goes: the Feature dialog for this ad, counted as coming from the reminder. */
+export function expiryReminderPath(listingId: string): string {
+  return boostMessagePath(listingId, FEATURED_EXPIRY_SOURCE);
 }

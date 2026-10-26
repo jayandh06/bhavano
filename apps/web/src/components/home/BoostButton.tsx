@@ -18,10 +18,13 @@ export function BoostButton({
   /** Full class override for the trigger — defaults to the outlined pill used on /my-listings.
    * The post-ad success screen passes a filled full-width variant. */
   className = OUTLINE_CLASS,
+  /** "Renew Feature" on an ad that is already Featured and ending soon (docs/plans/featured-expiry-reminder.md). */
+  label = "Feature Ad",
 }: {
   listingId: string;
   category: ListingCategory;
   className?: string;
+  label?: string;
 }) {
   const { boost } = useBoost();
   const [pendingActivation, setPendingActivation] = useState(false);
@@ -40,7 +43,7 @@ export function BoostButton({
       onClick={() => boost({ listingId, category, source: "my_listings", onActivating: () => setPendingActivation(true) })}
       className={className}
     >
-      <Icon name="boost" /> Feature Ad
+      <Icon name="boost" /> {label}
     </button>
   );
 }

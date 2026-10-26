@@ -113,6 +113,10 @@
       "types": "./dist/promoCode.d.ts",
       "default": "./dist/promoCode.js"
     },
+    "./featuredRenewal": {
+      "types": "./dist/featuredRenewal.d.ts",
+      "default": "./dist/featuredRenewal.js"
+    },
     "./purchaseSource": {
       "types": "./dist/purchaseSource.d.ts",
       "default": "./dist/purchaseSource.js"

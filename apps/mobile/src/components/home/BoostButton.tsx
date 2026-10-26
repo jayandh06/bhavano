@@ -18,10 +18,13 @@ export function BoostButton({
   listingId,
   category,
   accessToken,
+  /** "Renew Feature" on an ad that is already Featured and ending soon (docs/plans/featured-expiry-reminder.md). */
+  label = "Feature Ad",
 }: {
   listingId: string;
   category: ListingCategory;
   accessToken: string;
+  label?: string;
 }) {
   const { colors } = useAppTheme();
   const [boostOpen, setBoostOpen] = useState(false);
@@ -48,7 +51,7 @@ export function BoostButton({
     <>
       <Pressable onPress={() => setBoostOpen(true)} style={[styles.button, { borderColor: colors.green }]}>
         <Icon name="boost" size={13} color={colors.green} />
-        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>Feature Ad</Text>
+        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>{label}</Text>
       </Pressable>
       {Platform.OS === "ios" && (
         <IosBoostSheet

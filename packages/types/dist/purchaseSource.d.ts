@@ -8,8 +8,9 @@
  *   in-app "Bhavano Admin" Boost message — see docs/plans/admin-in-app-boost-message.md.
  * - `my_listings`: the Boost button on a listing in My listings (web or app), i.e. the seller came back on their own
  * rather than through the post flow or the admin message.
+ * - `featured_expiry_message`: the Renew button in the "your Featured ad is ending" reminder (docs/plans/featured-expiry-reminder.md).
  */
-export declare const PURCHASE_SOURCES: readonly ["admin_boost_message", "my_listings"];
+export declare const PURCHASE_SOURCES: readonly ["admin_boost_message", "my_listings", "featured_expiry_message"];
 export type PurchaseSource = (typeof PURCHASE_SOURCES)[number];
 export declare const PURCHASE_SOURCE_PARAM = "src";
 export declare function parsePurchaseSource(value: string | null | undefined): PurchaseSource | undefined;

@@ -12,8 +12,9 @@ exports.parsePurchaseSource = parsePurchaseSource;
  *   in-app "Bhavano Admin" Boost message — see docs/plans/admin-in-app-boost-message.md.
  * - `my_listings`: the Boost button on a listing in My listings (web or app), i.e. the seller came back on their own
  * rather than through the post flow or the admin message.
+ * - `featured_expiry_message`: the Renew button in the "your Featured ad is ending" reminder (docs/plans/featured-expiry-reminder.md).
  */
-exports.PURCHASE_SOURCES = ["admin_boost_message", "my_listings"];
+exports.PURCHASE_SOURCES = ["admin_boost_message", "my_listings", "featured_expiry_message"];
 exports.PURCHASE_SOURCE_PARAM = "src";
 function parsePurchaseSource(value) {
     return exports.PURCHASE_SOURCES.find((source) => source === value);
@@ -21,4 +22,5 @@ function parsePurchaseSource(value) {
 exports.PURCHASE_SOURCE_LABELS = {
     admin_boost_message: "Admin boost message",
     my_listings: "My listings",
+    featured_expiry_message: "Featured expiry reminder",
 };

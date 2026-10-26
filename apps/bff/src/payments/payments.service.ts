@@ -168,8 +168,12 @@ export class PaymentsService {
       });
   }
 
+  /** A renewal starts when the current Feature period ends, not now: renewing with 3 days left must not throw the 3 days away
+   * (docs/plans/featured-expiry-reminder.md). An ad that is not Featured starts now, as before. */
   private async activateListingBoost(listingId: string, boostDays: number, paymentId: string): Promise<Date> {
-    const boostedUntil = new Date(Date.now() + boostDays * 24 * 60 * 60 * 1000);
+    const current = await this.prisma.listing.findUnique({ where: { id: listingId }, select: { boostedUntil: true } });
+    const startsAt = Math.max(Date.now(), current?.boostedUntil?.getTime() ?? 0);
+    const boostedUntil = new Date(startsAt + boostDays * 24 * 60 * 60 * 1000);
     await this.prisma.listingBoost.create({
       data: { listingId, paymentId, boostedUntil },
     });

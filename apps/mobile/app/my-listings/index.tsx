@@ -5,6 +5,7 @@ import * as WebBrowser from "expo-web-browser";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { listingPriceText } from "@bhavano/types/priceWords";
 import { goLiveTimeText } from "@bhavano/types/goLive";
+import { featuredEndsSoon } from "@bhavano/types/featuredRenewal";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useMyListingsQuery } from "../../src/lib/queries";
@@ -209,6 +210,10 @@ export default function MyListingsScreen() {
                     )}
                     {!isPendingPublish && item.status === "active" && !item.isBoosted && accessToken && (
                       <BoostButton listingId={item.id} category={item.category} accessToken={accessToken} />
+                    )}
+                    {/* Featured ads offer a renewal in their last 3 days; it adds to the days left. */}
+                    {!isPendingPublish && item.status === "active" && item.isBoosted && featuredEndsSoon(item.boostedUntil) && accessToken && (
+                      <BoostButton listingId={item.id} category={item.category} accessToken={accessToken} label="Renew Feature" />
                     )}
                   </View>
                   <View style={styles.navRow}>

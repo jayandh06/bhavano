@@ -4091,6 +4091,8 @@ export class ListingsService {
         : undefined,
       renewCount: listing.listingRenewals.length,
       isOwner,
+      // Only the owner learns when the Feature period ends (My listings offers a renewal in its last 3 days).
+      ...(isOwner ? { boostedUntil: listing.boostedUntil?.toISOString() ?? null } : {}),
       // The Bulk Import account "owns" admin-assisted and scraped listings — not a referrer.
       ...(isOwner && !isBulkImportOwner(listing.owner) ? { viewerReferralCode: listing.ownerId } : {}),
       renewalHistory: isOwnerOrAdmin
@@ -4212,6 +4214,9 @@ export class ListingsService {
       likeCount: listing.likeCount,
       isFavourited: favouritedIds?.has(listing.id) ?? false,
       isBoosted: isListingBoosted(listing),
+      ...(viewerId !== undefined && viewerId === listing.ownerId
+        ? { boostedUntil: listing.boostedUntil?.toISOString() ?? null }
+        : {}),
       ...(isQuickResponderOwner(listing.ownerId) ? { quickResponder: true } : {}),
       hasInstantAlerts: (listing.instantAlertsUntil?.getTime() ?? 0) > Date.now(),
       isOwner: viewerId !== undefined && viewerId === listing.ownerId,

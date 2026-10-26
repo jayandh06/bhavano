@@ -111,6 +111,8 @@ export interface ListingCardDto {
     /** True while `Listing.boostedUntil` is in the future — drives the "⭐ Featured" badge and
      * the boosted-first sort. See docs/plans/monetization-boosted-listings-premium-tiers.md. */
     isBoosted: boolean;
+    /** When the Feature period ends. Sent only to the listing's owner (so My listings can offer a renewal in the last 3 days); absent for everyone else. */
+    boostedUntil?: string | null;
     /** True when the owner has a fast-reply track record (see quickResponder.ts). Absent otherwise.
      * The cards show it on Featured ads. */
     quickResponder?: boolean;
