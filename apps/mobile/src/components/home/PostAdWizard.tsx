@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ActivityIndicator, Alert, Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { PHOTO_LIMITS } from "@bhavano/types/photoLimits";
@@ -1461,6 +1461,8 @@ export function PostAdWizard({
     reportFieldEvent("first_touch", { ms: Date.now() - detailsStartRef.current });
     return false;
   }
+  /** Every missing item across all three screens, opened from the bar at the bottom ("To post, you need"). */
+  const [checklistOpen, setChecklistOpen] = useState(false);
   const PART_TITLES = ["Location and photos", "About the property", "Title and description"] as const;
   const partIssues = issues.filter((issue) => detailsPartOfTarget(issue.target) === detailsPart);
   /** Scrolls to a problem, switching to its screen first when it is on another one. */
@@ -3081,6 +3083,33 @@ export function PostAdWizard({
           borderTopColor: colors.border,
         }}
       >
+        {checklistOpen && issues.length > 0 && (
+          <ScrollView style={{ maxHeight: 180 }} contentContainerStyle={{ gap: 8 }}>
+            {issues.map((issue) => (
+              <Pressable
+                key={issue.target + issue.text}
+                onPress={() => {
+                  setChecklistOpen(false);
+                  goToTarget(issue.target);
+                  reportFieldEvent("chip_tapped", { field: issue.target, left: issues.length });
+                }}
+                accessibilityRole="button"
+              >
+                <Text style={{ color: colors.text, fontSize: 14 }}>
+                  <Text style={{ color: "#b3413a" }}>• </Text>
+                  {issue.text}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
+        {issues.length > partIssues.length && (
+          <Pressable onPress={() => setChecklistOpen((open) => !open)} accessibilityRole="button">
+            <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13 }}>
+              {checklistOpen ? "Hide list" : `To post, you need ${issues.length} things: see all`}
+            </Text>
+          </Pressable>
+        )}
         {partIssues.length > 0 && (
           <Pressable
             onPress={onChipTap}

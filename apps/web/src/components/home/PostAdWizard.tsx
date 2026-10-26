@@ -456,6 +456,8 @@ export function PostAdWizard({
   // docs/plans/plot-commercial-area-units-and-price-per-unit.md.
   const [priceMode, setPriceMode] = useState<"total" | "perUnit">("total");
   const [title, setTitle] = useState("");
+  /** The "what is left" list under the sticky chip, for screens too narrow for the desktop side checklist. */
+  const [checklistOpen, setChecklistOpen] = useState(false);
   // Grows when the map picker's reverse-geocode resolves to a just-created city (not in this
   // initially-fetched list) — see `onPinChange` below.
   const [cities, setCities] = useState<City[]>(initialCities);
@@ -2314,6 +2316,35 @@ export function PostAdWizard({
                 <span className="font-bold text-[#b3413a] shrink-0">{issues.length} left</span>
                 <span className="truncate text-muted">Next: {issues[0].text}</span>
               </button>
+              {/* Below xl there is no side checklist, so the list opens here: every missing item, each one jumps to its field. */}
+              <button
+                type="button"
+                onClick={() => setChecklistOpen((open) => !open)}
+                aria-expanded={checklistOpen}
+                className="xl:hidden ml-2 rounded-full border border-border bg-surface px-3 py-1.5 text-[13px] font-bold text-green shadow-sm cursor-pointer"
+              >
+                {checklistOpen ? "Hide list" : "See all"}
+              </button>
+              {checklistOpen && (
+                <ul className="xl:hidden m-0 mt-2 p-3 list-none flex flex-col gap-2 rounded-xl border border-border bg-surface shadow-md max-h-[50vh] overflow-y-auto">
+                  {issues.map((issue) => (
+                    <li key={issue.target + issue.text}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setChecklistOpen(false);
+                          flashTarget(issue.target);
+                          scrollToTarget(issue.target);
+                        }}
+                        className="w-full text-left bg-transparent border-0 p-0 text-[14px] text-text cursor-pointer"
+                      >
+                        <span className="text-[#b3413a]" aria-hidden="true">&bull; </span>
+                        {issue.text}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
           <h2 className="font-lora text-xl font-semibold text-text m-0 max-w-[720px]">

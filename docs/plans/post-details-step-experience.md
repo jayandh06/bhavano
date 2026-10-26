@@ -235,5 +235,8 @@ Not yet deployed or tried on a device; web, mobile and BFF typechecks pass and t
 - **Item 4, the button names the gap.** `previewButtonLabel` (shared): "Add photos (+2 more)", "Add a title", and so on; plain
   "Preview Ad" when nothing is left. While things are left the button is outlined, not filled, and stays tappable (it still scrolls to
   the problem). On the app, Next shows the same label for the problems on that screen.
-- Still to do from section 10: item 2 (the checklist at the top on phones), 5 (AI helper as the main action, prefilled title), 6
+- **Item 2, checklist on phones (2026-10-26).** Web below xl: a "See all" button beside the sticky chip opens a list of every missing item, each
+  jumping to its field. App: a "To post, you need N things: see all" row in the bottom bar (shown when items are left on other screens)
+  opens the same list; tapping one switches screen and scrolls to it. Desktop keeps its side checklist.
+- Still to do from section 10: 5 (AI helper as the main action, prefilled title), 6
   (large camera/gallery photo target). Compare blocked taps and Details to Preview in admin Post-ad funnel after release.
