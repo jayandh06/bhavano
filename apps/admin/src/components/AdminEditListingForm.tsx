@@ -20,7 +20,7 @@ import {
 } from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { AREA_UNIT_LABELS, areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
-import { TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
+import { TITLE_MAX_LENGTH, TITLE_MIN_LENGTH } from "@bhavano/types/listingLimits";
 import { formatInrWithWords } from "@bhavano/types/priceWords";
 import { clampDigits, DESCRIPTION_MIN_LENGTH } from "@bhavano/types/listingLimits";
 import { POST_CATEGORIES } from "@bhavano/types/postCategories";
@@ -474,7 +474,8 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
   const [transactionType, setTransactionType] = useState(listing.transactionType as TransactionType);
   const [status, setStatus] = useState(listing.status);
 
-  const [title, setTitle] = useState(listing.title);
+  const [initialTitle] = useState(listing.title);
+  const [title, setTitle] = useState(initialTitle);
   const [initialPrice] = useState(() => String(parseRawPrice(listing.price, listing.priceOnRequest)));
   const [price, setPrice] = useState(initialPrice);
   const [priceQualifier, setPriceQualifier] = useState(listing.priceQualifier);
@@ -615,6 +616,11 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
       : null;
   const brokerageNote = brokerageFeeNote(transactionType, totalPrice, attributes);
   // Only checked once actually touched — same reasoning as attributesChanged above.
+  // Only checked when the title is touched, like the description: a listing titled before the 20-character minimum can still
+  // have its price or status changed without being forced to retitle it.
+  const titleChanged = title.trim() !== initialTitle.trim();
+  const titleIssue =
+    titleChanged && title.trim().length < TITLE_MIN_LENGTH ? `Title needs at least ${TITLE_MIN_LENGTH} characters` : null;
   const descriptionChanged = description.trim() !== initialDescription.trim();
   const descriptionIssue =
     descriptionChanged && description.trim().length < DESCRIPTION_MIN_LENGTH
@@ -623,6 +629,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
   const valid =
     (priceValue > 0 || priceOnRequestAllowed) &&
     title.trim().length > 0 &&
+    titleIssue === null &&
     attributesIssue === null &&
     !!cityId &&
     (useOtherArea ? areaName.trim().length > 0 : !!areaId) &&
@@ -650,7 +657,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
     setSaved(false);
     setSaving(true);
     const result = await updateListingAction(listing.id, {
-      title: title.trim(),
+      ...(titleChanged ? { title: title.trim() } : {}),
       price: priceValue,
       priceQualifier,
       priceUnit: priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : null,
@@ -832,6 +839,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
             {title.length}/{TITLE_MAX_LENGTH}
           </span>
         </div>
+        {titleIssue && <p style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 0" }}>{titleIssue}</p>}
       </div>
 
       <div>

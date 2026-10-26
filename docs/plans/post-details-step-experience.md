@@ -240,3 +240,9 @@ Not yet deployed or tried on a device; web, mobile and BFF typechecks pass and t
   opens the same list; tapping one switches screen and scrolls to it. Desktop keeps its side checklist.
 - Still to do from section 10: 5 (AI helper as the main action, prefilled title), 6
   (large camera/gallery photo target). Compare blocked taps and Details to Preview in admin Post-ad funnel after release.
+
+### Title minimum raised to 20 (2026-10-26)
+`TITLE_MIN_LENGTH` is now 20 (was 3) in `packages/types/src/listingLimits.ts`, so the wizard (web and app), the create and update DTOs and the pills all say 20.
+Description stays at 50. 298 of 1,179 active listings had titles under 20 ("Rent", "PG for boys"), so the three edit forms (web, app, admin)
+only check the title when it is changed and send it only then, the same rule the description already follows; an old listing can still be
+edited for price or status without being retitled.

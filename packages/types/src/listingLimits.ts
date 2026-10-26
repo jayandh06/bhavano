@@ -12,8 +12,9 @@ import type { TransactionType } from "./index";
 /** Titles render as one line on a listing card. 150 is generous for that and short enough that
  * the whole thing stays readable without truncation. */
 export const TITLE_MAX_LENGTH = 150;
-/** The BFF rejects shorter titles. */
-export const TITLE_MIN_LENGTH = 3;
+/** The BFF rejects shorter titles. Raised from 3 to 20: "Rent" or "PG for boys" tells a buyer nothing on a card. Listings posted
+ * before this keep their titles; the edit forms only check it when the title is changed. */
+export const TITLE_MIN_LENGTH = 20;
 
 /** Generous for a classified ad, and still bounded: the column is TEXT. */
 export const DESCRIPTION_MAX_LENGTH = 4000;

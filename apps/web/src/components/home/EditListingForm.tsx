@@ -19,6 +19,7 @@ import {
   DESCRIPTION_MIN_LENGTH,
   maxPriceFor,
   TITLE_MAX_LENGTH,
+  TITLE_MIN_LENGTH,
 } from "@bhavano/types/listingLimits";
 import { fieldClass, labelClass, primaryButtonClass } from "@/lib/formStyles";
 import { SelectField } from "./SelectField";
@@ -79,7 +80,8 @@ export function EditListingForm({
 }) {
   const router = useRouter();
   const isPendingPublish = listing.publishState === "pending_checkout";
-  const [title, setTitle] = useState(listing.title);
+  const [initialTitle] = useState(listing.title);
+  const [title, setTitle] = useState(initialTitle);
   const [initialPrice] = useState(() => String(listing.price).replace(/[^0-9]/g, ""));
   const [price, setPrice] = useState(initialPrice);
   const [priceQualifier, setPriceQualifier] = useState(listing.priceQualifier);
@@ -139,6 +141,11 @@ export function EditListingForm({
   // Only checked when actually touched — same reasoning as attributesChanged above: a listing
   // posted before the 50-character minimum existed can still have its price or status changed
   // without being forced to write a description first.
+  // Only checked when the title is touched, like the description: a listing titled before the 20-character minimum can still
+  // have its price or status changed without being forced to retitle it.
+  const titleChanged = title.trim() !== initialTitle.trim();
+  const titleIssue =
+    titleChanged && title.trim().length < TITLE_MIN_LENGTH ? `Title needs at least ${TITLE_MIN_LENGTH} characters` : null;
   const descriptionChanged = description.trim() !== initialDescription.trim();
   const descriptionIssue =
     descriptionChanged && description.trim().length < DESCRIPTION_MIN_LENGTH
@@ -147,6 +154,7 @@ export function EditListingForm({
   const valid =
     (priceValue > 0 || priceOnRequestAllowed) &&
     title.trim().length > 0 &&
+    titleIssue === null &&
     attributesIssue === null &&
     descriptionIssue === null &&
     // A pin that has moved must have resolved to a city and area before it can be saved.
@@ -174,7 +182,7 @@ export function EditListingForm({
     setSaving(true);
     setMessage(null);
     const result = await updateListingAction(listing.id, {
-      title: title.trim(),
+      ...(titleChanged ? { title: title.trim() } : {}),
       price: priceValue,
       priceQualifier,
       priceUnit: priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : null,
@@ -236,6 +244,7 @@ export function EditListingForm({
             {title.length}/{TITLE_MAX_LENGTH}
           </span>
         </div>
+        {titleIssue && <p className="text-xs text-muted mt-1">{titleIssue}</p>}
       </div>
 
       <div>

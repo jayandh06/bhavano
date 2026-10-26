@@ -18,6 +18,7 @@ import {
   DESCRIPTION_MIN_LENGTH,
   maxPriceFor,
   TITLE_MAX_LENGTH,
+  TITLE_MIN_LENGTH,
 } from "@bhavano/types/listingLimits";
 import { MAX_PHOTOS, PHOTO_LIMITS } from "@bhavano/types/photoLimits";
 import { perDay } from "@bhavano/types/featuredPerformance";
@@ -89,7 +90,8 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
   // below are held separately and only sent on "Save changes", same split web's EditListingForm +
   // EditListingPhotos/VideoManager draw between the two.
   const [listing, setListing] = useState(initialListing);
-  const [title, setTitle] = useState(initialListing.title);
+  const [initialTitle] = useState(initialListing.title);
+  const [title, setTitle] = useState(initialTitle);
   const [initialDescription] = useState(initialListing.description ?? "");
   const [description, setDescription] = useState(initialDescription);
   const [price, setPrice] = useState(String(initialListing.price).replace(/[^0-9]/g, ""));
@@ -137,6 +139,11 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
   const priceOnRequestAllowed = PRICE_ON_REQUEST_CATEGORIES.has(listing.category);
   // Only checked once actually touched — a listing posted before the 50-character minimum existed
   // can still have its price or status changed without being forced to write a description first.
+  // Only checked when the title is touched, like the description: a listing titled before the 20-character minimum can still
+  // have its price or status changed without being forced to retitle it.
+  const titleChanged = title.trim() !== initialTitle.trim();
+  const titleIssue =
+    titleChanged && title.trim().length < TITLE_MIN_LENGTH ? `Title needs at least ${TITLE_MIN_LENGTH} characters` : null;
   const descriptionChanged = description.trim() !== initialDescription.trim();
   const descriptionIssue =
     descriptionChanged && description.trim().length < DESCRIPTION_MIN_LENGTH
@@ -145,6 +152,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
   const valid =
     (priceValue > 0 || priceOnRequestAllowed) &&
     title.trim().length > 0 &&
+    titleIssue === null &&
     requiredAttributesFilled &&
     !brokerageIssue &&
     descriptionIssue === null;
@@ -162,7 +170,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
     setMessage(null);
     try {
       const updated = await updateListing(accessToken, listing.id, {
-        title: title.trim(),
+        ...(titleChanged ? { title: title.trim() } : {}),
         price: priceValue,
         priceQualifier,
         priceUnit: priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : null,
@@ -349,6 +357,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
         onChangeText={(v) => setTitle(v.slice(0, TITLE_MAX_LENGTH))}
         style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
       />
+      {titleIssue && <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>{titleIssue}</Text>}
 
       <Text style={[styles.label, { color: colors.textSoft }]}>Description</Text>
       <TextInput
