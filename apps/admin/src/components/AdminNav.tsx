@@ -57,6 +57,7 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string }[] }[] 
       { href: "/settings/referrals", label: "Referral rewards" },
       { href: "/settings/alerts", label: "Search alerts" },
       { href: "/settings/posted-confirmation", label: "Posted confirmation" },
+      { href: "/settings/reminders", label: "Featured reminders" },
       { href: "/settings/login-nudge", label: "Login prompt" },
       { href: "/settings/app-version", label: "App update" },
     ],

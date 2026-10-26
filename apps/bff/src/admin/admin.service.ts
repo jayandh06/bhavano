@@ -34,6 +34,7 @@ import type {
   SearchDemandRowDto,
   SendWelcomeResultDto,
   PostedConfirmationSettingsDto,
+  ReminderSettingsDto,
   SessionTrailDto,
   UserActivityDto,
   UserLoginHistoryPage,
@@ -79,6 +80,8 @@ import { ListRequirementsDto } from './dto/list-requirements.dto';
 import { UpdateRequirementDto } from './dto/update-requirement.dto';
 import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings.dto';
 import { UpdatePostedConfirmationSettingsDto } from './dto/update-posted-confirmation-settings.dto';
+import { UpdateReminderSettingsDto } from './dto/update-reminder-settings.dto';
+import { getReminderSettings, setReminderSettings } from './reminder-settings';
 import { getPostedTimingSettings, setPostedTimingSettings } from '../listings/posted-confirmation-settings';
 import { UpdateSavedSearchDto } from './dto/update-saved-search.dto';
 import { ListUsersDto, UserSort } from './dto/list-users.dto';
@@ -2072,7 +2075,7 @@ export class AdminService {
   /** The "your Featured ad is ending" in-app message (docs/plans/featured-expiry-reminder.md): same announcement thread, push and
    * unread update as the Boost message, with a Renew button. Returns false when the ad is gone or not worth messaging. The caller
    * (FeaturedExpiryReminderJob) owns the once-per-period rule; this writes the log row it reads. */
-  async sendFeaturedExpiryReminder(listingId: string, daysLeft: 3 | 1, adminId: string): Promise<boolean> {
+  async sendFeaturedExpiryReminder(listingId: string, daysLeft: number, adminId: string): Promise<boolean> {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
       include: { city: true, area: true, owner: { select: { phone: true } } },
@@ -2100,7 +2103,7 @@ export class AdminService {
     await this.prisma.listingNotificationLog.create({
       data: {
         listingId: listing.id,
-        kind: daysLeft === 3 ? 'featured_expiry_3d' : 'featured_expiry_1d',
+        kind: `featured_expiry_${daysLeft}d`,
         channel: IN_APP_CHANNEL,
         providerMessageId: message.id,
       },
@@ -2549,6 +2552,14 @@ export class AdminService {
 
   updatePostedConfirmationSettings(dto: UpdatePostedConfirmationSettingsDto): Promise<PostedConfirmationSettingsDto> {
     return setPostedTimingSettings(this.prisma, dto);
+  }
+
+  getReminderSettings(): Promise<ReminderSettingsDto> {
+    return getReminderSettings(this.prisma);
+  }
+
+  updateReminderSettings(dto: UpdateReminderSettingsDto): Promise<ReminderSettingsDto> {
+    return setReminderSettings(this.prisma, dto);
   }
 
   getSavedSearchSettings(): Promise<SavedSearchSettingsDto> {

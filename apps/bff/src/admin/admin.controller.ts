@@ -42,6 +42,7 @@ import type {
   SendPostedNotificationResponseDto,
   SendWelcomeResponseDto,
   PostedConfirmationSettingsDto,
+  ReminderSettingsDto,
   SessionTrailDto,
   UserActivityDto,
 } from '@bhavano/types';
@@ -89,6 +90,7 @@ import { UpdateRequirementDto } from './dto/update-requirement.dto';
 import { UpdateSavedSearchDto } from './dto/update-saved-search.dto';
 import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings.dto';
 import { UpdatePostedConfirmationSettingsDto } from './dto/update-posted-confirmation-settings.dto';
+import { UpdateReminderSettingsDto } from './dto/update-reminder-settings.dto';
 import { UpdateBoostPricingDto } from './dto/update-boost-pricing.dto';
 import { UpdateInstantAlertsPricingDto } from './dto/update-instant-alerts-pricing.dto';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
@@ -505,6 +507,16 @@ export class AdminController {
     @Body() dto: UpdatePostedConfirmationSettingsDto,
   ): Promise<PostedConfirmationSettingsDto> {
     return this.adminService.updatePostedConfirmationSettings(dto);
+  }
+
+  @Get('reminder-settings')
+  getReminderSettings(): Promise<ReminderSettingsDto> {
+    return this.adminService.getReminderSettings();
+  }
+
+  @Patch('reminder-settings')
+  updateReminderSettings(@Body() dto: UpdateReminderSettingsDto): Promise<ReminderSettingsDto> {
+    return this.adminService.updateReminderSettings(dto);
   }
 
   @Get('saved-search-settings')

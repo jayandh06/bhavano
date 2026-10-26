@@ -62,3 +62,14 @@ existing Boost message.
   (then the steady state is only newly posted ads).
 - Not changed: the manual "Send boost message" button and its 14-day cooldown.
 
+## Controlled from admin (added 2026-10-26)
+**Admin → Settings → Featured reminders** (`/settings/reminders`) sets both reminders. Stored in `ReminderSetting` (singleton row `default`,
+migration `20261026140000_reminder_settings`); the jobs read it at the start of every run, so a change applies to the next run with no deploy.
+- **Nudge a new ad to go Featured:** on/off and the hours after the ad goes live (default `4, 24, 72`; 1 to 5 values, each 1 to 720). A stage runs until
+  the next one begins and at most 48 hours late. Whole days keep their original marker names (`boost_followup_1d`), other values use `boost_followup_<h>h`.
+- **Warn before a Featured period ends:** on/off and the days before the end (default `3, 1`; 1 to 4 values, each 1 to 14). A Feature period no longer
+  than a stage's days skips that stage. Markers are `featured_expiry_<d>d`.
+- The environment switches (`BOOST_FOLLOWUP_ENABLED=false`, `FEATURED_EXPIRY_REMINDER_ENABLED=false`) still work as a hard off. If the settings table cannot be
+  read the defaults apply. Not on the page (fixed in code): the 09:05 to 20:05 IST window and 40 a run for the nudge, 10:00 IST for the expiry reminder,
+  the 12-hour minimum gap between messages for one ad.
+

@@ -66,6 +66,7 @@ import type {
   ReferralStatus,
   RequirementStatus,
   PostedConfirmationSettingsDto,
+  ReminderSettingsDto,
   SavedSearchSettingsDto,
   SearchDemandPage,
   SendPostedNotificationInput,
@@ -827,6 +828,17 @@ export function updatePostedConfirmationSettings(
   input: PostedConfirmationSettingsDto,
 ): Promise<PostedConfirmationSettingsDto> {
   return authedBffFetch(accessToken, "/admin/posted-confirmation-settings", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export function fetchReminderSettings(accessToken: string): Promise<ReminderSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/reminder-settings", { cache: "no-store" });
+}
+
+export function updateReminderSettings(accessToken: string, input: ReminderSettingsDto): Promise<ReminderSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/reminder-settings", {
     method: "PATCH",
     body: JSON.stringify(input),
   });

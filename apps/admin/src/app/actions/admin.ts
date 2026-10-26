@@ -14,6 +14,7 @@ import type {
   LoginNudgeSettingsDto,
   RequirementStatus,
   PostedConfirmationSettingsDto,
+  ReminderSettingsDto,
   SavedSearchSettingsDto,
   ListingDetailDto,
   ListingStatus,
@@ -55,6 +56,7 @@ import {
   updateAppVersionSettings,
   updateRequirement,
   updatePostedConfirmationSettings,
+  updateReminderSettings,
   updateSavedSearchSettings,
   updateInstantAlertsPricingSettings,
   updatePlatformFeeSettings,
@@ -235,6 +237,17 @@ export async function updatePostedConfirmationSettingsAction(input: PostedConfir
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update the setting" };
+  }
+}
+
+export async function updateReminderSettingsAction(input: ReminderSettingsDto): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updateReminderSettings(accessToken, input);
+    revalidatePath("/settings/reminders");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update the reminders" };
   }
 }
 

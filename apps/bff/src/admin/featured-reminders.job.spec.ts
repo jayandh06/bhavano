@@ -1,5 +1,6 @@
-import { BoostFollowupJob } from './boost-followup.job';
-import { FeaturedExpiryReminderJob } from './featured-expiry-reminder.job';
+import { BoostFollowupJob, followupStages } from './boost-followup.job';
+import { expiryStages, FeaturedExpiryReminderJob } from './featured-expiry-reminder.job';
+import { cleanList, getReminderSettings } from './reminder-settings';
 import { buildExpiryReminderBody, buildExpiryReminderCard, expiryReminderPath } from './boost-message';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { AdminService } from './admin.service';
@@ -174,5 +175,47 @@ describe('BoostFollowupJob', () => {
     const { job, sendBoostPromotion } = makeFollowup({ byStage: { boost_followup_4h: [{ id: 'a', ownerId: 'o1' }] } });
     await job.run();
     expect(sendBoostPromotion).not.toHaveBeenCalled();
+  });
+});
+
+describe('reminder settings', () => {
+  it('turns the configured numbers into stages, keeping the the original marker names', () => {
+    expect(expiryStages([5, 2]).map((s) => [s.kind, s.fromDays, s.toDays])).toEqual([
+      ['featured_expiry_5d', 4, 5],
+      ['featured_expiry_2d', 1, 2],
+    ]);
+    const stages = followupStages([72, 4, 24, 6]);
+    expect(stages.map((s) => s.kind)).toEqual(['boost_followup_4h', 'boost_followup_6h', 'boost_followup_1d', 'boost_followup_3d']);
+    // Each stage runs until the next begins, at most 48 hours.
+    expect(stages.map((s) => [s.fromHours, s.toHours])).toEqual([[4, 6], [6, 24], [24, 72], [72, 120]]);
+  });
+
+  it('cleans a list: whole numbers in range, no repeats, a default when nothing is usable', () => {
+    expect(cleanList([3, 3, 1, 0, 99, 2.5, 'x'], 1, 14, 4, [3, 1])).toEqual([3, 1]);
+    expect(cleanList([], 1, 14, 4, [3, 1])).toEqual([3, 1]);
+    expect(cleanList([9, 8, 7, 6, 5], 1, 14, 4, [3, 1])).toEqual([9, 8, 7, 6]);
+  });
+
+  it('falls back to the defaults when the table cannot be read', async () => {
+    const prisma = { reminderSetting: { findUnique: jest.fn().mockRejectedValue(new Error('no table')) } } as unknown as PrismaService;
+    expect(await getReminderSettings(prisma)).toEqual({
+      featuredExpiryEnabled: true,
+      featuredExpiryDays: [3, 1],
+      followupEnabled: true,
+      followupHours: [4, 24, 72],
+    });
+  });
+
+  it('the jobs send nothing when an admin turns them off', async () => {
+    const off = { id: 'default', featuredExpiryEnabled: false, featuredExpiryDays: [3, 1], followupEnabled: false, followupHours: [4, 24, 72] };
+    const prisma = {
+      reminderSetting: { findUnique: jest.fn().mockResolvedValue(off) },
+      listing: { findMany: jest.fn().mockResolvedValue([]) },
+      user: { findFirst: jest.fn().mockResolvedValue({ id: 'admin1' }) },
+    } as unknown as PrismaService;
+    const adminService = {} as unknown as AdminService;
+    expect(await new FeaturedExpiryReminderJob(prisma, adminService).sendReminders(NOW)).toBe(0);
+    expect(await new BoostFollowupJob(prisma, adminService).sendFollowups(NOW)).toBe(0);
+    expect(prisma.listing.findMany).not.toHaveBeenCalled();
   });
 });

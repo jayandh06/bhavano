@@ -2,8 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminService } from './admin.service';
+import { getReminderSettings } from './reminder-settings';
 
-/** Follows up on a non-Featured ad with the existing in-app Boost message, 4 hours, 1 day and 3 days after it went live — see
+/** Follows up on a non-Featured ad with the existing in-app Boost message, by default 4 hours, 1 day and 3 days after it went live
+ * (Admin → Settings → Reminders sets the hours and switches it off) — see
  * docs/plans/featured-expiry-reminder.md (section "Follow-ups after posting").
  *
  * It sends through `AdminService.sendBoostPromotion` (channel `in_app`), so the message, the card, the push, the live-ads-only /
@@ -19,17 +21,22 @@ const PER_RUN_CAP = 40;
 const MIN_GAP_HOURS = 12;
 
 interface Stage {
-  kind: 'boost_followup_4h' | 'boost_followup_1d' | 'boost_followup_3d';
+  kind: string;
   /** The ad's age when the stage becomes due, and the age after which it is too late to send it (the next stage owns that time). */
   fromHours: number;
   toHours: number;
 }
 
-const STAGES: Stage[] = [
-  { kind: 'boost_followup_4h', fromHours: 4, toHours: 20 },
-  { kind: 'boost_followup_1d', fromHours: 24, toHours: 60 },
-  { kind: 'boost_followup_3d', fromHours: 72, toHours: 120 },
-];
+/** One stage per configured hour. Whole days keep the names the first release used (`boost_followup_1d`), so already-sent markers still count. */
+export function followupStages(hours: number[]): Stage[] {
+  const sorted = [...hours].sort((a, b) => a - b);
+  return sorted.map((h, i) => ({
+    kind: h % 24 === 0 ? `boost_followup_${h / 24}d` : `boost_followup_${h}h`,
+    fromHours: h,
+    // Until the next stage starts, but never more than 48 hours late: a stale ad is not worth a "just posted" nudge.
+    toHours: Math.min(sorted[i + 1] ?? Infinity, h + 48),
+  }));
+}
 
 @Injectable()
 export class BoostFollowupJob {
@@ -64,10 +71,13 @@ export class BoostFollowupJob {
       return 0;
     }
 
+    const settings = await getReminderSettings(this.prisma);
+    if (!settings.followupEnabled) return 0;
+
     const gapStart = new Date(now.getTime() - MIN_GAP_HOURS * HOUR_MS);
     const seenOwners = new Set<string>();
     let sent = 0;
-    for (const stage of STAGES) {
+    for (const stage of followupStages(settings.followupHours)) {
       if (sent >= PER_RUN_CAP) break;
       const candidates = await this.prisma.listing.findMany({
         where: {

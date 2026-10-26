@@ -2535,6 +2535,19 @@ model AppVersionSetting {
   updatedAt         DateTime @updatedAt
 }
 
+/// Admin-editable timing of the automatic seller reminders about Featured. One row, id "default".
+/// featuredExpiryDays: days before the end of a Feature period to remind (default 3 and 1).
+/// followupHours: hours after a non-Featured ad goes live to nudge (default 4, 24 and 72).
+/// See docs/plans/featured-expiry-reminder.md.
+model ReminderSetting {
+  id                    String   @id
+  featuredExpiryEnabled Boolean  @default(true)
+  featuredExpiryDays    Int[]    @default([3, 1])
+  followupEnabled       Boolean  @default(true)
+  followupHours         Int[]    @default([4, 24, 72])
+  updatedAt             DateTime @updatedAt
+}
+
 /**
  * Singleton settings row for the dismissible login ask on listing detail — same id convention
  * as ContactRevealSetting. The listing page itself is never gated (SEO and Ads landing pages);

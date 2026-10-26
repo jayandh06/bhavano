@@ -2,8 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminService } from './admin.service';
+import { getReminderSettings } from './reminder-settings';
 
-/** Tells a seller their Featured period is ending, 3 days and 1 day before — see docs/plans/featured-expiry-reminder.md.
+/** Tells a seller their Featured period is ending, by default 3 days and 1 day before (Admin → Settings → Reminders sets the days and
+ * switches it off) — see docs/plans/featured-expiry-reminder.md.
  *
  * Sent as the same in-app "Bhavano Admin" message (and push) the Boost offer uses, with a Renew button. Unlike the quiet-ad nudge this
  * is about something the seller already paid for, so it is **on unless `FEATURED_EXPIRY_REMINDER_ENABLED=false`**. Runs once a day at
@@ -13,17 +15,17 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const PER_RUN_CAP = 300;
 
 interface Stage {
-  daysLeft: 3 | 1;
-  kind: 'featured_expiry_3d' | 'featured_expiry_1d';
+  daysLeft: number;
+  kind: string;
   /** `boostedUntil` must lie in (from, to] days from now. Strict windows so "in 3 days" is never sent at 2 days. */
   fromDays: number;
   toDays: number;
 }
 
-const STAGES: Stage[] = [
-  { daysLeft: 3, kind: 'featured_expiry_3d', fromDays: 2, toDays: 3 },
-  { daysLeft: 1, kind: 'featured_expiry_1d', fromDays: 0, toDays: 1 },
-];
+/** One stage per configured day: 3 means the Feature period ends 2 to 3 days from now. */
+export function expiryStages(days: number[]): Stage[] {
+  return days.map((d) => ({ daysLeft: d, kind: `featured_expiry_${d}d`, fromDays: d - 1, toDays: d }));
+}
 
 @Injectable()
 export class FeaturedExpiryReminderJob {
@@ -58,8 +60,11 @@ export class FeaturedExpiryReminderJob {
       return 0;
     }
 
+    const settings = await getReminderSettings(this.prisma);
+    if (!settings.featuredExpiryEnabled) return 0;
+
     let sent = 0;
-    for (const stage of STAGES) {
+    for (const stage of expiryStages(settings.featuredExpiryDays)) {
       const candidates = await this.prisma.listing.findMany({
         where: {
           status: 'active',
@@ -92,8 +97,8 @@ export class FeaturedExpiryReminderJob {
         const lastSent = listing.notificationLogs[0]?.sentAt ?? null;
         // No Feature row (set by an admin by hand): fall back to "not within the last 5 days".
         if (lastSent && (periodStart ? lastSent >= periodStart : now.getTime() - lastSent.getTime() < 5 * DAY_MS)) continue;
-        // A 3-day-or-shorter period would get its "3 days left" reminder on its first day.
-        if (stage.daysLeft === 3 && periodStart && listing.boostedUntil && listing.boostedUntil.getTime() - periodStart.getTime() <= 3 * DAY_MS) {
+        // A Feature period no longer than the stage's days would get that reminder on its first day.
+        if (periodStart && listing.boostedUntil && listing.boostedUntil.getTime() - periodStart.getTime() <= stage.daysLeft * DAY_MS) {
           continue;
         }
         try {

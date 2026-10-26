@@ -1829,6 +1829,17 @@ export interface PostedConfirmationSettingsDto {
     /** Also keep a free ad off the site for `delayMinutes` (publishState `scheduled`). */
     holdAdLive: boolean;
 }
+/** Admin -> Settings -> Reminders: the automatic seller reminders about Featured (docs/plans/featured-expiry-reminder.md). */
+export interface ReminderSettingsDto {
+    /** Remind the owner before a Featured period ends. */
+    featuredExpiryEnabled: boolean;
+    /** Days before the end to remind, e.g. [3, 1]. 1 to 4 values, each 1 to 14. */
+    featuredExpiryDays: number[];
+    /** Nudge the owner of a non-Featured ad to feature it. */
+    followupEnabled: boolean;
+    /** Hours after the ad goes live, e.g. [4, 24, 72]. 1 to 5 values, each 1 to 720. */
+    followupHours: number[];
+}
 /** What an owner is shown about demand matching their own inventory — deliberately carries no
  * seeker identity at all. The contact path is the plan's messaging-first flow, not this. */
 export interface OwnerRequirementMatchDto {
