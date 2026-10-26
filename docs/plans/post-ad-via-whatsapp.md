@@ -313,6 +313,9 @@ and it opens `/post` with the wizard already filled in.
 
 ## Rejected: the whole form inside WhatsApp (approach 3)
 
+> **Revisited 2026-10-26:** see [`whatsapp-conversational-posting.md`](whatsapp-conversational-posting.md), which proposes a question-by-question chat
+> driven by the shared field config (so the rules are not duplicated), with buttons, lists and the native location share, and the website kept for payment.
+
 - **WhatsApp Flows** can show forms, and now photo pickers. But city and locality search needs an
   encrypted data endpoint (RSA key exchange, AES-GCM on every request). Each category's required
   fields would need a separate Flow design approved in Meta's tools. Every future form change would
