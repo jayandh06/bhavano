@@ -189,3 +189,38 @@ Not yet deployed or tried in a browser or on a device; typechecks and unit tests
 - No feature flag (as in Phase 1). Compare Details to Preview before and after in admin Post-ad funnel.
 - Mobile needs a store build or OTA. Wizard behaviour is not covered by automated UI tests; do a manual pass on one slow Android phone
   and one iPhone, and a desktop at 1280px and wider, before widening any rollout.
+
+## 10. Plan: making the required fields obvious before Preview (2026-10-26, proposal, nothing built)
+
+**What production shows** (`/post/field?event=preview_blocked`, since 2026-10-22; 80 sessions, 183 blocked taps, small sample):
+- The blocker is rarely the long attribute list. **Photos** blocked 41 of the 80 sessions, then **description** (17), **location** (11),
+  **title** (12), **posted by** (9). Entrance facing, furnishing and carpet area follow with 6 to 8 each.
+- 85 of the 183 taps had **one** item left: people are almost done and use Preview to find out what is missing.
+- Platform (sessions): mobile browser about 50, desktop about 22, app 8. The sticky "N left" chip exists on web, but a phone browser seller
+  sees only the chip, not what a field is.
+
+**Why it still happens:** the required things are the plainest ones (photos, title, description), they sit in different parts of a long
+form, and nothing says "required" until Preview is tapped. The red asterisk is too small to read as a rule.
+
+**Proposals, in order of effect:**
+1. **Say "Required" in words, on the three big blocks.** Photos, Title and Description headers carry a "Required" pill (and
+   "Optional" on the rest of the form), with the rule beside it: "Add at least N photos" (N from the existing minimum), "Title,
+   minimum characters". Same in web, mobile browser and app (shared label from `packages/types`).
+2. **A "To post, you need" checklist at the top of the form on every platform**, not only the desktop rail: pin, photos, the required facts,
+   title, description, each with a tick that turns green live. On phones it is a collapsed row ("4 of 7 done") that opens on tap; tapping a
+   line jumps to the field. The sticky chip stays.
+3. **Section badges.** Each section header shows a red "2 left" or a green tick, so a seller sees which section to open without Preview.
+4. **Make Preview say what is missing.** With gaps the button reads "Add a photo to preview" (first missing item, "and 2 more") and looks
+   unfinished; with none it reads "Preview Ad". It stays tappable and keeps today's jump-and-ring behaviour.
+5. **Remove two blockers with the AI helper.** Once photos and the required facts are in, offer "Write the title and description for me"
+   as the main action in the title block, and prefill an editable title from the facts ("2 BHK apartment for rent in Adyar"). This takes
+   out title and description for most sellers.
+6. **Photos first on phones.** Photos are already right after the pin; on mobile browser make the empty photo block a large "Add photos"
+   target with camera and gallery choices, not a small uploader.
+
+**Do not:** change what the server requires, hide optional sections (decision in section 6 stands), or disable the Preview button.
+
+**Measure:** share of Details sessions that tap Preview while blocked, taps per session, Details to Preview conversion, and top blocking
+field. Today: 183 taps over 80 sessions; photos 51% of blocked sessions. Success is photos and description dropping out of the top three.
+
+**Order:** 1, 3 and 4 together (small, shared labels, web first), then 2, then 5 and 6. Mobile app changes need a store build or OTA.
