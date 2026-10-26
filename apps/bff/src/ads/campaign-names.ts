@@ -21,6 +21,7 @@ export const CAMPAIGN_NAMES: Record<string, string> = {
   '24284961543': 'Other-Metro-Sell Property (Owners/Agents)',
   '24297610212': 'Metro-Seeker Intent',
   '24334335817': 'Other-Metro-Lease Property-MaxConv',
+  '24392228394': 'Other-Metro-Seeker Intent',
 };
 
 export const AD_GROUP_NAMES: Record<string, string> = {
@@ -67,6 +68,14 @@ export const AD_GROUP_NAMES: Record<string, string> = {
   '201006388963': 'Ad Group — Chennai Buy Seekers', // Metro-Seeker Intent
   '206491243812': 'Ad Group — Mumbai Rent Seekers', // Metro-Seeker Intent
   '201006389003': 'Ad Group — Mumbai Buy Seekers', // Metro-Seeker Intent
+  '196803709170': 'Ad Group — Ahmedabad Rent Seekers', // Other-Metro-Seeker Intent
+  '196803710130': 'Ad Group — Ahmedabad Buy Seekers', // Other-Metro-Seeker Intent
+  '200780065919': 'Ad Group — Coimbatore Rent Seekers', // Other-Metro-Seeker Intent
+  '196803714610': 'Ad Group — Coimbatore Buy Seekers', // Other-Metro-Seeker Intent
+  '196803715610': 'Ad Group — Jaipur Rent Seekers', // Other-Metro-Seeker Intent
+  '196803716610': 'Ad Group — Jaipur Buy Seekers', // Other-Metro-Seeker Intent
+  '196803717570': 'Ad Group — Lucknow Rent Seekers', // Other-Metro-Seeker Intent
+  '196803718970': 'Ad Group — Lucknow Buy Seekers', // Other-Metro-Seeker Intent
   '201054972699': 'Ad Group 3.1 — Lease Commercial/Office', // Other-Metro-Lease Property-MaxConv
   '201054972659': 'Ad Group 3.2 — Lease Residential/Long-term', // Other-Metro-Lease Property-MaxConv
 };

@@ -184,3 +184,27 @@ delivery. Judge the pilot from the database (saved searches, requirements, messa
 count. The shared portfolio target went from ₹135 to ₹180 at the same time (poster cost per conversion was about
 ₹224). Rollback: set the campaign's bidding strategy back to portfolio `12257987260`, and the portfolio target back
 to ₹135.
+
+## Update 2026-10-26 — Other-Metro-Seeker Intent (Ahmedabad, Coimbatore, Jaipur, Lucknow)
+
+Four cities with real inventory had no seeker ads: they were only in the Other-Metro **poster** campaigns (active listings, rent/lease
+and buy: Ahmedabad 39/16, Jaipur 10/16, Lucknow 12/13, Coimbatore 12/9). Metro-Seeker Intent covers Bengaluru, Pune, Kolkata, Hyderabad,
+Delhi NCR, Chennai and Mumbai. They were first added to Metro-Seeker Intent by mistake and **removed again the same hour** (no spend); the
+decision is a separate campaign, so the other-metro budget and results can be judged on their own.
+
+`ads_create_other_metro_seeker_campaign.py` (dry run, then Google-validated, then applied in one batch of 100 operations) created
+**Other-Metro-Seeker Intent** (id `24392228394`), **PAUSED**:
+- Own budget **₹200/day** (not shared), bidding **Maximise clicks with a ₹25 max CPC** (same as Metro-Seeker Intent since 2026-10-25).
+- Copied live from Metro-Seeker Intent: Search network only (no partners, no Display), presence targeting, English, the 07:00–23:00 daily
+  ad schedule, the Final URL suffix (campaign / ad group tracking) and the 6 phrase-match negative keywords.
+- Locations: Ahmedabad, Coimbatore, Jaipur, Lucknow (geo targets taken from `Other-Metro-Generic Post Ad Intent`).
+- 8 ad groups copied from the Bengaluru Rent / Buy Seekers groups (8 phrase-match keywords each, one responsive search ad each, final URL
+  `/<city>/rent-lease` or `/<city>/buy`, display path `/rent/<city>` or `/buy/<city>`): **Rent groups ENABLED, Buy groups PAUSED**, as in
+  Metro-Seeker Intent. All eight pages return 200.
+- **Not copied:** the campaign's negative brand list (the API refuses it on this campaign: brand lists only apply to broad-match or
+  exclusive targeting). Add it in the Ads UI if wanted. Sitelinks were not copied either (they are linked per campaign:
+  `ads_sitelinks.py`); the Metro-Seeker ones are generic, so they can be linked to this campaign too.
+- **Nothing spends until the campaign is enabled in the Ads UI.** The new campaign and ad group ids are in
+  `apps/bff/src/ads/campaign-names.ts` (needs a BFF deploy for the admin to show the names).
+- Rollback: pause or remove the campaign in the Ads UI; nothing else was changed.
+
