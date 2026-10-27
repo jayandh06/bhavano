@@ -93,3 +93,17 @@ Audit of the owner/poster campaigns (Metro-* and Other-Metro-*, not the seeker o
   long-tail keywords in Metro-Rent Out (no cost), and the five 0-conversion keywords above ₹150 other than that (3 to 14 clicks each).
 - Rollback of the negatives: remove them in the Ads UI (Negative keywords list of each poster campaign). `--restore` only re-creates keywords the script itself removed,
   from `ads_removed_keywords_2026-10-27.json`; no such file exists because the owner had already removed the junk keywords.
+
+## Adding proven converters, 2026-10-27
+In the last 30 days 126 search terms led to a "post ad" conversion in the owner campaigns, and only 9 were keywords (the rest came through phrase matches of other keywords).
+`ads_add_owner_converting_keywords.py` (dry run, Google-validated, applied: 19 operations) added **19 phrase-match keywords**, each in the ad group where the term already converts:
+- Metro-Rent Out, Ad Group 2.1: rent my property, post property for rent in bangalore, post property for rent, rent out property, free listing of property for rent, post property for rent free.
+- Metro-Generic Post Ad, Ad group 1: free property ads posting sites in india, free property listing sites, post your property for rent, post property ad.
+- Metro-Sell, Ad Group 1.1: post free property ads, free posting property ads, property sell, free real estate ads, free property sale sites.
+- Other-Metro: Rent Out 2.1 "property post for rent"; Generic "free property listing"; Sell 1.1 "property selling websites"; Sell 1.2 "sell your flat".
+About 50 conversions in 30 days came from these terms. **Left out on purpose:** "property sale" (phrase match also catches buyers: "property sale in <city>"), tenant-side terms ("house for rent",
+"best app for room rent", "free app to search house for rent", "how to rent a house in bangalore"), "freeperty" (₹338, one conversion) and "renting sites" (₹146 for 2 clicks).
+Why this is safe for quality score and ad rank: new keywords have their own quality score and do not change the existing keywords'; no broad match, no new ad groups, ads untouched.
+**Check after about 14 days:** pause any of the 19 with quality score 4 or lower, or CPC above about ₹60 with no conversion. Rollback: `python ads_add_owner_converting_keywords.py --remove`.
+Not done: category-gap keywords (PG, coworking, agents); check search volume before adding them.
+
