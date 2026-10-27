@@ -88,6 +88,5 @@ Audit of the owner/poster campaigns (Metro-* and Other-Metro-*, not the seeker o
   **"nobroker" was not added** because the live conquest keyword "nobroker post free ad" would be blocked by it; the script checks each negative against the keywords we keep.
 - Left alone on purpose: "lease property online" (₹273, 0 conversions: a real owner phrase with a small sample), the 100 or so zero-impression city and category
   long-tail keywords in Metro-Rent Out (no cost), and the five 0-conversion keywords above ₹150 other than that (3 to 14 clicks each).
-- Rollback of the negatives: remove them in the Ads UI, or `python ads_clean_poster_keywords.py --restore` (it re-creates removed keywords from the backup file if one exists
-  and removes the negatives this run added, which the backup records only when keywords are removed, so use the UI for the negatives).
-
+- Rollback of the negatives: remove them in the Ads UI (Negative keywords list of each poster campaign). `--restore` only re-creates keywords the script itself removed,
+  from `ads_removed_keywords_2026-10-27.json`; no such file exists because the owner had already removed the junk keywords.
