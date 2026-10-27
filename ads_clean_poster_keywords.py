@@ -40,7 +40,10 @@ REMOVE_TEXTS = {
     "apna saman online kaise beche": "unrelated", "digital products selling websites free": "unrelated",
     "noida property rates": "unrelated", "corporate leasing companies": "unrelated",
     "house for rent": "tenant-side", "house rent": "tenant-side", "rent house": "tenant-side", "lease house": "tenant-side",
+    "nobroker post free ad": "competitor",
 }
+# Removed on the owner's explicit instruction even though it has traffic (the others are only removed when they have none).
+FORCE_REMOVE = {"nobroker post free ad"}
 
 NEGATIVES = [
     "olx", "99acres", "99 acres", "magicbricks", "magic bricks", "nobroker", "quikr", "quicker home", "quicker homes", "nestaway",
@@ -100,7 +103,7 @@ def main():
     to_remove, skipped = [], []
     for k in kws.values():
         if k["text"].lower() in REMOVE_TEXTS:
-            (skipped if (k["impr"] or k["cost"]) else to_remove).append(k)
+            (skipped if (k["impr"] or k["cost"]) and k["text"].lower() not in FORCE_REMOVE else to_remove).append(k)
     print("KEYWORDS TO REMOVE: %d" % len(to_remove))
     for why in ("competitor", "unrelated", "tenant-side"):
         group = [k for k in to_remove if REMOVE_TEXTS[k["text"].lower()] == why]

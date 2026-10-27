@@ -85,7 +85,10 @@ Audit of the owner/poster campaigns (Metro-* and Other-Metro-*, not the seeker o
 - **Competitor negatives added by `ads_clean_poster_keywords.py`:** 23 phrase-match negatives on all 9 poster campaigns (189 operations, validated first): olx, 99acres,
   99 acres, magicbricks, magic bricks, quikr, quicker home(s), nestaway, commonfloor, sulekha, squareyards, square yards, makaan, proptiger, home4rent, justco, zolo,
   colive, stanza living, housing.com, housing com, property24. Competitor-name search terms had cost ₹219 for 5 clicks and 0 conversions in 30 days.
-  **"nobroker" was not added** because the live conquest keyword "nobroker post free ad" would be blocked by it; the script checks each negative against the keywords we keep.
+  **"nobroker" was first skipped** because the live keyword "nobroker post free ad" would be blocked by it; the script checks each negative against the keywords we keep.
+  Later the same day the owner asked to remove that keyword (Metro-Generic and Other-Metro-Generic Post Ad Intent, Ad group 1; 0 impressions in 30 days) and add "nobroker":
+  both done by the script (11 operations), so the negatives are now 24 phrases on 9 campaigns. The two removed keywords are in `ads_removed_keywords_2026-10-27.json` and can be
+  re-created with `--restore` (which also removes the 9 negatives recorded there).
 - Left alone on purpose: "lease property online" (₹273, 0 conversions: a real owner phrase with a small sample), the 100 or so zero-impression city and category
   long-tail keywords in Metro-Rent Out (no cost), and the five 0-conversion keywords above ₹150 other than that (3 to 14 clicks each).
 - Rollback of the negatives: remove them in the Ads UI (Negative keywords list of each poster campaign). `--restore` only re-creates keywords the script itself removed,

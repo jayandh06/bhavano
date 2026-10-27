@@ -1,0 +1,58 @@
+{
+ "removed_keywords": [
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "nobroker post free ad",
+   "match_type": "PHRASE",
+   "status": "PAUSED"
+  },
+  {
+   "campaign": "Other-Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/201547741818",
+   "text": "nobroker post free ad",
+   "match_type": "PHRASE",
+   "status": "PAUSED"
+  }
+ ],
+ "negatives_added": [
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "text": "nobroker"
+  },
+  {
+   "campaign": "Metro-Lease Property",
+   "text": "nobroker"
+  },
+  {
+   "campaign": "Metro-Rent Out Property (Owners)",
+   "text": "nobroker"
+  },
+  {
+   "campaign": "Metro-Sell Property (Owners/Agents)",
+   "text": "nobroker"
+  },
+  {
+   "campaign": "Other-Metro-Generic Post Ad Intent",
+   "text": "nobroker"
+  },
+  {
+   "campaign": "Other-Metro-Lease Property",
+   "text": "nobroker"
+  },
+  {
+   "campaign": "Other-Metro-Lease Property-MaxConv",
+   "text": "nobroker"
+  },
+  {
+   "campaign": "Other-Metro-Rent Out Property (Owners)",
+   "text": "nobroker"
+  },
+  {
+   "campaign": "Other-Metro-Sell Property (Owners/Agents)",
+   "text": "nobroker"
+  }
+ ]
+}
