@@ -208,3 +208,11 @@ and to `apps/bff/src/ads/campaign-names.ts` for the admin names. Needs a web and
 **Judge in 14 days** (Ads UI > Keywords, same keyword text, two rows): impressions, conversions and cost per conversion for the star against the original, plus quality score and ad relevance. Pause the loser (the original if the star wins).
 Rollback: `python ads_star_keyword_groups.py --rollback` pauses the star ad groups.
 
+### Empty Rent Out Villa ad groups, 2026-10-27
+Google's recommendation "1 ad group does not have any keywords" (+11.3%) points at "Ad Group 2.3 - Rent Out Villa/Independent House". It exists in Metro-Rent Out and Other-Metro-Rent Out with enabled ads, but all four of its keywords
+("rent out villa online", "list bungalow for rent", "post independent house for rent", "rent out my independent house") were paused on purpose: zero impressions in 30 days, "a demand problem, not a wording one"
+(`ads_keyword_cleanup_2026_10_08.py`). The +11.3% is Google's generic estimate and is most likely 0 here, because there is little search volume.
+`ads_add_villa_rent_keywords.py` (dry run, Google-validated, 8 operations) added four different, owner-voice phrases from `owner-keywords-by-category-and-transaction.md` to both groups, PHRASE match: rent out my villa,
+put my villa on rent, list my villa for rent, find tenants for my villa. A keyword with no search volume costs nothing, so this is a free test and clears the flag. **If both groups still have zero impressions after 30 days (about 27 November), pause the
+ad groups instead.** Rollback: `python ads_add_villa_rent_keywords.py --remove`.
+
