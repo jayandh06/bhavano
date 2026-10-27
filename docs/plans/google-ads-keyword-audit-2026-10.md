@@ -107,3 +107,22 @@ Why this is safe for quality score and ad rank: new keywords have their own qual
 **Check after about 14 days:** pause any of the 19 with quality score 4 or lower, or CPC above about ₹60 with no conversion. Rollback: `python ads_add_owner_converting_keywords.py --remove`.
 Not done: category-gap keywords (PG, coworking, agents); check search volume before adding them.
 
+## Free keywords and ad relevance, 2026-10-27
+Landing page experience is average or above on every scored owner keyword; the weak score is **ad relevance** (31 of 79 below average). Much of it comes from keywords that say "free"
+while the ads do not: the owner ads deliberately stopped saying "free" on 2026-09-30 and 2026-10-12 so it would not prime resistance to the paid Featured upsell, although posting is free
+today (every listing fee is 0). Options considered: put "free" back into the ads of the free-keyword ad groups, split Generic "Ad group 1" into themed ad groups, or take the "free"
+keywords out. The owner chose to take them out of the keyword list, and keep "free" out of the ad copy (`ads_free_ads_relevance.py`, which drafted the ad and ad group version, was
+never run).
+- **Numbers (30 days, live owner keywords):** 62 contain "free": 32% of spend (₹21.2k of ₹66.5k), 118 of 412 conversions (29%), CPA ₹180 against ₹154 for the rest. Removing all of
+  them would lose about 118 conversions a month, so only the ones with no conversions went.
+- **Removed (not paused) by `ads_remove_free_keywords.py`, validated first, 30 operations:** the 30 live "free" keywords with no conversion in 30 days (30-day spend ₹1,269; 10 of them were
+  below average on ad relevance), mostly Metro-Generic and Other-Metro-Generic "Ad group 1" (for example "free ad posting for house rent", "free ad posting for property sale",
+  "post free rental ads online", "post free ad for flat on rent", "free ad posting for rental property" in Other-Metro, ₹353 with no conversion). Backup:
+  `ads_removed_free_keywords_2026-10-27.json`; `python ads_remove_free_keywords.py --restore` re-creates them.
+- **Kept:** the 23 "free" keywords that earned conversions (for example "free property listing site" 33 conversions, "post rental property for free" 14, "free property ads posting sites" 13,
+  "post free ad for rent" 6) and the 9 added the same day by `ads_add_owner_converting_keywords.py` (no data yet; the script protects them).
+- **Expect:** a small gain at most. The keywords left are the ones that earn, and several still score below average on ad relevance (for example "post rental property for free",
+  "post free ad for rent", both quality score 8). Their price is the relevance gap; the remaining way to close it without "free" in the ads is a decision to allow "free" in the Generic
+  ad group's ads again, or to accept it.
+- **Check in about 14 days:** quality score and ad relevance for the kept "free" keywords, total post-ad conversions against the 118 baseline.
+

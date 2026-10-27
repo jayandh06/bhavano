@@ -1,0 +1,244 @@
+{
+ "removed_keywords": [
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "post free ads for property sale",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "advertise property for free",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "advertise property to rent for free",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "free advertising sites for rental property",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "post free ad for flat on rent",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "post free rental ads online",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "advertise room for rent for free",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "advertise property for sale for free",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "free ad posting for house rent",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "post free ads for room rent",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "free post ads for real estate",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "free ad posting for property sale",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "free ad posting sites for rental property",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "free rent ads posting sites",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/198419903663",
+   "text": "property rent advertise free",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Other-Metro-Rent Out Property (Owners)",
+   "ad_group": "Ad Group 2.1 — Rent Out House/Apartment",
+   "ad_group_resource": "customers/4214066478/adGroups/198875640405",
+   "text": "advertise rental property for free",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Other-Metro-Rent Out Property (Owners)",
+   "ad_group": "Ad Group 2.1 — Rent Out House/Apartment",
+   "ad_group_resource": "customers/4214066478/adGroups/198875640405",
+   "text": "post rental ad free",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Other-Metro-Rent Out Property (Owners)",
+   "ad_group": "Ad Group 2.2 — Rent Out PG",
+   "ad_group_resource": "customers/4214066478/adGroups/198875640685",
+   "text": "advertise pg for free",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Other-Metro-Sell Property (Owners/Agents)",
+   "ad_group": "Ad Group 1.1 — Sell House/Property Online",
+   "ad_group_resource": "customers/4214066478/adGroups/200422013973",
+   "text": "sell house online free",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Sell Property (Owners/Agents)",
+   "ad_group": "Ad Group 1.1 — Sell House/Property Online",
+   "ad_group_resource": "customers/4214066478/adGroups/200702632978",
+   "text": "sell house online free",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Metro-Rent Out Property (Owners)",
+   "ad_group": "Ad Group 2.2 — Rent Out PG",
+   "ad_group_resource": "customers/4214066478/adGroups/201241143962",
+   "text": "advertise pg for free",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Other-Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/201547741818",
+   "text": "post free real estate ads online",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Other-Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/201547741818",
+   "text": "post free ad for rent",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Other-Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/201547741818",
+   "text": "advertise room for rent for free",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Other-Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/201547741818",
+   "text": "free ad posting for rental property",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Other-Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/201547741818",
+   "text": "advertise property for sale for free",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Other-Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/201547741818",
+   "text": "post free ads for room rent",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Other-Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/201547741818",
+   "text": "free post ads for real estate",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Other-Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/201547741818",
+   "text": "free ad posting for property sale",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  },
+  {
+   "campaign": "Other-Metro-Generic Post Ad Intent",
+   "ad_group": "Ad group 1",
+   "ad_group_resource": "customers/4214066478/adGroups/201547741818",
+   "text": "free real estate ads posting sites",
+   "match_type": "PHRASE",
+   "status": "ENABLED"
+  }
+ ]
+}
