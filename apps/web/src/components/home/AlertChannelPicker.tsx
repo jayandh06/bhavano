@@ -34,9 +34,12 @@ const UNAVAILABLE_HINT: Record<OwnerAlertChannel, string> = {
  * Messages themselves, add an email, or go Featured. See docs/plans/owner-notification-channel-preferences.md. */
 export function AlertChannelPicker({
   featured,
+  featuredSelectable,
   onChange,
 }: {
   featured: boolean;
+  /** The Featured plan picker is on this same page (an admin setting); otherwise Featured is offered right after posting. */
+  featuredSelectable: boolean;
   onChange: (choice: AlertChannelChoice) => void;
 }) {
   const [pref, setPref] = useState<OwnerAlertPreferenceDto | null>(null);
@@ -81,7 +84,8 @@ export function AlertChannelPicker({
           const paid = isPaidOwnerAlertChannel(channel);
           const reachable = pref.available[channel];
           const locked = paid && !featured;
-          const usable = reachable && !locked;
+          // A paid channel can be chosen before the ad is Featured: it takes over once it is, and the free channels cover the time until then.
+          const usable = reachable;
           const selected = picked === channel;
           return (
             <label
@@ -108,7 +112,12 @@ export function AlertChannelPicker({
                 {!reachable ? (
                   <span className="block text-muted">{UNAVAILABLE_HINT[channel]}</span>
                 ) : locked ? (
-                  <span className="block text-muted">Choose a Featured plan above to alert you here</span>
+                  <span className="block text-muted">
+                    {featuredSelectable
+                      ? "Choose a Featured plan above to alert you here"
+                      : "Included with Featured ads. You can make this ad Featured right after posting."}
+                    {selected && effective && effective !== channel ? ` Until then we'll use ${OWNER_ALERT_CHANNEL_LABELS[effective]}.` : ""}
+                  </span>
                 ) : null}
               </span>
             </label>

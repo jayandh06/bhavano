@@ -211,19 +211,19 @@ function draftAgeLabel(savedAt: number): string {
 }
 
 /** The Post/Save button's status text while `pending` — see docs/plans/posting-speed-and-progress.md.
- * Falls back to the old plain "Posting…" before the first upload progress update lands (the brief
- * window spent validating the phone/session) and once everything's uploaded and the listing is
- * actually being created. */
+ * Only ever says something about the photo / video upload, the one slow part worth watching. Null before the
+ * first progress update (validating the session) and once everything is uploaded and the listing is being
+ * created, where the button keeps its normal label instead of a vague "Posting…". */
 function postAdButtonProgressText(
   progress: { phase: "photos" | "video" | "creating"; current: number; total: number; fraction?: number } | null,
-): string {
-  if (!progress) return "Posting…";
+): string | null {
+  if (!progress) return null;
   if (progress.phase === "photos") return `Uploading photo ${progress.current} of ${progress.total}…`;
   if (progress.phase === "video") {
     const pct = progress.fraction !== undefined ? ` ${Math.round(progress.fraction * 100)}%` : "";
     return progress.total > 1 ? `Uploading video ${progress.current} of ${progress.total}…${pct}` : `Uploading video…${pct}`;
   }
-  return "Creating listing…";
+  return null;
 }
 
 /** Records a failure at the Preview/Publish step — as a `post_error` dataLayer event and as a
@@ -3005,7 +3005,7 @@ export function PostAdWizard({
             </div>
           ) : null}
 
-          {!assistedMode && <AlertChannelPicker featured={!!boostIntent} onChange={setAlertChoice} />}
+          {!assistedMode && <AlertChannelPicker featured={!!boostIntent} featuredSelectable={!!previewBoostDisplay?.showSelectorOnPreview} onChange={setAlertChoice} />}
 
           <p className="m-0 text-[12px] text-muted">
             {assistedMode
@@ -3025,7 +3025,7 @@ export function PostAdWizard({
               disabled={pending || (!assistedMode && !alertChoice.ready)}
               className={`ml-auto ${primaryButtonClass}`}
             >
-              {pending ? postAdButtonProgressText(uploadProgress) : assistedMode ? "Save for seller" : reachLabelFor(category, transactionType)}
+              {(pending ? postAdButtonProgressText(uploadProgress) : null) ?? (assistedMode ? "Save for seller" : reachLabelFor(category, transactionType))}
             </button>
           </div>
           </div>

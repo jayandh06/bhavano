@@ -32,10 +32,13 @@ const UNAVAILABLE_HINT: Record<OwnerAlertChannel, string> = {
 export function AlertChannelPicker({
   accessToken,
   featured,
+  featuredSelectable,
   onChange,
 }: {
   accessToken: string;
   featured: boolean;
+  /** The Featured plan picker is on this same page (an admin setting); otherwise Featured is offered right after posting. */
+  featuredSelectable: boolean;
   onChange: (choice: AlertChannelChoice) => void;
 }) {
   const { colors } = useAppTheme();
@@ -85,7 +88,8 @@ export function AlertChannelPicker({
         const paid = isPaidOwnerAlertChannel(channel);
         const reachable = pref.available[channel];
         const locked = paid && !featured;
-        const usable = reachable && !locked;
+        // A paid channel can be chosen before the ad is Featured: it takes over once it is, and the free channels cover the time until then.
+        const usable = reachable;
         const selected = picked === channel;
         return (
           <Pressable
@@ -105,7 +109,12 @@ export function AlertChannelPicker({
             {!reachable ? (
               <Text style={{ color: colors.muted, fontSize: 12 }}>{UNAVAILABLE_HINT[channel]}</Text>
             ) : locked ? (
-              <Text style={{ color: colors.muted, fontSize: 12 }}>Choose a Featured plan above to alert you here</Text>
+              <Text style={{ color: colors.muted, fontSize: 12 }}>
+                {featuredSelectable
+                  ? "Choose a Featured plan above to alert you here"
+                  : "Included with Featured ads. You can make this ad Featured right after posting."}
+                {selected && effective && effective !== channel ? ` Until then we'll use ${OWNER_ALERT_CHANNEL_LABELS[effective]}.` : ""}
+              </Text>
             ) : null}
           </Pressable>
         );

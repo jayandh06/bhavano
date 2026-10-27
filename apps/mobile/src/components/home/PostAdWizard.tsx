@@ -272,19 +272,19 @@ const STEP_SYNTHETIC_PATH: Record<Step, string | null> = {
 };
 
 /** The Post ad button's status text while `pending` — see docs/plans/posting-speed-and-progress.md.
- * Falls back to the old plain "Posting…" before the first upload progress update lands (the brief
- * window spent validating the phone/session) and once everything's uploaded and the listing is
- * actually being created. */
+ * Only ever says something about the photo / video upload, the one slow part worth watching. Null before the
+ * first progress update (validating the session) and once everything is uploaded and the listing is being
+ * created, where the button keeps its normal label instead of a vague "Posting…". */
 function postAdButtonProgressText(
   progress: { phase: "photos" | "video" | "creating"; current: number; total: number; fraction?: number } | null,
-): string {
-  if (!progress) return "Posting…";
+): string | null {
+  if (!progress) return null;
   if (progress.phase === "photos") return `Uploading photo ${progress.current} of ${progress.total}…`;
   if (progress.phase === "video") {
     const pct = progress.fraction !== undefined ? ` ${Math.round(progress.fraction * 100)}%` : "";
     return progress.total > 1 ? `Uploading video ${progress.current} of ${progress.total}…${pct}` : `Uploading video…${pct}`;
   }
-  return "Creating listing…";
+  return null;
 }
 
 export function PostAdWizard({
@@ -2691,7 +2691,7 @@ export function PostAdWizard({
           )}
 
           {(accessToken ?? postAccessToken) ? (
-            <AlertChannelPicker accessToken={(accessToken ?? postAccessToken)!} featured={!!boostIntent} onChange={setAlertChoice} />
+            <AlertChannelPicker accessToken={(accessToken ?? postAccessToken)!} featured={!!boostIntent} featuredSelectable={!!previewBoostDisplay?.showSelectorOnPreview} onChange={setAlertChoice} />
           ) : null}
 
           <Text style={{ color: colors.muted, fontSize: 12 }}>
@@ -2701,7 +2701,7 @@ export function PostAdWizard({
           <View style={styles.navRow}>
             <Pressable onPress={onSubmit} disabled={pending || !alertChoice.ready} style={[styles.submitButton, { backgroundColor: colors.green, opacity: pending || !alertChoice.ready ? 0.6 : 1 }]}>
               <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }} numberOfLines={1}>
-                {pending ? postAdButtonProgressText(uploadProgress) : reachLabelFor(category, transactionType)}
+                {(pending ? postAdButtonProgressText(uploadProgress) : null) ?? reachLabelFor(category, transactionType)}
               </Text>
             </Pressable>
           </View>
