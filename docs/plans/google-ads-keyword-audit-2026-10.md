@@ -169,3 +169,14 @@ Checked first: landing page experience is average or above everywhere, expected 
 - **Still to decide (cost money):** a modest Target CPA increase (owner campaigns lose 51 to 67% of impressions to rank, none to budget), keyword insertion in headlines for the big mixed ad groups, and bids by city and hour once
   conversions per city and hour are measured.
 
+### Removing the "verified" claims, 2026-10-27
+Scan: 110 ads in the account mention "verified" ("Reach Verified Tenants" 31 times, "Verified Rental Listings", "Verified Sale Listings", "Browse verified flats...", "...verified buyer inquiries", lease ads), plus 4 "Buy Property"
+sitelinks ("Browse verified listings online") and the account callout "Verified Listings". The product has no verified-only listings, so these are claims we cannot back (misleading-ad risk). Only what is serving now was touched:
+27 ads (Metro-Seeker 7, Metro-Rent Out 4, Metro-Sell 5, Metro-Lease 2, Other-Metro-Rent Out 4, Other-Metro-Sell 5), 7 sitelink links, the callout. Ads that are paused, or in paused ad groups or campaigns, still contain the word and are left as they are.
+`ads_remove_verified_claims.py` works in two phases because Google cannot edit ad or sitelink text and a gap while new text is reviewed would cost impressions:
+1. **Phase 1 (done, 40 operations, validated first):** created the replacement ads ("Reach Tenants In Your City", "Owner-Posted Rental Listings", "Owner-Posted Sale Listings", "Get Tenant Enquiries Directly", "Reach PG Seekers In Your City"...; the word is simply
+   dropped from descriptions), a callout "Owner-Posted Listings" and 4 sitelinks "Browse listings online". The old ones are untouched and still serve. Backup: `ads_remove_verified_claims_backup.json`.
+2. **Phase 2 (pending):** `python ads_remove_verified_claims.py --status`, and once the new ads show APPROVED, `python ads_remove_verified_claims.py --finish` pauses the old ads (never removes) and unlinks the old callout and sitelinks.
+   `--finish` only touches items whose replacement is approved. At the time of writing the new callout and sitelinks were APPROVED and the 27 ads still under review.
+`--rollback` pauses the replacement ads and unlinks the replacement assets.
+
