@@ -126,3 +126,15 @@ never run).
   ad group's ads again, or to accept it.
 - **Check in about 14 days:** quality score and ad relevance for the kept "free" keywords, total post-ad conversions against the 118 baseline.
 
+### Do "free" keywords hurt Featured purchases? Re-measured 2026-10-27
+`python ads_free_keyword_performance.py` (read-only, ad-group level, since 2026-09-20, the day purchase conversions started uploading): 8 ad groups have an enabled "free" keyword (Generic Ad group 1 in both
+city groups, Rent Out 2.1 in both, Sell 1.1 in both, and the Sell 1.5 junk group).
+| | clicks | posts | posts per click | Featured purchases | per click | per post |
+|---|---|---|---|---|---|---|
+| Ad groups with a "free" keyword (8) | 1,766 | 339 | 19.2% | 48 | 2.72% | 14.2% |
+| All other ad groups (48) | 2,118 | 170 | 8.0% | 26 | 1.23% | 15.3% |
+So the September finding ("post at about twice the rate but only half as many go on to boost") **no longer holds**: the share of posters who buy Featured is the same (14% against 15%),
+and the "free" ad groups produce 65% of all Featured purchases (48 of 74). Caveats: ad-group level, so a group counts as "free" even if only some of its keywords say it (Rent Out 2.1 has 6 of
+about 135); "all conversions" counted; small numbers. Consequence: do **not** remove the 23 earning "free" keywords; the earlier reason for keeping "free" out of the ad copy (priming resistance to the
+upsell) is not supported by this data and can be revisited with an ad test (see `ads_free_ads_relevance.py`, not run).
+
