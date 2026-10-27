@@ -73,3 +73,21 @@ marketplace — what a *seeker* types — and they are where most of the waste s
 
 Correct for seekers, but: Buy ad groups get ~0 impressions (portals outbid us); Bengaluru Rent
 spent ₹1,083 with 0 saved searches; its only conversion is a "Post ad success" from Kolkata Rent.
+
+## Poster keyword cleanup, 2026-10-27
+Audit of the owner/poster campaigns (Metro-* and Other-Metro-*, not the seeker ones), last 30 days: 284 live keywords, 139 with no impressions; 5 keywords spent
+₹150 or more with no conversion (₹1,231 of about ₹66k); no live keyword with quality score 4 or below; no duplicate within a campaign and only 4 across campaigns.
+- **Junk keywords removed (not paused) by the owner in the Ads UI** while the script was being prepared: 34 criteria, all with zero impressions. Competitor names
+  (99 acres, 99acres rent house, property 24, olx rent for house, justco coworking space, home4rent), unrelated phrases (apna ... kaise beche, digital products
+  selling websites free, noida property rates, corporate leasing companies), tenant-side phrases (house for rent, house rent, rent house, lease house), plus
+  "i want to rent my property to brands / zepto" and "vj indiworks kothrud". `ads_clean_poster_keywords.py` would have done the same removal, with a JSON backup and
+  `--restore`; it found nothing left to remove.
+- **Competitor negatives added by `ads_clean_poster_keywords.py`:** 23 phrase-match negatives on all 9 poster campaigns (189 operations, validated first): olx, 99acres,
+  99 acres, magicbricks, magic bricks, quikr, quicker home(s), nestaway, commonfloor, sulekha, squareyards, square yards, makaan, proptiger, home4rent, justco, zolo,
+  colive, stanza living, housing.com, housing com, property24. Competitor-name search terms had cost ₹219 for 5 clicks and 0 conversions in 30 days.
+  **"nobroker" was not added** because the live conquest keyword "nobroker post free ad" would be blocked by it; the script checks each negative against the keywords we keep.
+- Left alone on purpose: "lease property online" (₹273, 0 conversions: a real owner phrase with a small sample), the 100 or so zero-impression city and category
+  long-tail keywords in Metro-Rent Out (no cost), and the five 0-conversion keywords above ₹150 other than that (3 to 14 clicks each).
+- Rollback of the negatives: remove them in the Ads UI, or `python ads_clean_poster_keywords.py --restore` (it re-creates removed keywords from the backup file if one exists
+  and removes the negatives this run added, which the backup records only when keywords are removed, so use the UI for the negatives).
+
