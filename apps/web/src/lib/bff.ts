@@ -1,3 +1,4 @@
+import type { OwnerAlertChannel, OwnerAlertPreferenceDto } from "@bhavano/types/ownerAlerts";
 import type { SearchInterpretationDto } from "@bhavano/types/searchInterpretation";
 import type { AreaOverviewDto, AreaPriceStats, CityOverviewDto, PublishedAreaOverviewLink } from "@bhavano/types/areaOverview";
 import "server-only";
@@ -1019,6 +1020,14 @@ export function fetchFavourites(accessToken: string): Promise<ListingCardDto[]> 
 
 export function fetchProfile(accessToken: string): Promise<UserProfileDto> {
   return authedBffFetch(accessToken, "/users/me", { cache: "no-store" });
+}
+
+export function fetchAlertPreferences(accessToken: string): Promise<OwnerAlertPreferenceDto> {
+  return authedBffFetch(accessToken, "/users/me/alert-preferences", { cache: "no-store" });
+}
+
+export function saveAlertPreferences(accessToken: string, channels: OwnerAlertChannel[]): Promise<OwnerAlertPreferenceDto> {
+  return authedBffFetch(accessToken, "/users/me/alert-preferences", { method: "PUT", body: JSON.stringify({ channels }) });
 }
 
 export function updateProfile(accessToken: string, input: UpdateProfileInput): Promise<UserProfileDto> {

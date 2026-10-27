@@ -16,7 +16,7 @@ import type {
   MessageDto,
 } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { OwnerAlertsService } from '../owner-alerts/owner-alerts.service';
 import { ListingsService } from '../listings/listings.service';
 import { isBulkImportOwner, OWNER_UNVERIFIED_MESSAGE } from '../listings/bulk-import-owner';
 import type { Conversation, Message, Prisma } from '@prisma/client';
@@ -50,7 +50,7 @@ export class MessagingService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly notificationsService: NotificationsService,
+    private readonly ownerAlerts: OwnerAlertsService,
     private readonly listingsService: ListingsService,
   ) {}
 
@@ -679,16 +679,22 @@ export class MessagingService {
   }): Promise<void> {
     const listing = await this.prisma.listing.findUnique({
       where: { id: params.listingId },
-      select: { title: true, instantAlertsUntil: true, owner: { select: { email: true, phone: true } } },
+      select: { title: true, instantAlertsUntil: true },
     });
-    if (!listing || (listing.instantAlertsUntil?.getTime() ?? 0) <= Date.now()) return;
+    if (!listing) return;
+    // Everyone is told on their chosen channel; OWNER_ALERTS_FEATURED_ONLY=true restores the old rule (out-of-app alerts only while Instant Alerts is active).
+    const featured = (listing.instantAlertsUntil?.getTime() ?? 0) > Date.now();
+    if (!featured && process.env.OWNER_ALERTS_FEATURED_ONLY === 'true') return;
 
-    const channel = await this.notificationsService.notifyNewMessage(listing.owner, {
-      senderName: params.senderName,
+    const channel = await this.ownerAlerts.alert(params.recipientId, {
+      kind: 'message',
+      listingId: params.listingId,
       listingTitle: listing.title,
+      name: params.senderName,
       conversationId: params.conversationId,
     });
-    if (channel) {
+    // The push itself is logged by the controller; this row is for the channels the alert actually reached.
+    if (channel && channel !== 'push') {
       await this.prisma.listingNotificationLog.create({
         data: { listingId: params.listingId, kind: 'new_message', channel },
       });

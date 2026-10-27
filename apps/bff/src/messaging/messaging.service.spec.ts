@@ -1,9 +1,9 @@
 import { NotFoundException } from '@nestjs/common';
 import { MessagingService } from './messaging.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { OwnerAlertsService } from '../owner-alerts/owner-alerts.service';
 
-const notNotified = {} as NotificationsService;
+const notNotified = { alert: jest.fn().mockResolvedValue(null) } as unknown as OwnerAlertsService;
 
 const HOUR_MS = 60 * 60 * 1000;
 const future = (hours = 1) => new Date(Date.now() + hours * HOUR_MS);

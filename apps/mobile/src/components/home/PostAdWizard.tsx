@@ -59,6 +59,7 @@ import { runWithConcurrency } from "@bhavano/types/concurrencyPool";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName, type IconName } from "../Icon";
+import { AlertPreferenceCard } from "./AlertPreferenceCard";
 import { CompletenessMeter } from "./CompletenessMeter";
 import {
   fetchLastListingDetails,
@@ -2876,6 +2877,12 @@ export function PostAdWizard({
               </>
             )}
           </View>
+
+          {(accessToken ?? postAccessToken) ? (
+            <View style={{ alignSelf: "stretch" }}>
+              <AlertPreferenceCard accessToken={(accessToken ?? postAccessToken)!} compact />
+            </View>
+          ) : null}
 
           {previewBoostDisplay?.showSelectorOnPreview && Platform.OS !== "ios" ? (
             // The full picker stays hidden here — the choice was already made on the review step

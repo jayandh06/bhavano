@@ -92,6 +92,25 @@ export class NotificationsService {
     return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
 
+  /** One owner alert by email, for OwnerAlertsService when email is the channel it picked. Links straight to the conversation for a message, My listings
+   * for the rest. Returns whether the mail went out. */
+  async sendOwnerAlertEmail(
+    user: NotifiableUser,
+    kind: 'message' | 'interest' | 'reveal',
+    vars: { title: string; name?: string },
+    conversationId?: string,
+  ): Promise<boolean> {
+    if (!user.email) return false;
+    const template = { message: 'email/new-message', interest: 'email/listing-interest', reveal: 'email/contact-revealed' }[kind];
+    const linkPath = kind === 'message' && conversationId ? `/messages/${conversationId}` : '/my-listings';
+    const { subject, text, html } = this.renderPurchaseEmail(
+      template,
+      { title: vars.title, senderName: vars.name ?? 'Someone', interestedName: vars.name ?? 'Someone' },
+      linkPath,
+    );
+    return this.emailProvider.send(user.email, subject, text, { html });
+  }
+
   /** Boost purchase confirmation — see PaymentsService.handleWebhook's `listing_boost` branch.
    * No WhatsApp template exists yet — see `notifyListingFlagged`'s comment; a phone-only owner
    * gets nothing until one is built. Branded HTML (see emailLayout.ts) rather than a plain-text

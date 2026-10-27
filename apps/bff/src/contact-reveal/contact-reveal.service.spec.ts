@@ -52,7 +52,7 @@ function makeService(
     },
     $transaction: (run: (t: typeof tx) => unknown) => run(tx),
   } as unknown as PrismaService;
-  return { service: new ContactRevealService(prisma), tx };
+  return { service: new ContactRevealService(prisma, { alert: jest.fn().mockResolvedValue(null) } as never), tx };
 }
 
 describe('ContactRevealService — unclaimed Bulk Import listings', () => {

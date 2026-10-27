@@ -27,6 +27,7 @@ email/saved-search-match/               "a new listing matches your saved search
 whatsapp/welcome/         the approved WhatsApp welcome template's wording
 whatsapp/listing-posted/  the approved WhatsApp "ad is live" template's wording
 whatsapp/claim-listing/  the approved "claim_listing_1" WhatsApp template's wording
+whatsapp/owner-alert-message|interest|reveal/  wording to submit for the owner alert WhatsApp templates (NOT yet submitted)
 whatsapp/boost-promotion/ the "boost_promotion" template's wording — NOT yet submitted to Meta
 ```
 

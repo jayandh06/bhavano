@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -34,6 +35,9 @@ import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import { PaymentsService } from '../payments/payments.service';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateAlertPreferenceDto } from './dto/alert-preference.dto';
+import { OwnerAlertsService } from '../owner-alerts/owner-alerts.service';
+import type { OwnerAlertPreferenceDto } from '@bhavano/types/ownerAlerts';
 import { RequestEmailCodeDto, VerifyEmailDto } from './dto/verify-email.dto';
 import { ConfirmMergeDto } from './dto/confirm-merge.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
@@ -55,6 +59,7 @@ export class UsersController {
     private readonly contactRevealService: ContactRevealService,
     private readonly paymentsService: PaymentsService,
     private readonly userCityFromIp: UserCityFromIpService,
+    private readonly ownerAlerts: OwnerAlertsService,
   ) {}
 
   @Get()
@@ -68,6 +73,21 @@ export class UsersController {
     @Body() dto: UpdateProfileDto,
   ): Promise<UserProfileDto> {
     return this.usersService.updateProfile(user.id, dto);
+  }
+
+  /** How this advertiser wants to be alerted when a seeker contacts them — see docs/plans/owner-notification-channel-preferences.md. `confirmed` is false until
+   * they choose (the default order applies), which is what the one-time question after posting keys off. */
+  @Get('alert-preferences')
+  getAlertPreferences(@CurrentUser() user: RequestUser): Promise<OwnerAlertPreferenceDto> {
+    return this.ownerAlerts.getPreference(user.id);
+  }
+
+  @Put('alert-preferences')
+  setAlertPreferences(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: UpdateAlertPreferenceDto,
+  ): Promise<OwnerAlertPreferenceDto> {
+    return this.ownerAlerts.setPreference(user.id, dto.channels);
   }
 
   /** The city to pre-select in the "where are you?" step, guessed from this person's visit IPs.

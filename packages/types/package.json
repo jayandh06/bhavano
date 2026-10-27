@@ -29,6 +29,10 @@
       "types": "./dist/categoryFields.d.ts",
       "default": "./dist/categoryFields.js"
     },
+    "./ownerAlerts": {
+      "types": "./dist/ownerAlerts.d.ts",
+      "default": "./dist/ownerAlerts.js"
+    },
     "./listingLimits": {
       "types": "./dist/listingLimits.d.ts",
       "default": "./dist/listingLimits.js"

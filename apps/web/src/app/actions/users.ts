@@ -1,16 +1,20 @@
 "use server";
 
 import type { City, LinkIdentifierResult, ProfileNudgeDto, UpdateProfileInput, UserProfileDto } from "@bhavano/types";
+import type { OwnerAlertChannel, OwnerAlertPreferenceDto } from "@bhavano/types/ownerAlerts";
+import { withPrimaryChannel } from "@bhavano/types/ownerAlerts";
 import { auth } from "@/auth";
 import {
   BffAuthError,
   confirmAccountMerge,
   deleteAccount,
+  fetchAlertPreferences,
   fetchProfile,
   fetchProfileNudge,
   fetchSellerAttention,
   fetchSuggestedCity,
   requestEmailCode,
+  saveAlertPreferences,
   snoozeProfileNudge,
   updateProfile,
   verifyEmail,
@@ -65,6 +69,32 @@ export async function snoozeProfileNudgeAction(): Promise<void> {
     await snoozeProfileNudge(session.accessToken);
   } catch {
     // Best-effort — a failed snooze just means the dialog may reappear next session.
+  }
+}
+
+/** The advertiser's alert channels, for the one-time question after posting and the Profile card. Null when logged out or the call fails. */
+export async function getAlertPreferencesAction(): Promise<OwnerAlertPreferenceDto | null> {
+  const session = await auth();
+  if (!session?.accessToken) return null;
+  try {
+    return await fetchAlertPreferences(session.accessToken);
+  } catch {
+    return null;
+  }
+}
+
+/** Makes `primary` the first channel to try and keeps the rest in their existing order. */
+export async function saveAlertPrimaryChannelAction(
+  primary: OwnerAlertChannel,
+): Promise<{ success: boolean; error?: string; preference?: OwnerAlertPreferenceDto }> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "Not logged in" };
+  try {
+    const current = await fetchAlertPreferences(session.accessToken);
+    const preference = await saveAlertPreferences(session.accessToken, withPrimaryChannel(current.channels, primary));
+    return { success: true, preference };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to save" };
   }
 }
 

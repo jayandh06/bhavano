@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
   ForbiddenException,
   Injectable,
+  Optional,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -71,6 +72,7 @@ import { toE164India } from '../outreach/phone';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../push/push.service';
+import { OwnerAlertsService } from '../owner-alerts/owner-alerts.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import { isListingBoosted } from './listing-boost.util';
@@ -551,6 +553,7 @@ export class ListingsService {
     private readonly pushService: PushService,
     private readonly analyticsService: AnalyticsService,
     private readonly referralsService: ReferralsService,
+    @Optional() private readonly ownerAlerts?: OwnerAlertsService,
   ) {}
 
   async list(
@@ -3509,11 +3512,15 @@ export class ListingsService {
 
     if ((instantAlertsUntil?.getTime() ?? 0) <= Date.now()) return;
 
-    const channel = await this.notificationsService.notifyListingInterest(owner, {
-      interestedName,
+    // The owner's chosen channel, not email-first: a phone-only owner used to get nothing here. Push was sent above, so "push" counts as delivered for
+    // anyone with a device and the alert only goes further for those without.
+    const channel = await this.ownerAlerts?.alert(ownerId, {
+      kind: 'interest',
+      listingId,
       listingTitle,
+      name: interestedName,
     });
-    if (channel) {
+    if (channel && channel !== 'push') {
       await this.prisma.listingNotificationLog.create({
         data: { listingId, kind: 'listing_interest', channel },
       });

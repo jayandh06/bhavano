@@ -65,6 +65,7 @@ function makeService() {
   } as unknown as ReferralsService;
   // Defaults to "no device" (undefined/falsy), matching every existing test's expectation that
   // the real-time push leg never logs by default — override per-test to exercise the logging.
+  const ownerAlerts = { alert: jest.fn().mockResolvedValue(null) };
   const pushService = {
     notifyListingInterest: jest.fn().mockResolvedValue(undefined),
     notifyListingFavourite: jest.fn().mockResolvedValue(undefined),
@@ -93,8 +94,9 @@ function makeService() {
     pushService as never,
   { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
   referralsService,
+  ownerAlerts as never,
   );
-  return { service, prisma, notificationsService, listingSlotsService, referralsService, pushService };
+  return { service, prisma, notificationsService, listingSlotsService, referralsService, pushService, ownerAlerts };
 }
 
 describe('ListingsService.list — word match + fuzzy title search', () => {
@@ -1906,25 +1908,25 @@ describe('ListingsService', () => {
     }
 
     it('upserts interest and notifies on authenticated view when Instant Alerts is active', async () => {
-      const { service, prisma, notificationsService } = makeService();
+      const { service, prisma, ownerAlerts } = makeService();
       (prisma.listing.findUnique as jest.Mock).mockResolvedValue(stubListing());
       (prisma.listingInterest.findUnique as jest.Mock).mockResolvedValue(null);
       (prisma.listingInterest.upsert as jest.Mock).mockResolvedValue({});
       (prisma.user.findUnique as jest.Mock)
         .mockResolvedValueOnce({ email: 'owner@example.com', phone: null })
         .mockResolvedValueOnce({ name: 'Riya' });
-      (notificationsService.notifyListingInterest as jest.Mock).mockResolvedValue('email');
+      ownerAlerts.alert.mockResolvedValue('email');
       (prisma.listingNotificationLog.create as jest.Mock).mockResolvedValue({});
 
       const result = await service.recordInterest('listing1', 'buyer1', 'view');
       expect(result).toEqual({ interested: true, notified: true });
       expect(prisma.listingInterest.upsert).toHaveBeenCalled();
       await new Promise((r) => setImmediate(r));
-      expect(notificationsService.notifyListingInterest).toHaveBeenCalled();
+      expect(ownerAlerts.alert).toHaveBeenCalledWith('owner1', expect.objectContaining({ kind: 'interest', name: 'Riya' }));
     });
 
     it('does not send interest notify on message mode (message path covers notify)', async () => {
-      const { service, prisma, notificationsService } = makeService();
+      const { service, prisma, ownerAlerts } = makeService();
       (prisma.listing.findUnique as jest.Mock).mockResolvedValue(stubListing());
       (prisma.listingInterest.findUnique as jest.Mock).mockResolvedValue(null);
       (prisma.listingInterest.upsert as jest.Mock).mockResolvedValue({});
@@ -1932,11 +1934,11 @@ describe('ListingsService', () => {
       const result = await service.recordInterest('listing1', 'buyer1', 'message');
       expect(result).toEqual({ interested: true, notified: false });
       await new Promise((r) => setImmediate(r));
-      expect(notificationsService.notifyListingInterest).not.toHaveBeenCalled();
+      expect(ownerAlerts.alert).not.toHaveBeenCalled();
     });
 
     it('skips view re-notify inside the 24h window', async () => {
-      const { service, prisma, notificationsService } = makeService();
+      const { service, prisma, ownerAlerts } = makeService();
       (prisma.listing.findUnique as jest.Mock).mockResolvedValue(stubListing());
       (prisma.listingInterest.findUnique as jest.Mock).mockResolvedValue({
         lastNotifiedAt: new Date(),
@@ -1946,7 +1948,7 @@ describe('ListingsService', () => {
       const result = await service.recordInterest('listing1', 'buyer1', 'view');
       expect(result.notified).toBe(false);
       await new Promise((r) => setImmediate(r));
-      expect(notificationsService.notifyListingInterest).not.toHaveBeenCalled();
+      expect(ownerAlerts.alert).not.toHaveBeenCalled();
     });
 
     it('rejects the owner registering interest in their own listing', async () => {

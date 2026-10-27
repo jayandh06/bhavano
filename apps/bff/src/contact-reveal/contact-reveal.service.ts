@@ -1,6 +1,7 @@
 import { ConflictException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import type { ContactRevealBalanceDto, ContactRevealSettingsDto, RevealContactResponseDto } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { OwnerAlertsService } from '../owner-alerts/owner-alerts.service';
 import { BULK_IMPORT_OWNER_PHONE, OWNER_UNVERIFIED_MESSAGE } from '../listings/bulk-import-owner';
 import { CONTACT_REVEAL_SETTINGS_ID, DEFAULT_CONTACT_REVEAL_SETTINGS } from './contact-reveal.constants';
 
@@ -25,7 +26,10 @@ export type ContactRevealState = {
 
 @Injectable()
 export class ContactRevealService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ownerAlerts: OwnerAlertsService,
+  ) {}
 
   async getSettings(): Promise<ContactRevealSettingsDto> {
     const existing = await this.prisma.contactRevealSetting.findUnique({ where: { id: CONTACT_REVEAL_SETTINGS_ID } });
@@ -188,6 +192,8 @@ export class ContactRevealService {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
       select: {
+        ownerId: true,
+        title: true,
         owner: { select: { phone: true, email: true } },
         claimContact: { select: { phone: true, email: true } },
       },
@@ -202,7 +208,8 @@ export class ContactRevealService {
       throw new ConflictException({ message: OWNER_UNVERIFIED_MESSAGE, code: 'OWNER_UNVERIFIED' });
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    let created = false;
+    const result = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.contactReveal.findUnique({ where: { listingId_userId: { listingId, userId } } });
       if (existing) return { ownerPhone, ownerEmail };
 
@@ -212,6 +219,7 @@ export class ContactRevealService {
       const freeUsed = await tx.contactReveal.count({ where: { userId, source: 'free' } });
       if (freeUsed < settings.freeRevealsPerUser) {
         await tx.contactReveal.create({ data: { listingId, userId, source: 'free' } });
+        created = true;
         return { ownerPhone, ownerEmail };
       }
 
@@ -228,7 +236,20 @@ export class ContactRevealService {
       await tx.contactReveal.create({
         data: { listingId, userId, source: 'credit', creditBatchId: batch.id },
       });
+      created = true;
       return { ownerPhone, ownerEmail };
     });
+
+    // Tell the advertiser a seeker just unlocked their number: the strongest buying signal they get, and one that used to reach nobody. Not for an unclaimed
+    // bulk-import listing (its "owner" is the import account), and only the first reveal by this seeker (a repeat call is a plain read).
+    if (created && !isUnverified && listing.ownerId !== userId) {
+      void this.ownerAlerts
+        .alert(listing.ownerId, { kind: 'reveal', listingId, listingTitle: listing.title })
+        .then((channel) =>
+          channel ? this.prisma.listingNotificationLog.create({ data: { listingId, kind: 'contact_revealed', channel } }) : undefined,
+        )
+        .catch(() => undefined);
+    }
+    return result;
   }
 }

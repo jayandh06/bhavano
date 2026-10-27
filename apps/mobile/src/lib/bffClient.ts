@@ -1,4 +1,5 @@
 import type { AppVersionSettingsDto } from "@bhavano/types/appVersion";
+import type { OwnerAlertChannel, OwnerAlertPreferenceDto } from "@bhavano/types/ownerAlerts";
 import type { LastListingDetailsDto } from "@bhavano/types/listingReuse";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
@@ -386,6 +387,14 @@ export function sendFirstMessage(
  * See docs/plans/contact-reveal-credits.md. */
 export function revealContact(accessToken: string, listingId: string): Promise<RevealContactResponseDto> {
   return authedBffFetch(accessToken, `/listings/${listingId}/reveal-contact`, { method: "POST" });
+}
+
+export function fetchAlertPreferences(accessToken: string): Promise<OwnerAlertPreferenceDto> {
+  return authedBffFetch(accessToken, "/users/me/alert-preferences");
+}
+
+export function saveAlertPreferences(accessToken: string, channels: OwnerAlertChannel[]): Promise<OwnerAlertPreferenceDto> {
+  return authedBffFetch(accessToken, "/users/me/alert-preferences", { method: "PUT", body: JSON.stringify({ channels }) });
 }
 
 export function fetchContactRevealBalance(accessToken: string): Promise<ContactRevealBalanceDto> {

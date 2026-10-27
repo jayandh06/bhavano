@@ -758,6 +758,128 @@ export class Msg91Provider {
     }
   }
 
+  /** WhatsApp alert to an advertiser that a seeker contacted them (see OwnerAlertsService). One approved template per kind, each named only in env so a
+   * rename or a first approval is a prod `.env` change and a restart, not a deploy: MSG91_WHATSAPP_OWNER_{MESSAGE|INTEREST|REVEAL}_TEMPLATE_NAME, with an
+   * optional MSG91_WHATSAPP_OWNER_{KIND}_NAMESPACE (falls back to MSG91_WHATSAPP_NAMESPACE, then null). Until the name is set this skips, and the dispatcher
+   * moves on to the owner's next channel.
+   *
+   * Body values are positional, in the order the copy reads (notification-templates/whatsapp/owner-alert-*): `body_1` the other person's name and `body_2`
+   * the ad title; a reveal has only `body_1`, the ad title (the app does not tell the owner who looked). `button_1` is the URL suffix appended to the base URL baked into the template (the conversation id for a message,
+   * `my-listings` for the rest). The shape follows the other templates' dashboard "Code" snippets; check the snippet for each of these three when they are
+   * approved, because MSG91 validates the count of values, never their meaning. */
+  async sendOwnerAlert(
+    phone: string,
+    kind: 'message' | 'interest' | 'reveal',
+    vars: { title: string; name?: string; buttonSuffix: string },
+  ): Promise<{ sent: boolean; messageId: string | null }> {
+    const envKind = kind.toUpperCase();
+    const authKey = this.config.get<string>('MSG91_AUTH_KEY');
+    const integratedNumber = this.config.get<string>('MSG91_WHATSAPP_INTEGRATED_NUMBER');
+    const template = this.config.get<string>(`MSG91_WHATSAPP_OWNER_${envKind}_TEMPLATE_NAME`);
+    const namespace =
+      this.config.get<string>(`MSG91_WHATSAPP_OWNER_${envKind}_NAMESPACE`) ??
+      this.config.get<string>('MSG91_WHATSAPP_NAMESPACE') ??
+      null;
+    if (!authKey || !integratedNumber || !template) return { sent: false, messageId: null };
+
+    // Reading order of the approved copy: the person first, then the ad (a reveal has only the ad).
+    const components: Record<string, unknown> =
+      kind === 'reveal'
+        ? { body_1: { type: 'text', value: vars.title } }
+        : { body_1: { type: 'text', value: vars.name?.trim() || 'Someone' }, body_2: { type: 'text', value: vars.title } };
+    components.button_1 = { subtype: 'url', type: 'text', value: vars.buttonSuffix };
+
+    const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { authkey: authKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          integrated_number: integratedNumber,
+          content_type: 'template',
+          payload: {
+            messaging_product: 'whatsapp',
+            type: 'template',
+            template: {
+              name: template,
+              language: { code: 'en', policy: 'deterministic' },
+              namespace,
+              to_and_components: [{ to: [`91${phone}`], components }],
+            },
+          },
+        }),
+      });
+      const responseBody = await res.text();
+      const ok = res.ok && !responseBody.includes('"error"');
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'msg91',
+        method: 'sendOwnerAlert',
+        url,
+        request: { template, namespace, kind, phone: maskPhone(phone) },
+        status: res.status,
+        responseText: responseBody,
+        ok,
+      });
+      if (!ok) {
+        this.logger.error(`MSG91 WhatsApp owner-alert (${kind}) send failed (${res.status})`);
+        return { sent: false, messageId: null };
+      }
+      return { sent: true, messageId: this.extractMessageId(responseBody) };
+    } catch (error) {
+      this.logger.error(
+        `Failed to send owner-alert (${kind}) WhatsApp to ${phone}: ${error instanceof Error ? error.message : error}`,
+      );
+      return { sent: false, messageId: null };
+    }
+  }
+
+  /** The SMS twin of sendOwnerAlert: a DLT-registered Flow template per kind, MSG91_OWNER_{MESSAGE|INTEREST|REVEAL}_SMS_TEMPLATE_ID, with `VAR1` the other
+   * person's name and `VAR2` the ad title (a reveal template has only VAR1, the ad title). Skips (returns false) while the id is unset. */
+  async sendOwnerAlertSms(
+    phone: string,
+    kind: 'message' | 'interest' | 'reveal',
+    vars: { title: string; name?: string },
+  ): Promise<boolean> {
+    const authKey = this.config.get<string>('MSG91_AUTH_KEY');
+    const templateId = this.config.get<string>(`MSG91_OWNER_${kind.toUpperCase()}_SMS_TEMPLATE_ID`);
+    if (!authKey || !templateId) return false;
+
+    const url = 'https://control.msg91.com/api/v5/flow/';
+    const recipient: Record<string, string> = { mobiles: `91${phone}` };
+    if (kind === 'reveal') {
+      recipient.VAR1 = vars.title.slice(0, 30);
+    } else {
+      recipient.VAR1 = (vars.name?.trim() || 'Someone').slice(0, 30);
+      recipient.VAR2 = vars.title.slice(0, 30);
+    }
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { authkey: authKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template_id: templateId, short_url: '0', recipients: [recipient] }),
+      });
+      const responseText = await res.text();
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'msg91',
+        method: 'sendOwnerAlertSms',
+        url,
+        request: { templateId, kind, phone: maskPhone(phone) },
+        status: res.status,
+        responseText,
+        ok: res.ok,
+      });
+      if (!res.ok) this.logger.error(`MSG91 owner-alert SMS (${kind}) failed (${res.status})`);
+      return res.ok;
+    } catch (error) {
+      this.logger.error(
+        `Failed to send owner-alert SMS (${kind}) to ${phone}: ${error instanceof Error ? error.message : error}`,
+      );
+      return false;
+    }
+  }
+
   /** Where MSG91 puts this send's id, confirmed against a real bulk-send response on 2026-09-08
    * (see sendAdPostedConfirmation's own comment for the exact shape) — `request_id` at the top
    * level. Returns null rather than throwing on anything unexpected (a differently-shaped

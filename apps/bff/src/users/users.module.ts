@@ -4,6 +4,7 @@ import { UsersService } from './users.service';
 import { ListingSlotsModule } from '../listing-slots/listing-slots.module';
 import { ListingsModule } from '../listings/listings.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { OwnerAlertsModule } from '../owner-alerts/owner-alerts.module';
 import { ContactRevealModule } from '../contact-reveal/contact-reveal.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { EmailVerificationService } from './email-verification.service';
@@ -21,6 +22,7 @@ import { UserCityFromIpJob } from './user-city-from-ip.job';
     ListingsModule,
     NotificationsModule,
     ContactRevealModule,
+    OwnerAlertsModule,
     PaymentsModule,
     forwardRef(() => AuthModule),
   ],

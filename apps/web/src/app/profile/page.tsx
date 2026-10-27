@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { BffAuthError, fetchContactRevealBalance, fetchProfile } from "@/lib/bff";
+import { BffAuthError, fetchAlertPreferences, fetchContactRevealBalance, fetchProfile } from "@/lib/bff";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { ProfileForm } from "@/components/home/ProfileForm";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
+import { AlertPreferenceCard } from "@/components/home/AlertPreferenceCard";
 import { ContactRevealBalanceCard } from "@/components/home/ContactRevealBalanceCard";
 
 export default async function ProfilePage({
@@ -38,6 +39,7 @@ export default async function ProfilePage({
               <ProfileFields accessToken={session.accessToken} />
             </div>
             <div className="w-full lg:w-[300px] lg:shrink-0 flex flex-col gap-5">
+              <AlertPreferenceFields accessToken={session.accessToken} />
               <ContactRevealBalanceFields accessToken={session.accessToken} />
               <div className="flex flex-col gap-2.5">
                 {/* Same outline-button style as "View" on my-listings, so the sidebar's actions
@@ -87,6 +89,16 @@ async function ProfileFields({ accessToken }: { accessToken: string }) {
     throw error;
   }
   return <ProfileForm profile={profile} />;
+}
+
+// Independent of the profile form for the same reason as the balance card below: a failed fetch here should not take the page down.
+async function AlertPreferenceFields({ accessToken }: { accessToken: string }) {
+  try {
+    return <AlertPreferenceCard preference={await fetchAlertPreferences(accessToken)} />;
+  } catch (error) {
+    if (error instanceof BffAuthError) return null;
+    throw error;
+  }
 }
 
 // Own component rather than folded into ProfileFields — a failed balance fetch (BffAuthError

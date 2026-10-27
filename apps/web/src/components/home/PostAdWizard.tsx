@@ -121,6 +121,7 @@ import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { SelectField } from "./SelectField";
 import { Icon, isIconName } from "./Icon";
+import { PostSuccessAlertQuestion } from "./PostSuccessAlertQuestion";
 import { UploadZone } from "./UploadZone";
 
 
@@ -3180,6 +3181,8 @@ export function PostAdWizard({
               )}
             </div>
           </div>
+
+          <PostSuccessAlertQuestion />
 
           {previewBoostDisplay?.showSelectorOnPreview ? (
             // The full picker stays hidden here — the choice was already made on the review step

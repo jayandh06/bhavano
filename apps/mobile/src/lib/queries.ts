@@ -6,6 +6,7 @@ import type { RequirementFeedFilters } from "@bhavano/types/requirementFeed";
 import {
   fetchAreas,
   fetchCities,
+  fetchAlertPreferences,
   fetchContactRevealBalance,
   fetchConversations,
   fetchMyReferrals,
@@ -115,6 +116,14 @@ export function useRequirementsFeedSummaryQuery(cityId: string | undefined, enab
     queryKey: ["requirementsFeedSummary", cityId ?? ""],
     queryFn: () => fetchRequirementsFeedSummary(cityId),
     enabled,
+  });
+}
+
+export function useAlertPreferencesQuery(accessToken: string | null) {
+  return useQuery({
+    queryKey: ["alertPreferences", accessToken],
+    queryFn: () => fetchAlertPreferences(accessToken!),
+    enabled: !!accessToken,
   });
 }
 

@@ -1,6 +1,6 @@
 # Owner alerts: channel preference and escalation (2026-10-27)
 
-Status: plan, nothing built. Related: [`notification-delivery-tracking-and-engagement-alerts.md`](notification-delivery-tracking-and-engagement-alerts.md), [`instant-alerts-paid-message-notifications.md`](instant-alerts-paid-message-notifications.md),
+Status: first version built 2026-10-27 (preference, dispatcher, message / interest / reveal alerts, web and app UI). Escalation, quiet hours and the weekly summary are not built; WhatsApp and SMS stay dormant until their templates are approved and named in env. Related: [`notification-delivery-tracking-and-engagement-alerts.md`](notification-delivery-tracking-and-engagement-alerts.md), [`instant-alerts-paid-message-notifications.md`](instant-alerts-paid-message-notifications.md),
 [`contact-owner-message-notifications.md`](contact-owner-message-notifications.md), [`whatsapp-conversational-posting.md`](whatsapp-conversational-posting.md).
 
 ## The idea
@@ -25,3 +25,18 @@ A preference is worth having but is **second-order**. First fix reach: build the
 
 ## Effort and order
 Templates (approval takes days) in parallel with the model and dispatcher (about a week), then the question and Profile screen, then escalation. Measure: share of enquiries answered within an hour, owner repeat rate, cost per alert.
+
+## As built (2026-10-27)
+- **Data:** `OwnerAlertPreference` (`userId`, ordered `channels`, always all four; no row = not chosen yet, default order push, WhatsApp, SMS, email). Shared helpers in `@bhavano/types/ownerAlerts`.
+- **API:** `GET` / `PUT /users/me/alert-preferences`. `available` says which channels can reach the account (device, phone, email); `confirmed` is false until the owner chooses.
+- **Dispatcher:** `OwnerAlertsService.alert(ownerId, {kind, ...})` walks the owner's order and stops at the first channel that delivers. A channel that cannot reach the account, or whose template env is unset, is skipped. Never throws.
+  "Push" counts as delivered when the owner has a device: message and interest pushes are sent by their own code paths (always, unchanged payloads); only the reveal sends its own push (`PushService.notifyContactRevealed`, anonymous).
+- **Events:** new message (first unread message of a thread, as before), interested view (still Featured-only, as before), and **number revealed (new, all owners, unclaimed bulk-import ads excluded)**.
+  Message alerts now reach **every** owner on their chosen channel, not only those with Instant Alerts. This widens a former Featured benefit on purpose (a phone-only owner used to get nothing); set `OWNER_ALERTS_FEATURED_ONLY=true` to restore the old rule. Rich detail, the daily digest and a weekly report remain Featured benefits.
+- **Logging:** `ListingNotificationLog` rows with `kind` `new_message` / `listing_interest` / `contact_revealed` and the channel that delivered (push rows for message and interest are written by their existing callers).
+- **Ask once:** a compact question on the post-success screen (web and app) and a card on Profile / Account. One primary channel is chosen; the rest keep their order as fallbacks.
+- **Templates to approve** (wording and slot order in `apps/bff/notification-templates/whatsapp/owner-alert-*`): `owner_alert_message`, `owner_alert_interest`, `owner_alert_reveal`. Env: `MSG91_WHATSAPP_OWNER_{MESSAGE|INTEREST|REVEAL}_TEMPLATE_NAME` (+ optional `_NAMESPACE`).
+  SMS (DLT Flow, `VAR1` = name, `VAR2` = ad title; reveal has `VAR1` = ad title only): `MSG91_OWNER_{MESSAGE|INTEREST|REVEAL}_SMS_TEMPLATE_ID`. Suggested SMS text: `{#var#} messaged you about {#var#} on Bhavano. Reply: bhavano.com/messages` (register the link per DLT rules).
+  Verify each against the template's MSG91 "Code" snippet before enabling; the shape in `Msg91Provider.sendOwnerAlert` follows the other templates, not this one's snippet.
+- **Known limits:** if an owner ranks WhatsApp above the app, the app push still goes (it is sent by the message / interest paths before the dispatcher runs) and they also get WhatsApp. Push is free, so accepted for now. The email for a reveal is new (`email/contact-revealed`).
+- **Not built (phase 2):** escalation when unread after about 30 minutes, quiet hours, the weekly activity summary for all ads, a way to switch a channel off entirely.

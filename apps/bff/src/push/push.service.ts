@@ -211,6 +211,22 @@ export class PushService {
     });
   }
 
+  /** Owner push when someone unlocks their contact details. Anonymous on purpose: the app does not tell the owner who looked (the seeker spent a reveal
+   * to call, not to be called back). Returns whether a send was attempted, like the other owner pushes. */
+  async notifyContactRevealed(recipientId: string, params: { listingId: string; listingTitle: string }): Promise<boolean> {
+    return this.sendToUser(recipientId, {
+      title: params.listingTitle,
+      body: '📞 Someone viewed your number',
+      channelId: PUSH_CHANNEL_LISTING_ACTIVITY,
+      priority: 'high',
+      interruptionLevel: 'active',
+      collapseId: `reveal:${params.listingId}`,
+      tag: `reveal:${params.listingId}`,
+      threadId: params.listingId,
+      data: { kind: 'contact_revealed', path: '/my-listings', listingId: params.listingId },
+    });
+  }
+
   /** Owner push when someone favourites their listing — all ads, not only boosted (email/WhatsApp
    * for likes stays boost-gated). Returns whether a send was attempted — the caller
    * (`ListingsService.notifyOwnerOfLike`) logs a `liked` row to `ListingNotificationLog`

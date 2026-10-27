@@ -443,6 +443,7 @@ model User {
    * to deliver a "new message" push; see PushService.
    */
   pushTokens                  PushToken[]
+  ownerAlertPreference        OwnerAlertPreference?
   payments                    Payment[]
   applePurchaseIntents        ApplePurchaseIntent[]
   subscriptions               UserSubscription[]
@@ -1684,6 +1685,19 @@ model UserNotificationLog {
  * push going to the previous user. Deleted on logout, and pruned when Expo reports the token as
  * `DeviceNotRegistered`.
  */
+/**
+ * How an advertiser wants to be alerted when a seeker contacts them (a message, an interested view, a number reveal): their channels in the order to
+ * try them. No row means they have not chosen yet and the default order applies. See docs/plans/owner-notification-channel-preferences.md.
+ */
+model OwnerAlertPreference {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Always all four of push / whatsapp / sms / email, first = tried first (normalizeOwnerAlertOrder in @bhavano/types/ownerAlerts).
+  channels  String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model PushToken {
   id         String   @id @default(cuid())
   userId     String

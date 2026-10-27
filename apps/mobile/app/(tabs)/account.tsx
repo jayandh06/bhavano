@@ -21,6 +21,7 @@ import {
 } from "../../src/lib/bffClient";
 import { useContactRevealBalanceQuery } from "../../src/lib/queries";
 import { Icon } from "../../src/components/Icon";
+import { AlertPreferenceCard } from "../../src/components/home/AlertPreferenceCard";
 import { IosCreditsSheet } from "../../src/components/home/IosPurchaseSheets";
 
 type PhoneStep = "idle" | "otpSent";
@@ -721,7 +722,11 @@ function ProfileFields({
           while editing the form, and putting them after Save keeps the primary action from
           competing with them for attention on first load. Same order as the website's profile
           sidebar: credits, then the two "go elsewhere" links. */}
-      <View style={[styles.balanceCard, { borderColor: colors.border, backgroundColor: colors.surface, marginTop: 28 }]}>
+      <View style={{ marginTop: 28 }}>
+        <AlertPreferenceCard accessToken={accessToken} />
+      </View>
+
+      <View style={[styles.balanceCard, { borderColor: colors.border, backgroundColor: colors.surface, marginTop: 14 }]}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
           <Icon name="phone" size={15} color={colors.text} />
           <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Contact reveal credits</Text>
