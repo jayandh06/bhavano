@@ -2,10 +2,12 @@ import Link from "next/link";
 import type { Area } from "@bhavano/types";
 import { buildBrowseSeoCopy } from "@/lib/browseSeoCopy";
 import type { ParsedSegments } from "@/lib/seoRoute";
+import { fetchListingInventory } from "@/lib/bff";
+import { buildBrowseInventory } from "@/lib/linkInventory";
 
 /** Server-rendered locality SEO block — intro text and related internal links (see
  * docs/plans/seo-locality-landing-content.md). */
-export function BrowseSeoIntro({
+export async function BrowseSeoIntro({
   heading,
   cityName,
   areaName,
@@ -49,13 +51,17 @@ export function BrowseSeoIntro({
     );
   }
 
-  if (relatedLinks.length === 0) return null;
+  // Only link to pages that have listings: a link to an empty page is a link to a noindex page (docs/plans/seo-indexing-cleanup.md).
+  // If the inventory cannot be read, keep every link rather than drop the block.
+  const inventory = await fetchListingInventory().then(buildBrowseInventory).catch(() => null);
+  const links = inventory ? relatedLinks.filter((link) => inventory.has(link.href)) : relatedLinks;
+  if (links.length === 0) return null;
 
   return (
     <section className="mt-10 max-w-[720px]" aria-label="Explore nearby">
       <div className="text-[11px] font-bold text-muted mb-2">EXPLORE NEARBY</div>
       <div className="flex flex-wrap gap-2">
-        {relatedLinks.map((link) => (
+        {links.map((link) => (
           <Link
             key={link.href}
             href={link.href}

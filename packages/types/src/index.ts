@@ -237,7 +237,10 @@ export interface ListingSitemapEntry {
   transactionType: TransactionType;
   cityName: string;
   area: string;
+  /** When the ad's content last changed (posted, or edited by its owner or an admin), not when a view or like was counted. */
   updatedAt: string;
+  /** Bedrooms, for the bedroom pages (/city/rent-lease/apartment/2bhk); null for categories without bedrooms. */
+  bedrooms?: number | null;
 }
 
 /** A real (category, transactionType, city) combination with active inventory — feeds the

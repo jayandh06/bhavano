@@ -3085,15 +3085,30 @@ export class ListingsService {
       take: 5000,
     });
 
-    return listings.map((listing) => ({
-      id: listing.id,
-      slug: listing.slug,
-      category: listing.category,
-      transactionType: listing.transactionType,
-      cityName: listing.city.name,
-      area: listing.area.name,
-      updatedAt: listing.updatedAt.toISOString(),
-    }));
+    // `Listing.updatedAt` moves whenever a view, like or boost rotation touches the row, so as a sitemap <lastmod> it said "changed" for every
+    // listing all the time, and Google learns to ignore a date that always changes. Use the last real content edit instead.
+    const edits = await this.prisma.listingEditLog.groupBy({
+      by: ['listingId'],
+      where: { listingId: { in: listings.map((l) => l.id) }, action: 'updated' },
+      _max: { createdAt: true },
+    });
+    const lastEdit = new Map(edits.map((e) => [e.listingId, e._max.createdAt]));
+
+    return listings.map((listing) => {
+      const edited = lastEdit.get(listing.id);
+      const modified = edited && edited > listing.createdAt ? edited : listing.createdAt;
+      const bedroomsRaw = Number((listing.attributes as Record<string, unknown> | null)?.bedrooms);
+      return {
+        id: listing.id,
+        slug: listing.slug,
+        category: listing.category,
+        transactionType: listing.transactionType,
+        cityName: listing.city.name,
+        area: listing.area.name,
+        updatedAt: modified.toISOString(),
+        bedrooms: Number.isFinite(bedroomsRaw) && bedroomsRaw > 0 ? bedroomsRaw : null,
+      };
+    });
   }
 
   /** Records every eligible visit. Total views count every visit; organic and anonymous counts

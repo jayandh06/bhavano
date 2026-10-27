@@ -26,17 +26,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const cityPaths = new Map<string, BrowsePath>();
   const areaPaths = new Map<string, BrowsePath>();
   const areaListingCounts = new Map<string, number>();
+  // Newest real content change under each path, used as that page's <lastmod> (a hub is "modified" when one of its listings is, not on every request).
+  const lastChange = new Map<string, string>();
+  const note = (path: string, at: string) => {
+    const seen = lastChange.get(path);
+    if (!seen || at > seen) lastChange.set(path, at);
+  };
   const groupPaths = new Map<string, BrowsePath>();
   const categoryPaths = new Map<string, BrowsePath>();
 
   for (const listing of listings) {
     const group = transactionGroupFor(listing.transactionType);
     const { cityName } = listing;
+    const listingPath = (extra: Parameters<typeof buildBrowsePath>[0]) => buildBrowsePath(extra);
 
     if (!cityPaths.has(cityName)) {
       cityPaths.set(cityName, { cityName, path: buildBrowsePath({ cityName }) });
     }
 
+    note(listingPath({ cityName }), listing.updatedAt);
+    note(listingPath({ cityName, areaName: listing.area }), listing.updatedAt);
+    note(listingPath({ cityName, transactionGroup: group }), listing.updatedAt);
+    note(listingPath({ cityName, transactionGroup: group, category: listing.category }), listing.updatedAt);
     const areaKey = `${cityName}|${listing.area}`;
     areaListingCounts.set(areaKey, (areaListingCounts.get(areaKey) ?? 0) + 1);
     if (!areaPaths.has(areaKey)) {
@@ -58,6 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const cityHubs = [...cityPaths.values()];
+  const newestListing = listings.reduce<string | null>((m, l) => (!m || l.updatedAt > m ? l.updatedAt : m), null);
   // Thin area pages are noindex (see seoIndexing.ts), so they stay out of the sitemap too.
   const indexableAreas = [...areaPaths.entries()]
     .filter(([key]) => !isThinAreaPage(areaListingCounts.get(key) ?? 0))
@@ -66,7 +78,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const isTop = (entry: BrowsePath) => topCityNames.has(entry.cityName);
   const toEntry = (entry: BrowsePath, priority: number): MetadataRoute.Sitemap[number] => ({
     url: `${SITE_URL}${entry.path}`,
-    lastModified: new Date(),
+    // Newest listing change under this page; omitted when unknown, which is honest, rather than "now".
+    ...(lastChange.get(entry.path) ? { lastModified: new Date(lastChange.get(entry.path)!) } : {}),
     priority,
   });
   const browseEntries: MetadataRoute.Sitemap = [
@@ -98,7 +111,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/tools/rent-affordability-calculator",
     "/tools/area-unit-converter",
     "/cities",
-  ].map((path) => ({ url: `${SITE_URL}${path}`, lastModified: new Date() }));
+  ].map((path) => ({ url: `${SITE_URL}${path}` }));
 
   const blogEntries: MetadataRoute.Sitemap = POSTS.map((post) => ({
     url: `${SITE_URL}/blog/${post.slug}`,
@@ -106,7 +119,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   return [
-    { url: SITE_URL, lastModified: new Date(), priority: 1 },
+    { url: SITE_URL, ...(newestListing ? { lastModified: new Date(newestListing) } : {}), priority: 1 },
     ...staticEntries,
     ...blogEntries,
     ...browseEntries,

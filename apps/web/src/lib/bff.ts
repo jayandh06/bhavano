@@ -246,6 +246,11 @@ export function fetchListingsSitemap(): Promise<ListingSitemapEntry[]> {
   return bffFetch<ListingSitemapEntry[]>("/listings/sitemap", { cache: "no-store" });
 }
 
+/** The same entries the sitemap uses, cached for 10 minutes, for deciding which internal links point at pages that have listings (see linkInventory.ts). */
+export function fetchListingInventory(): Promise<ListingSitemapEntry[]> {
+  return bffFetch<ListingSitemapEntry[]>("/listings/sitemap", { next: { revalidate: 600 } });
+}
+
 export function fetchPopularSearches(cityId?: string): Promise<PopularSearchDto[]> {
   const path = cityId ? `/listings/popular-searches?cityId=${cityId}` : "/listings/popular-searches";
   return bffFetch<PopularSearchDto[]>(path, { cache: "no-store" });

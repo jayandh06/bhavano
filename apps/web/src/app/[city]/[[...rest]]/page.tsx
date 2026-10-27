@@ -56,6 +56,11 @@ type RouteParams = { city: string; rest?: string[] };
 async function legacyRedirect(transaction: string, rest: string[]): Promise<never> {
   const [category, citySlug, locality, slugId] = rest;
   if (!isTransactionType(transaction)) notFound();
+  // The display path the ads show (www.bhavano.com/rent/bengaluru) is not a real URL; send anyone who types it to the city's page for that group.
+  if (category && !isListingCategory(category) && !citySlug && rest.length === 1) {
+    const cityRow = await resolveCity(category);
+    if (cityRow) permanentRedirect(buildBrowsePath({ cityName: cityRow.name, transactionGroup: transactionGroupFor(transaction) }));
+  }
   if (!category || !isListingCategory(category) || !citySlug) notFound();
 
   if (slugId) {
