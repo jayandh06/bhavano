@@ -229,3 +229,11 @@ So AI Max-matched traffic is negligible and has not converted. Its other parts c
 Decision (owner, 2026-10-27): turn it off if it proves not useful; the numbers say so. `ads_turn_off_ai_max.py` (dry run lists 8 enabled campaigns; `--rollback` turns it back on) was written, but **Google's validation rejected the change
 ("This feature is only available for campaigns with AI Max enabled") and then rate-limited the API (retry in about 23 minutes).** Not applied yet. If the API cannot disable it, do it in the Ads UI: Campaign > Settings > AI Max for Search > turn off.
 
+### Six sitelinks on the seeker campaigns, 2026-10-27
+Google: "add at least six sitelinks to your campaigns" (ads serve in the most prominent formats). The owner campaigns already have 7 each; Metro-Seeker and Other-Metro-Seeker had 4. `ads_seeker_six_sitelinks.py` (validated first, 4 operations) linked two
+existing assets to both: "Rent a Home" (/rent-lease, "no brokerage fee") and "Contact Us" (/contact), so each now has 6. No new assets, nothing removed; `--rollback` unlinks them.
+Note: the ad preview in that recommendation still shows "Browse verified flats..." because the old seeker ads keep serving until `ads_remove_verified_claims.py --finish` runs after Google approves the replacements (status could not be read: the API
+is rate-limited, "Retry in about 15 minutes").
+**Operational note:** the Google Ads developer token has *explorer access*, so the API rejects requests after a limited number of operations per period (HTTP 429 "Number of operations for explorer access"). Large read-only audits trigger it. Applying
+for basic access removes the limit.
+
