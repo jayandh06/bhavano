@@ -3,7 +3,7 @@
 **Not yet submitted.** See `owner-alert-message/README.md` for how this is used. Anonymous on purpose: the app does not tell the owner who looked.
 
 ```
-Someone just viewed your phone number for your ad "{{1}}" on Bhavano. Keep your phone handy, they may call you soon.
+Someone viewed the contact number on your ad "{{1}}" on Bhavano. You can see this activity in My listings.
 ```
 
 | Slot | Value | Example |

@@ -3,7 +3,7 @@
 **Not yet submitted.** See `owner-alert-message/README.md` for how this is used.
 
 ```
-Hi, {{1}} is interested in your ad "{{2}}" on Bhavano. Open My listings to message them.
+Update on your ad "{{2}}" on Bhavano: {{1}} viewed your ad and shared their interest. You can see this activity in My listings.
 ```
 
 | Slot | Value | Example |
