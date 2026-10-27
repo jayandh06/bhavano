@@ -42,3 +42,20 @@ export function normalizeOwnerAlertOrder(input: readonly string[] | null | undef
   for (const c of DEFAULT_OWNER_ALERT_ORDER) seen.add(c);
   return [...seen];
 }
+
+/** WhatsApp and SMS cost money per message, so they are part of Featured ads (Instant Alerts is included in every boost). Push and email are free for everyone. */
+export const PAID_OWNER_ALERT_CHANNELS: readonly OwnerAlertChannel[] = ["whatsapp", "sms"];
+
+export function isPaidOwnerAlertChannel(channel: OwnerAlertChannel): boolean {
+  return PAID_OWNER_ALERT_CHANNELS.includes(channel);
+}
+
+/** The channel an alert about one ad actually goes out on: the first of the owner's order that can reach them and that this ad is allowed to use
+ * (a paid channel only while the ad is Featured). Null when none can, which the Preview step treats as "choose or add one before posting". */
+export function effectiveOwnerAlertChannel(
+  order: readonly OwnerAlertChannel[],
+  available: Record<OwnerAlertChannel, boolean>,
+  featured: boolean,
+): OwnerAlertChannel | null {
+  return order.find((c) => available[c] && (featured || !isPaidOwnerAlertChannel(c))) ?? null;
+}

@@ -18,6 +18,8 @@ export interface OwnerAlert {
   /** The other person's first name; absent for a reveal (the owner is not told who looked). */
   name?: string;
   conversationId?: string;
+  /** The ad has Instant Alerts running (every boost includes it). WhatsApp and SMS cost per message, so they are used for Featured ads only; push and email are free for all. */
+  featured: boolean;
 }
 
 /** Walks the owner's channels in the order they chose and stops at the first one that delivers: the app (free, fastest), then WhatsApp / SMS / email as
@@ -93,13 +95,13 @@ export class OwnerAlertsService {
         }
         return (await this.prisma.pushToken.findFirst({ where: { userId: ownerId }, select: { id: true } })) !== null;
       case 'whatsapp': {
-        if (!user.phone) return false;
+        if (!user.phone || !a.featured) return false;
         const suffix = a.kind === 'message' && a.conversationId ? a.conversationId : 'my-listings';
         const { sent } = await this.msg91.sendOwnerAlert(user.phone, a.kind, { ...vars, buttonSuffix: suffix });
         return sent;
       }
       case 'sms':
-        return user.phone ? this.msg91.sendOwnerAlertSms(user.phone, a.kind, vars) : false;
+        return user.phone && a.featured ? this.msg91.sendOwnerAlertSms(user.phone, a.kind, vars) : false;
       case 'email':
         return this.notifications.sendOwnerAlertEmail(user, a.kind, vars, a.conversationId);
     }

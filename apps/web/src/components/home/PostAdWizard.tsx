@@ -50,7 +50,7 @@ import { attributeKeyForTarget, scrollToTarget } from "@/lib/postDetailsFocus";
 import { postDetailsIssues, previewButtonLabel } from "@bhavano/types/postDetailsIssues";
 import { FEATURED_BENEFITS } from "@bhavano/types/featuredBenefits";
 import { getAccessTokenAction } from "@/app/actions/auth";
-import { getUserContactAction } from "@/app/actions/users";
+import { getUserContactAction, saveAlertPrimaryChannelAction } from "@/app/actions/users";
 import { fetchAiGenerateUsageAction, generateListingCopyAction } from "@/app/actions/ai";
 import { INDIAN_LANGUAGE_LABELS, INDIAN_LANGUAGES, type AiGenerateUsageDto, type IndianLanguage } from "@bhavano/types/listingCopyAssist";
 import { reportClientErrorAction } from "@/app/actions/clientErrors";
@@ -121,7 +121,7 @@ import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { SelectField } from "./SelectField";
 import { Icon, isIconName } from "./Icon";
-import { PostSuccessAlertQuestion } from "./PostSuccessAlertQuestion";
+import { AlertChannelPicker, type AlertChannelChoice } from "./AlertChannelPicker";
 import { UploadZone } from "./UploadZone";
 
 
@@ -983,6 +983,9 @@ export function PostAdWizard({
     return () => window.clearTimeout(timer);
   }, [previewBoostDisplay?.showSelectorOnPreview, step, selectedBoostPlan]);
 
+  // The required alert-channel answer on the review step (AlertChannelPicker); starts permissive so a failed load never blocks posting.
+  const [alertChoice, setAlertChoice] = useState<AlertChannelChoice>({ ready: true, primary: null });
+
   function handlePostAdClick() {
     if (previewBoostDisplay?.showSelectorOnPreview && selectedBoostPlan === null && !boostRecoveryShownRef.current) {
       boostRecoveryShownRef.current = true;
@@ -1834,6 +1837,9 @@ export function PostAdWizard({
    * function's own closure — photos included — would not have survived the round trip.
    */
   async function onSubmit() {
+    // Record the confirmed alert channel (best-effort: a failed save must never stop the ad from posting).
+    if (!assistedMode && alertChoice.primary) void saveAlertPrimaryChannelAction(alertChoice.primary).catch(() => undefined);
+
     try {
       await publish();
     } catch (submitError) {
@@ -2999,6 +3005,8 @@ export function PostAdWizard({
             </div>
           ) : null}
 
+          {!assistedMode && <AlertChannelPicker featured={!!boostIntent} onChange={setAlertChoice} />}
+
           <p className="m-0 text-[12px] text-muted">
             {assistedMode
               ? "Saved hidden. It goes live when the seller signs in with their phone and presses Publish."
@@ -3014,7 +3022,7 @@ export function PostAdWizard({
             </button>
             <button
               onClick={handlePostAdClick}
-              disabled={pending}
+              disabled={pending || (!assistedMode && !alertChoice.ready)}
               className={`ml-auto ${primaryButtonClass}`}
             >
               {pending ? postAdButtonProgressText(uploadProgress) : assistedMode ? "Save for seller" : reachLabelFor(category, transactionType)}
@@ -3181,8 +3189,6 @@ export function PostAdWizard({
               )}
             </div>
           </div>
-
-          <PostSuccessAlertQuestion />
 
           {previewBoostDisplay?.showSelectorOnPreview ? (
             // The full picker stays hidden here — the choice was already made on the review step

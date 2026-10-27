@@ -4,11 +4,13 @@ import { useState, useTransition } from "react";
 import {
   OWNER_ALERT_CHANNEL_LABELS,
   OWNER_ALERT_CHANNELS,
+  isPaidOwnerAlertChannel,
   type OwnerAlertChannel,
   type OwnerAlertPreferenceDto,
 } from "@bhavano/types/ownerAlerts";
 import { saveAlertPrimaryChannelAction } from "@/app/actions/users";
 import { Icon } from "./Icon";
+import { InstallAppAlertBanner } from "./InstallAppAlertBanner";
 
 /** Why a channel cannot be picked as the first choice. */
 const UNAVAILABLE_HINT: Record<OwnerAlertChannel, string> = {
@@ -39,11 +41,12 @@ export function AlertPreferenceCard({ preference }: { preference: OwnerAlertPref
 
   return (
     <section className="border border-border rounded-2xl p-6 bg-surface">
+      {!current.available.push && <InstallAppAlertBanner campaign="profile" />}
       <div className="font-lora text-lg font-bold text-text mb-1 flex items-center gap-2">
         <Icon name="bell" /> How should we alert you?
       </div>
       <p className="text-[13px] text-muted m-0 mb-3">
-        When someone messages you, shows interest or views your number, we tell you here first. The app is the fastest.
+        When someone messages you, shows interest or views your number, we tell you here first. App notifications and email are free; WhatsApp and SMS are included with Featured ads.
       </p>
       <div className="flex flex-col gap-2" role="radiogroup" aria-label="First alert channel">
         {OWNER_ALERT_CHANNELS.map((channel) => {
@@ -66,7 +69,11 @@ export function AlertPreferenceCard({ preference }: { preference: OwnerAlertPref
               />
               <span>
                 <span className="font-semibold text-text">{OWNER_ALERT_CHANNEL_LABELS[channel]}</span>
-                {channel === "push" && usable && <span className="text-muted"> (fastest)</span>}
+                {isPaidOwnerAlertChannel(channel) ? (
+                  <span className="ml-1.5 rounded-full bg-[color:var(--gold)]/20 px-2 py-0.5 text-[11px] font-bold text-text">Featured ads</span>
+                ) : (
+                  <span className="text-muted"> (free{channel === "push" ? ", fastest" : ""})</span>
+                )}
                 {!usable && <span className="block text-muted">{UNAVAILABLE_HINT[channel]}</span>}
               </span>
             </label>

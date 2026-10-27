@@ -682,9 +682,8 @@ export class MessagingService {
       select: { title: true, instantAlertsUntil: true },
     });
     if (!listing) return;
-    // Everyone is told on their chosen channel; OWNER_ALERTS_FEATURED_ONLY=true restores the old rule (out-of-app alerts only while Instant Alerts is active).
+    // Everyone is told on a free channel (app, then email); WhatsApp and SMS are used only while the ad is Featured.
     const featured = (listing.instantAlertsUntil?.getTime() ?? 0) > Date.now();
-    if (!featured && process.env.OWNER_ALERTS_FEATURED_ONLY === 'true') return;
 
     const channel = await this.ownerAlerts.alert(params.recipientId, {
       kind: 'message',
@@ -692,6 +691,7 @@ export class MessagingService {
       listingTitle: listing.title,
       name: params.senderName,
       conversationId: params.conversationId,
+      featured,
     });
     // The push itself is logged by the controller; this row is for the channels the alert actually reached.
     if (channel && channel !== 'push') {

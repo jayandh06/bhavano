@@ -59,7 +59,10 @@ import { runWithConcurrency } from "@bhavano/types/concurrencyPool";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName, type IconName } from "../Icon";
-import { AlertPreferenceCard } from "./AlertPreferenceCard";
+import { useQueryClient } from "@tanstack/react-query";
+import { AlertChannelPicker, type AlertChannelChoice } from "./AlertChannelPicker";
+import { saveAlertPreferences } from "../../lib/bffClient";
+import { withPrimaryChannel, type OwnerAlertPreferenceDto } from "@bhavano/types/ownerAlerts";
 import { CompletenessMeter } from "./CompletenessMeter";
 import {
   fetchLastListingDetails,
@@ -1721,8 +1724,18 @@ export function PostAdWizard({
    * so the resumed call re-reads SecureStore directly rather than trusting a closure that's
    * guaranteed to still be stale at that exact moment.
    */
+  // The required alert-channel answer on the review step (AlertChannelPicker); starts permissive so a failed load never blocks posting.
+  const queryClient = useQueryClient();
+  const [alertChoice, setAlertChoice] = useState<AlertChannelChoice>({ ready: true, primary: null });
+
   async function onSubmit() {
     if (!category || !transactionType) return;
+    // Record the confirmed alert channel (best-effort: a failed save must never stop the ad from posting).
+    const alertToken = accessToken ?? postAccessToken;
+    if (alertChoice.primary && alertToken) {
+      const current = queryClient.getQueryData<OwnerAlertPreferenceDto>(["alertPreferences", alertToken])?.channels ?? [];
+      void saveAlertPreferences(alertToken, withPrimaryChannel(current, alertChoice.primary)).catch(() => undefined);
+    }
     if (askSellerType && !postedAs) {
       setError(null);
       setSellerTypeMissing(true);
@@ -2677,12 +2690,16 @@ export function PostAdWizard({
             <Text style={{ color: "#c0554b", fontSize: 13 }}>{error ?? publishCheckoutError}</Text>
           )}
 
+          {(accessToken ?? postAccessToken) ? (
+            <AlertChannelPicker accessToken={(accessToken ?? postAccessToken)!} featured={!!boostIntent} onChange={setAlertChoice} />
+          ) : null}
+
           <Text style={{ color: colors.muted, fontSize: 12 }}>
             Your phone/email may be shown to users who unlock this listing&rsquo;s contact details.
           </Text>
 
           <View style={styles.navRow}>
-            <Pressable onPress={onSubmit} disabled={pending} style={[styles.submitButton, { backgroundColor: colors.green, opacity: pending ? 0.6 : 1 }]}>
+            <Pressable onPress={onSubmit} disabled={pending || !alertChoice.ready} style={[styles.submitButton, { backgroundColor: colors.green, opacity: pending || !alertChoice.ready ? 0.6 : 1 }]}>
               <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }} numberOfLines={1}>
                 {pending ? postAdButtonProgressText(uploadProgress) : reachLabelFor(category, transactionType)}
               </Text>
@@ -2877,12 +2894,6 @@ export function PostAdWizard({
               </>
             )}
           </View>
-
-          {(accessToken ?? postAccessToken) ? (
-            <View style={{ alignSelf: "stretch" }}>
-              <AlertPreferenceCard accessToken={(accessToken ?? postAccessToken)!} compact />
-            </View>
-          ) : null}
 
           {previewBoostDisplay?.showSelectorOnPreview && Platform.OS !== "ios" ? (
             // The full picker stays hidden here — the choice was already made on the review step

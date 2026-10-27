@@ -3519,6 +3519,7 @@ export class ListingsService {
       listingId,
       listingTitle,
       name: interestedName,
+      featured: true, // this point is only reached while Instant Alerts is active
     });
     if (channel && channel !== 'push') {
       await this.prisma.listingNotificationLog.create({

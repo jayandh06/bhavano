@@ -19,3 +19,9 @@ export interface OwnerAlertPreferenceDto {
 export declare function withPrimaryChannel(current: readonly OwnerAlertChannel[], primary: OwnerAlertChannel): OwnerAlertChannel[];
 /** Drops unknown and repeated entries, then appends the channels that were left out, so a stored order is always complete. */
 export declare function normalizeOwnerAlertOrder(input: readonly string[] | null | undefined): OwnerAlertChannel[];
+/** WhatsApp and SMS cost money per message, so they are part of Featured ads (Instant Alerts is included in every boost). Push and email are free for everyone. */
+export declare const PAID_OWNER_ALERT_CHANNELS: readonly OwnerAlertChannel[];
+export declare function isPaidOwnerAlertChannel(channel: OwnerAlertChannel): boolean;
+/** The channel an alert about one ad actually goes out on: the first of the owner's order that can reach them and that this ad is allowed to use
+ * (a paid channel only while the ad is Featured). Null when none can, which the Preview step treats as "choose or add one before posting". */
+export declare function effectiveOwnerAlertChannel(order: readonly OwnerAlertChannel[], available: Record<OwnerAlertChannel, boolean>, featured: boolean): OwnerAlertChannel | null;

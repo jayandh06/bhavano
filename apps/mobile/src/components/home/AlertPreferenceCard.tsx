@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   OWNER_ALERT_CHANNEL_LABELS,
   OWNER_ALERT_CHANNELS,
+  isPaidOwnerAlertChannel,
   withPrimaryChannel,
   type OwnerAlertChannel,
 } from "@bhavano/types/ownerAlerts";
@@ -20,27 +21,16 @@ const UNAVAILABLE_HINT: Record<OwnerAlertChannel, string> = {
 };
 
 /** Where the advertiser says how to reach them when a seeker messages, shows interest or views their number. One primary channel is the whole question;
- * the rest follow in order as fallbacks. `compact` is the one-time version shown after posting: only the usable options, nothing once answered. */
-export function AlertPreferenceCard({ accessToken, compact = false }: { accessToken: string; compact?: boolean }) {
+ * the rest follow in order as fallbacks. WhatsApp and SMS are tagged Featured: they are used for Featured ads only. */
+export function AlertPreferenceCard({ accessToken }: { accessToken: string }) {
   const { colors } = useAppTheme();
   const queryClient = useQueryClient();
   const { data: preference } = useAlertPreferencesQuery(accessToken);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [justSaved, setJustSaved] = useState<OwnerAlertChannel | null>(null);
 
   if (!preference) return null;
-  if (compact && justSaved) {
-    return (
-      <Text style={{ color: colors.textSoft, fontSize: 13 }}>
-        Got it: we&apos;ll alert you by {OWNER_ALERT_CHANNEL_LABELS[justSaved]} first. Change it any time in your profile.
-      </Text>
-    );
-  }
-  if (compact && preference.confirmed) return null;
-
-  const options = compact ? OWNER_ALERT_CHANNELS.filter((c) => preference.available[c]) : [...OWNER_ALERT_CHANNELS];
-  if (options.length === 0) return null;
+  const options = [...OWNER_ALERT_CHANNELS];
   const primary = preference.confirmed ? preference.channels[0] : null;
   const fallbacks = preference.channels.filter((c) => c !== preference.channels[0] && preference.available[c]);
 
@@ -51,7 +41,6 @@ export function AlertPreferenceCard({ accessToken, compact = false }: { accessTo
     try {
       const saved = await saveAlertPreferences(accessToken, withPrimaryChannel(preference.channels, channel));
       queryClient.setQueryData(["alertPreferences", accessToken], saved);
-      setJustSaved(channel);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save");
     } finally {
@@ -64,11 +53,11 @@ export function AlertPreferenceCard({ accessToken, compact = false }: { accessTo
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
         <Icon name="bell" size={15} color={colors.text} />
         <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>
-          {compact ? "How should we alert you when someone contacts you?" : "How should we alert you?"}
+          How should we alert you?
         </Text>
       </View>
       <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 8 }}>
-        When someone messages you, shows interest or views your number. The app is the fastest.
+        When someone messages you, shows interest or views your number. App notifications and email are free; WhatsApp and SMS are included with Featured ads.
       </Text>
       {options.map((channel) => {
         const usable = preference.available[channel];
@@ -87,13 +76,15 @@ export function AlertPreferenceCard({ accessToken, compact = false }: { accessTo
           >
             <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>
               {OWNER_ALERT_CHANNEL_LABELS[channel]}
-              {channel === "push" && usable ? " (fastest)" : ""}
+              <Text style={{ color: colors.muted, fontWeight: "400" }}>
+                {isPaidOwnerAlertChannel(channel) ? "  Featured ads" : channel === "push" ? " (free, fastest)" : " (free)"}
+              </Text>
             </Text>
             {!usable && <Text style={{ color: colors.muted, fontSize: 12 }}>{UNAVAILABLE_HINT[channel]}</Text>}
           </Pressable>
         );
       })}
-      {!compact && primary && fallbacks.length > 0 && (
+      {primary && fallbacks.length > 0 && (
         <Text style={{ color: colors.muted, fontSize: 12, marginTop: 6 }}>
           If that cannot reach you, we try {fallbacks.map((c) => OWNER_ALERT_CHANNEL_LABELS[c]).join(", then ")}.
         </Text>

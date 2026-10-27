@@ -19,7 +19,7 @@ function setup(opts: { channels?: string[] | null; phone?: string | null; email?
   return { service, prisma, push, msg91, notifications };
 }
 
-const message: OwnerAlert = { kind: 'message', listingId: 'l1', listingTitle: 'Flat', name: 'Riya', conversationId: 'c1' };
+const message: OwnerAlert = { kind: 'message', listingId: 'l1', listingTitle: 'Flat', name: 'Riya', conversationId: 'c1', featured: true };
 
 describe('OwnerAlertsService.alert', () => {
   it('stops at the app when the owner has a device (default order)', async () => {
@@ -40,6 +40,15 @@ describe('OwnerAlertsService.alert', () => {
     expect(t.notifications.sendOwnerAlertEmail).toHaveBeenCalledWith(expect.anything(), 'message', { title: 'Flat', name: 'Riya' }, 'c1');
   });
 
+  it('never spends WhatsApp or SMS on an ad that is not Featured, and uses the free channels instead', async () => {
+    const t = setup({ channels: ['whatsapp', 'sms', 'email'], phone: '9876543210', email: 'a@b.com', whatsapp: true, sms: true });
+    await expect(t.service.alert('o1', { ...message, featured: false })).resolves.toBe('email');
+    expect(t.msg91.sendOwnerAlert).not.toHaveBeenCalled();
+    expect(t.msg91.sendOwnerAlertSms).not.toHaveBeenCalled();
+    const phoneOnly = setup({ phone: '9876543210', whatsapp: true });
+    await expect(phoneOnly.service.alert('o1', { ...message, featured: false })).resolves.toBeNull();
+  });
+
   it('returns null when nothing can reach the owner', async () => {
     const t = setup({ phone: '9876543210' });
     await expect(t.service.alert('o1', message)).resolves.toBeNull();
@@ -52,7 +61,7 @@ describe('OwnerAlertsService.alert', () => {
   });
 
   it('sends the reveal push itself, and the reveal WhatsApp points at My listings', async () => {
-    const reveal: OwnerAlert = { kind: 'reveal', listingId: 'l1', listingTitle: 'Flat' };
+    const reveal: OwnerAlert = { kind: 'reveal', listingId: 'l1', listingTitle: 'Flat', featured: true };
     const withApp = setup({ device: true });
     await expect(withApp.service.alert('o1', reveal)).resolves.toBe('push');
     expect(withApp.push.notifyContactRevealed).toHaveBeenCalled();
