@@ -208,3 +208,11 @@ decision is a separate campaign, so the other-metro budget and results can be ju
   `apps/bff/src/ads/campaign-names.ts` (needs a BFF deploy for the admin to show the names).
 - Rollback: pause or remove the campaign in the Ads UI; nothing else was changed.
 
+### Enabled 2026-10-26 (manually, by the owner), first day
+Other-Metro-Seeker Intent was enabled in the Ads UI on 2026-10-26 with its **max CPC set to ₹10** (created at ₹25) and the ₹200/day budget.
+First day: 165 impressions, 21 clicks, ₹209, **average CPC ₹10.0, equal to the ceiling**, 90% of impressions lost to budget (the budget was gone
+within the day). So in these cities the ceiling binds: a lower cap (₹5) would get almost no traffic here, unlike the metro campaign, where the average
+click is about ₹5 and the cap rarely binds. Search terms already include PG queries (the Bengaluru Rent template carries a "pg for rent in <city>"
+keyword). Judge it after about 7 days from the database (visits landing on `/ahmedabad/rent-lease` etc., logged-in rate, saved searches, messages),
+not from Google's conversion count.
+
