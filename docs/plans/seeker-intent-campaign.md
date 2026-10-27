@@ -216,3 +216,12 @@ click is about ₹5 and the cap rarely binds. Search terms already include PG qu
 keyword). Judge it after about 7 days from the database (visits landing on `/ahmedabad/rent-lease` etc., logged-in rate, saved searches, messages),
 not from Google's conversion count.
 
+### Settings as of 2026-10-27 (set by the owner in the Ads UI, read back from the account)
+| Campaign | Status | Bidding | Max CPC | Budget |
+|---|---|---|---|---|
+| Metro-Seeker Intent | Enabled | Maximise clicks | ₹10 (was ₹25) | ₹300/day (was ₹500) |
+| Other-Metro-Seeker Intent | Enabled | Maximise clicks | ₹10 | ₹200/day |
+
+Review in about 7 days: Metro-Seeker's average click was about ₹5 and its rank-lost share was falling before the change, so watch whether the ₹10 cap and the
+smaller budget keep its clicks and impressions up. Still open: negative keywords for roommate / flatmate / competitor-brand / "how to" / "sites" queries.
+
