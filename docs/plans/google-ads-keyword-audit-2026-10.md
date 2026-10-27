@@ -180,3 +180,14 @@ sitelinks ("Browse verified listings online") and the account callout "Verified 
    `--finish` only touches items whose replacement is approved. At the time of writing the new callout and sitelinks were APPROVED and the 27 ads still under review.
 `--rollback` pauses the replacement ads and unlinks the replacement assets.
 
+### Keyword words missing from headlines, 2026-10-27
+Ad relevance compares the ad with the keyword, so a keyword word that appears in no headline of the ad group hurts. Live keywords weighted by 30-day spend, words missing from every headline:
+- Rent Out 2.1: "best" and "place" ("best place to list apartment for rent": cost 3,486, 25 conversions), "advertisement" (436); Generic Ad group 1: "rental" (4 keywords, 1,375, 11 conversions), "apartment", "house", "advertising";
+  Sell 1.1: "advertise"; Sell 1.2: "classified" (490); Lease 3.2 and Bengaluru seekers: "apartment" (583 and 1,490); Rent Out 2.4: "property" (10 keywords, 966).
+`ads_keyword_headlines.py` adds one new ad per ad group (path /post/kw-match), a copy of the group's main ad with the "verified" wording stripped and its last generic headlines swapped for ones carrying the missing words
+("Advertise Rental Property", "Apartment Rental Ads", "Apartment Classified Ads", "Rent Out Your Property"...). Nothing paused or removed.
+- **Created now (6, validated first):** Generic Ad group 1 and Sell 1.2 and Rent Out 2.4 in both city groups.
+- **Waiting (5 groups at the 3-ads-per-group limit):** Rent Out 2.1 (Metro and Other-Metro, the 3,486 keyword), Sell 1.1 (both) and Lease 3.2. They free up when `ads_remove_verified_claims.py --finish` pauses the old versions; then rerun
+  `python ads_keyword_headlines.py` (it skips groups that already have the ad). Metro-Seeker "apartment" headlines are deferred until the replacement seeker ads are final.
+- Rollback: `python ads_keyword_headlines.py --rollback` pauses these ads. Re-measure ad relevance (Keywords tab) in about 14 days, together with the free-ads test and the verified-claims fix.
+
