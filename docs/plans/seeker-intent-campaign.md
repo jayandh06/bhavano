@@ -225,3 +225,21 @@ not from Google's conversion count.
 Review in about 7 days: Metro-Seeker's average click was about ₹5 and its rank-lost share was falling before the change, so watch whether the ₹10 cap and the
 smaller budget keep its clicks and impressions up. Still open: negative keywords for roommate / flatmate / competitor-brand / "how to" / "sites" queries.
 
+## Negative keywords, 2026-10-27
+`ads_add_seeker_negatives.py` (dry run, Google-validated, then applied) added **42 phrase-match negatives to each seeker campaign** (Metro-Seeker Intent and
+Other-Metro-Seeker Intent), on top of the 6 brand negatives Metro-Seeker already had. Built from the 292 search terms that got a click in the last 30 days
+(2,031 terms, 370 clicks, ₹3,896): the terms they would have blocked cost about ₹590 (15%), including one ₹149 click on "golanirentals" and ₹108 on "flatx".
+- **Roommate / flatmate sharing:** flatmate(s), flat mate(s), roommate(s), room mate, flat sharing, flat share, flashmates, flatx, findmyroom.
+- **Competitor and portal names:** olx, magic bricks, magicbricks, 99acres, nobroker, commonfloor, sulekha, squareyards, square yards, makaan, proptiger, quikr,
+  golanirentals, golani rentals, rently, werent, propscanly, zolo, colive, stanza living, mylapore times.
+- **Questions:** "how to", "where to search", "best way to find" (25 terms, ₹87, no sign of intent to see listings now).
+- **Agencies / agents:** rental agency, rental agencies, property agent(s), estate agent(s).
+- **Non-property words**, added only if they had appeared: none had, so none were sent.
+
+**Deliberately not negatives**, which changes what was said earlier in the session: "website", "sites", "app" (people searching for a rental website or app are
+exactly our users, for example "bangalore rent website" and "best app for rent house in bangalore"); "no broker" / "without broker" (a strong query for a direct-from-owner
+site; only the brand "nobroker" is blocked); "pg" and "room" (we list them); buy words such as "for sale" and "lakhs" (they would also block the Buy ad groups if switched
+on; 4 buy-priced queries reached the rent groups in 30 days). Each negative was also checked against the campaigns' own keywords so none blocks a keyword we bid on;
+"bus" was dropped because it matched a legitimate search ("near new town bus stand kolkata").
+Rollback: `python ads_add_seeker_negatives.py --remove` removes exactly these.
+
