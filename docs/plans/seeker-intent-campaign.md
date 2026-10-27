@@ -243,3 +243,10 @@ on; 4 buy-priced queries reached the rent groups in 30 days). Each negative was 
 "bus" was dropped because it matched a legitimate search ("near new town bus stand kolkata").
 Rollback: `python ads_add_seeker_negatives.py --remove` removes exactly these.
 
+### Negatives moved into one shared list, 2026-10-27
+`ads_seeker_negative_list.py` (dry run, Google-validated, applied in one batch of 147 operations) created the shared negative keyword list **Seeker Intent - negative keywords**
+(48 phrase-match keywords: the 42 above plus the 6 older brand negatives), attached it to **both** seeker campaigns, and removed the 96 individual campaign-level copies.
+Coverage is unchanged. Add or remove a seeker negative **once, in the list** (Ads UI: Tools > Shared library > Negative keyword lists). `ads_add_seeker_negatives.py` now refuses to run while
+the list exists. The campaigns' negative brand list is a separate exclusion and was not touched. Rollback: `python ads_seeker_negative_list.py --rollback` puts the individual negatives back
+on both campaigns and deletes the list. The owner-side campaigns still have individual negatives (23 competitor phrases plus "nobroker" on 9 campaigns); a second shared list for them is an option.
+

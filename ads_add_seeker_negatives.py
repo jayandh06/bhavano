@@ -8,6 +8,9 @@ keywords, so a negative can never block a keyword we bid on. Deliberately NOT ne
 site or app are exactly our users), "no broker" / "without broker" (a strong seeker query for us), "pg", "room", and buy words ("for sale", "lakhs"),
 which would also block the Buy ad groups if they are ever switched on.
 
+NOTE 2026-10-27: superseded by the shared list 'Seeker Intent - negative keywords' (ads_seeker_negative_list.py); this script now refuses to run while
+that list exists.
+
 Run: python ads_add_seeker_negatives.py --dry-run     read-only, prints each negative and the terms it would have blocked
      python ads_add_seeker_negatives.py --validate    Google validates the batch, nothing is created
      python ads_add_seeker_negatives.py               adds them
@@ -75,6 +78,14 @@ def main():
     client = make_client()
     ga = client.get_service("GoogleAdsService")
     names = ",".join("'%s'" % c for c in CAMPAIGNS)
+
+    # Since 2026-10-27 these negatives live in the shared list 'Seeker Intent - negative keywords' (ads_seeker_negative_list.py), attached to both campaigns.
+    # Adding them again as individual campaign negatives would duplicate the list, so stop and point there.
+    if any(True for _ in ga.search(customer_id=CID, query="""
+            SELECT shared_set.name FROM shared_set WHERE shared_set.type = 'NEGATIVE_KEYWORDS'
+              AND shared_set.status = 'ENABLED' AND shared_set.name = 'Seeker Intent - negative keywords'""")):
+        raise SystemExit("the shared list 'Seeker Intent - negative keywords' exists; add new seeker negatives to that list "
+                         "(Ads UI: Tools > Shared library > Negative keyword lists), not as individual campaign negatives")
 
     campaigns = {r.campaign.name: r.campaign.resource_name for r in ga.search(customer_id=CID, query=f"""
         SELECT campaign.name, campaign.resource_name FROM campaign WHERE campaign.name IN ({names}) AND campaign.status != 'REMOVED'""")}
