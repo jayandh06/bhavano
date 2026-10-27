@@ -138,3 +138,18 @@ and the "free" ad groups produce 65% of all Featured purchases (48 of 74). Cavea
 about 135); "all conversions" counted; small numbers. Consequence: do **not** remove the 23 earning "free" keywords; the earlier reason for keeping "free" out of the ad copy (priming resistance to the
 upsell) is not supported by this data and can be revisited with an ad test (see `ads_free_ads_relevance.py`, not run).
 
+### A second ad with "free" in six ad groups, 2026-10-27
+Chosen over splitting the Generic ad group or removing more "free" keywords: keep the existing ad (no "free") as the control and add a second responsive ad that mirrors the "free" keywords,
+so Google rotates the two and the "free" keywords finally have an ad that says "free". `ads_free_ads_relevance.py` (dry run, Google-validated, then applied) created **6 ads**, nothing paused or removed:
+| Ad groups | New ad | Path |
+|---|---|---|
+| Metro-Generic and Other-Metro-Generic, Ad group 1 | "Post Free Property Ads", "Free Property Ads Posting Site", "Free Real Estate Ads Posting", "Advertise Property For Free" ... | /post/free-ads |
+| Metro-Rent Out and Other-Metro-Rent Out, Ad Group 2.1 | "Free Rental Listing Site", "Post Rental Property Free", "List Your Property For Rent" ... | /post/rent-free |
+| Metro-Sell and Other-Metro-Sell, Ad Group 1.1 | "Free Property Listing Site", "Post Free Property Ads", "Free Property Sale Ads", "Free Real Estate Ads" ... | /post/sale-free |
+Descriptions say "Zero platform fees to post", "no broker" and "Upgrade to Featured later", which are true today (all listing fees are 0). Final URL is the home page, as for the existing ads (the posting card follows the ad group,
+which did not change).
+- **Not done:** the ad group split from the earlier draft (no new ad groups, no web change).
+- **Judge it in 14 to 21 days:** per ad (Ads UI > Ads, segment by ad), compare "Post ad success" and "Boost purchase" conversions per click for the two ads in each group; pause the loser. Also check ad relevance
+  for the "free" keywords (Keywords tab, quality score columns). Google rotates for clicks, so an uneven split is normal.
+- **Rollback:** `python ads_free_ads_relevance.py --rollback` pauses the six new ads (found by their /post/free-ads, /post/rent-free, /post/sale-free paths); the old ads are untouched.
+
