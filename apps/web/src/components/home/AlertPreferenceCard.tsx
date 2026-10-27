@@ -46,7 +46,7 @@ export function AlertPreferenceCard({ preference }: { preference: OwnerAlertPref
         <Icon name="bell" /> How should we alert you?
       </div>
       <p className="text-[13px] text-muted m-0 mb-3">
-        When someone messages you, shows interest or views your number, we tell you here first. App notifications and email are free; WhatsApp and SMS are included with Featured ads.
+        When someone messages you, shows interest or views your number, we tell you here first. Mobile App notifications and email are free; WhatsApp and SMS are included with Featured ads.
       </p>
       <div className="flex flex-col gap-2" role="radiogroup" aria-label="First alert channel">
         {OWNER_ALERT_CHANNELS.map((channel) => {

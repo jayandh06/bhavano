@@ -82,7 +82,7 @@ export function AlertChannelPicker({
         </Text>
       </View>
       <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 8 }}>
-        App notifications and email are free. WhatsApp and SMS are included with Featured ads.
+        Mobile App notifications and email are free. WhatsApp and SMS are included with Featured ads.
       </Text>
       {OWNER_ALERT_CHANNELS.map((channel) => {
         const paid = isPaidOwnerAlertChannel(channel);

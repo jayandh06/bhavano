@@ -57,7 +57,7 @@ export function AlertPreferenceCard({ accessToken }: { accessToken: string }) {
         </Text>
       </View>
       <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 8 }}>
-        When someone messages you, shows interest or views your number. App notifications and email are free; WhatsApp and SMS are included with Featured ads.
+        When someone messages you, shows interest or views your number. Mobile App notifications and email are free; WhatsApp and SMS are included with Featured ads.
       </Text>
       {options.map((channel) => {
         const usable = preference.available[channel];

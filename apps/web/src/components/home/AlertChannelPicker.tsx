@@ -77,7 +77,7 @@ export function AlertChannelPicker({
         <Icon name="bell" /> How should we alert you when someone contacts you?
       </p>
       <p className="text-[12px] text-muted m-0 mb-3">
-        App notifications and email are free. WhatsApp and SMS are included with Featured ads.
+        Mobile App notifications and email are free. WhatsApp and SMS are included with Featured ads.
       </p>
       <div className="flex flex-col gap-2" role="radiogroup" aria-label="First alert channel">
         {OWNER_ALERT_CHANNELS.map((channel) => {

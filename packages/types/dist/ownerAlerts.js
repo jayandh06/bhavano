@@ -11,7 +11,7 @@ exports.OWNER_ALERT_CHANNELS = ["push", "whatsapp", "sms", "email"];
  * WhatsApp next because it is the only out-of-app channel that reaches the phone-only majority of owners. */
 exports.DEFAULT_OWNER_ALERT_ORDER = exports.OWNER_ALERT_CHANNELS;
 exports.OWNER_ALERT_CHANNEL_LABELS = {
-    push: "App notification",
+    push: "Mobile App notification",
     whatsapp: "WhatsApp",
     sms: "SMS",
     email: "Email",

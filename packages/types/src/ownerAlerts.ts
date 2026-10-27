@@ -7,7 +7,7 @@ export type OwnerAlertChannel = (typeof OWNER_ALERT_CHANNELS)[number];
 export const DEFAULT_OWNER_ALERT_ORDER: readonly OwnerAlertChannel[] = OWNER_ALERT_CHANNELS;
 
 export const OWNER_ALERT_CHANNEL_LABELS: Record<OwnerAlertChannel, string> = {
-  push: "App notification",
+  push: "Mobile App notification",
   whatsapp: "WhatsApp",
   sms: "SMS",
   email: "Email",
