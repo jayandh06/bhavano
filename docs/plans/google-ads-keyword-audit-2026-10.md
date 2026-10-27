@@ -216,3 +216,16 @@ Google's recommendation "1 ad group does not have any keywords" (+11.3%) points 
 put my villa on rent, list my villa for rent, find tenants for my villa. A keyword with no search volume costs nothing, so this is a free test and clears the flag. **If both groups still have zero impressions after 30 days (about 27 November), pause the
 ad groups instead.** Rollback: `python ads_add_villa_rent_keywords.py --remove`.
 
+### AI Max for Search, 2026-10-27
+Found while reading Google's "Turn on Final URL expansion" card: `campaign.ai_max_setting.enable_ai_max` is **True on 11 campaigns** (all enabled owner campaigns, Metro-Lease, Metro-Seeker, and the paused ones); off only on Other-Metro-Seeker (created through the API) and the paused Performance Max.
+It was not set by us on purpose. Its contribution, from the search term report split by `segments.search_term_match_source` (last 30 days):
+| | impressions | clicks | cost | conversions |
+|---|---|---|---|---|
+| Owner campaigns, matched by our keyword | 8,065 | 743 | ₹25,815 | 156 (CPA ₹165) |
+| Owner campaigns, AI Max (keywordless + broad) | 33 | 2 | ₹23 | 0 |
+| Owner campaigns, source "unknown" | 955 | 101 | ₹3,567 | 5 (CPA ₹717) |
+| Seeker campaigns, AI Max broad | 96 | 8 | ₹247 | 0 |
+So AI Max-matched traffic is negligible and has not converted. Its other parts carry risk: automatic headline rewriting (could reintroduce claims such as "verified") and final URL expansion (breaks the per-ad-group landing card and tracking).
+Decision (owner, 2026-10-27): turn it off if it proves not useful; the numbers say so. `ads_turn_off_ai_max.py` (dry run lists 8 enabled campaigns; `--rollback` turns it back on) was written, but **Google's validation rejected the change
+("This feature is only available for campaigns with AI Max enabled") and then rate-limited the API (retry in about 23 minutes).** Not applied yet. If the API cannot disable it, do it in the Ads UI: Campaign > Settings > AI Max for Search > turn off.
+
