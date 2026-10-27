@@ -1,0 +1,23 @@
+{
+ "old_seeker_ads": [
+  "customers/4214066478/adGroupAds/196803709170~829661373494",
+  "customers/4214066478/adGroupAds/200780065919~829661778641",
+  "customers/4214066478/adGroupAds/196803715610~829661757101",
+  "customers/4214066478/adGroupAds/196803717570~829661779805"
+ ],
+ "callout_campaigns_set": [
+  "Metro-Generic Post Ad Intent",
+  "Other-Metro-Generic Post Ad Intent",
+  "Metro-Rent Out Property (Owners)",
+  "Other-Metro-Rent Out Property (Owners)",
+  "Metro-Sell Property (Owners/Agents)",
+  "Other-Metro-Sell Property (Owners/Agents)",
+  "Metro-Lease Property"
+ ],
+ "image_targets": [
+  "Metro-Rent Out Property (Owners)",
+  "Other-Metro-Rent Out Property (Owners)",
+  "Metro-Lease Property"
+ ],
+ "sitelinks_added_to": "Other-Metro-Seeker Intent"
+}

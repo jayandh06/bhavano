@@ -153,3 +153,19 @@ which did not change).
   for the "free" keywords (Keywords tab, quality score columns). Google rotates for clicks, so an uneven split is normal.
 - **Rollback:** `python ads_free_ads_relevance.py --rollback` pauses the six new ads (found by their /post/free-ads, /post/rent-free, /post/sale-free paths); the old ads are untouched.
 
+## Ad rank quick fixes, 2026-10-27
+Checked first: landing page experience is average or above everywhere, expected CTR is mostly above average, and 23 of 40 enabled ads were rated Excellent. The gaps were extensions and one weak campaign.
+`ads_relevance_assets.py` (dry run, Google-validated, applied as 83 operations; backup `ads_relevance_assets_backup.json`, `--rollback` undoes it):
+- **Other-Metro-Seeker Intent ads:** its four Rent ads were a plain city swap of the Bengaluru ad and rated Poor (Ahmedabad, Lucknow) or Average (Coimbatore, Jaipur). Each city now has a new ad with 15 headlines and
+  4 descriptions (city plus house / 2BHK / PG / apartments / rental homes variants, no "verified"); the old ads are **paused, not removed**. New ads show strength PENDING until Google rates them.
+- **Sitelinks:** the same 4 sitelinks Metro-Seeker uses are now linked to Other-Metro-Seeker (it had none).
+- **Images:** the 6 image assets of Metro-Generic are now also linked to Metro-Rent Out, Other-Metro-Rent Out and Metro-Lease (they had none).
+- **Callouts:** 7 owner campaigns (Generic, Rent Out, Sell in both city groups, and Metro-Lease) got a campaign-level set of 7: Zero Brokerage, Free to Post Ads, Direct Owner Contact (the accurate account callouts)
+  plus Photos & Video Uploads, Post In 2 Minutes, Message Tenants Directly, Reach Buyers & Tenants. A campaign-level set replaces the account-level one for that campaign, so the account callout
+  "Verified Listings" no longer shows on the owner campaigns.
+- **Open issue, not changed:** "verified" claims remain on the seeker side: the account callout "Verified Listings" (still on the seeker campaigns) and the Metro-Seeker ads ("Verified Rental Listings", "Browse verified flats...").
+  `docs/plans/metro-seeker-sitelinks.md` records that the product has no verified-only listings, so these can be disapproved as misleading or are simply untrue. Recommend replacing them (for example
+  "Owner-Posted Rental Listings"). Needs a decision, because it touches the seeker campaigns that are running.
+- **Still to decide (cost money):** a modest Target CPA increase (owner campaigns lose 51 to 67% of impressions to rank, none to budget), keyword insertion in headlines for the big mixed ad groups, and bids by city and hour once
+  conversions per city and hour are measured.
+
