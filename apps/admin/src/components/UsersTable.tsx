@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { SendWelcomeResponseDto, UserSummaryDto, WelcomeChannel } from "@bhavano/types";
+import { OWNER_ALERT_CHANNEL_LABELS } from "@bhavano/types/ownerAlerts";
 import { postedByLabel } from "@bhavano/types/sellerType";
 import { mergeUsersAction, sendWelcomeAction } from "@/app/actions/users";
 import { formatDateTime } from "@/lib/formatDateTime";
@@ -151,6 +152,7 @@ export function UsersTable({ users, searchParams }: { users: UserSummaryDto[]; s
               <th style={thStyle}>Enquiries</th>
               <th style={thStyle}>{sortable("City", "city")}</th>
               <th style={thStyle}>Notification status</th>
+              <th style={thStyle}>Alert channel</th>
               <th style={thStyle}></th>
             </tr>
           </thead>
@@ -214,6 +216,13 @@ export function UsersTable({ users, searchParams }: { users: UserSummaryDto[]; s
                     </span>
                   ) : (
                     <span style={{ color: "var(--danger)", fontWeight: 700 }}>Not welcomed</span>
+                  )}
+                </td>
+                <td style={tdStyle} title={u.alertChannels ? u.alertChannels.map((c) => OWNER_ALERT_CHANNEL_LABELS[c]).join(" › ") : "Not chosen yet: the default order applies"}>
+                  {u.alertChannels ? (
+                    <span style={{ fontWeight: 700 }}>{OWNER_ALERT_CHANNEL_LABELS[u.alertChannels[0]]}</span>
+                  ) : (
+                    <span style={{ color: "var(--muted)" }}>Not chosen</span>
                   )}
                 </td>
                 <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>

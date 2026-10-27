@@ -11,6 +11,7 @@ const CHANNEL_LABELS: Record<string, string> = {
   email: "Email",
   whatsapp: "WhatsApp",
   push: "Push",
+  sms: "SMS",
   in_app: "In-app",
 };
 
@@ -128,6 +129,7 @@ function DayDetailPanel({ state }: { state: NotificationLogEntryDto[] | "loading
             <th style={innerThStyle}>Time (IST)</th>
             <th style={innerThStyle}>Kind</th>
             <th style={innerThStyle}>Channel</th>
+            <th style={innerThStyle} title="The first channel the owner chose, for alerts about messages, interest and number views">Owner's choice</th>
             <th style={innerThStyle}>User</th>
             <th style={innerThStyle}>Listing</th>
             <th style={innerThStyle}>Status</th>
@@ -140,6 +142,17 @@ function DayDetailPanel({ state }: { state: NotificationLogEntryDto[] | "loading
               <td style={innerTdStyle}>{formatDateTime(entry.sentAt)}</td>
               <td style={innerTdStyle}>{entry.kind}</td>
               <td style={innerTdStyle}>{CHANNEL_LABELS[entry.channel] ?? entry.channel}</td>
+              <td style={innerTdStyle}>
+                {entry.preferredChannel === undefined ? (
+                  dash
+                ) : entry.preferredChannel === null ? (
+                  <span style={{ color: "var(--muted)" }}>Not chosen</span>
+                ) : (
+                  <span style={{ fontWeight: entry.preferredChannel === entry.channel ? 400 : 700 }}>
+                    {CHANNEL_LABELS[entry.preferredChannel] ?? entry.preferredChannel}
+                  </span>
+                )}
+              </td>
               <td style={innerTdStyle}>
                 {entry.userId ? (
                   <a href={`/users/${entry.userId}`} style={{ color: "var(--green)", fontWeight: 700 }}>

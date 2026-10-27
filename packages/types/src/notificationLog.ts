@@ -39,4 +39,6 @@ export interface NotificationLogEntryDto {
   deliveryStatus?: string | null;
   /** When that status was reached: for an in-app message, when it was read (or deleted). */
   deliveryStatusAt?: string | null;
+  /** For an owner alert (new message, interested view, number reveal): the channel the owner chose as their first, or null if they have not chosen. Absent for other kinds. Compare with `channel`, the one that actually delivered. */
+  preferredChannel?: string | null;
 }

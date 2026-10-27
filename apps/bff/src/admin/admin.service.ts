@@ -76,6 +76,7 @@ import { summarizePostFieldEvents, type PostDetailsBlockersDto, type PostFunnelD
 import { parsePostFieldEventPath, POST_FIELD_PATH_PREFIX } from '@bhavano/types/postFieldEvents';
 import { NotificationLogQueryDto } from './dto/notification-log-query.dto';
 import type { NotificationDaySummaryDto, NotificationLogEntryDto } from '@bhavano/types/notificationLog';
+import { normalizeOwnerAlertOrder } from '@bhavano/types/ownerAlerts';
 import { ListRequirementsDto } from './dto/list-requirements.dto';
 import { UpdateRequirementDto } from './dto/update-requirement.dto';
 import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings.dto';
@@ -322,6 +323,9 @@ const BOOST_PROMO_NOTIFICATION_KIND = 'boost_promo';
 /** How long the same listing is left alone after a promotion. A second nudge weeks later is fair;
  * two in a week is spam, and an owner who reads it that way stops reading everything else. */
 const PROMO_COOLDOWN_DAYS = 14;
+
+/** The `ListingNotificationLog.kind` values written by OwnerAlertsService's dispatcher: the owner's chosen channel is shown next to these. */
+const OWNER_ALERT_LOG_KINDS = new Set(['new_message', 'listing_interest', 'contact_revealed']);
 
 /** `ListingNotificationLog.channel` for a message delivered inside the app (an announcement thread). */
 const IN_APP_CHANNEL = 'in_app';
@@ -1292,8 +1296,21 @@ export class AdminService {
       userEmail: row.user.email,
     }));
 
-    return [...fromListings, ...fromUsers].sort((a, b) =>
-      b.sentAt.localeCompare(a.sentAt),
+    const entries = await this.withPreferredChannel([...fromListings, ...fromUsers]);
+    return entries.sort((a, b) => b.sentAt.localeCompare(a.sentAt));
+  }
+
+  /** Adds `preferredChannel` to the owner-alert rows, so the log shows the channel the owner chose next to the one that delivered. */
+  private async withPreferredChannel(entries: NotificationLogEntryDto[]): Promise<NotificationLogEntryDto[]> {
+    const userIds = [...new Set(entries.filter((e) => OWNER_ALERT_LOG_KINDS.has(e.kind) && e.userId).map((e) => e.userId as string))];
+    if (userIds.length === 0) return entries;
+    const prefs = await this.prisma.ownerAlertPreference.findMany({
+      where: { userId: { in: userIds } },
+      select: { userId: true, channels: true },
+    });
+    const first = new Map(prefs.map((p) => [p.userId, normalizeOwnerAlertOrder(p.channels)[0]]));
+    return entries.map((e) =>
+      OWNER_ALERT_LOG_KINDS.has(e.kind) ? { ...e, preferredChannel: (e.userId && first.get(e.userId)) || null } : e,
     );
   }
 
@@ -1354,7 +1371,7 @@ export class AdminService {
     });
 
     const inAppById = await this.inAppMessagesFor(rows);
-    return rows.map((row) => {
+    const entries = rows.map((row) => {
       const recipient =
         row.user ??
         (row.kind === 'saved_search_match' ? null : row.listing.owner);
@@ -1371,6 +1388,7 @@ export class AdminService {
         ...this.deliveryOf(row, inAppById),
       };
     });
+    return this.withPreferredChannel(entries);
   }
 
   /** Every distinct `kind` value ever logged across both notification tables, for the Kind filter
@@ -1621,6 +1639,7 @@ export class AdminService {
       where: { id: { in: pageStats.map((user) => user.id) } },
       include: {
         city: true,
+        ownerAlertPreference: { select: { channels: true } },
         notificationLogs: {
           where: { kind: 'welcome' },
           orderBy: { sentAt: 'desc' },
@@ -1656,6 +1675,7 @@ export class AdminService {
             welcomed: u.notificationLogs.length > 0,
             welcomedChannel: u.notificationLogs[0]?.channel ?? null,
             welcomedAt: u.notificationLogs[0]?.sentAt.toISOString() ?? null,
+            alertChannels: u.ownerAlertPreference ? normalizeOwnerAlertOrder(u.ownerAlertPreference.channels) : null,
           },
         ];
       }),
@@ -2115,7 +2135,10 @@ export class AdminService {
    * owned listings, sent messages, favourites, viewed listings) into one sorted timeline,
    * rather than duplicating that data into a new unified log table. */
   async getUserActivity(userId: string): Promise<UserActivityDto> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { city: true } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { city: true, ownerAlertPreference: { select: { channels: true } } },
+    });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
     const [logins, listings, ownedListings, listingEdits, messages, favourites, views, visits] =
@@ -2255,6 +2278,7 @@ export class AdminService {
         acquisitionSource: user.acquisitionSource,
         acquisitionMedium: user.acquisitionMedium,
         acquisitionCampaign: user.acquisitionCampaign,
+        alertChannels: user.ownerAlertPreference ? normalizeOwnerAlertOrder(user.ownerAlertPreference.channels) : null,
       },
       ownedListings: ownedListings.map((listing) => ({
         id: listing.id,

@@ -1,3 +1,4 @@
+import type { OwnerAlertChannel } from "./ownerAlerts";
 import type { VideoEntitlement } from "./videoLimits";
 import type { PhotoEntitlement } from "./photoLimits";
 import type { FeaturedPerformanceDto } from "./featuredPerformance";
@@ -1145,6 +1146,8 @@ export interface UserActivityDto {
         acquisitionSource: string | null;
         acquisitionMedium: string | null;
         acquisitionCampaign: string | null;
+        /** Their chosen alert channel order (see UserSummaryDto.alertChannels); null until chosen. */
+        alertChannels: OwnerAlertChannel[] | null;
     };
     /** All listings currently associated with this owner, newest first. */
     ownedListings: AdminUserListingDto[];
@@ -1184,6 +1187,8 @@ export interface UserSummaryDto {
     welcomed: boolean;
     welcomedChannel: string | null;
     welcomedAt: string | null;
+    /** How this person asked to be alerted when a seeker contacts them, first = tried first. Null until they have chosen (the default order applies). */
+    alertChannels: OwnerAlertChannel[] | null;
 }
 export interface AdminUsersPage {
     items: UserSummaryDto[];

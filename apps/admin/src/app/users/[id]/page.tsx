@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ActivityEventDto, AdminUserListingDto, DeviceType, VisitDto } from "@bhavano/types";
 import { postedByLabel } from "@bhavano/types/sellerType";
+import { DEFAULT_OWNER_ALERT_ORDER, OWNER_ALERT_CHANNEL_LABELS } from "@bhavano/types/ownerAlerts";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchCities, fetchPayments, fetchUserActivity, fetchUserSavedSearches } from "@/lib/bff";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
@@ -73,6 +74,12 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
           <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
             Posts as: {postedByLabel(user.sellerType, user.agencyName) ?? "not answered yet"}
             {user.reraNumber && ` · RERA ${user.reraNumber}${user.reraVerifiedAt ? " ✓ verified" : ""}`}
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
+            Alerts them by:{" "}
+            {user.alertChannels
+              ? user.alertChannels.map((c) => OWNER_ALERT_CHANNEL_LABELS[c]).join(" › ")
+              : "not chosen yet (default order: " + DEFAULT_OWNER_ALERT_ORDER.map((c) => OWNER_ALERT_CHANNEL_LABELS[c]).join(" › ") + ")"}
           </div>
           <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
             Found via:{" "}
