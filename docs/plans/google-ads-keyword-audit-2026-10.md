@@ -191,3 +191,20 @@ Ad relevance compares the ad with the keyword, so a keyword word that appears in
   `python ads_keyword_headlines.py` (it skips groups that already have the ad). Metro-Seeker "apartment" headlines are deferred until the replacement seeker ads are final.
 - Rollback: `python ads_keyword_headlines.py --rollback` pauses these ads. Re-measure ad relevance (Keywords tab) in about 14 days, together with the free-ads test and the verified-claims fix.
 
+### Star keyword ad groups, 2026-10-27
+One ad group per keyword is a poor idea for a whole account (close variants make the "perfect" match leak, and about 370 conversions a month spread over hundreds of groups gives bidding and ad tests almost no data), but it is worth it for the few
+keywords that carry the conversions and whose ad relevance lags. `ads_star_keyword_groups.py` (dry run, Google-validated, applied: 24 operations) created **8 star ad groups**, each in the same campaign as the original, with one keyword
+(same text and match type) and one ad written for exactly that keyword (12 headlines, 4 descriptions):
+| Keyword | Campaigns |
+|---|---|
+| best place to list apartment for rent (25 conversions, ₹3,486) | Metro-Rent Out |
+| free property listing site (33 + 14 conversions) | Metro-Sell, Other-Metro-Sell |
+| post rental property for free (14 + 3) | Metro-Rent Out, Other-Metro-Rent Out |
+| free property ads posting sites (13 + 4) | Metro-Generic, Other-Metro-Generic |
+| post free ad for rent (6) | Metro-Generic |
+The **original keywords stay enabled** in their old ad groups: Google serves one ad per search, so old and star compete for 14 days and the better one wins. Nothing was paused or removed.
+Home page card: the posting card follows the ad group id, so the new ids were added to `AD_GROUP_INTENTS` in `apps/web/src/lib/adLandingCard.ts` (rent_home for rent ones, sell_property for the two Sell stars; "free property ads posting sites" keeps the generic card)
+and to `apps/bff/src/ads/campaign-names.ts` for the admin names. Needs a web and BFF deploy.
+**Judge in 14 days** (Ads UI > Keywords, same keyword text, two rows): impressions, conversions and cost per conversion for the star against the original, plus quality score and ad relevance. Pause the loser (the original if the star wins).
+Rollback: `python ads_star_keyword_groups.py --rollback` pauses the star ad groups.
+

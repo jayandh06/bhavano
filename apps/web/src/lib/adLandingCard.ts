@@ -117,6 +117,14 @@ const AD_GROUP_INTENTS: Record<string, AdLandingIntentKey> = {
   // property" card instead of the lease one. Found in the 2026-10-19 final-URL audit.
   "201054972699": "lease_commercial",
   "201054972659": "lease_home",
+  // Star ad groups (ads_star_keyword_groups.py, 2026-10-27): one keyword each, copied from the group whose card they keep.
+  // "free property ads posting sites" (Generic) keeps the generic card, so it is not listed.
+  "196844821410": "sell_property", // Metro-Sell, free property listing site
+  "201226778629": "sell_property", // Other-Metro-Sell, free property listing site
+  "201226780789": "rent_home", // Metro-Rent Out, post rental property for free
+  "201736871659": "rent_home", // Other-Metro-Rent Out, post rental property for free
+  "202274622940": "rent_home", // Metro-Rent Out, best place to list apartment for rent
+  "201226790829": "rent_home", // Metro-Generic, post free ad for rent
 };
 
 /** `?adcard=<intent>` shows the card without an ad click — for checking the copy. Kept apart

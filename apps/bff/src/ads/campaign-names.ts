@@ -78,6 +78,15 @@ export const AD_GROUP_NAMES: Record<string, string> = {
   '196803718970': 'Ad Group — Lucknow Buy Seekers', // Other-Metro-Seeker Intent
   '201054972699': 'Ad Group 3.1 — Lease Commercial/Office', // Other-Metro-Lease Property-MaxConv
   '201054972659': 'Ad Group 3.2 — Lease Residential/Long-term', // Other-Metro-Lease Property-MaxConv
+  // Star ad groups, ads_star_keyword_groups.py (2026-10-27)
+  '196844821410': 'Star - free property listing site', // Metro-Sell Property (Owners/Agents)
+  '201226778629': 'Star - free property listing site', // Other-Metro-Sell Property (Owners/Agents)
+  '201226780789': 'Star - post rental property for free', // Metro-Rent Out Property (Owners)
+  '201736871659': 'Star - post rental property for free', // Other-Metro-Rent Out Property (Owners)
+  '202274622940': 'Star - best place to list apartment for rent', // Metro-Rent Out Property (Owners)
+  '201226788949': 'Star - free property ads posting sites', // Other-Metro-Generic Post Ad Intent
+  '201736872379': 'Star - free property ads posting sites', // Metro-Generic Post Ad Intent
+  '201226790829': 'Star - post free ad for rent', // Metro-Generic Post Ad Intent
 };
 
 /** Ad id -> its first two headlines, for display (the admin campaign analytics). A responsive ad has no
