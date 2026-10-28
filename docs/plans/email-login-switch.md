@@ -30,3 +30,8 @@ Phone OTP is never affected. **Staff always get through** (an existing admin, or
 - **iOS App Review:** the iOS app is in review. If the reviewers' test account signs in with Google / Apple, switching to **off** would break their review. Keep **all** or **existing_only** until it is through, or confirm the review account uses a phone OTP.
 - Spammers can still sign up with a phone number. The stronger fix for harvesting itself is to require a verified phone to reveal a contact; that is separate and not done here.
 - The mobile app needs a store build / OTA to pick up the hiding of the buttons; the server-side check works for every app version immediately.
+
+## Mobile app (2026-10-28)
+- **Enforcement already covers every app version.** The check is on the server, so an app build that predates this still cannot sign in with Google / Apple (or create a new account that way) when the switch is closed to that account. It just still *shows* the button, and the refusal appears as the raw 403 text.
+- **New builds** read `GET /auth/login-methods` (cached a minute) and hide the Google / Apple buttons, show the "existing accounts only" note, and turn a refused attempt into "Please sign in with your mobile number." and re-read the setting.
+- All of this is JavaScript only (no new native module), so it can ship as an EAS Update on the current runtime version; no store build is needed unless the runtime version is bumped.

@@ -147,6 +147,12 @@ export function useHomeSheets(): HomeSheetsContextValue {
 
 type LoginStep = "choose" | "phone" | "otp" | "basics";
 
+/** The server refused a Google / Apple sign-in because an admin has closed it to this account (Admin -> Settings -> Login methods): say so plainly instead of
+ * showing the raw 403, and the caller re-reads the setting so the buttons disappear. Null for any other error. */
+function emailLoginRefusal(e: unknown): string | null {
+  return e instanceof BffError && e.status === 403 && e.body.includes("EMAIL_LOGIN_DISABLED") ? "Please sign in with your mobile number." : null;
+}
+
 export function HomeSheetsProvider({
   children,
   popularCities,
@@ -218,7 +224,8 @@ export function HomeSheetsProvider({
   });
 
   const googleSignIn = useGoogleSignIn();
-  const emailLogin = useEmailLoginModeQuery().data ?? "all";
+  const emailLoginQuery = useEmailLoginModeQuery();
+  const emailLogin = emailLoginQuery.data ?? "all";
 
   /** This device's Expo push token, once registered — kept so logout can unregister it while the
    * access token is still valid (the DELETE is authed). */
@@ -692,7 +699,8 @@ export function HomeSheetsProvider({
       );
       await onLoginSuccess(session.accessToken, session.isNewUser ?? false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Google sign-in failed");
+      setError(emailLoginRefusal(e) ?? (e instanceof Error ? e.message : "Google sign-in failed"));
+      if (emailLoginRefusal(e)) void emailLoginQuery.refetch();
     } finally {
       setPending(false);
     }
@@ -729,7 +737,8 @@ export function HomeSheetsProvider({
       // no-idToken-returned case above: not an error worth surfacing. Expo's own docs check
       // `e.code`, not `e.message` — this isn't a plain Error.
       if (e && typeof e === "object" && "code" in e && e.code === "ERR_REQUEST_CANCELED") return;
-      setError(e instanceof Error ? e.message : "Apple sign-in failed");
+      setError(emailLoginRefusal(e) ?? (e instanceof Error ? e.message : "Apple sign-in failed"));
+      if (emailLoginRefusal(e)) void emailLoginQuery.refetch();
     } finally {
       setPending(false);
     }
