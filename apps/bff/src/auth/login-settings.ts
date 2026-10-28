@@ -1,5 +1,6 @@
 import {
   DEFAULT_EMAIL_LOGIN_MODE,
+  effectivePhoneRequirement,
   DEFAULT_PHONE_REQUIREMENT_MODE,
   isEmailLoginMode,
   isPhoneRequirementMode,
@@ -29,8 +30,9 @@ export async function getEmailLoginMode(prisma: PrismaService): Promise<EmailLog
   return (await getLoginSettings(prisma)).emailLogin;
 }
 
+/** What accounts with no mobile number are asked to do right now (the migration login mode counts as "required"). */
 export async function getPhoneRequirementMode(prisma: PrismaService): Promise<PhoneRequirementMode> {
-  return (await getLoginSettings(prisma)).phoneRequirement;
+  return effectivePhoneRequirement(await getLoginSettings(prisma));
 }
 
 export async function setLoginSettings(prisma: PrismaService, input: LoginSettingsDto): Promise<LoginSettingsDto> {

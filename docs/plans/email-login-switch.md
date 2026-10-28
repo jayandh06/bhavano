@@ -54,3 +54,11 @@ It reuses `ProfileCompletionDialog` (web and app) and `GET /users/me/profile-nud
 **Email nudge for phone-only accounts:** the same dialog's email step now says an email gives free listing notifications by email (someone messages, shows interest or views the number); a verified email is also what unlocks the free email alert channel (see owner-notification-channel-preferences.md).
 
 **Caveat:** the prompt and the lock are enforced by the server for contact details, but the dialog itself is a screen: an app build without the update does not show it. The reveal lock still applies to every build.
+
+## One-time migration mode: "Move existing accounts to mobile" (2026-10-28)
+A fourth login mode, `existing_no_phone`, for the exact flow wanted: existing email users may sign in with Google / Apple **once more**, are forced to verify a mobile number, and sign in with the mobile OTP from then on.
+- **Google / Apple allowed** only for an existing account that has **no** mobile number. A new account, or an existing account that already has a number, is refused ("Please sign in with your mobile number."). Staff are always allowed.
+- **The number is forced:** this mode counts as phone requirement "required" (`effectivePhoneRequirement`): the undismissable "Add your mobile number" prompt appears as soon as the site / app opens, and contact reveals are locked server-side until a number is verified. A number already on another account goes through the usual merge approval.
+- **Next login** is therefore by mobile OTP, because Google / Apple are now refused for that account. Accounts that never add a number stay locked out of contact details and are the fake / abandoned ones.
+- The login screens keep the Google button with the note "Google sign-in is for existing accounts" and One Tap stays off outside "all".
+- Order to use it: switch to this mode, send the in-app message to owners (button on the same page), later set **Off** to close email sign-in for good.

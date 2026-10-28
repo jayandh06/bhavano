@@ -1,12 +1,12 @@
 import { UsersService } from './users.service';
 
 // Only getProfileNudge / snoozeProfileNudge are exercised; everything else the service needs is unused here.
-function makeService(opts: { user: Record<string, unknown>; phoneRequirement?: string }) {
+function makeService(opts: { user: Record<string, unknown>; phoneRequirement?: string; emailLogin?: string }) {
   const prisma = {
     user: { findUnique: jest.fn().mockResolvedValue(opts.user), update: jest.fn().mockResolvedValue({}) },
-    loginSetting: { findUnique: jest.fn().mockResolvedValue(opts.phoneRequirement ? { emailLogin: 'all', phoneRequirement: opts.phoneRequirement } : null) },
+    loginSetting: { findUnique: jest.fn().mockResolvedValue(opts.phoneRequirement ? { emailLogin: opts.emailLogin ?? 'all', phoneRequirement: opts.phoneRequirement } : null) },
   };
-  const service = new UsersService(prisma as never, ...(Array.from({ length: 10 }, () => ({})) as never[]));
+  const service = new UsersService(prisma as never, {} as never, {} as never);
   return { service, prisma };
 }
 
@@ -15,6 +15,11 @@ const emailOnly = { email: 'a@b.com', phone: null, profileNudgeCount: 3, profile
 describe('profile nudge while moving accounts to mobile', () => {
   it('"required": an account with no phone gets an undismissable prompt even after the ordinary nudge cap', async () => {
     const { service } = makeService({ user: emailOnly, phoneRequirement: 'required' });
+    await expect(service.getProfileNudge('u1')).resolves.toMatchObject({ show: true, blocking: true });
+  });
+
+  it('the migration login mode forces the undismissable prompt even when the phone setting is off', async () => {
+    const { service } = makeService({ user: emailOnly, phoneRequirement: 'off', emailLogin: 'existing_no_phone' });
     await expect(service.getProfileNudge('u1')).resolves.toMatchObject({ show: true, blocking: true });
   });
 

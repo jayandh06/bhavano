@@ -1,8 +1,10 @@
 /** Whether signing in with an email identity (Google, Apple) is allowed, set by an admin. Phone OTP is always allowed.
  * - all: as before.
  * - existing_only: people who already have an account can still use Google / Apple, but a brand-new account cannot be created that way (stops throwaway-email sign-ups).
+ * - existing_no_phone: the migration to mobile. Only an existing account that has NO mobile number can use Google / Apple, and it is made to verify one straight away (the
+ *   "required" prompt and the contact-details lock apply to it); once it has a number, Google / Apple are refused for it and it signs in with the mobile OTP.
  * - off: Google / Apple sign-in is closed to everyone except staff. */
-export const EMAIL_LOGIN_MODES = ["all", "existing_only", "off"] as const;
+export const EMAIL_LOGIN_MODES = ["all", "existing_only", "existing_no_phone", "off"] as const;
 export type EmailLoginMode = (typeof EMAIL_LOGIN_MODES)[number];
 
 export const DEFAULT_EMAIL_LOGIN_MODE: EmailLoginMode = "all";
@@ -18,6 +20,16 @@ export const DEFAULT_PHONE_REQUIREMENT_MODE: PhoneRequirementMode = "off";
 
 export function isPhoneRequirementMode(value: unknown): value is PhoneRequirementMode {
   return typeof value === "string" && (PHONE_REQUIREMENT_MODES as readonly string[]).includes(value);
+}
+
+/** The phone requirement actually in force: the migration mode forces "required" whatever the separate setting says. */
+export function effectivePhoneRequirement(settings: { emailLogin: EmailLoginMode; phoneRequirement: PhoneRequirementMode }): PhoneRequirementMode {
+  return settings.emailLogin === "existing_no_phone" ? "required" : settings.phoneRequirement;
+}
+
+/** True when the login screens should still show Google / Apple (with a note that it is for existing accounts only). */
+export function emailLoginIsRestricted(mode: EmailLoginMode): boolean {
+  return mode === "existing_only" || mode === "existing_no_phone";
 }
 
 export interface LoginSettingsDto {

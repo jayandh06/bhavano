@@ -41,6 +41,7 @@ import {
 } from "../lib/bffClient";
 import { useGoogleSignIn } from "../lib/googleSignIn";
 import { useEmailLoginModeQuery } from "../lib/queries";
+import { emailLoginIsRestricted } from "@bhavano/types/loginSettings";
 import { getOrCreateViewerKey } from "../lib/viewerKey";
 import { getReferralCodeIfFresh } from "../lib/referralLink";
 import { getAnalyticsSessionId, linkAnalyticsSessionToUser } from "../lib/analyticsSession";
@@ -986,7 +987,7 @@ export function HomeSheetsProvider({
                   <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>Continue with Google</Text>
                 </Pressable>
               )}
-              {emailLogin === "existing_only" && (
+              {emailLoginIsRestricted(emailLogin) && (
                 <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
                   Google sign-in is for existing accounts. New here? Continue with your mobile number.
                 </Text>

@@ -265,7 +265,7 @@ export class AuthService {
       where: { googleId: profile.googleId },
     });
 
-    this.assertEmailLoginOpen(emailLoginMode, user?.role === 'admin' || this.isStaffEmail(profile.email), !!user);
+    this.assertEmailLoginOpen(emailLoginMode, user?.role === 'admin' || this.isStaffEmail(profile.email), !!user, !!user?.phone);
 
     if (user) {
       user = await this.prisma.user.update({
@@ -285,6 +285,7 @@ export class AuthService {
         emailLoginMode,
         byEmail?.role === 'admin' || this.isStaffEmail(profile.email),
         !!byEmail?.emailVerifiedAt,
+        !!byEmail?.phone,
       );
 
       user = byEmail?.emailVerifiedAt
@@ -346,7 +347,7 @@ export class AuthService {
     let user = await this.prisma.user.findUnique({
       where: { appleId: profile.appleId },
     });
-    this.assertEmailLoginOpen(emailLoginMode, user?.role === 'admin' || this.isStaffEmail(profile.email), !!user);
+    this.assertEmailLoginOpen(emailLoginMode, user?.role === 'admin' || this.isStaffEmail(profile.email), !!user, !!user?.phone);
 
     if (user) {
       const data: { email?: string; emailVerifiedAt?: Date; name?: string } = {};
@@ -368,6 +369,7 @@ export class AuthService {
         emailLoginMode,
         byEmail?.role === 'admin' || this.isStaffEmail(profile.email),
         !!byEmail?.emailVerifiedAt,
+        !!byEmail?.phone,
       );
 
       user = byEmail?.emailVerifiedAt
@@ -615,10 +617,10 @@ export class AuthService {
     return !!email && parseAllowlist(this.config.get<string>('ADMIN_EMAILS')).has(email);
   }
 
-  /** Applies Admin -> Settings -> Login. `existing` is whether this sign-in lands on an account that already exists. Phone OTP never comes through here. */
-  private assertEmailLoginOpen(mode: EmailLoginMode, isStaff: boolean, existing: boolean): void {
+  /** Applies Admin -> Settings -> Login. `existing` is whether this sign-in lands on an account that already exists and `hasPhone` whether that account has a mobile number (the migration mode lets only the ones without one in). Phone OTP never comes through here. */
+  private assertEmailLoginOpen(mode: EmailLoginMode, isStaff: boolean, existing: boolean, hasPhone = false): void {
     if (isStaff || mode === 'all') return;
-    if (mode === 'existing_only' && existing) return;
+    if (existing && (mode === 'existing_only' || (mode === 'existing_no_phone' && !hasPhone))) return;
     throw new ForbiddenException({ message: EMAIL_LOGIN_DISABLED_MESSAGE, code: EMAIL_LOGIN_DISABLED_CODE });
   }
 

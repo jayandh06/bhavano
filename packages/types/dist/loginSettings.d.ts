@@ -1,8 +1,10 @@
 /** Whether signing in with an email identity (Google, Apple) is allowed, set by an admin. Phone OTP is always allowed.
  * - all: as before.
  * - existing_only: people who already have an account can still use Google / Apple, but a brand-new account cannot be created that way (stops throwaway-email sign-ups).
+ * - existing_no_phone: the migration to mobile. Only an existing account that has NO mobile number can use Google / Apple, and it is made to verify one straight away (the
+ *   "required" prompt and the contact-details lock apply to it); once it has a number, Google / Apple are refused for it and it signs in with the mobile OTP.
  * - off: Google / Apple sign-in is closed to everyone except staff. */
-export declare const EMAIL_LOGIN_MODES: readonly ["all", "existing_only", "off"];
+export declare const EMAIL_LOGIN_MODES: readonly ["all", "existing_only", "existing_no_phone", "off"];
 export type EmailLoginMode = (typeof EMAIL_LOGIN_MODES)[number];
 export declare const DEFAULT_EMAIL_LOGIN_MODE: EmailLoginMode;
 /** What accounts that have no mobile number (they signed up with Google / Apple) are asked to do, set by an admin. Moving everyone to mobile sign-in first.
@@ -13,6 +15,13 @@ export declare const PHONE_REQUIREMENT_MODES: readonly ["off", "ask", "required"
 export type PhoneRequirementMode = (typeof PHONE_REQUIREMENT_MODES)[number];
 export declare const DEFAULT_PHONE_REQUIREMENT_MODE: PhoneRequirementMode;
 export declare function isPhoneRequirementMode(value: unknown): value is PhoneRequirementMode;
+/** The phone requirement actually in force: the migration mode forces "required" whatever the separate setting says. */
+export declare function effectivePhoneRequirement(settings: {
+    emailLogin: EmailLoginMode;
+    phoneRequirement: PhoneRequirementMode;
+}): PhoneRequirementMode;
+/** True when the login screens should still show Google / Apple (with a note that it is for existing accounts only). */
+export declare function emailLoginIsRestricted(mode: EmailLoginMode): boolean;
 export interface LoginSettingsDto {
     emailLogin: EmailLoginMode;
     phoneRequirement: PhoneRequirementMode;

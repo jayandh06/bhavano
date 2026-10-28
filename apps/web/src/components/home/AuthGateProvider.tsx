@@ -18,6 +18,7 @@ import { AUTH_POPUP_MESSAGE } from "./AuthPopupComplete";
 import { GOOGLE_SIGNUP_TRACKED_KEY } from "./SignupConversionTracker";
 import { GoogleIcon } from "./GoogleIcon";
 import { useEmailLoginMode } from "@/lib/useLoginMethods";
+import { emailLoginIsRestricted } from "@bhavano/types/loginSettings";
 import { Icon } from "./Icon";
 import {
   ProfileBasicsCloseButton,
@@ -513,7 +514,7 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                     <GoogleIcon /> Continue with Google
                   </button>
                 )}
-                {!phoneOnly && emailLogin === "existing_only" && (
+                {!phoneOnly && emailLoginIsRestricted(emailLogin) && (
                   <p className="text-xs text-muted mt-2 mb-0 leading-[1.5]">
                     Google sign-in is for existing accounts. New here? Continue with your mobile number.
                   </p>

@@ -18,6 +18,13 @@ const OPTIONS: { value: EmailLoginMode; title: string; body: string }[] = [
       "This stops throwaway email accounts without locking out genuine returning users.",
   },
   {
+    value: "existing_no_phone",
+    title: "Move existing accounts to mobile",
+    body:
+      "Only an existing account that has no mobile number can use Google or Apple, and it must verify a mobile number straight away (it cannot skip, and contact details stay locked until it does). " +
+      "Once it has a number, Google and Apple stop working for that account and it signs in with the mobile OTP. New accounts can only use a mobile number.",
+  },
+  {
     value: "off",
     title: "Off: mobile number only",
     body:

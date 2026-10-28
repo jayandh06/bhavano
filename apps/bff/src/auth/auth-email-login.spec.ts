@@ -39,6 +39,22 @@ describe('email login switch', () => {
     expect(() => gate(service, 'existing_only', false, false)).toThrow(ForbiddenException);
   });
 
+  it('the migration mode lets in only existing accounts that have no mobile number', () => {
+    const { service } = makeService({});
+    const migrate = (staff: boolean, existing: boolean, hasPhone: boolean) =>
+      (service as unknown as { assertEmailLoginOpen: (m: string, s: boolean, e: boolean, p: boolean) => void }).assertEmailLoginOpen('existing_no_phone', staff, existing, hasPhone);
+    expect(() => migrate(false, true, false)).not.toThrow();
+    expect(() => migrate(false, true, true)).toThrow(ForbiddenException);
+    expect(() => migrate(false, false, false)).toThrow(ForbiddenException);
+    expect(() => migrate(true, true, true)).not.toThrow();
+  });
+
+  it('with the migration mode, an existing Google account that has a phone is refused (it signs in with the OTP from now on)', async () => {
+    const { service, prisma } = makeService({ mode: 'existing_no_phone', existingByGoogleId: { id: 'u1', role: 'user', phone: '9876543210' } });
+    await expect(service.loginWithGoogle('token')).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
   it('"off" refuses everyone except staff', () => {
     const { service } = makeService({});
     expect(() => gate(service, 'off', false, true)).toThrow(ForbiddenException);
