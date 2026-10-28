@@ -9,8 +9,10 @@ import {
   type OwnerAlertChannel,
 } from "@bhavano/types/ownerAlerts";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAlertPreferencesQuery } from "../../lib/queries";
 import { Icon } from "../Icon";
+import { AddEmailForAlerts } from "./AddEmailForAlerts";
 
 export interface AlertChannelChoice {
   /** False blocks posting: no channel can reach the owner for this ad and they have not said they will check Messages themselves. */
@@ -22,7 +24,7 @@ const UNAVAILABLE_HINT: Record<OwnerAlertChannel, string> = {
   push: "Turn on notifications for Bhavano to use this",
   whatsapp: "Add your phone number to use this",
   sms: "Add your phone number to use this",
-  email: "Add and verify your email in your profile to use this",
+  email: "Add your email below to use this",
 };
 
 /** The required "how should we alert you?" answer on the Preview step, just above Post. Push and email are free; WhatsApp and SMS belong to Featured ads
@@ -43,6 +45,7 @@ export function AlertChannelPicker({
 }) {
   const { colors } = useAppTheme();
   const { data: pref } = useAlertPreferencesQuery(accessToken);
+  const queryClient = useQueryClient();
   const [picked, setPicked] = useState<OwnerAlertChannel | null>(null);
   const [initialised, setInitialised] = useState(false);
   const [checkMyself, setCheckMyself] = useState(false);
@@ -119,6 +122,15 @@ export function AlertChannelPicker({
           </Pressable>
         );
       })}
+      {!pref.available.email && (
+        <AddEmailForAlerts
+          accessToken={accessToken}
+          onAdded={() => {
+            setPicked((current) => current ?? "email");
+            void queryClient.invalidateQueries({ queryKey: ["alertPreferences", accessToken] });
+          }}
+        />
+      )}
       {!effective && (
         <Pressable
           onPress={() => setCheckMyself((v) => !v)}

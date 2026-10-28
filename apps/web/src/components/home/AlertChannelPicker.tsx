@@ -13,6 +13,7 @@ import {
 import { getAlertPreferencesAction } from "@/app/actions/users";
 import { Icon } from "./Icon";
 import { InstallAppAlertBanner } from "./InstallAppAlertBanner";
+import { AddEmailForAlerts } from "./AddEmailForAlerts";
 
 export interface AlertChannelChoice {
   /** False blocks posting: no channel can reach the owner for this ad and they have not said they will check Messages themselves. */
@@ -25,7 +26,7 @@ const UNAVAILABLE_HINT: Record<OwnerAlertChannel, string> = {
   push: "Install the Bhavano app and log in to use this",
   whatsapp: "Add your phone number to use this",
   sms: "Add your phone number to use this",
-  email: "Add and verify your email in your profile to use this",
+  email: "Add your email below to use this",
 };
 
 /** The required "how should we alert you?" answer on the Preview step, just above Post. Push and email are free; WhatsApp and SMS belong to Featured
@@ -62,6 +63,13 @@ export function AlertChannelPicker({
   const order = useMemo(() => (pref ? withPrimaryChannel(pref.channels, picked ?? pref.channels[0]) : []), [pref, picked]);
   const effective = pref ? effectiveOwnerAlertChannel(order, pref.available, featured) : null;
   const ready = !pref || effective !== null || checkMyself;
+
+  async function reloadAfterEmailAdded() {
+    const fresh = await getAlertPreferencesAction();
+    if (!fresh) return;
+    setPref(fresh);
+    setPicked((current) => current ?? "email");
+  }
 
   useEffect(() => {
     // Someone who says they will check Messages themselves still gets a recorded choice (so they are not asked again on every post).
@@ -124,6 +132,7 @@ export function AlertChannelPicker({
           );
         })}
       </div>
+      {!pref.available.email && <AddEmailForAlerts onAdded={() => void reloadAfterEmailAdded()} />}
       {!effective && (
         <label className="flex items-start gap-2.5 text-[13px] mt-3 cursor-pointer">
           <input type="checkbox" className="mt-0.5" checked={checkMyself} onChange={(e) => setCheckMyself(e.target.checked)} />

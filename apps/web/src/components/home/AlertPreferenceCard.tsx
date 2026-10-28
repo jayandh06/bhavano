@@ -8,16 +8,17 @@ import {
   type OwnerAlertChannel,
   type OwnerAlertPreferenceDto,
 } from "@bhavano/types/ownerAlerts";
-import { saveAlertPrimaryChannelAction } from "@/app/actions/users";
+import { getAlertPreferencesAction, saveAlertPrimaryChannelAction } from "@/app/actions/users";
 import { Icon } from "./Icon";
 import { InstallAppAlertBanner } from "./InstallAppAlertBanner";
+import { AddEmailForAlerts } from "./AddEmailForAlerts";
 
 /** Why a channel cannot be picked as the first choice. */
 const UNAVAILABLE_HINT: Record<OwnerAlertChannel, string> = {
   push: "Install the Bhavano app and log in to use this",
   whatsapp: "Add your phone number to use this",
   sms: "Add your phone number to use this",
-  email: "Add your email address to use this",
+  email: "Add your email below to use this",
 };
 
 /** Where the advertiser says how to reach them when a seeker messages, shows interest or views their number. One primary channel is the whole question
@@ -84,6 +85,15 @@ export function AlertPreferenceCard({ preference }: { preference: OwnerAlertPref
         <p className="text-[12px] text-muted m-0 mt-3">
           If that cannot reach you, we try {fallbacks.map((c) => OWNER_ALERT_CHANNEL_LABELS[c]).join(", then ")}.
         </p>
+      )}
+      {!current.available.email && (
+        <AddEmailForAlerts
+          onAdded={() =>
+            void getAlertPreferencesAction().then((fresh) => {
+              if (fresh) setCurrent(fresh);
+            })
+          }
+        />
       )}
       {error && <p className="text-[12px] text-red-600 m-0 mt-2">{error}</p>}
     </section>

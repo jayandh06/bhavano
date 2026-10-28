@@ -12,12 +12,13 @@ import { useAppTheme } from "../../theme/ThemeContext";
 import { saveAlertPreferences } from "../../lib/bffClient";
 import { useAlertPreferencesQuery } from "../../lib/queries";
 import { Icon } from "../Icon";
+import { AddEmailForAlerts } from "./AddEmailForAlerts";
 
 const UNAVAILABLE_HINT: Record<OwnerAlertChannel, string> = {
   push: "Turn on notifications for Bhavano to use this",
   whatsapp: "Add your phone number to use this",
   sms: "Add your phone number to use this",
-  email: "Add your email address to use this",
+  email: "Add your email below to use this",
 };
 
 /** Where the advertiser says how to reach them when a seeker messages, shows interest or views their number. One primary channel is the whole question;
@@ -88,6 +89,12 @@ export function AlertPreferenceCard({ accessToken }: { accessToken: string }) {
         <Text style={{ color: colors.muted, fontSize: 12, marginTop: 6 }}>
           If that cannot reach you, we try {fallbacks.map((c) => OWNER_ALERT_CHANNEL_LABELS[c]).join(", then ")}.
         </Text>
+      )}
+      {!preference.available.email && (
+        <AddEmailForAlerts
+          accessToken={accessToken}
+          onAdded={() => void queryClient.invalidateQueries({ queryKey: ["alertPreferences", accessToken] })}
+        />
       )}
       {error && <Text style={{ color: "#c0392b", fontSize: 12, marginTop: 6 }}>{error}</Text>}
     </View>
