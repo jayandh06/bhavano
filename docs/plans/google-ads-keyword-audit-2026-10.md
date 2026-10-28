@@ -237,3 +237,9 @@ is rate-limited, "Retry in about 15 minutes").
 **Operational note:** the Google Ads developer token has *explorer access*, so the API rejects requests after a limited number of operations per period (HTTP 429 "Number of operations for explorer access"). Large read-only audits trigger it. Applying
 for basic access removes the limit.
 
+
+## "Verified" clean-up, phase 2 done (2026-10-28)
+`ads_new_ads_report.py` (new, read-only) showed all 27 replacement ads, the new callout and the 4 new sitelinks APPROVED, so `ads_remove_verified_claims.py --finish` was run: **27 old ads paused (not removed), old sitelinks and the "Verified Listings" callout unlinked** (35 operations). Checked afterwards: old 27 PAUSED, new 27 ENABLED.
+Before this the old ads carried almost all traffic (30 days: 20,875 impressions, 2,021 clicks, Rs 43,167, 227 conversions, about Rs 190 per conversion) and the replacements had 322 impressions (they were a day old). Replacement ad strength is a little lower (9 Excellent, 6 Good, 11 Average, 1 Pending, against 10 Excellent and 12 Good), because the headline without "verified" is weaker; expect a small dip for a week or two.
+**Check on about 4 Nov:** cost per conversion of the replacements against Rs 190, click-through rate against 9.7%. Roll back with `--rollback` (pauses the replacements) and re-enable the old ads in the UI if it is clearly worse. Also worth rewriting: the 4 ads rated POOR (Jaipur, Lucknow and Coimbatore buy-seeker groups, generic Star group).
+**Next:** rerun `ads_keyword_headlines.py` for the 5 groups that were waiting on this (Rent Out 2.1 x2, Sell 1.1 x2, Lease 3.2).
