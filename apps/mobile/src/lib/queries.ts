@@ -8,6 +8,7 @@ import {
   fetchCities,
   fetchAlertPreferences,
   fetchContactRevealBalance,
+  fetchEmailLoginMode,
   fetchConversations,
   fetchMyReferrals,
   fetchFavourites,
@@ -117,6 +118,11 @@ export function useRequirementsFeedSummaryQuery(cityId: string | undefined, enab
     queryFn: () => fetchRequirementsFeedSummary(cityId),
     enabled,
   });
+}
+
+/** Whether the login sheet may offer Google / Apple; "all" until the lookup answers or if it fails. */
+export function useEmailLoginModeQuery() {
+  return useQuery({ queryKey: ["emailLoginMode"], queryFn: fetchEmailLoginMode, staleTime: 60_000 });
 }
 
 export function useAlertPreferencesQuery(accessToken: string | null) {

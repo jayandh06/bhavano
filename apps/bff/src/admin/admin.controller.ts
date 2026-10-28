@@ -91,6 +91,8 @@ import { UpdateSavedSearchDto } from './dto/update-saved-search.dto';
 import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings.dto';
 import { UpdatePostedConfirmationSettingsDto } from './dto/update-posted-confirmation-settings.dto';
 import { UpdateReminderSettingsDto } from './dto/update-reminder-settings.dto';
+import { UpdateLoginSettingsDto } from './dto/update-login-settings.dto';
+import type { LoginSettingsDto } from '@bhavano/types/loginSettings';
 import { UpdateBoostPricingDto } from './dto/update-boost-pricing.dto';
 import { UpdateInstantAlertsPricingDto } from './dto/update-instant-alerts-pricing.dto';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
@@ -517,6 +519,16 @@ export class AdminController {
   @Patch('reminder-settings')
   updateReminderSettings(@Body() dto: UpdateReminderSettingsDto): Promise<ReminderSettingsDto> {
     return this.adminService.updateReminderSettings(dto);
+  }
+
+  @Get('login-settings')
+  getLoginSettings(): Promise<LoginSettingsDto> {
+    return this.adminService.getLoginSettings();
+  }
+
+  @Patch('login-settings')
+  updateLoginSettings(@Body() dto: UpdateLoginSettingsDto): Promise<LoginSettingsDto> {
+    return this.adminService.updateLoginSettings(dto);
   }
 
   @Get('saved-search-settings')

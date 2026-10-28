@@ -40,6 +40,7 @@ import {
   verifyOtp,
 } from "../lib/bffClient";
 import { useGoogleSignIn } from "../lib/googleSignIn";
+import { useEmailLoginModeQuery } from "../lib/queries";
 import { getOrCreateViewerKey } from "../lib/viewerKey";
 import { getReferralCodeIfFresh } from "../lib/referralLink";
 import { getAnalyticsSessionId, linkAnalyticsSessionToUser } from "../lib/analyticsSession";
@@ -217,6 +218,7 @@ export function HomeSheetsProvider({
   });
 
   const googleSignIn = useGoogleSignIn();
+  const emailLogin = useEmailLoginModeQuery().data ?? "all";
 
   /** This device's Expo push token, once registered — kept so logout can unregister it while the
    * access token is still valid (the DELETE is authed). */
@@ -960,7 +962,7 @@ export function HomeSheetsProvider({
                 * rule is about. Apple's own button component, not a custom one: their HIG
                 * requires using either this or a button that strictly matches its design, and
                 * this guarantees that. See docs/plans/ios-app-store-release.md. */}
-              {Platform.OS === "ios" && (
+              {Platform.OS === "ios" && emailLogin !== "off" && (
                 <AppleAuthentication.AppleAuthenticationButton
                   buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
                   buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
@@ -969,10 +971,17 @@ export function HomeSheetsProvider({
                   onPress={handleApple}
                 />
               )}
-              <Pressable onPress={handleGoogle} disabled={pending} style={[styles.outlineButton, { borderColor: colors.border }]}>
-                <GoogleIcon size={18} />
-                <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>Continue with Google</Text>
-              </Pressable>
+              {emailLogin !== "off" && (
+                <Pressable onPress={handleGoogle} disabled={pending} style={[styles.outlineButton, { borderColor: colors.border }]}>
+                  <GoogleIcon size={18} />
+                  <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>Continue with Google</Text>
+                </Pressable>
+              )}
+              {emailLogin === "existing_only" && (
+                <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
+                  Google sign-in is for existing accounts. New here? Continue with your mobile number.
+                </Text>
+              )}
               {/* Same wording/links as the web login dialog's own disclaimer. */}
               <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
                 By continuing you agree to Bhavano&apos;s{" "}

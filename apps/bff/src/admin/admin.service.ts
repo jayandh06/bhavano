@@ -83,6 +83,9 @@ import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings
 import { UpdatePostedConfirmationSettingsDto } from './dto/update-posted-confirmation-settings.dto';
 import { UpdateReminderSettingsDto } from './dto/update-reminder-settings.dto';
 import { getReminderSettings, setReminderSettings } from './reminder-settings';
+import { getLoginSettings, setLoginSettings } from '../auth/login-settings';
+import type { LoginSettingsDto } from '@bhavano/types/loginSettings';
+import { UpdateLoginSettingsDto } from './dto/update-login-settings.dto';
 import { getPostedTimingSettings, setPostedTimingSettings } from '../listings/posted-confirmation-settings';
 import { UpdateSavedSearchDto } from './dto/update-saved-search.dto';
 import { ListUsersDto, UserSort } from './dto/list-users.dto';
@@ -2584,6 +2587,14 @@ export class AdminService {
 
   updateReminderSettings(dto: UpdateReminderSettingsDto): Promise<ReminderSettingsDto> {
     return setReminderSettings(this.prisma, dto);
+  }
+
+  getLoginSettings(): Promise<LoginSettingsDto> {
+    return getLoginSettings(this.prisma);
+  }
+
+  updateLoginSettings(dto: UpdateLoginSettingsDto): Promise<LoginSettingsDto> {
+    return setLoginSettings(this.prisma, dto);
   }
 
   getSavedSearchSettings(): Promise<SavedSearchSettingsDto> {

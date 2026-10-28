@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { LoginSettingsDto } from "@bhavano/types/loginSettings";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { AppVersionSettingsDto } from "@bhavano/types/appVersion";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
@@ -56,6 +57,7 @@ import {
   updateAppVersionSettings,
   updateRequirement,
   updatePostedConfirmationSettings,
+  updateLoginSettings,
   updateReminderSettings,
   updateSavedSearchSettings,
   updateInstantAlertsPricingSettings,
@@ -237,6 +239,17 @@ export async function updatePostedConfirmationSettingsAction(input: PostedConfir
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update the setting" };
+  }
+}
+
+export async function updateLoginSettingsAction(input: LoginSettingsDto): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updateLoginSettings(accessToken, input);
+    revalidatePath("/settings/login");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update the login methods" };
   }
 }
 

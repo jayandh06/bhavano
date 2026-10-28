@@ -1,5 +1,6 @@
 import type { AppVersionSettingsDto } from "@bhavano/types/appVersion";
 import type { OwnerAlertChannel, OwnerAlertPreferenceDto } from "@bhavano/types/ownerAlerts";
+import type { EmailLoginMode, LoginMethodsDto } from "@bhavano/types/loginSettings";
 import type { LastListingDetailsDto } from "@bhavano/types/listingReuse";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
@@ -234,6 +235,15 @@ export function fetchListings(query: ListingsQuery, accessToken?: string | null)
 /** Public — the lowest app version still allowed per platform (admin → Required app update). */
 export function fetchAppVersionSettings(): Promise<AppVersionSettingsDto> {
   return bffFetch<AppVersionSettingsDto>("/app-config/version");
+}
+
+/** What the login sheet may offer (Admin -> Settings -> Login methods). A failed lookup counts as "all": the server enforces the setting either way. */
+export async function fetchEmailLoginMode(): Promise<EmailLoginMode> {
+  try {
+    return (await bffFetch<LoginMethodsDto>("/auth/login-methods")).emailLogin;
+  } catch {
+    return "all";
+  }
 }
 
 export function fetchLoginNudgeSettings(): Promise<PublicLoginNudgeDto> {

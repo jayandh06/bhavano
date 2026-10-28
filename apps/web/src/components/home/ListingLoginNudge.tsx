@@ -8,6 +8,7 @@ import { recordInterestAction } from "@/app/actions/listings";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { recordVisitEntry } from "@/lib/visitEntry";
 import { useAuthGate } from "./AuthGateProvider";
+import { useEmailLoginMode } from "@/lib/useLoginMethods";
 
 const DETAIL_VIEWS_KEY = "bhavano.nudge.detailViews";
 const SHOWN_KEY = "bhavano.nudge.shown";
@@ -67,6 +68,7 @@ export function ListingLoginNudge({
   googleClientId?: string;
 }) {
   const { requireLogin, completeGoogleOneTap } = useAuthGate();
+  const emailLogin = useEmailLoginMode();
   const [showCard, setShowCard] = useState(false);
   const [useOneTap, setUseOneTap] = useState(false);
   /** Decided once per mount, so this page view counts once even when the effect re-runs. */
@@ -109,9 +111,10 @@ export function ListingLoginNudge({
         nowMs: Date.now(),
       });
       if (cardDue) return "card";
-      return settings.webOneTapEnabled && googleClientId ? "one-tap" : "none";
+      // One Tap would offer Google to people who then cannot create an account with it, so it only runs while Google is open to everyone.
+      return settings.webOneTapEnabled && googleClientId && emailLogin === "all" ? "one-tap" : "none";
     }
-  }, [settings, googleClientId]);
+  }, [settings, googleClientId, emailLogin]);
 
   function onLoggedIn(surface: "web_prompt" | "one_tap") {
     pushDataLayerEvent("login_nudge_login", { surface });

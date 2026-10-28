@@ -1,5 +1,11 @@
 import type { OtpChannel } from './dto/send-otp.dto';
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  EMAIL_LOGIN_DISABLED_CODE,
+  EMAIL_LOGIN_DISABLED_MESSAGE,
+  type EmailLoginMode,
+} from '@bhavano/types/loginSettings';
+import { getEmailLoginMode } from './login-settings';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
@@ -246,6 +252,7 @@ export class AuthService {
     visit?: VisitContext,
   ): Promise<AuthSession> {
     const profile = await this.googleProvider.verifyIdToken(idToken);
+    const emailLoginMode = await getEmailLoginMode(this.prisma);
 
     // Adopt an existing account that already holds this address rather than creating a second
     // one — the phone-first-then-Google case, which otherwise leaves one person with two
@@ -257,6 +264,8 @@ export class AuthService {
     let user = await this.prisma.user.findUnique({
       where: { googleId: profile.googleId },
     });
+
+    this.assertEmailLoginOpen(emailLoginMode, user?.role === 'admin' || this.isStaffEmail(profile.email), !!user);
 
     if (user) {
       user = await this.prisma.user.update({
@@ -271,6 +280,12 @@ export class AuthService {
       const byEmail = profile.email
         ? await this.prisma.user.findUnique({ where: { email: profile.email } })
         : null;
+      // Taking over an existing account whose address is proven is not a new account, so "existing accounts only" lets it through.
+      this.assertEmailLoginOpen(
+        emailLoginMode,
+        byEmail?.role === 'admin' || this.isStaffEmail(profile.email),
+        !!byEmail?.emailVerifiedAt,
+      );
 
       user = byEmail?.emailVerifiedAt
         ? await this.prisma.user.update({
@@ -326,10 +341,12 @@ export class AuthService {
     visit?: VisitContext,
   ): Promise<AuthSession> {
     const profile = await this.appleProvider.verifyIdentityToken(identityToken);
+    const emailLoginMode = await getEmailLoginMode(this.prisma);
 
     let user = await this.prisma.user.findUnique({
       where: { appleId: profile.appleId },
     });
+    this.assertEmailLoginOpen(emailLoginMode, user?.role === 'admin' || this.isStaffEmail(profile.email), !!user);
 
     if (user) {
       const data: { email?: string; emailVerifiedAt?: Date; name?: string } = {};
@@ -347,6 +364,11 @@ export class AuthService {
       const byEmail = profile.email
         ? await this.prisma.user.findUnique({ where: { email: profile.email } })
         : null;
+      this.assertEmailLoginOpen(
+        emailLoginMode,
+        byEmail?.role === 'admin' || this.isStaffEmail(profile.email),
+        !!byEmail?.emailVerifiedAt,
+      );
 
       user = byEmail?.emailVerifiedAt
         ? await this.prisma.user.update({
@@ -585,6 +607,19 @@ export class AuthService {
    * into logout at all, since it's otherwise a frontend-only NextAuth event the BFF never sees. */
   logout(userId: string): void {
     this.logger.info({ event: 'logout', userId }, 'User logged out');
+  }
+
+  /** Staff (an existing admin, or an address on ADMIN_EMAILS) can always sign in with Google, whatever the email-login setting: the admin app signs in that way, so
+   * closing it for everyone would lock the team out of the tools needed to reopen it. */
+  private isStaffEmail(email: string | null | undefined): boolean {
+    return !!email && parseAllowlist(this.config.get<string>('ADMIN_EMAILS')).has(email);
+  }
+
+  /** Applies Admin -> Settings -> Login. `existing` is whether this sign-in lands on an account that already exists. Phone OTP never comes through here. */
+  private assertEmailLoginOpen(mode: EmailLoginMode, isStaff: boolean, existing: boolean): void {
+    if (isStaff || mode === 'all') return;
+    if (mode === 'existing_only' && existing) return;
+    throw new ForbiddenException({ message: EMAIL_LOGIN_DISABLED_MESSAGE, code: EMAIL_LOGIN_DISABLED_CODE });
   }
 
   /** No admin signup/invite flow exists — a phone/email matching ADMIN_PHONES/ADMIN_EMAILS

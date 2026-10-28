@@ -29,6 +29,10 @@
       "types": "./dist/categoryFields.d.ts",
       "default": "./dist/categoryFields.js"
     },
+    "./loginSettings": {
+      "types": "./dist/loginSettings.d.ts",
+      "default": "./dist/loginSettings.js"
+    },
     "./ownerAlerts": {
       "types": "./dist/ownerAlerts.d.ts",
       "default": "./dist/ownerAlerts.js"

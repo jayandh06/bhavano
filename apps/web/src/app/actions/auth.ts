@@ -2,7 +2,8 @@
 
 import { signIn, signOut } from "@/auth";
 import type { LinkIdentifierResult, UserProfileDto } from "@bhavano/types";
-import { fetchProfile, getVisitContext, linkPhone, logout, sendOtp, type OtpChannel, type VisitContext } from "@/lib/bff";
+import type { EmailLoginMode } from "@bhavano/types/loginSettings";
+import { fetchLoginMethods, fetchProfile, getVisitContext, linkPhone, logout, sendOtp, type OtpChannel, type VisitContext } from "@/lib/bff";
 import { isAccessTokenValid } from "@/lib/session";
 import { auth, unstable_update } from "@/auth";
 
@@ -55,6 +56,11 @@ export async function verifyOtpAction(
   } catch {
     return { success: false, error: "Incorrect OTP" };
   }
+}
+
+/** Whether Google sign-in may be offered right now; see useEmailLoginMode. */
+export async function getLoginMethodsAction(): Promise<EmailLoginMode> {
+  return (await fetchLoginMethods()).emailLogin;
 }
 
 /** `redirectTo` is where NextAuth lands the user after the Google round trip. Without it the

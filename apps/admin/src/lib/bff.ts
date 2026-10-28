@@ -1,3 +1,4 @@
+import type { LoginSettingsDto } from "@bhavano/types/loginSettings";
 import "server-only";
 import { headers } from "next/headers";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
@@ -831,6 +832,14 @@ export function updatePostedConfirmationSettings(
     method: "PATCH",
     body: JSON.stringify(input),
   });
+}
+
+export function fetchLoginSettings(accessToken: string): Promise<LoginSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/login-settings", { cache: "no-store" });
+}
+
+export function updateLoginSettings(accessToken: string, input: LoginSettingsDto): Promise<LoginSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/login-settings", { method: "PATCH", body: JSON.stringify(input) });
 }
 
 export function fetchReminderSettings(accessToken: string): Promise<ReminderSettingsDto> {

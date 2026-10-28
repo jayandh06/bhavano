@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Headers,
   HttpCode,
   NotFoundException,
@@ -13,6 +14,9 @@ import { AuthGuard } from './guards/auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { RequestUser } from './guards/auth.guard';
 import { AuthService } from './auth.service';
+import { getLoginSettings } from './login-settings';
+import { PrismaService } from '../prisma/prisma.service';
+import type { LoginMethodsDto } from '@bhavano/types/loginSettings';
 import { SendOtpDto, type OtpChannel } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
@@ -22,7 +26,10 @@ import { parseTrackingAuthorized } from '../ads/tracking-authorized';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Post('otp/send')
   @HttpCode(200)
@@ -54,6 +61,12 @@ export class AuthController {
       referralCode: dto.referralCode,
       trackingAuthorized: parseTrackingAuthorized(trackingAuthorizedHeader),
     });
+  }
+
+  /** What the login screens may offer right now (Admin -> Settings -> Login). Public: it is only the mode. */
+  @Get('login-methods')
+  loginMethods(): Promise<LoginMethodsDto> {
+    return getLoginSettings(this.prisma);
   }
 
   @Post('google')

@@ -2553,6 +2553,14 @@ model AppVersionSetting {
 /// featuredExpiryDays: days before the end of a Feature period to remind (default 3 and 1).
 /// followupHours: hours after a non-Featured ad goes live to nudge (default 4, 24 and 72).
 /// See docs/plans/featured-expiry-reminder.md.
+/// Singleton (id "default"): whether Google / Apple sign-in is allowed. "all" | "existing_only" | "off", see @bhavano/types/loginSettings.
+/// Set in Admin -> Settings -> Login. Phone OTP is never affected. See docs/plans/email-login-switch.md.
+model LoginSetting {
+  id         String   @id
+  emailLogin String   @default("all")
+  updatedAt  DateTime @updatedAt
+}
+
 model ReminderSetting {
   id                    String   @id
   featuredExpiryEnabled Boolean  @default(true)

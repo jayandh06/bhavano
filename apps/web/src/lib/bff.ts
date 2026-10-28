@@ -1,4 +1,5 @@
 import type { OwnerAlertChannel, OwnerAlertPreferenceDto } from "@bhavano/types/ownerAlerts";
+import type { LoginMethodsDto } from "@bhavano/types/loginSettings";
 import type { SearchInterpretationDto } from "@bhavano/types/searchInterpretation";
 import type { AreaOverviewDto, AreaPriceStats, CityOverviewDto, PublishedAreaOverviewLink } from "@bhavano/types/areaOverview";
 import "server-only";
@@ -1020,6 +1021,15 @@ export function fetchFavourites(accessToken: string): Promise<ListingCardDto[]> 
 
 export function fetchProfile(accessToken: string): Promise<UserProfileDto> {
   return authedBffFetch(accessToken, "/users/me", { cache: "no-store" });
+}
+
+/** What the login screens may offer (Admin -> Settings -> Login methods). A failed lookup counts as "all": the server enforces the setting either way. */
+export async function fetchLoginMethods(): Promise<LoginMethodsDto> {
+  try {
+    return await bffFetch<LoginMethodsDto>("/auth/login-methods", { next: { revalidate: 30 } });
+  } catch {
+    return { emailLogin: "all" };
+  }
 }
 
 export function fetchAlertPreferences(accessToken: string): Promise<OwnerAlertPreferenceDto> {
