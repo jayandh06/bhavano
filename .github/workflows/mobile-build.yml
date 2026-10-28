@@ -47,6 +47,13 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # The runner's default Xcode (16.4) cannot build Expo SDK 57's ExpoModulesJSI xcframework (run 40645093242: "ARCHIVE FAILED" in that build phase,
+      # fastlane warning "wrong version of Xcode"), so iOS builds use the newest stable Xcode the image has.
+      - if: inputs.platform == 'ios'
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
       - if: inputs.platform == 'android'
         uses: actions/setup-java@v4
         with:
