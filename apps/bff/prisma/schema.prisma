@@ -2581,6 +2581,8 @@ model LoginNudgeSetting {
   id                        String   @id
   webOneTapEnabled          Boolean  @default(false)
   webPromptEnabled          Boolean  @default(true)
+  /// "card" | "dialog": the small bottom card, or the full login dialog.
+  webPromptStyle            String   @default("card")
   webPromptAfterDetailViews Int      @default(2)
   webPromptDelaySeconds     Int      @default(10)
   excludeAdAndSearchLanding Boolean  @default(true)

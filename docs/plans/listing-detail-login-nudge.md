@@ -233,3 +233,8 @@ tapped to call. On web the link fires the `contact_owner_whatsapp` event.
 
 Price-drop alerts and booking a visit were suggested as further reasons to log in. Each is a
 separate feature and neither has been started.
+
+## Addendum (2026-10-29): login dialog style, and switching off the ad/search exclusion
+- **New setting `webPromptStyle`** (`card` | `dialog`, default `card`, Admin -> Settings -> Login prompt): `dialog` opens the full login dialog (the one the Log in button opens) instead of the small bottom card, using the same rules and delay. Closing it starts the quiet period (`dismissCooldownDays`), because the dialog has no close callback; logging in ends it. Still never on the first listing of a visit (hard floor of 2), client-side only after hydration, so crawlers and the landing page are unchanged.
+- **Why the exclusion matters:** with `excludeAdAndSearchLanding` on, nobody who arrived from a Google ad or search result is ever prompted, which is most of the traffic, so the card was seen by very few. Switching it off lets the second listing of an ad / search visit show the prompt. Risk: a pop-up on the second page could raise bounce a little; the landing page itself (what Ads quality and search rankings judge) is never prompted. Reverse in the admin page if signups or bounce rate worsen.
+- **Live values set on 2026-10-29:** style `dialog`, exclusion off, delay 5 s (was card, on, 10 s); rollout 100 %, from the 2nd listing, 7-day quiet period unchanged. Compare sign-ups per day for a week.

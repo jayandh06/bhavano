@@ -35,6 +35,7 @@ export function LoginNudgeSettingsForm({ initial }: { initial: LoginNudgeSetting
     appPromptAfterDetailViews: String(initial.appPromptAfterDetailViews),
     dismissCooldownDays: String(initial.dismissCooldownDays),
   });
+  const [style, setStyle] = useState<"card" | "dialog">(initial.webPromptStyle);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -56,7 +57,7 @@ export function LoginNudgeSettingsForm({ initial }: { initial: LoginNudgeSetting
   async function onSave() {
     setSaving(true);
     setMessage(null);
-    const result = await updateLoginNudgeSettingsAction({ ...flags, ...parsed });
+    const result = await updateLoginNudgeSettingsAction({ ...flags, ...parsed, webPromptStyle: style });
     setSaving(false);
     setMessage(
       result.success ? { type: "success", text: "Login prompt settings updated." } : { type: "error", text: result.error },
@@ -74,13 +75,30 @@ export function LoginNudgeSettingsForm({ initial }: { initial: LoginNudgeSetting
         />
       </Section>
 
-      <Section title="Website: bottom card">
+      <Section title="Website: login prompt on listing pages">
         <Toggle
-          label="Show the login card on listing pages"
-          hint="A small card at the bottom of the screen with a 'Not now' button."
+          label="Show a login prompt on listing pages"
+          hint="Never on the first listing of a visit. After 'Not now' or closing it, it stays quiet for the days set under Both."
           checked={flags.webPromptEnabled}
           onChange={setFlag("webPromptEnabled")}
         />
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span style={{ fontSize: 13.5, fontWeight: 700 }}>What it looks like</span>
+          {(
+            [
+              ["card", "Small card at the bottom", "Doesn't cover the listing; has a 'Not now' button."],
+              ["dialog", "Full login dialog", "The same login window as the Log in button, opened over the listing. Stronger ask; close it with the X."],
+            ] as const
+          ).map(([value, title, hint]) => (
+            <label key={value} style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+              <input type="radio" name="web-prompt-style" checked={style === value} onChange={() => setStyle(value)} style={{ marginTop: 3 }} />
+              <span>
+                <span style={{ fontSize: 13.5, fontWeight: 700 }}>{title}</span>
+                <span style={{ display: "block", fontSize: 12.5, color: "var(--muted)" }}>{hint}</span>
+              </span>
+            </label>
+          ))}
+        </div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <Field label="From the Nth listing in a visit (min 2)" value={numbers.webPromptAfterDetailViews} onChange={setNumber("webPromptAfterDetailViews")} bounds={BOUNDS.webPromptAfterDetailViews} />
           <Field label="Delay after the page opens (seconds)" value={numbers.webPromptDelaySeconds} onChange={setNumber("webPromptDelaySeconds")} bounds={BOUNDS.webPromptDelaySeconds} />

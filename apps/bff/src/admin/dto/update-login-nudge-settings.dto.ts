@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, Max, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, Max, Min } from 'class-validator';
 
 export class UpdateLoginNudgeSettingsDto {
   @IsBoolean()
@@ -6,6 +6,9 @@ export class UpdateLoginNudgeSettingsDto {
 
   @IsBoolean()
   webPromptEnabled!: boolean;
+
+  @IsIn(['card', 'dialog'])
+  webPromptStyle!: 'card' | 'dialog';
 
   // Floor of 2: the card must never appear on the page a visitor arrived on from search or an ad.
   @IsInt()

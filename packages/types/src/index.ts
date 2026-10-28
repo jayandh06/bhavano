@@ -1487,8 +1487,10 @@ export type UpdateContactRevealSettingsInput = ContactRevealSettingsDto;
 export interface LoginNudgeSettingsDto {
   /** Google One Tap corner prompt on listing detail (web). */
   webOneTapEnabled: boolean;
-  /** Dismissible bottom card on listing detail (web). */
+  /** The web login ask on listing detail (the card or the dialog, see `webPromptStyle`). */
   webPromptEnabled: boolean;
+  /** What the web ask looks like: the small dismissible bottom card, or the full login dialog (the same one the Log in button opens). Same timing rules for both. */
+  webPromptStyle: "card" | "dialog";
   /** Show from the Nth listing detail opened in a browser session. Never below 2, so a visitor
    * landing from search or an ad never gets it on the page they arrived on. */
   webPromptAfterDetailViews: number;

@@ -72,7 +72,7 @@ export function ListingLoginNudge({
   const [showCard, setShowCard] = useState(false);
   const [useOneTap, setUseOneTap] = useState(false);
   /** Decided once per mount, so this page view counts once even when the effect re-runs. */
-  const decision = useRef<"card" | "one-tap" | "none" | null>(null);
+  const decision = useRef<"card" | "dialog" | "one-tap" | "none" | null>(null);
 
   useEffect(() => {
     decision.current ??= decide();
@@ -85,15 +85,24 @@ export function ListingLoginNudge({
           return;
         }
         sessionStorage.setItem(SHOWN_KEY, "1");
+        if (ask === "dialog") {
+          // The full login dialog. Closing it has no callback, so the quiet period starts when it opens: someone who dismisses it is not asked again for
+          // `dismissCooldownDays`, and someone who logs in no longer sees it at all.
+          localStorage.setItem(DISMISSED_AT_KEY, String(Date.now()));
+          pushDataLayerEvent("login_nudge_shown", { surface: "web_prompt" });
+          reportLoginNudgeEvent("shown", "web_prompt");
+          requireLogin({ onSuccess: () => onLoggedIn("web_prompt") });
+          return;
+        }
         setShowCard(true);
         pushDataLayerEvent("login_nudge_shown", { surface: "web_prompt" });
         reportLoginNudgeEvent("shown", "web_prompt");
       },
-      ask === "card" ? settings.webPromptDelaySeconds * 1000 : ONE_TAP_DELAY_MS,
+      ask === "card" || ask === "dialog" ? settings.webPromptDelaySeconds * 1000 : ONE_TAP_DELAY_MS,
     );
     return () => window.clearTimeout(timer);
 
-    function decide(): "card" | "one-tap" | "none" {
+    function decide(): "card" | "dialog" | "one-tap" | "none" {
       const visitEntry = recordVisitEntry();
       const detailViews = Number(sessionStorage.getItem(DETAIL_VIEWS_KEY) ?? "0") + 1;
       sessionStorage.setItem(DETAIL_VIEWS_KEY, String(detailViews));
@@ -110,7 +119,7 @@ export function ListingLoginNudge({
         shownThisSession: sessionStorage.getItem(SHOWN_KEY) === "1",
         nowMs: Date.now(),
       });
-      if (cardDue) return "card";
+      if (cardDue) return settings.webPromptStyle === "dialog" ? "dialog" : "card";
       // One Tap would offer Google to people who then cannot create an account with it, so it only runs while Google is open to everyone.
       return settings.webOneTapEnabled && googleClientId && emailLogin === "all" ? "one-tap" : "none";
     }

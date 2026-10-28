@@ -8,6 +8,7 @@ export const LOGIN_NUDGE_SETTINGS_ID = 'singleton';
 export const DEFAULT_LOGIN_NUDGE_SETTINGS: LoginNudgeSettingsDto = {
   webOneTapEnabled: false,
   webPromptEnabled: true,
+  webPromptStyle: 'card',
   webPromptAfterDetailViews: 2,
   webPromptDelaySeconds: 10,
   excludeAdAndSearchLanding: true,
@@ -17,10 +18,11 @@ export const DEFAULT_LOGIN_NUDGE_SETTINGS: LoginNudgeSettingsDto = {
   dismissCooldownDays: 7,
 };
 
-function toDto(row: LoginNudgeSettingsDto): LoginNudgeSettingsDto {
+function toDto(row: Omit<LoginNudgeSettingsDto, 'webPromptStyle'> & { webPromptStyle: string }): LoginNudgeSettingsDto {
   return {
     webOneTapEnabled: row.webOneTapEnabled,
     webPromptEnabled: row.webPromptEnabled,
+    webPromptStyle: row.webPromptStyle === 'dialog' ? 'dialog' : 'card',
     webPromptAfterDetailViews: row.webPromptAfterDetailViews,
     webPromptDelaySeconds: row.webPromptDelaySeconds,
     excludeAdAndSearchLanding: row.excludeAdAndSearchLanding,
