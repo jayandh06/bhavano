@@ -1,7 +1,9 @@
-import { ConflictException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import type { ContactRevealBalanceDto, ContactRevealSettingsDto, RevealContactResponseDto } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { OwnerAlertsService } from '../owner-alerts/owner-alerts.service';
+import { getPhoneRequirementMode } from '../auth/login-settings';
+import { PHONE_VERIFICATION_REQUIRED_CODE } from '@bhavano/types/loginSettings';
 import { BULK_IMPORT_OWNER_PHONE, OWNER_UNVERIFIED_MESSAGE } from '../listings/bulk-import-owner';
 import { CONTACT_REVEAL_SETTINGS_ID, DEFAULT_CONTACT_REVEAL_SETTINGS } from './contact-reveal.constants';
 
@@ -189,6 +191,17 @@ export class ContactRevealService {
    * can't both succeed off a stale read). Mirrors messaging.service.ts's sendFirstMessage
    * idempotent-get-or-create shape. */
   async revealContact(userId: string, listingId: string): Promise<RevealContactResponseDto> {
+    // Throwaway email accounts were collecting owners' numbers with their free reveals. While an admin has "mobile number required" on (Admin ->
+    // Settings -> Login methods), an account with no verified phone cannot reveal anyone's contact until it adds one.
+    if ((await getPhoneRequirementMode(this.prisma)) === 'required') {
+      const requester = await this.prisma.user.findUnique({ where: { id: userId }, select: { phone: true } });
+      if (!requester?.phone) {
+        throw new ForbiddenException({
+          message: 'Verify your mobile number to view contact details.',
+          code: PHONE_VERIFICATION_REQUIRED_CODE,
+        });
+      }
+    }
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
       select: {

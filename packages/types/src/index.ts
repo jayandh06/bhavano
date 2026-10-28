@@ -803,6 +803,8 @@ export interface UserProfileDto {
 export interface ProfileNudgeDto {
   show: boolean;
   missing: ("email" | "phone")[];
+  /** True when the prompt may not be dismissed: an admin set "mobile number required" and this account has none. */
+  blocking?: boolean;
 }
 
 export interface UpdateProfileInput {

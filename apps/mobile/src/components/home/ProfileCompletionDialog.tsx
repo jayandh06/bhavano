@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Modal, Pressable, Text, TextInput, View } from "react-native";
 import { usePathname } from "expo-router";
-import type { AccountMergeSummary, LinkIdentifierResult } from "@bhavano/types";
+import type { AccountMergeSummary, LinkIdentifierResult, ProfileNudgeDto } from "@bhavano/types";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { useAppTheme } from "../../theme/ThemeContext";
 import {
@@ -42,6 +42,10 @@ export function ProfileCompletionDialog() {
   const pathname = usePathname();
 
   const [open, setOpen] = useState(false);
+  /** An admin made a mobile number mandatory for this account: the dialog cannot be dismissed, only completed or left by logging out. */
+  const [blocking, setBlocking] = useState(false);
+  /** An admin is moving email-only accounts to mobile sign-in (the "ask" or "required" setting). */
+  const [movingToMobile, setMovingToMobile] = useState(false);
   const [want, setWant] = useState<"email" | "phone">("phone");
   const [step, setStep] = useState<Step>("askPhone");
   const [phone, setPhone] = useState("");
@@ -52,6 +56,25 @@ export function ProfileCompletionDialog() {
   const [error, setError] = useState<string | null>(null);
   const [mergeSummary, setMergeSummary] = useState<AccountMergeSummary | null>(null);
 
+  // A mandatory prompt does not wait for a second screen, a return login or the once-per-launch gate: it shows as soon as the app opens for that account.
+  useEffect(() => {
+    if (!isLoggedIn || !accessToken) return;
+    let cancelled = false;
+    void fetchProfileNudge(accessToken)
+      .then((nudge) => {
+        if (cancelled || !nudge.blocking) return;
+        setBlocking(true);
+        setMovingToMobile(true);
+        setWant("phone");
+        setStep("askPhone");
+        setOpen(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, accessToken]);
+
   const initialPath = useRef(pathname);
   const checkedRef = useRef(false);
   useEffect(() => {
@@ -60,10 +83,11 @@ export function ProfileCompletionDialog() {
     if (shownThisLaunch || !isLoggedIn || isNewUser || !accessToken) return;
     let cancelled = false;
     (async () => {
-      const nudge = await fetchProfileNudge(accessToken).catch(() => ({ show: false, missing: [] as ("email" | "phone")[] }));
+      const nudge = await fetchProfileNudge(accessToken).catch((): ProfileNudgeDto => ({ show: false, missing: [] }));
       if (cancelled || !nudge.show || nudge.missing.length === 0) return;
       shownThisLaunch = true;
       const target = nudge.missing.includes("phone") ? "phone" : "email";
+      setMovingToMobile(target === "phone" && !nudge.blocking);
       setWant(target);
       setStep(target === "phone" ? "askPhone" : "askEmail");
       setOpen(true);
@@ -74,6 +98,7 @@ export function ProfileCompletionDialog() {
   }, [pathname, isLoggedIn, isNewUser, accessToken]);
 
   function dismiss() {
+    if (blocking) return;
     setOpen(false);
     if (accessToken) void snoozeProfileNudge(accessToken);
   }
@@ -170,7 +195,9 @@ export function ProfileCompletionDialog() {
     step === "confirmMerge"
       ? `That ${want} is already registered`
       : want === "phone"
-        ? "Add your phone number"
+        ? movingToMobile || blocking
+          ? "Add your mobile number"
+          : "Add your phone number"
         : "Add your email";
 
   return (
@@ -185,16 +212,22 @@ export function ProfileCompletionDialog() {
         >
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
             <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 19, color: colors.text, flex: 1 }}>{title}</Text>
-            <Pressable onPress={dismiss} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <Icon name="close" size={18} color={colors.muted} />
-            </Pressable>
+            {!blocking && (
+              <Pressable onPress={dismiss} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                <Icon name="close" size={18} color={colors.muted} />
+              </Pressable>
+            )}
           </View>
 
           {step !== "confirmMerge" && (
             <Text style={{ fontSize: 13, color: colors.muted, lineHeight: 19, marginBottom: 16 }}>
               {want === "phone"
-                ? "So buyers can reach you about your listings, and we can text you when someone's interested."
-                : "So we can email you a copy of your listings and updates about your account."}
+                ? blocking
+                  ? "Bhavano is moving to mobile-number sign-in and Google sign-in will end soon. Add and verify your mobile number to keep your account, your ads and your contact details."
+                  : movingToMobile
+                    ? "Bhavano is moving to mobile-number sign-in and Google sign-in will end soon. Add your mobile number now so you keep your account."
+                    : "So buyers can reach you about your listings, and we can text you when someone's interested."
+                : "Add your email to get listing notifications by email for free: someone messages you, shows interest or views your number, and a copy of your ads and account updates."}
             </Text>
           )}
 
@@ -217,9 +250,15 @@ export function ProfileCompletionDialog() {
               >
                 <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>{pending ? "Sending…" : "Send OTP"}</Text>
               </Pressable>
-              <Pressable onPress={dismiss} disabled={pending} style={ghostButtonStyle}>
-                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Not now</Text>
-              </Pressable>
+              {blocking ? (
+                <Pressable onPress={() => void logout()} disabled={pending} style={ghostButtonStyle}>
+                  <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Log out</Text>
+                </Pressable>
+              ) : (
+                <Pressable onPress={dismiss} disabled={pending} style={ghostButtonStyle}>
+                  <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Not now</Text>
+                </Pressable>
+              )}
             </>
           )}
 

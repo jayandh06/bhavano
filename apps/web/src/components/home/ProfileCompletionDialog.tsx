@@ -39,6 +39,10 @@ export function ProfileCompletionDialog() {
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
+  /** An admin made a mobile number mandatory for this account: the dialog cannot be dismissed, only completed or left by logging out. */
+  const [blocking, setBlocking] = useState(false);
+  /** An admin is moving email-only accounts to mobile sign-in (the "ask" or "required" setting). */
+  const [movingToMobile, setMovingToMobile] = useState(false);
   const [want, setWant] = useState<"email" | "phone">("phone");
   const [step, setStep] = useState<Step>("askPhone");
   const [phone, setPhone] = useState("");
@@ -72,6 +76,7 @@ export function ProfileCompletionDialog() {
         /* ignore */
       }
       const target = nudge.missing.includes("phone") ? "phone" : "email";
+      setMovingToMobile(target === "phone" && !nudge.blocking);
       setWant(target);
       setStep(target === "phone" ? "askPhone" : "askEmail");
       setOpen(true);
@@ -81,7 +86,24 @@ export function ProfileCompletionDialog() {
     };
   }, [pathname]);
 
+  // A mandatory prompt does not wait for a second page, a return login or the once-a-session gate: it shows as soon as the site opens.
+  useEffect(() => {
+    let cancelled = false;
+    void fetchProfileNudgeAction().then((nudge) => {
+      if (cancelled || !nudge.blocking) return;
+      setBlocking(true);
+      setMovingToMobile(true);
+      setWant("phone");
+      setStep("askPhone");
+      setOpen(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function dismiss() {
+    if (blocking) return;
     setOpen(false);
     void snoozeProfileNudgeAction();
   }
@@ -167,12 +189,14 @@ export function ProfileCompletionDialog() {
     step === "confirmMerge"
       ? `That ${want} is already registered`
       : want === "phone"
-        ? "Add your phone number"
+        ? movingToMobile || blocking
+          ? "Add your mobile number"
+          : "Add your phone number"
         : "Add your email";
 
   return (
     <div
-      onClick={dismiss}
+      onClick={blocking ? undefined : dismiss}
       className="fixed inset-0 bg-[var(--modal-scrim)] z-[110] flex items-center justify-center p-5"
     >
       <div
@@ -181,16 +205,22 @@ export function ProfileCompletionDialog() {
       >
         <div className="flex justify-between items-start mb-1.5">
           <div className="font-lora font-bold text-[19px] text-text">{title}</div>
-          <button onClick={dismiss} aria-label="Close" className="bg-transparent border-0 text-xl cursor-pointer text-muted">
-            <Icon name="close" />
-          </button>
+          {!blocking && (
+            <button onClick={dismiss} aria-label="Close" className="bg-transparent border-0 text-xl cursor-pointer text-muted">
+              <Icon name="close" />
+            </button>
+          )}
         </div>
 
         {step !== "confirmMerge" && (
           <p className="text-[13px] text-muted mb-4 leading-[1.5]">
             {want === "phone"
-              ? "So buyers can reach you about your listings, and we can text you when someone's interested."
-              : "So we can email you a copy of your listings and updates about your account."}
+              ? blocking
+                ? "Bhavano is moving to mobile-number sign-in and Google sign-in will end soon. Add and verify your mobile number to keep your account, your ads and your contact details."
+                : movingToMobile
+                  ? "Bhavano is moving to mobile-number sign-in and Google sign-in will end soon. Add your mobile number now so you keep your account."
+                  : "So buyers can reach you about your listings, and we can text you when someone's interested."
+              : "Add your email to get listing notifications by email for free: someone messages you, shows interest or views your number, and a copy of your ads and account updates."}
           </p>
         )}
 
@@ -209,9 +239,15 @@ export function ProfileCompletionDialog() {
             <button onClick={onSendOtp} disabled={pending || phone.trim().length < 10} className={`${primaryClass} mt-3`}>
               {pending ? "Sending…" : "Send OTP"}
             </button>
-            <button onClick={dismiss} disabled={pending} className={ghostClass}>
-              Not now
-            </button>
+            {blocking ? (
+              <button onClick={() => void signOutAction()} disabled={pending} className={ghostClass}>
+                Log out
+              </button>
+            ) : (
+              <button onClick={dismiss} disabled={pending} className={ghostClass}>
+                Not now
+              </button>
+            )}
           </>
         )}
 

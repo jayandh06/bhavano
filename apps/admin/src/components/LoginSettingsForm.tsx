@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { EmailLoginMode, LoginSettingsDto } from "@bhavano/types/loginSettings";
+import type { EmailLoginMode, LoginSettingsDto, PhoneRequirementMode } from "@bhavano/types/loginSettings";
 import { updateLoginSettingsAction } from "@/app/actions/admin";
 
 const OPTIONS: { value: EmailLoginMode; title: string; body: string }[] = [
@@ -26,21 +26,40 @@ const OPTIONS: { value: EmailLoginMode; title: string; body: string }[] = [
   },
 ];
 
+const PHONE_OPTIONS: { value: PhoneRequirementMode; title: string; body: string }[] = [
+  { value: "off", title: "Don't ask", body: "Accounts that signed up with Google or Apple and have no mobile number are left alone." },
+  {
+    value: "ask",
+    title: "Ask them to add a mobile number",
+    body: "A skippable \"Add your mobile number\" prompt on the website and app, once a day, for any account without one.",
+  },
+  {
+    value: "required",
+    title: "Require a mobile number",
+    body:
+      "The prompt cannot be skipped (they can only verify a number or log out), and viewing owners' contact details is locked until they do. " +
+      "Use this after a couple of weeks of asking; accounts that never add a number stay locked out of contact details.",
+  },
+];
+
 const cardStyle = { border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" } as const;
 
 export function LoginSettingsForm({ initial }: { initial: LoginSettingsDto }) {
   const [mode, setMode] = useState<EmailLoginMode>(initial.emailLogin);
   const [saved, setSaved] = useState<EmailLoginMode>(initial.emailLogin);
+  const [phoneMode, setPhoneMode] = useState<PhoneRequirementMode>(initial.phoneRequirement);
+  const [savedPhoneMode, setSavedPhoneMode] = useState<PhoneRequirementMode>(initial.phoneRequirement);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   async function onSave() {
     setSaving(true);
     setMessage(null);
-    const result = await updateLoginSettingsAction({ emailLogin: mode });
+    const result = await updateLoginSettingsAction({ emailLogin: mode, phoneRequirement: phoneMode });
     setSaving(false);
     if (result.success) {
       setSaved(mode);
+      setSavedPhoneMode(phoneMode);
       setMessage({ type: "success", text: "Saved. The website and app pick this up within a minute; the sign-in checks apply straight away." });
     } else {
       setMessage({ type: "error", text: result.error });
@@ -76,10 +95,39 @@ export function LoginSettingsForm({ initial }: { initial: LoginSettingsDto }) {
         </div>
       </div>
 
+      <div style={cardStyle}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Accounts with no mobile number</div>
+        <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px" }}>
+          For moving people who signed up with Google or Apple to mobile sign-in before you close email sign-in.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }} role="radiogroup">
+          {PHONE_OPTIONS.map((o) => (
+            <label
+              key={o.value}
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "flex-start",
+                cursor: "pointer",
+                border: `1.5px solid ${phoneMode === o.value ? "var(--green)" : "var(--border)"}`,
+                borderRadius: 9,
+                padding: "10px 12px",
+              }}
+            >
+              <input type="radio" name="phone-requirement" checked={phoneMode === o.value} onChange={() => setPhoneMode(o.value)} style={{ marginTop: 3 }} />
+              <span>
+                <span style={{ display: "block", fontSize: 13.5, fontWeight: 700 }}>{o.title}</span>
+                <span style={{ display: "block", fontSize: 12.5, color: "var(--muted)", marginTop: 2, maxWidth: 640 }}>{o.body}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button
           onClick={onSave}
-          disabled={saving || mode === saved}
+          disabled={saving || (mode === saved && phoneMode === savedPhoneMode)}
           style={{
             background: "var(--green)",
             color: "var(--on-green)",
@@ -88,8 +136,8 @@ export function LoginSettingsForm({ initial }: { initial: LoginSettingsDto }) {
             padding: "10px 16px",
             fontSize: 13.5,
             fontWeight: 700,
-            cursor: saving || mode === saved ? "default" : "pointer",
-            opacity: saving || mode === saved ? 0.6 : 1,
+            cursor: saving || (mode === saved && phoneMode === savedPhoneMode) ? "default" : "pointer",
+            opacity: saving || (mode === saved && phoneMode === savedPhoneMode) ? 0.6 : 1,
           }}
         >
           {saving ? "Saving…" : "Save"}

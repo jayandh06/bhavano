@@ -1028,7 +1028,7 @@ export async function fetchLoginMethods(): Promise<LoginMethodsDto> {
   try {
     return await bffFetch<LoginMethodsDto>("/auth/login-methods", { next: { revalidate: 30 } });
   } catch {
-    return { emailLogin: "all" };
+    return { emailLogin: "all", phoneRequirement: "off" };
   }
 }
 

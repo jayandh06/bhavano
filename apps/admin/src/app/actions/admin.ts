@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { LoginSettingsDto } from "@bhavano/types/loginSettings";
+import type { LoginSettingsDto, MoveToMobileSendResultDto } from "@bhavano/types/loginSettings";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { AppVersionSettingsDto } from "@bhavano/types/appVersion";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
@@ -57,6 +57,7 @@ import {
   updateAppVersionSettings,
   updateRequirement,
   updatePostedConfirmationSettings,
+  sendMoveToMobile,
   updateLoginSettings,
   updateReminderSettings,
   updateSavedSearchSettings,
@@ -239,6 +240,19 @@ export async function updatePostedConfirmationSettingsAction(input: PostedConfir
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update the setting" };
+  }
+}
+
+export async function sendMoveToMobileAction(
+  deadline?: string,
+): Promise<{ success: true; result: MoveToMobileSendResultDto } | { success: false; error: string }> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const result = await sendMoveToMobile(accessToken, deadline);
+    revalidatePath("/settings/login");
+    return { success: true, result };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to send the messages" };
   }
 }
 

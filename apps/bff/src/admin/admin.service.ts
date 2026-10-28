@@ -84,7 +84,7 @@ import { UpdatePostedConfirmationSettingsDto } from './dto/update-posted-confirm
 import { UpdateReminderSettingsDto } from './dto/update-reminder-settings.dto';
 import { getReminderSettings, setReminderSettings } from './reminder-settings';
 import { getLoginSettings, setLoginSettings } from '../auth/login-settings';
-import type { LoginSettingsDto } from '@bhavano/types/loginSettings';
+import type { LoginSettingsDto, MoveToMobileAudienceDto, MoveToMobileSendResultDto } from '@bhavano/types/loginSettings';
 import { UpdateLoginSettingsDto } from './dto/update-login-settings.dto';
 import { getPostedTimingSettings, setPostedTimingSettings } from '../listings/posted-confirmation-settings';
 import { UpdateSavedSearchDto } from './dto/update-saved-search.dto';
@@ -332,6 +332,9 @@ const OWNER_ALERT_LOG_KINDS = new Set(['new_message', 'listing_interest', 'conta
 
 /** `ListingNotificationLog.channel` for a message delivered inside the app (an announcement thread). */
 const IN_APP_CHANNEL = 'in_app';
+
+/** `ListingNotificationLog.kind` of the "add your mobile number" in-app message; its presence on any of an owner's ads means they were already sent it. */
+const MOVE_TO_MOBILE_KIND = 'move_to_mobile';
 
 /** The duration quoted in the message: the shortest one offered, as the entry price. The dialog
  * the link opens offers the rest. */
@@ -2587,6 +2590,64 @@ export class AdminService {
 
   updateReminderSettings(dto: UpdateReminderSettingsDto): Promise<ReminderSettingsDto> {
     return setReminderSettings(this.prisma, dto);
+  }
+
+  /** Email-only accounts that own a live ad and have not yet had the "add your mobile number" message: the in-app route needs an ad to hang the thread on. */
+  private async moveToMobileTargets(): Promise<{ emailOnly: number; targets: { ownerId: string; listingId: string }[]; alreadyMessaged: number }> {
+    const owners = await this.prisma.user.findMany({
+      where: { role: 'user', phone: null, deletedAt: null },
+      select: {
+        id: true,
+        listings: {
+          where: { status: 'active', publishState: 'live' },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { id: true },
+        },
+      },
+    });
+    const withAd = owners.filter((o) => o.listings.length > 0);
+    const messaged = await this.prisma.listingNotificationLog.findMany({
+      where: { kind: MOVE_TO_MOBILE_KIND, listing: { ownerId: { in: withAd.map((o) => o.id) } } },
+      select: { listing: { select: { ownerId: true } } },
+    });
+    const done = new Set(messaged.map((m) => m.listing.ownerId));
+    return {
+      emailOnly: owners.length,
+      alreadyMessaged: done.size,
+      targets: withAd.filter((o) => !done.has(o.id)).map((o) => ({ ownerId: o.id, listingId: o.listings[0].id })),
+    };
+  }
+
+  async getMoveToMobileAudience(): Promise<MoveToMobileAudienceDto> {
+    const { emailOnly, targets, alreadyMessaged } = await this.moveToMobileTargets();
+    return { emailOnly, ownersWithAds: targets.length + alreadyMessaged, alreadyMessaged };
+  }
+
+  /** Sends each not-yet-messaged email-only owner a plain in-app message from "Bhavano Admin" (with a push if they have the app) asking them to add and
+   * verify a mobile number. One per person, ever: the log row it writes is what stops a second send. Sequential, so a failure for one owner never stops the rest. */
+  async sendMoveToMobileMessages(adminId: string, deadline?: string): Promise<MoveToMobileSendResultDto> {
+    const { targets } = await this.moveToMobileTargets();
+    const by = deadline?.trim() ? ` by ${deadline.trim()}` : ' soon';
+    const body =
+      `Bhavano is moving to mobile-number sign-in, and Google sign-in will end${by}. ` +
+      'Please add and verify your mobile number so you keep your account and your ads: open your profile and choose Add phone number. It takes under a minute.';
+    let sent = 0;
+    let skipped = 0;
+    for (const target of targets) {
+      try {
+        const { conversationId, message, recipientId, listingTitle } = await this.messagingService.sendAnnouncement(target.listingId, adminId, body);
+        this.deliverStaffMessage({ conversationId, message, recipientId, listingId: target.listingId, listingTitle });
+        await this.prisma.listingNotificationLog.create({
+          data: { listingId: target.listingId, kind: MOVE_TO_MOBILE_KIND, channel: IN_APP_CHANNEL, providerMessageId: message.id },
+        });
+        sent += 1;
+      } catch (error) {
+        skipped += 1;
+        this.logger.warn(`Move-to-mobile message failed for listing ${target.listingId}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    return { sent, skipped };
   }
 
   getLoginSettings(): Promise<LoginSettingsDto> {

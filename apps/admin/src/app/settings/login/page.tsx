@@ -1,11 +1,12 @@
 import { requireAdmin } from "@/lib/requireAdmin";
-import { fetchLoginSettings } from "@/lib/bff";
+import { fetchLoginSettings, fetchMoveToMobileAudience } from "@/lib/bff";
 import { LoginSettingsForm } from "@/components/LoginSettingsForm";
+import { MoveToMobilePanel } from "@/components/MoveToMobilePanel";
 import { FullPageLink } from "@/components/FullPageLink";
 
 export default async function LoginSettingsPage() {
   const { accessToken } = await requireAdmin();
-  const settings = await fetchLoginSettings(accessToken);
+  const [settings, audience] = await Promise.all([fetchLoginSettings(accessToken), fetchMoveToMobileAudience(accessToken)]);
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -19,6 +20,7 @@ export default async function LoginSettingsPage() {
           stop fake accounts made with throwaway email addresses from collecting owners&rsquo; contact details. See docs/plans/email-login-switch.md.
         </p>
         <LoginSettingsForm initial={settings} />
+        <MoveToMobilePanel audience={audience} />
       </div>
     </div>
   );

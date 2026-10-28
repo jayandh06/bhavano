@@ -92,7 +92,8 @@ import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings
 import { UpdatePostedConfirmationSettingsDto } from './dto/update-posted-confirmation-settings.dto';
 import { UpdateReminderSettingsDto } from './dto/update-reminder-settings.dto';
 import { UpdateLoginSettingsDto } from './dto/update-login-settings.dto';
-import type { LoginSettingsDto } from '@bhavano/types/loginSettings';
+import type { LoginSettingsDto, MoveToMobileAudienceDto, MoveToMobileSendResultDto } from '@bhavano/types/loginSettings';
+import { SendMoveToMobileDto } from './dto/send-move-to-mobile.dto';
 import { UpdateBoostPricingDto } from './dto/update-boost-pricing.dto';
 import { UpdateInstantAlertsPricingDto } from './dto/update-instant-alerts-pricing.dto';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
@@ -529,6 +530,17 @@ export class AdminController {
   @Patch('login-settings')
   updateLoginSettings(@Body() dto: UpdateLoginSettingsDto): Promise<LoginSettingsDto> {
     return this.adminService.updateLoginSettings(dto);
+  }
+
+  @Get('move-to-mobile/audience')
+  getMoveToMobileAudience(): Promise<MoveToMobileAudienceDto> {
+    return this.adminService.getMoveToMobileAudience();
+  }
+
+  /** The "add your mobile number" in-app message to email-only owners; once per person. `deadline` is optional free text (e.g. "10 November"). */
+  @Post('move-to-mobile/send')
+  sendMoveToMobile(@Body() dto: SendMoveToMobileDto, @CurrentUser() user: RequestUser): Promise<MoveToMobileSendResultDto> {
+    return this.adminService.sendMoveToMobileMessages(user.id, dto.deadline);
   }
 
   @Get('saved-search-settings')

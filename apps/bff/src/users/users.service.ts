@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { ProfileNudgeDto, UserProfileDto } from '@bhavano/types';
+import { getPhoneRequirementMode } from '../auth/login-settings';
 import type { User, City } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -55,6 +56,16 @@ export class UsersService {
     if (!user.phone) missing.push('phone');
 
     const snoozed = user.profileNudgeSnoozedUntil != null && user.profileNudgeSnoozedUntil.getTime() > Date.now();
+
+    // Moving email-only accounts to mobile sign-in (Admin -> Settings -> Login methods): while an admin has it on, an account with no phone is asked
+    // for one far more persistently than the ordinary profile nudge (a day's snooze, no lifetime cap), and under "required" cannot dismiss it at all.
+    const phoneRequirement = user.phone ? 'off' : await getPhoneRequirementMode(this.prisma);
+    if (phoneRequirement === 'required') return { show: true, missing, blocking: true };
+    if (phoneRequirement === 'ask') {
+      const askSnoozed = user.profileNudgeSnoozedUntil != null && user.profileNudgeSnoozedUntil.getTime() > Date.now();
+      return { show: !askSnoozed, missing };
+    }
+
     const show =
       missing.length > 0 && user.profileNudgeCount < UsersService.PROFILE_NUDGE_CAP && !snoozed;
 
@@ -64,11 +75,13 @@ export class UsersService {
   /** "Not now" (or an ignored, navigated-away-from dialog) — push it a week out and count it
    * toward the cap. */
   async snoozeProfileNudge(userId: string): Promise<void> {
+    // While moving accounts to mobile, "not now" only silences the prompt for a day (and does not use up the ordinary nudge's lifetime cap).
+    const moving = (await getPhoneRequirementMode(this.prisma)) !== 'off';
     await this.prisma.user.update({
       where: { id: userId },
       data: {
-        profileNudgeSnoozedUntil: new Date(Date.now() + UsersService.PROFILE_NUDGE_SNOOZE_MS),
-        profileNudgeCount: { increment: 1 },
+        profileNudgeSnoozedUntil: new Date(Date.now() + (moving ? 24 * 60 * 60 * 1000 : UsersService.PROFILE_NUDGE_SNOOZE_MS)),
+        ...(moving ? {} : { profileNudgeCount: { increment: 1 } }),
       },
     });
   }

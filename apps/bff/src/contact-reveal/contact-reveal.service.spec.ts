@@ -6,6 +6,8 @@ const BULK = '9000000002';
 function makeService(
   opts: {
     ownerPhone?: string;
+    phoneRequirement?: string;
+    requesterPhone?: string | null;
     alreadyRevealed?: boolean;
     claimContact?: { phone: string | null; email: string | null } | null;
   } = {},
@@ -21,6 +23,8 @@ function makeService(
     contactRevealSetting: { findUnique: jest.fn().mockResolvedValue(null) },
   };
   const prisma = {
+    loginSetting: { findUnique: jest.fn().mockResolvedValue(opts.phoneRequirement ? { emailLogin: 'all', phoneRequirement: opts.phoneRequirement } : null) },
+    user: { findUnique: jest.fn().mockResolvedValue({ phone: opts.requesterPhone ?? null }) },
     listing: {
       findUnique: jest
         .fn()
@@ -54,6 +58,25 @@ function makeService(
   } as unknown as PrismaService;
   return { service: new ContactRevealService(prisma, { alert: jest.fn().mockResolvedValue(null) } as never), tx };
 }
+
+describe('ContactRevealService — mobile number required', () => {
+  it('locks contact details for an account with no phone while "required" is on', async () => {
+    const { service, tx } = makeService({ phoneRequirement: 'required', requesterPhone: null });
+    await expect(service.revealContact('buyer1', 'l1')).rejects.toMatchObject({ status: 403, response: { code: 'PHONE_VERIFICATION_REQUIRED' } });
+    expect(tx.contactReveal.create).not.toHaveBeenCalled();
+  });
+
+  it('lets an account with a verified phone reveal as normal', async () => {
+    const { service, tx } = makeService({ phoneRequirement: 'required', requesterPhone: '9876543210' });
+    await service.revealContact('buyer1', 'l1');
+    expect(tx.contactReveal.create).toHaveBeenCalled();
+  });
+
+  it('does not check the requester at all when the setting is off', async () => {
+    const { service } = makeService({ requesterPhone: null });
+    await expect(service.revealContact('buyer1', 'l1')).resolves.toBeDefined();
+  });
+});
 
 describe('ContactRevealService — unclaimed Bulk Import listings', () => {
   it('refuses a reveal without spending a free reveal or credit', async () => {

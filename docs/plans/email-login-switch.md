@@ -35,3 +35,22 @@ Phone OTP is never affected. **Staff always get through** (an existing admin, or
 - **Enforcement already covers every app version.** The check is on the server, so an app build that predates this still cannot sign in with Google / Apple (or create a new account that way) when the switch is closed to that account. It just still *shows* the button, and the refusal appears as the raw 403 text.
 - **New builds** read `GET /auth/login-methods` (cached a minute) and hide the Google / Apple buttons, show the "existing accounts only" note, and turn a refused attempt into "Please sign in with your mobile number." and re-read the setting.
 - All of this is JavaScript only (no new native module), so it can ship as an EAS Update on the current runtime version; no store build is needed unless the runtime version is bumped.
+
+## Moving existing email-only accounts to mobile (2026-10-28)
+Goal: new users mobile-only, existing Google / Apple users ported to a mobile number, then email sign-in closed.
+
+**The group (prod, 2026-10-28):** 236 real accounts with no phone (about 20% of 1,199), 229 with an email, 141 logged in within 30 days, 35 own ads, 17 look like harvesting (5+ reveals, no ads, no messages), 228 created in Sept / Oct.
+
+**Admin -> Settings -> Login methods** now has a second setting, *Accounts with no mobile number* (`LoginSetting.phoneRequirement`):
+- **Don't ask** (default).
+- **Ask:** a skippable "Add your mobile number" dialog on the website and app, once a day (a one-day snooze, no lifetime cap), copy: "Bhavano is moving to mobile-number sign-in and Google sign-in will end soon."
+- **Required:** the dialog cannot be dismissed (only verify a number, or log out), it appears as soon as the site / app opens, and **`revealContact` returns 403 `PHONE_VERIFICATION_REQUIRED`** for an account with no phone, which is the server-side lock that matters against harvesting. A number already on another account goes through the existing merge approval, which also folds duplicate accounts together.
+It reuses `ProfileCompletionDialog` (web and app) and `GET /users/me/profile-nudge` (`blocking: true`).
+
+**In-app message (step 3):** an in-app message is a thread about one ad (`Conversation.listingId`), so only accounts that own a live ad can receive it (Admin shows how many). It is sent as a plain message from "Bhavano Admin" with a push if the owner has the app, once per person (`ListingNotificationLog.kind = move_to_mobile`), from a button on the same page that asks to confirm and takes an optional deadline. Accounts with no ad cannot be messaged this way; they get the dialog on their next visit.
+
+**Suggested sequence:** *Existing accounts only* now; *Ask* straight away; send the in-app message; after about two weeks *Required*; after about four weeks switch email login to *Off*. A real user who misses it can log in with their mobile and ask support to merge (admin merge tool).
+
+**Email nudge for phone-only accounts:** the same dialog's email step now says an email gives free listing notifications by email (someone messages, shows interest or views the number); a verified email is also what unlocks the free email alert channel (see owner-notification-channel-preferences.md).
+
+**Caveat:** the prompt and the lock are enforced by the server for contact details, but the dialog itself is a screen: an app build without the update does not show it. The reveal lock still applies to every build.

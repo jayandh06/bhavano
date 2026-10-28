@@ -1,4 +1,4 @@
-import type { LoginSettingsDto } from "@bhavano/types/loginSettings";
+import type { LoginSettingsDto, MoveToMobileAudienceDto, MoveToMobileSendResultDto } from "@bhavano/types/loginSettings";
 import "server-only";
 import { headers } from "next/headers";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
@@ -836,6 +836,14 @@ export function updatePostedConfirmationSettings(
 
 export function fetchLoginSettings(accessToken: string): Promise<LoginSettingsDto> {
   return authedBffFetch(accessToken, "/admin/login-settings", { cache: "no-store" });
+}
+
+export function fetchMoveToMobileAudience(accessToken: string): Promise<MoveToMobileAudienceDto> {
+  return authedBffFetch(accessToken, "/admin/move-to-mobile/audience", { cache: "no-store" });
+}
+
+export function sendMoveToMobile(accessToken: string, deadline?: string): Promise<MoveToMobileSendResultDto> {
+  return authedBffFetch(accessToken, "/admin/move-to-mobile/send", { method: "POST", body: JSON.stringify({ deadline }) });
 }
 
 export function updateLoginSettings(accessToken: string, input: LoginSettingsDto): Promise<LoginSettingsDto> {

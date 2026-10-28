@@ -2558,6 +2558,8 @@ model AppVersionSetting {
 model LoginSetting {
   id         String   @id
   emailLogin String   @default("all")
+  /// "off" | "ask" | "required": what accounts with no mobile number are asked to do, see @bhavano/types/loginSettings.
+  phoneRequirement String @default("off")
   updatedAt  DateTime @updatedAt
 }
 

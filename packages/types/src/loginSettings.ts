@@ -7,9 +7,42 @@ export type EmailLoginMode = (typeof EMAIL_LOGIN_MODES)[number];
 
 export const DEFAULT_EMAIL_LOGIN_MODE: EmailLoginMode = "all";
 
+/** What accounts that have no mobile number (they signed up with Google / Apple) are asked to do, set by an admin. Moving everyone to mobile sign-in first.
+ * - off: nothing extra.
+ * - ask: a skippable "Add your mobile number" prompt every day they open the site or app.
+ * - required: the prompt cannot be skipped, and contact details stay locked, until a mobile number is verified (they can still log out). */
+export const PHONE_REQUIREMENT_MODES = ["off", "ask", "required"] as const;
+export type PhoneRequirementMode = (typeof PHONE_REQUIREMENT_MODES)[number];
+
+export const DEFAULT_PHONE_REQUIREMENT_MODE: PhoneRequirementMode = "off";
+
+export function isPhoneRequirementMode(value: unknown): value is PhoneRequirementMode {
+  return typeof value === "string" && (PHONE_REQUIREMENT_MODES as readonly string[]).includes(value);
+}
+
 export interface LoginSettingsDto {
   emailLogin: EmailLoginMode;
+  phoneRequirement: PhoneRequirementMode;
 }
+
+/** Who an admin's "add your mobile number" in-app message would reach, for the Login methods page. An in-app message is a thread about one ad, so only
+ * accounts that own an ad can receive it; the rest see the prompt when they next open the site or app. */
+export interface MoveToMobileAudienceDto {
+  /** Accounts with no mobile number. */
+  emailOnly: number;
+  /** Of those, the ones that own a live ad (the message goes into a thread about their newest one). */
+  ownersWithAds: number;
+  /** Of those, the ones already messaged (never sent twice). */
+  alreadyMessaged: number;
+}
+
+export interface MoveToMobileSendResultDto {
+  sent: number;
+  skipped: number;
+}
+
+/** The `code` on the 403 for an action that needs a verified mobile number (also used when publishing). */
+export const PHONE_VERIFICATION_REQUIRED_CODE = "PHONE_VERIFICATION_REQUIRED";
 
 /** What the login screens may offer; public, so it holds nothing but the mode. */
 export type LoginMethodsDto = LoginSettingsDto;
