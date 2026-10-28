@@ -54,6 +54,15 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      # React Native's prebuilt iOS binaries are downloaded from Maven Central during `pod install`; a dropped connection there failed a build after 18 minutes of retries
+      # (run 40649793597). Kept between runs so a later build does not download them again.
+      - if: inputs.platform == 'ios'
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ReactNative
+          key: rn-prebuilt-ios-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: rn-prebuilt-ios-
+
       - if: inputs.platform == 'android'
         uses: actions/setup-java@v4
         with:
