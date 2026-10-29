@@ -21,6 +21,7 @@ export type AdLandingIntentKey =
   | "sell_commercial"
   | "rent_home"
   | "rent_pg"
+  | "rent_coworking"
   | "rent_commercial"
   | "rent_furniture"
   | "lease_commercial"
@@ -62,6 +63,12 @@ export const AD_LANDING_INTENTS: Record<AdLandingIntentKey, AdLandingIntent> = {
   },
   rent_home: { headline: "Rent out your home — tenants contact you", button: "Post for rent" },
   rent_pg: { headline: "Fill your PG beds faster", button: "Post my PG", category: "pg", transactionType: "rent" },
+  rent_coworking: {
+    headline: "Fill your coworking seats",
+    button: "Post my space",
+    category: "coworking",
+    transactionType: "rent",
+  },
   rent_commercial: {
     headline: "Rent out your shop or office",
     button: "Post my space",
@@ -94,6 +101,7 @@ const AD_GROUP_INTENTS: Record<string, AdLandingIntentKey> = {
   "196651916541": "sell_commercial",
   "199595834373": "rent_home",
   "201241143962": "rent_pg",
+  "202031070856": "rent_coworking", // Metro-Rent Out, Ad Group 2.6 - Rent Out Coworking (ads_create_coworking_rent_out_group.py, 2026-10-29)
   "201241519122": "rent_home",
   "199363402229": "rent_commercial",
   "201629875084": "rent_furniture",
