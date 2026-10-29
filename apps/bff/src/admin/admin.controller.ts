@@ -92,6 +92,8 @@ import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings
 import { UpdatePostedConfirmationSettingsDto } from './dto/update-posted-confirmation-settings.dto';
 import { UpdateReminderSettingsDto } from './dto/update-reminder-settings.dto';
 import { UpdateLoginSettingsDto } from './dto/update-login-settings.dto';
+import { UpdateOwnerAlertSettingsDto } from './dto/update-owner-alert-settings.dto';
+import type { OwnerAlertSettingsDto } from '@bhavano/types/ownerAlerts';
 import type { LoginSettingsDto, MoveToMobileAudienceDto, MoveToMobileSendResultDto } from '@bhavano/types/loginSettings';
 import { SendMoveToMobileDto } from './dto/send-move-to-mobile.dto';
 import { UpdateBoostPricingDto } from './dto/update-boost-pricing.dto';
@@ -520,6 +522,16 @@ export class AdminController {
   @Patch('reminder-settings')
   updateReminderSettings(@Body() dto: UpdateReminderSettingsDto): Promise<ReminderSettingsDto> {
     return this.adminService.updateReminderSettings(dto);
+  }
+
+  @Get('owner-alert-settings')
+  getOwnerAlertSettings(): Promise<OwnerAlertSettingsDto> {
+    return this.adminService.getOwnerAlertSettings();
+  }
+
+  @Patch('owner-alert-settings')
+  updateOwnerAlertSettings(@Body() dto: UpdateOwnerAlertSettingsDto): Promise<OwnerAlertSettingsDto> {
+    return this.adminService.updateOwnerAlertSettings(dto);
   }
 
   @Get('login-settings')

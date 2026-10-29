@@ -4,9 +4,12 @@ import {
   normalizeOwnerAlertOrder,
   type OwnerAlertChannel,
   type OwnerAlertKind,
+  paidChannelOpen,
+  type FreeAdChannels,
   type OwnerAlertPreferenceDto,
 } from '@bhavano/types/ownerAlerts';
 import { NotificationsService } from '../notifications/notifications.service';
+import { getOwnerAlertSettings } from './owner-alert-settings';
 import { Msg91Provider } from '../notifications/providers/msg91.provider';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
@@ -37,12 +40,14 @@ export class OwnerAlertsService {
   ) {}
 
   async getPreference(userId: string): Promise<OwnerAlertPreferenceDto> {
-    const [row, user, device] = await Promise.all([
+    const [row, user, device, settings] = await Promise.all([
       this.prisma.ownerAlertPreference.findUnique({ where: { userId }, select: { channels: true } }),
       this.prisma.user.findUnique({ where: { id: userId }, select: { phone: true, email: true } }),
       this.prisma.pushToken.findFirst({ where: { userId }, select: { id: true } }),
+      getOwnerAlertSettings(this.prisma),
     ]);
     return {
+      freeAdChannels: { whatsapp: settings.whatsappForFreeAds, sms: settings.smsForFreeAds },
       channels: row ? normalizeOwnerAlertOrder(row.channels) : [...DEFAULT_OWNER_ALERT_ORDER],
       confirmed: row !== null,
       available: { push: device !== null, whatsapp: !!user?.phone, sms: !!user?.phone, email: !!user?.email },
@@ -63,14 +68,16 @@ export class OwnerAlertsService {
    * ListingNotificationLog row), or null when nothing could. */
   async alert(ownerId: string, alert: OwnerAlert): Promise<OwnerAlertChannel | null> {
     try {
-      const [pref, user] = await Promise.all([
+      const [pref, user, settings] = await Promise.all([
         this.prisma.ownerAlertPreference.findUnique({ where: { userId: ownerId }, select: { channels: true } }),
         this.prisma.user.findUnique({ where: { id: ownerId }, select: { phone: true, email: true } }),
+        getOwnerAlertSettings(this.prisma),
       ]);
+      const freeAds: FreeAdChannels = { whatsapp: settings.whatsappForFreeAds, sms: settings.smsForFreeAds };
       if (!user) return null;
       const order = pref ? normalizeOwnerAlertOrder(pref.channels) : [...DEFAULT_OWNER_ALERT_ORDER];
       for (const channel of order) {
-        if (await this.trySend(channel, ownerId, user, alert)) return channel;
+        if (await this.trySend(channel, ownerId, user, alert, freeAds)) return channel;
       }
       return null;
     } catch (err) {
@@ -84,6 +91,7 @@ export class OwnerAlertsService {
     ownerId: string,
     user: { phone: string | null; email: string | null },
     a: OwnerAlert,
+    freeAds: FreeAdChannels,
   ): Promise<boolean> {
     const vars = { title: a.listingTitle, name: a.name };
     switch (channel) {
@@ -95,13 +103,13 @@ export class OwnerAlertsService {
         }
         return (await this.prisma.pushToken.findFirst({ where: { userId: ownerId }, select: { id: true } })) !== null;
       case 'whatsapp': {
-        if (!user.phone || !a.featured) return false;
+        if (!user.phone || !paidChannelOpen('whatsapp', a.featured, freeAds)) return false;
         const suffix = a.kind === 'message' && a.conversationId ? a.conversationId : 'my-listings';
         const { sent } = await this.msg91.sendOwnerAlert(user.phone, a.kind, { ...vars, buttonSuffix: suffix });
         return sent;
       }
       case 'sms':
-        return user.phone && a.featured ? this.msg91.sendOwnerAlertSms(user.phone, a.kind, vars) : false;
+        return user.phone && paidChannelOpen('sms', a.featured, freeAds) ? this.msg91.sendOwnerAlertSms(user.phone, a.kind, vars) : false;
       case 'email':
         return this.notifications.sendOwnerAlertEmail(user, a.kind, vars, a.conversationId);
     }

@@ -12,6 +12,8 @@ export interface OwnerAlertPreferenceDto {
     channels: OwnerAlertChannel[];
     /** False until the owner has chosen themselves (the default order is in force). Drives the one-time question after posting. */
     confirmed: boolean;
+    /** Which paid channels are also open to ads that are not Featured, so the screens do not lock a channel the server will in fact use. */
+    freeAdChannels: FreeAdChannels;
     /** Which channels can reach this account right now (an app install, a phone, an email address). Unavailable ones are shown but cannot be the top pick. */
     available: Record<OwnerAlertChannel, boolean>;
 }
@@ -24,4 +26,18 @@ export declare const PAID_OWNER_ALERT_CHANNELS: readonly OwnerAlertChannel[];
 export declare function isPaidOwnerAlertChannel(channel: OwnerAlertChannel): boolean;
 /** The channel an alert about one ad actually goes out on: the first of the owner's order that can reach them and that this ad is allowed to use
  * (a paid channel only while the ad is Featured). Null when none can, which the Preview step treats as "choose or add one before posting". */
-export declare function effectiveOwnerAlertChannel(order: readonly OwnerAlertChannel[], available: Record<OwnerAlertChannel, boolean>, featured: boolean): OwnerAlertChannel | null;
+export declare function effectiveOwnerAlertChannel(order: readonly OwnerAlertChannel[], available: Record<OwnerAlertChannel, boolean>, featured: boolean, freeAds?: FreeAdChannels): OwnerAlertChannel | null;
+/** Which paid channels an admin has also opened to ads that are not Featured (Admin -> Settings -> Owner alerts). */
+export interface FreeAdChannels {
+    whatsapp: boolean;
+    sms: boolean;
+}
+export declare const NO_FREE_AD_CHANNELS: FreeAdChannels;
+export interface OwnerAlertSettingsDto {
+    whatsappForFreeAds: boolean;
+    smsForFreeAds: boolean;
+}
+/** Whether this channel may be used for an ad: always for the free ones; for WhatsApp / SMS when the ad is Featured or the admin opened it to all ads. */
+export declare function paidChannelOpen(channel: OwnerAlertChannel, featured: boolean, freeAds?: FreeAdChannels): boolean;
+/** The one-line explanation of what costs what, which changes with what the admin has opened. */
+export declare function ownerAlertPricingNote(freeAds?: FreeAdChannels): string;

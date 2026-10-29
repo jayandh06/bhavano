@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   effectiveOwnerAlertChannel,
   isPaidOwnerAlertChannel,
+  ownerAlertPricingNote,
+  paidChannelOpen,
   OWNER_ALERT_CHANNEL_LABELS,
   OWNER_ALERT_CHANNELS,
   withPrimaryChannel,
@@ -61,7 +63,7 @@ export function AlertChannelPicker({
   }, []);
 
   const order = useMemo(() => (pref ? withPrimaryChannel(pref.channels, picked ?? pref.channels[0]) : []), [pref, picked]);
-  const effective = pref ? effectiveOwnerAlertChannel(order, pref.available, featured) : null;
+  const effective = pref ? effectiveOwnerAlertChannel(order, pref.available, featured, pref.freeAdChannels) : null;
   const ready = !pref || effective !== null || checkMyself;
 
   async function reloadAfterEmailAdded() {
@@ -85,13 +87,14 @@ export function AlertChannelPicker({
         <Icon name="bell" /> How should we alert you when someone contacts you?
       </p>
       <p className="text-[12px] text-muted m-0 mb-3">
-        Mobile App notifications and email are free. WhatsApp and SMS are included with Featured ads.
+        {ownerAlertPricingNote(pref.freeAdChannels)}
       </p>
       <div className="flex flex-col gap-2" role="radiogroup" aria-label="First alert channel">
         {OWNER_ALERT_CHANNELS.map((channel) => {
           const paid = isPaidOwnerAlertChannel(channel);
           const reachable = pref.available[channel];
-          const locked = paid && !featured;
+          const open = paidChannelOpen(channel, featured, pref.freeAdChannels);
+          const locked = !open;
           // A paid channel can be chosen before the ad is Featured: it takes over once it is, and the free channels cover the time until then.
           const usable = reachable;
           const selected = picked === channel;
@@ -112,7 +115,9 @@ export function AlertChannelPicker({
               />
               <span>
                 <span className="font-semibold text-text">{OWNER_ALERT_CHANNEL_LABELS[channel]}</span>
-                {paid ? (
+                {paid && open ? (
+                  <span className="text-muted"> (on)</span>
+                ) : paid ? (
                   <span className="ml-1.5 rounded-full bg-[color:var(--gold)]/20 px-2 py-0.5 text-[11px] font-bold text-text">Featured</span>
                 ) : (
                   <span className="text-muted"> (free{channel === "push" ? ", fastest" : ""})</span>

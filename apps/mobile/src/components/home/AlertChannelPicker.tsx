@@ -3,6 +3,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   effectiveOwnerAlertChannel,
   isPaidOwnerAlertChannel,
+  ownerAlertPricingNote,
+  paidChannelOpen,
   OWNER_ALERT_CHANNEL_LABELS,
   OWNER_ALERT_CHANNELS,
   withPrimaryChannel,
@@ -57,7 +59,7 @@ export function AlertChannelPicker({
   }, [pref, initialised]);
 
   const order = useMemo(() => (pref ? withPrimaryChannel(pref.channels, picked ?? pref.channels[0]) : []), [pref, picked]);
-  const effective = pref ? effectiveOwnerAlertChannel(order, pref.available, featured) : null;
+  const effective = pref ? effectiveOwnerAlertChannel(order, pref.available, featured, pref.freeAdChannels) : null;
   const ready = !pref || effective !== null || checkMyself;
 
   useEffect(() => {
@@ -85,12 +87,13 @@ export function AlertChannelPicker({
         </Text>
       </View>
       <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 8 }}>
-        Mobile App notifications and email are free. WhatsApp and SMS are included with Featured ads.
+        {ownerAlertPricingNote(pref.freeAdChannels)}
       </Text>
       {OWNER_ALERT_CHANNELS.map((channel) => {
         const paid = isPaidOwnerAlertChannel(channel);
         const reachable = pref.available[channel];
-        const locked = paid && !featured;
+        const open = paidChannelOpen(channel, featured, pref.freeAdChannels);
+        const locked = !open;
         // A paid channel can be chosen before the ad is Featured: it takes over once it is, and the free channels cover the time until then.
         const usable = reachable;
         const selected = picked === channel;
@@ -106,7 +109,7 @@ export function AlertChannelPicker({
             <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>
               {OWNER_ALERT_CHANNEL_LABELS[channel]}
               <Text style={{ color: colors.muted, fontWeight: "400" }}>
-                {paid ? "  Featured" : channel === "push" ? " (free, fastest)" : " (free)"}
+                {paid ? (open ? " (on)" : "  Featured") : channel === "push" ? " (free, fastest)" : " (free)"}
               </Text>
             </Text>
             {!reachable ? (

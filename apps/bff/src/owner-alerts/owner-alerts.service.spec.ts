@@ -1,6 +1,6 @@
 import { OwnerAlertsService, type OwnerAlert } from './owner-alerts.service';
 
-function setup(opts: { channels?: string[] | null; phone?: string | null; email?: string | null; device?: boolean; whatsapp?: boolean; sms?: boolean; emailOk?: boolean }) {
+function setup(opts: { channels?: string[] | null; phone?: string | null; email?: string | null; device?: boolean; whatsapp?: boolean; sms?: boolean; emailOk?: boolean; whatsappForFree?: boolean; smsForFree?: boolean }) {
   const prisma = {
     ownerAlertPreference: {
       findUnique: jest.fn().mockResolvedValue(opts.channels ? { channels: opts.channels } : null),
@@ -8,6 +8,7 @@ function setup(opts: { channels?: string[] | null; phone?: string | null; email?
     },
     user: { findUnique: jest.fn().mockResolvedValue({ phone: opts.phone ?? null, email: opts.email ?? null }) },
     pushToken: { findFirst: jest.fn().mockResolvedValue(opts.device ? { id: 't' } : null) },
+    ownerAlertSetting: { findUnique: jest.fn().mockResolvedValue({ whatsappForFreeAds: !!opts.whatsappForFree, smsForFreeAds: !!opts.smsForFree }) },
   };
   const push = { notifyContactRevealed: jest.fn().mockResolvedValue(!!opts.device) };
   const msg91 = {
@@ -49,6 +50,20 @@ describe('OwnerAlertsService.alert', () => {
     await expect(phoneOnly.service.alert('o1', { ...message, featured: false })).resolves.toBeNull();
   });
 
+  it('sends WhatsApp for an ad that is not Featured once the admin opens it, but still not SMS', async () => {
+    const t = setup({ channels: ['whatsapp', 'sms'], phone: '9876543210', whatsapp: true, sms: true, whatsappForFree: true });
+    await expect(t.service.alert('o1', { ...message, featured: false })).resolves.toBe('whatsapp');
+    expect(t.msg91.sendOwnerAlert).toHaveBeenCalled();
+    const smsOnly = setup({ channels: ['sms'], phone: '9876543210', sms: true, whatsappForFree: true });
+    await expect(smsOnly.service.alert('o1', { ...message, featured: false })).resolves.toBeNull();
+    expect(smsOnly.msg91.sendOwnerAlertSms).not.toHaveBeenCalled();
+  });
+
+  it('opening SMS for all ads lets a free ad use SMS', async () => {
+    const t = setup({ channels: ['sms'], phone: '9876543210', sms: true, smsForFree: true });
+    await expect(t.service.alert('o1', { ...message, featured: false })).resolves.toBe('sms');
+  });
+
   it('returns null when nothing can reach the owner', async () => {
     const t = setup({ phone: '9876543210' });
     await expect(t.service.alert('o1', message)).resolves.toBeNull();
@@ -85,6 +100,7 @@ describe('OwnerAlertsService preference', () => {
       channels: ['push', 'whatsapp', 'sms', 'email'],
       confirmed: false,
       available: { push: false, whatsapp: true, sms: true, email: false },
+      freeAdChannels: { whatsapp: false, sms: false },
     });
   });
 

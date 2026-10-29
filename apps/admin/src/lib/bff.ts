@@ -1,4 +1,5 @@
 import type { LoginSettingsDto, MoveToMobileAudienceDto, MoveToMobileSendResultDto } from "@bhavano/types/loginSettings";
+import type { OwnerAlertSettingsDto } from "@bhavano/types/ownerAlerts";
 import "server-only";
 import { headers } from "next/headers";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
@@ -832,6 +833,14 @@ export function updatePostedConfirmationSettings(
     method: "PATCH",
     body: JSON.stringify(input),
   });
+}
+
+export function fetchOwnerAlertSettings(accessToken: string): Promise<OwnerAlertSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/owner-alert-settings", { cache: "no-store" });
+}
+
+export function updateOwnerAlertSettings(accessToken: string, input: OwnerAlertSettingsDto): Promise<OwnerAlertSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/owner-alert-settings", { method: "PATCH", body: JSON.stringify(input) });
 }
 
 export function fetchLoginSettings(accessToken: string): Promise<LoginSettingsDto> {

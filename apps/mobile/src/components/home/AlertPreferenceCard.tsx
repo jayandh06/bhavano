@@ -5,6 +5,8 @@ import {
   OWNER_ALERT_CHANNEL_LABELS,
   OWNER_ALERT_CHANNELS,
   isPaidOwnerAlertChannel,
+  ownerAlertPricingNote,
+  paidChannelOpen,
   withPrimaryChannel,
   type OwnerAlertChannel,
 } from "@bhavano/types/ownerAlerts";
@@ -58,7 +60,7 @@ export function AlertPreferenceCard({ accessToken }: { accessToken: string }) {
         </Text>
       </View>
       <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 8 }}>
-        When someone messages you, shows interest or views your number. Mobile App notifications and email are free; WhatsApp and SMS are included with Featured ads.
+        When someone messages you, shows interest or views your number. {ownerAlertPricingNote(preference.freeAdChannels)}
       </Text>
       {options.map((channel) => {
         const usable = preference.available[channel];
@@ -78,7 +80,7 @@ export function AlertPreferenceCard({ accessToken }: { accessToken: string }) {
             <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>
               {OWNER_ALERT_CHANNEL_LABELS[channel]}
               <Text style={{ color: colors.muted, fontWeight: "400" }}>
-                {isPaidOwnerAlertChannel(channel) ? "  Featured ads" : channel === "push" ? " (free, fastest)" : " (free)"}
+                {isPaidOwnerAlertChannel(channel) ? (paidChannelOpen(channel, false, preference.freeAdChannels) ? " (on for all ads)" : "  Featured ads") : channel === "push" ? " (free, fastest)" : " (free)"}
               </Text>
             </Text>
             {!usable && <Text style={{ color: colors.muted, fontSize: 12 }}>{UNAVAILABLE_HINT[channel]}</Text>}

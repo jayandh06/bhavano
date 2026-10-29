@@ -86,6 +86,9 @@ import { getReminderSettings, setReminderSettings } from './reminder-settings';
 import { getLoginSettings, setLoginSettings } from '../auth/login-settings';
 import type { LoginSettingsDto, MoveToMobileAudienceDto, MoveToMobileSendResultDto } from '@bhavano/types/loginSettings';
 import { UpdateLoginSettingsDto } from './dto/update-login-settings.dto';
+import { UpdateOwnerAlertSettingsDto } from './dto/update-owner-alert-settings.dto';
+import { getOwnerAlertSettings, setOwnerAlertSettings } from '../owner-alerts/owner-alert-settings';
+import type { OwnerAlertSettingsDto } from '@bhavano/types/ownerAlerts';
 import { getPostedTimingSettings, setPostedTimingSettings } from '../listings/posted-confirmation-settings';
 import { UpdateSavedSearchDto } from './dto/update-saved-search.dto';
 import { ListUsersDto, UserSort } from './dto/list-users.dto';
@@ -2648,6 +2651,14 @@ export class AdminService {
       }
     }
     return { sent, skipped };
+  }
+
+  getOwnerAlertSettings(): Promise<OwnerAlertSettingsDto> {
+    return getOwnerAlertSettings(this.prisma);
+  }
+
+  updateOwnerAlertSettings(dto: UpdateOwnerAlertSettingsDto): Promise<OwnerAlertSettingsDto> {
+    return setOwnerAlertSettings(this.prisma, dto);
   }
 
   getLoginSettings(): Promise<LoginSettingsDto> {

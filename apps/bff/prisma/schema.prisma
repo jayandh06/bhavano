@@ -1689,6 +1689,14 @@ model UserNotificationLog {
  * How an advertiser wants to be alerted when a seeker contacts them (a message, an interested view, a number reveal): their channels in the order to
  * try them. No row means they have not chosen yet and the default order applies. See docs/plans/owner-notification-channel-preferences.md.
  */
+/// Singleton (id "default"): whether WhatsApp / SMS owner alerts are also sent for ads that are NOT Featured. Both default to off (Featured ads only). Admin -> Settings -> Owner alerts.
+model OwnerAlertSetting {
+  id                String   @id
+  whatsappForFreeAds Boolean @default(false)
+  smsForFreeAds     Boolean  @default(false)
+  updatedAt         DateTime @updatedAt
+}
+
 model OwnerAlertPreference {
   userId    String   @id
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

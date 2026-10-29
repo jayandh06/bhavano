@@ -5,6 +5,8 @@ import {
   OWNER_ALERT_CHANNEL_LABELS,
   OWNER_ALERT_CHANNELS,
   isPaidOwnerAlertChannel,
+  ownerAlertPricingNote,
+  paidChannelOpen,
   type OwnerAlertChannel,
   type OwnerAlertPreferenceDto,
 } from "@bhavano/types/ownerAlerts";
@@ -47,7 +49,7 @@ export function AlertPreferenceCard({ preference }: { preference: OwnerAlertPref
         <Icon name="bell" /> How should we alert you?
       </div>
       <p className="text-[13px] text-muted m-0 mb-3">
-        When someone messages you, shows interest or views your number, we tell you here first. Mobile App notifications and email are free; WhatsApp and SMS are included with Featured ads.
+        When someone messages you, shows interest or views your number, we tell you here first. {ownerAlertPricingNote(current.freeAdChannels)}
       </p>
       <div className="flex flex-col gap-2" role="radiogroup" aria-label="First alert channel">
         {OWNER_ALERT_CHANNELS.map((channel) => {
@@ -70,7 +72,9 @@ export function AlertPreferenceCard({ preference }: { preference: OwnerAlertPref
               />
               <span>
                 <span className="font-semibold text-text">{OWNER_ALERT_CHANNEL_LABELS[channel]}</span>
-                {isPaidOwnerAlertChannel(channel) ? (
+                {isPaidOwnerAlertChannel(channel) && paidChannelOpen(channel, false, current.freeAdChannels) ? (
+                  <span className="text-muted"> (on for all ads)</span>
+                ) : isPaidOwnerAlertChannel(channel) ? (
                   <span className="ml-1.5 rounded-full bg-[color:var(--gold)]/20 px-2 py-0.5 text-[11px] font-bold text-text">Featured ads</span>
                 ) : (
                   <span className="text-muted"> (free{channel === "push" ? ", fastest" : ""})</span>

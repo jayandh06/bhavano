@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { LoginSettingsDto, MoveToMobileSendResultDto } from "@bhavano/types/loginSettings";
+import type { OwnerAlertSettingsDto } from "@bhavano/types/ownerAlerts";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { AppVersionSettingsDto } from "@bhavano/types/appVersion";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
@@ -59,6 +60,7 @@ import {
   updatePostedConfirmationSettings,
   sendMoveToMobile,
   updateLoginSettings,
+  updateOwnerAlertSettings,
   updateReminderSettings,
   updateSavedSearchSettings,
   updateInstantAlertsPricingSettings,
@@ -253,6 +255,17 @@ export async function sendMoveToMobileAction(
     return { success: true, result };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to send the messages" };
+  }
+}
+
+export async function updateOwnerAlertSettingsAction(input: OwnerAlertSettingsDto): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updateOwnerAlertSettings(accessToken, input);
+    revalidatePath("/settings/owner-alerts");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update the owner alert settings" };
   }
 }
 
