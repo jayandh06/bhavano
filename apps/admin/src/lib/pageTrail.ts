@@ -137,6 +137,12 @@ export function trailEntry(path: string): { text: string; isError: boolean } {
     try {
       const params = new URL(path, "https://x.invalid").searchParams;
       const screenParam = params.get("screen");
+      if (screenParam === "upsell" && params.get("surface") === "interest_contact") {
+        // The owner's interested list (Admin -> Settings -> Seeker contact): unlocking a person's number, or the "Make it Featured" link beside it.
+        const event = params.get("event") ?? "unknown";
+        const what = event === "unlock_tapped" ? "tapped Unlock contact" : event === "clicked" ? "tapped Make it Featured" : event;
+        return { text: `Interested list \u2014 ${what}`, isError: false };
+      }
       if (screenParam === "upsell") {
         const where = params.get("surface") === "listing_page" ? "their listing page" : "My listings";
         const event = params.get("event") ?? "unknown";

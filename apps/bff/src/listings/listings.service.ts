@@ -76,7 +76,8 @@ import { OwnerAlertsService } from '../owner-alerts/owner-alerts.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import { isListingBoosted } from './listing-boost.util';
-import { buildLeadContactView, unlockLeadContact } from '../contact-reveal/lead-contact';
+import { buildLeadContactView, leadPhoneIfShareable, ownerSeesLeadsFree, unlockLeadContact } from '../contact-reveal/lead-contact';
+import { getSeekerContactSettings } from '../seeker-contact/seeker-contact-settings';
 import { Prisma } from '@prisma/client';
 import type {
   Area,
@@ -2452,7 +2453,8 @@ export class ListingsService {
         ? []
         : await this.prisma.listingInterest.groupBy({
             by: ['listingId'],
-            where: { listingId: { in: listings.map((l) => l.id) } },
+            // Staff checking an ad are not interested buyers: not in the owner's list, so not in its count either.
+            where: { listingId: { in: listings.map((l) => l.id) }, user: { role: { not: 'admin' } } },
             _count: { _all: true },
           });
     const interestByListing = new Map(interestCounts.map((r) => [r.listingId, r._count._all]));
@@ -3485,6 +3487,26 @@ export class ListingsService {
     return { interested: true, notified: shouldNotifyInterest };
   }
 
+  /** True when this owner would see the person's number free in My listings right now (feature on, ad Featured or Agent Pro, person shareable): the push then says so. Never throws. */
+  private async ownerCanCallInterested(
+    ownerId: string,
+    listingId: string,
+    seeker: { role: string; phone: string | null; phoneVerifiedAt: Date | null; contactShareChoice: string } | null,
+  ): Promise<boolean> {
+    try {
+      if (!seeker) return false;
+      const settings = await getSeekerContactSettings(this.prisma);
+      if (!settings.enabled || !leadPhoneIfShareable(settings, seeker, new Date())) return false;
+      const listing = await this.prisma.listing.findUnique({
+        where: { id: listingId },
+        select: { boostedUntil: true, owner: { select: { agentProUntil: true } } },
+      });
+      return !!listing && ownerSeesLeadsFree(listing, listing.owner);
+    } catch {
+      return false;
+    }
+  }
+
   private async notifyOwnerOfInterest(
     listingId: string,
     ownerId: string,
@@ -3499,7 +3521,7 @@ export class ListingsService {
       }),
       this.prisma.user.findUnique({
         where: { id: interestedUserId },
-        select: { name: true, role: true },
+        select: { name: true, role: true, phone: true, phoneVerifiedAt: true, contactShareChoice: true },
       }),
       this.prisma.listingPhoto.findFirst({
         where: { listingId },
@@ -3517,12 +3539,14 @@ export class ListingsService {
       : undefined;
 
     // Push always (best-effort) — Instant Alerts only adds email/WhatsApp.
+    const canCall = await this.ownerCanCallInterested(ownerId, listingId, interested);
     void this.pushService
       .notifyListingInterest(ownerId, {
         listingId,
         listingTitle,
         interestedName,
         imageUrl,
+        canCall,
       })
       .then((sent) => {
         if (!sent) return;
@@ -3566,13 +3590,13 @@ export class ListingsService {
 
     const [rows, total] = await Promise.all([
       this.prisma.listingInterest.findMany({
-        where: { listingId },
+        where: { listingId, user: { role: { not: 'admin' } } },
         orderBy: { lastSeenAt: 'desc' },
         skip: offset,
         take: limit,
         include: { user: { select: { id: true, name: true, phone: true, phoneVerifiedAt: true, role: true, contactShareChoice: true } } },
       }),
-      this.prisma.listingInterest.count({ where: { listingId } }),
+      this.prisma.listingInterest.count({ where: { listingId, user: { role: { not: 'admin' } } } }),
     ]);
     // The seeker's phone, when the owner is allowed to see it (Featured, or unlocked with a credit); otherwise a mask or nothing. Off by default.
     const lead = await buildLeadContactView(this.prisma, {

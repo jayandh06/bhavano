@@ -170,6 +170,13 @@ describe("trailEntry — the Featured prompt", () => {
   });
 });
 
+describe("trailEntry — the interested list", () => {
+  it("reads unlocking a number and the Featured link", () => {
+    expect(trailEntry("/post/action?screen=upsell&event=unlock_tapped&surface=interest_contact")).toEqual({ text: "Interested list \u2014 tapped Unlock contact", isError: false });
+    expect(trailEntry("/post/action?screen=upsell&event=clicked&surface=interest_contact")).toEqual({ text: "Interested list \u2014 tapped Make it Featured", isError: false });
+  });
+});
+
 describe("trailEntry — /post/action clicks", () => {
   it("reads a Featured upgrade from My listings, outside the post flow", () => {
     expect(trailEntry("/post/action?screen=boost&event=opened")).toEqual({ text: "Featured upgrade — opened the Featured screen", isError: false });

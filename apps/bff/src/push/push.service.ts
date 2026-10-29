@@ -191,11 +191,13 @@ export class PushService {
       listingTitle: string;
       interestedName: string;
       imageUrl?: string;
+      /** The owner can see this person's number free in My listings (Featured ad, Seeker contact on): say so. */
+      canCall?: boolean;
     },
   ): Promise<boolean> {
     return this.sendToUser(recipientId, {
       title: params.listingTitle,
-      body: `👀 ${params.interestedName} viewed your ad`,
+      body: `👀 ${params.interestedName} viewed your ad${params.canCall ? ' · open My listings to call them' : ''}`,
       channelId: PUSH_CHANNEL_LISTING_ACTIVITY,
       priority: 'high',
       interruptionLevel: 'active',

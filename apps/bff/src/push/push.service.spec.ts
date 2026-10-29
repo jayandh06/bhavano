@@ -210,6 +210,17 @@ describe('PushService', () => {
     });
   });
 
+  it('tells an owner who can see the number free to open My listings to call', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: [{ status: 'ok', id: 'r1' }] }),
+    });
+    const { service } = makeService({ enabled: true, tokens: [{ token: 'ExpoTok[a]' }], fetchImpl });
+    await service.notifyListingInterest('u1', { listingId: 'l1', listingTitle: 'PG', interestedName: 'Ravi', canCall: true });
+    const body = JSON.parse((fetchImpl.mock.calls[0][1] as { body: string }).body) as Array<Record<string, unknown>>;
+    expect(body[0]).toMatchObject({ body: '👀 Ravi viewed your ad · open My listings to call them' });
+  });
+
   it('sends listing-activity pushes with listing title, listing channel, and optional image', async () => {
     const fetchImpl = jest.fn().mockResolvedValue({
       ok: true,
