@@ -18,6 +18,7 @@ import { AUTH_POPUP_MESSAGE } from "./AuthPopupComplete";
 import { GOOGLE_SIGNUP_TRACKED_KEY } from "./SignupConversionTracker";
 import { GoogleIcon } from "./GoogleIcon";
 import { useEmailLoginMode } from "@/lib/useLoginMethods";
+import { useSeekerContactNotice } from "@/lib/useSeekerContactNotice";
 import { emailLoginIsRestricted } from "@bhavano/types/loginSettings";
 import { Icon } from "./Icon";
 import {
@@ -85,6 +86,7 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   const [redirectTo, setRedirectTo] = useState<string | undefined>(undefined);
   const [phoneOnly, setPhoneOnly] = useState(false);
   const emailLogin = useEmailLoginMode(showLoginModal);
+  const seekerContactNotice = useSeekerContactNotice(showLoginModal);
   /** True while the basics step is being used only to verify a phone at Publish. */
   const [verifyPhoneMode, setVerifyPhoneMode] = useState(false);
   const [basicsInitial, setBasicsInitial] = useState<ProfileBasicsValues>({
@@ -517,6 +519,11 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                 {!phoneOnly && emailLoginIsRestricted(emailLogin) && (
                   <p className="text-xs text-muted mt-2 mb-0 leading-[1.5]">
                     Google sign-in is for existing accounts. New here? Continue with your mobile number.
+                  </p>
+                )}
+                {seekerContactNotice && (
+                  <p className="text-xs text-muted mt-3.5 mb-0 leading-[1.5]">
+                    If you show interest in an ad, its owner may be able to see your mobile number and call you. You can turn this off in your profile.
                   </p>
                 )}
                 <p className="text-xs text-muted mt-3.5 leading-[1.5]">

@@ -31,6 +31,7 @@ const ENGAGEMENT_ACTION_STYLES: Record<ListingEngagementRowDto["action"], { labe
   liked: { label: "Liked", color: "var(--green)" },
   viewed: { label: "Viewed", color: "var(--text-soft)" },
   contact_revealed: { label: "Contact revealed", color: "var(--gold, #b8860b)" },
+  lead_opened: { label: "Owner opened their number", color: "var(--muted)" },
 };
 
 const LIKED_PARAM_NAMES = { page: "likedPage", limit: "likedLimit" };

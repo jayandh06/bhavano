@@ -246,6 +246,11 @@ export async function fetchEmailLoginMode(): Promise<EmailLoginMode> {
   }
 }
 
+/** Whether owners may see interested people's numbers (Admin -> Settings -> Seeker contact). Public; the caller treats a failure as off. */
+export function fetchSeekerContactSettings(): Promise<import("@bhavano/types/seekerContact").SeekerContactSettingsDto> {
+  return bffFetch("/seeker-contact/settings");
+}
+
 export function fetchLoginNudgeSettings(): Promise<PublicLoginNudgeDto> {
   return bffFetch<PublicLoginNudgeDto>("/listings/login-nudge-settings");
 }

@@ -743,8 +743,13 @@ describe('ListingsService.listEngagement', () => {
     favouriteCount?: number;
     viewCount?: number;
     revealCount?: number;
+    leadOpens?: { user: { id: string; name: string | null; phone: string | null; email: string | null }; contactViewedAt: Date; lastSeenAt: Date }[];
   }) {
     const prisma = {
+      listingInterest: {
+        findMany: jest.fn().mockResolvedValue(opts.leadOpens ?? []),
+        count: jest.fn().mockResolvedValue((opts.leadOpens ?? []).length),
+      },
       favourite: {
         findMany: jest.fn().mockResolvedValue(opts.favourites ?? []),
         count: jest.fn().mockResolvedValue(opts.favouriteCount ?? (opts.favourites ?? []).length),
@@ -840,6 +845,15 @@ describe('ListingsService.listEngagement', () => {
 
     const result = await service.listEngagement('listing1', 0, 25);
     expect(result.items).toEqual([]);
+  });
+
+  it('lists the owner opening a number as its own row and counts it', async () => {
+    const seeker = { id: 'u9', name: 'Asha', phone: '+919876543210', email: null };
+    const when = new Date('2026-10-29T08:00:00Z');
+    const { service } = makeEngagementService({ leadOpens: [{ user: seeker, contactViewedAt: when, lastSeenAt: new Date('2026-10-28T08:00:00Z') }] });
+    const page = await service.listEngagement('listing1', 0, 10);
+    expect(page.items).toEqual([expect.objectContaining({ userId: 'u9', action: 'lead_opened', at: when.toISOString() })]);
+    expect(page.total).toBe(1);
   });
 
   it('never includes anonymous views — only user-prefixed viewerKeys are queried', async () => {

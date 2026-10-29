@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ListingCategory } from "@bhavano/types";
-import { FEATURED_BENEFITS } from "@bhavano/types/featuredBenefits";
+import { featuredBenefits } from "@bhavano/types/featuredBenefits";
 import { pickFeaturedUpsell, type FeaturedUpsellSettingsDto } from "@bhavano/types/featuredUpsell";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { reportPostAction } from "@/lib/postActionTrail";
@@ -29,7 +29,7 @@ const SHOW_DELAY_MS = 1500;
 /** "Make your ad Featured" on My listings. Once per browser session, for the owner's newest live ad that is not Featured, never within `minAgeHours` of posting, quiet for
  * `quietDays` after "Not now" and never more than `maxShowsPerAd` times for one ad. It states only the ad's own numbers and the true Featured benefits. Admin switch,
  * off by default: Admin -> Settings -> Featured prompt (docs/plans/featured-upsell-prompt.md). */
-export function FeaturedUpsellDialog({ settings, listings }: { settings: FeaturedUpsellSettingsDto; listings: UpsellListing[] }) {
+export function FeaturedUpsellDialog({ settings, listings, leadContactOn = false }: { settings: FeaturedUpsellSettingsDto; listings: UpsellListing[]; leadContactOn?: boolean }) {
   const { boost } = useBoost();
   const [active, setActive] = useState<UpsellListing | null>(null);
   const decided = useRef(false);
@@ -100,7 +100,7 @@ export function FeaturedUpsellDialog({ settings, listings }: { settings: Feature
           </p>
         )}
         <ul className="list-none m-0 mb-4 p-0 flex flex-col gap-1.5">
-          {FEATURED_BENEFITS.slice(0, 5).map((benefit) => (
+          {featuredBenefits(leadContactOn).slice(0, 5).map((benefit) => (
             <li key={benefit} className="flex gap-2 text-[13px] text-text-soft">
               <span className="text-green shrink-0">
                 <Icon name="check" />

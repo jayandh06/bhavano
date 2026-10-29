@@ -4,7 +4,7 @@ import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from "react-
 import { useRouter } from "expo-router";
 import { PHOTO_LIMITS } from "@bhavano/types/photoLimits";
 import { audienceFor, reachLabelFor } from "@bhavano/types/audience";
-import { FEATURED_BENEFITS } from "@bhavano/types/featuredBenefits";
+import { featuredBenefits } from "@bhavano/types/featuredBenefits";
 import { goLiveTimeText } from "@bhavano/types/goLive";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
@@ -70,6 +70,7 @@ import {
   createListing,
   fetchAiGenerateUsage,
   fetchPlanPricing,
+  fetchSeekerContactSettings,
   friendlyErrorMessage,
   generateListingCopy,
   updateListing,
@@ -304,6 +305,17 @@ export function PostAdWizard({
   entry?: string;
 }) {
   const { colors } = useAppTheme();
+  // Admin has seeker contact on: the Featured list then says Featured owners see interested people's numbers. Off until the lookup says otherwise.
+  const [leadContactOn, setLeadContactOn] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetchSeekerContactSettings()
+      .then((s) => alive && setLeadContactOn(s.enabled))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
   const { requireLogin, ensureVerifiedPhone, profile } = useHomeSheets();
   const router = useRouter();
   const [listingId] = useState(() => Crypto.randomUUID());
@@ -2766,7 +2778,7 @@ export function PostAdWizard({
           </View>
           <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt, gap: 8 }]}>
             <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Featured gets you:</Text>
-            {FEATURED_BENEFITS.map((text) => (
+            {featuredBenefits(leadContactOn).map((text) => (
               <View key={text} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
                 <Icon name="featured" size={14} color={colors.green} />
                 <Text style={{ flex: 1, fontSize: 13, color: colors.textSoft }}>{text}</Text>

@@ -3,7 +3,7 @@
 import { signIn, signOut } from "@/auth";
 import type { LinkIdentifierResult, UserProfileDto } from "@bhavano/types";
 import type { EmailLoginMode } from "@bhavano/types/loginSettings";
-import { fetchLoginMethods, fetchProfile, getVisitContext, linkPhone, logout, sendOtp, type OtpChannel, type VisitContext } from "@/lib/bff";
+import { fetchLoginMethods, fetchProfile, fetchSeekerContactSettings, getVisitContext, linkPhone, logout, sendOtp, type OtpChannel, type VisitContext } from "@/lib/bff";
 import { isAccessTokenValid } from "@/lib/session";
 import { auth, unstable_update } from "@/auth";
 
@@ -56,6 +56,12 @@ export async function verifyOtpAction(
   } catch {
     return { success: false, error: "Incorrect OTP" };
   }
+}
+
+/** Whether the login screens should show the "owners of Featured ads may call you" line: the feature is on and everyone is shareable by default (notice mode). */
+export async function getSeekerContactNoticeAction(): Promise<boolean> {
+  const settings = await fetchSeekerContactSettings();
+  return settings.enabled && settings.consentMode === "notice";
 }
 
 /** Whether Google sign-in may be offered right now; see useEmailLoginMode. */

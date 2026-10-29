@@ -6,7 +6,7 @@ import { listingPriceText } from "@bhavano/types/priceWords";
 import { goLiveTimeText } from "@bhavano/types/goLive";
 import { postHref } from "@/lib/postHref";
 import { auth } from "@/auth";
-import { BffAuthError, fetchFeaturedUpsellSettings, fetchMyListings, fetchMyReferrals, fetchProfile, previewBoostPricing } from "@/lib/bff";
+import { BffAuthError, fetchFeaturedUpsellSettings, fetchSeekerContactSettings, fetchMyListings, fetchMyReferrals, fetchProfile, previewBoostPricing } from "@/lib/bff";
 import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
 import { ListingSlotMeter } from "@/components/home/ListingSlotMeter";
 import { buildListingPath } from "@/lib/listingPath";
@@ -168,6 +168,7 @@ async function MyListingsGrid({
       {upsellSettings.enabled && (
         <FeaturedUpsellDialog
           settings={upsellSettings}
+          leadContactOn={(await fetchSeekerContactSettings()).enabled}
           listings={listings.map((l) => ({
             id: l.id,
             category: l.category,

@@ -1259,7 +1259,7 @@ export class ListingsService {
     limit: number,
   ): Promise<ListingEngagementPage> {
     const take = offset + limit;
-    const [favourites, views, reveals, favouriteCount, viewCount, revealCount] =
+    const [favourites, views, reveals, favouriteCount, viewCount, revealCount, leadOpens, leadOpenCount] =
       await Promise.all([
         this.prisma.favourite.findMany({
           where: { listingId },
@@ -1291,6 +1291,14 @@ export class ListingsService {
           where: { listingId, viewerKey: { startsWith: 'user:' } },
         }),
         this.prisma.contactReveal.count({ where: { listingId } }),
+        // The owner opened or dialled this person's number (Seeker contact); contactViewedAt is the first time.
+        this.prisma.listingInterest.findMany({
+          where: { listingId, contactViewedAt: { not: null } },
+          include: { user: { select: { id: true, name: true, phone: true, email: true } } },
+          orderBy: { contactViewedAt: 'desc' },
+          take,
+        }),
+        this.prisma.listingInterest.count({ where: { listingId, contactViewedAt: { not: null } } }),
       ]);
 
     const viewerUserIds = views.map((v) => v.viewerKey.slice('user:'.length));
@@ -1332,11 +1340,19 @@ export class ListingsService {
         action: 'contact_revealed',
         at: r.createdAt.toISOString(),
       })),
+      ...leadOpens.map((i): ListingEngagementRowDto => ({
+        userId: i.user.id,
+        userName: i.user.name,
+        userPhone: i.user.phone,
+        userEmail: i.user.email,
+        action: 'lead_opened',
+        at: (i.contactViewedAt ?? i.lastSeenAt).toISOString(),
+      })),
     ].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
 
     return {
       items: merged.slice(offset, offset + limit),
-      total: favouriteCount + viewCount + revealCount,
+      total: favouriteCount + viewCount + revealCount + leadOpenCount,
     };
   }
 
@@ -3567,6 +3583,12 @@ export class ListingsService {
     });
 
     const userIds = rows.map((r) => r.userId);
+    // Who unlocked the owner's number on this ad (a seeker spends a free reveal or a credit to do it): the strongest buying signal, shown as a badge.
+    const unlocked =
+      userIds.length === 0
+        ? []
+        : await this.prisma.contactReveal.findMany({ where: { listingId, userId: { in: userIds } }, select: { userId: true } });
+    const unlockedIds = new Set(unlocked.map((u) => u.userId));
     const conversations =
       userIds.length === 0
         ? []
@@ -3588,6 +3610,7 @@ export class ListingsService {
       lastSeenAt: r.lastSeenAt.toISOString(),
       conversationId: conversationByInquirer.get(r.userId) ?? null,
       ...lead.byUser.get(r.userId),
+      revealedYourContact: unlockedIds.has(r.userId),
     }));
 
     return { items, total, leadContact: lead.summary };

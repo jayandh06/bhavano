@@ -160,6 +160,9 @@ export function ListingInterestsPanel({
                     <Text style={{ fontSize: 13.5, fontWeight: "700", color: colors.text }} numberOfLines={1}>
                       {row.userName?.trim() || "Interested buyer"}
                     </Text>
+                    {row.revealedYourContact ? (
+                      <Text style={{ fontSize: 11.5, fontWeight: "700", color: colors.green }}>Unlocked your number</Text>
+                    ) : null}
                     <Text style={{ fontSize: 11.5, color: colors.muted }}>
                       Interested {timeFormatter.format(new Date(row.lastSeenAt))}
                     </Text>

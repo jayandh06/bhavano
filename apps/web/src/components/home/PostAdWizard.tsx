@@ -48,7 +48,7 @@ import { reportPostFieldEvent } from "@/lib/postFieldTrail";
 import { reuseAttributes, type LastListingDetailsDto } from "@bhavano/types/listingReuse";
 import { attributeKeyForTarget, scrollToTarget } from "@/lib/postDetailsFocus";
 import { postDetailsIssues, previewButtonLabel } from "@bhavano/types/postDetailsIssues";
-import { FEATURED_BENEFITS } from "@bhavano/types/featuredBenefits";
+import { featuredBenefits } from "@bhavano/types/featuredBenefits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction, saveAlertPrimaryChannelAction } from "@/app/actions/users";
 import { fetchAiGenerateUsageAction, generateListingCopyAction } from "@/app/actions/ai";
@@ -403,6 +403,7 @@ export function PostAdWizard({
   sellerType: profileSellerType,
   isAdmin = false,
   entry = "direct",
+  leadContactOn = false,
 }: {
   cities: City[];
   defaultCityId?: string;
@@ -417,6 +418,8 @@ export function PostAdWizard({
   /** The profile's answer to "Owner or agent?". Null (never answered, or logged out) asks it on
    * the review step; once answered it's changed from the profile, not here. */
   sellerType: SellerType | null;
+  /** Admin has seeker contact on: the Featured list says Featured owners see interested people's numbers. */
+  leadContactOn?: boolean;
   /** Offers "Posting for someone else" — see AssistedSellerPanel. */
   isAdmin?: boolean;
   /** From `/post?from=<slug>` — which on-site link/button sent this visitor here (see
@@ -3123,7 +3126,7 @@ export function PostAdWizard({
             <div className="w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5">
               <p className="text-[14px] font-bold text-text mt-0 mb-2.5">Featured gets you:</p>
               <ul className="flex flex-col gap-2 m-0 p-0 list-none">
-                {FEATURED_BENEFITS.map((text) => (
+                {featuredBenefits(leadContactOn).map((text) => (
                   <li key={text} className="flex items-start gap-2 text-[13px] text-text-soft">
                     <Icon name="featured" className="text-green mt-[3px] shrink-0" />
                     <span>{text}</span>

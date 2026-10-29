@@ -150,6 +150,9 @@ export function ListingInterestsPanel({
               <div className="min-w-0">
                 <div className="text-[13.5px] font-bold text-text">
                   {row.userName?.trim() || "Interested buyer"}
+                  {row.revealedYourContact && (
+                    <span className="ml-2 text-[11px] font-bold text-green border border-green rounded-full px-2 py-0.5 align-middle">Unlocked your number</span>
+                  )}
                 </div>
                 <div className="text-[11.5px] text-muted">
                   Interested {timeFormatter.format(new Date(row.lastSeenAt))}

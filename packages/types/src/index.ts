@@ -438,6 +438,8 @@ export interface ListingInterestDto {
   phoneMasked?: string | null;
   /** What the owner can do about this lead's contact: see seekerContact.ts. Absent on older servers (treat as none). */
   contact?: "available" | "unlockable" | "none";
+  /** This person unlocked the owner's phone number on this ad: the strongest sign of intent. */
+  revealedYourContact?: boolean;
 }
 
 export interface ListingInterestPage {
@@ -952,7 +954,8 @@ export interface ListingEngagementRowDto {
   userName: string | null;
   userPhone: string | null;
   userEmail: string | null;
-  action: 'liked' | 'viewed' | 'contact_revealed';
+  /** `lead_opened`: the ad's owner opened or dialled this person's number (Admin -> Settings -> Seeker contact). */
+  action: 'liked' | 'viewed' | 'contact_revealed' | 'lead_opened';
   at: string;
 }
 

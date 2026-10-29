@@ -1,6 +1,7 @@
 import type { OwnerAlertChannel, OwnerAlertPreferenceDto } from "@bhavano/types/ownerAlerts";
 import type { LoginMethodsDto } from "@bhavano/types/loginSettings";
 import { DEFAULT_FEATURED_UPSELL_SETTINGS, type FeaturedUpsellSettingsDto } from "@bhavano/types/featuredUpsell";
+import { DEFAULT_SEEKER_CONTACT_SETTINGS, type SeekerContactSettingsDto } from "@bhavano/types/seekerContact";
 import type { SearchInterpretationDto } from "@bhavano/types/searchInterpretation";
 import type { AreaOverviewDto, AreaPriceStats, CityOverviewDto, PublishedAreaOverviewLink } from "@bhavano/types/areaOverview";
 import "server-only";
@@ -435,6 +436,15 @@ export async function fetchFeaturedUpsellSettings(): Promise<FeaturedUpsellSetti
     return await bffFetch<FeaturedUpsellSettingsDto>("/featured-upsell/settings", { next: { revalidate: 60 } });
   } catch {
     return DEFAULT_FEATURED_UPSELL_SETTINGS;
+  }
+}
+
+/** Whether owners may see interested people's numbers (Admin -> Settings -> Seeker contact). Public and cached briefly; a failed read counts as off. */
+export async function fetchSeekerContactSettings(): Promise<SeekerContactSettingsDto> {
+  try {
+    return await bffFetch<SeekerContactSettingsDto>("/seeker-contact/settings", { next: { revalidate: 60 } });
+  } catch {
+    return DEFAULT_SEEKER_CONTACT_SETTINGS;
   }
 }
 

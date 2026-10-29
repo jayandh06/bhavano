@@ -7,6 +7,14 @@ import { VIDEO_LIMITS } from "./videoLimits";
  * Alerts are included in every boost, and the media limits come from the same constants the BFF enforces.
  * Never promise a fixed position: only 8 guaranteed slots exist across the first two pages. See
  * docs/plans/featured-ad-benefits-and-media-limits.md. */
+/** True only while an admin has Admin -> Settings -> Seeker contact switched on, so the list never promises a number nobody can see. */
+export const FEATURED_LEAD_CONTACT_BENEFIT = "See the phone number of people interested in your ad and call them directly";
+
+/** The benefits to show right now: with seeker contact on, the number benefit leads the list. */
+export function featuredBenefits(leadContactOn: boolean): readonly string[] {
+  return leadContactOn ? [FEATURED_LEAD_CONTACT_BENEFIT, ...FEATURED_BENEFITS] : FEATURED_BENEFITS;
+}
+
 export const FEATURED_BENEFITS: readonly string[] = [
   "A gold Featured badge and card styling",
   "Priority placement above regular ads (the exact spot is not guaranteed)",

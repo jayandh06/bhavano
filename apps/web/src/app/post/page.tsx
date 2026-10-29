@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { fetchAreas, fetchProfile } from "@/lib/bff";
+import { fetchAreas, fetchProfile, fetchSeekerContactSettings } from "@/lib/bff";
 import { isListingCategory, isTransactionType } from "@/lib/browseRoute";
 import { resolvePostEntry } from "@bhavano/types/postEntry";
 import { resolveDefaultCity } from "@/lib/defaultCity";
@@ -106,6 +106,7 @@ export default async function PostAdPage({
             sellerType={profile?.sellerType ?? null}
             isAdmin={isAdminAccessToken(accessToken)}
             entry={entry}
+            leadContactOn={(await fetchSeekerContactSettings()).enabled}
           />
         </div>
       </div>

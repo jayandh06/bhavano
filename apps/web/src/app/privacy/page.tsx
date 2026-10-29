@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fetchSeekerContactSettings } from "@/lib/bff";
 import { LEGAL_ENTITY, entityAddressLines, entityOperatorSentence } from "@bhavano/types/legalEntity";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 
@@ -11,11 +12,13 @@ export const metadata = {
 // policy URL on the Google Play and App Store listings, and #delete-account / #delete-data are the
 // Play Console account- and data-deletion URLs, so it must stay public (no login) and describe
 // what the apps actually do.
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
   const addressLines = entityAddressLines();
+  // The paragraph about owners seeing a verified number is shown only while it is true (Admin -> Settings -> Seeker contact).
+  const seekerContact = await fetchSeekerContactSettings();
 
   return (
-    <StaticPageLayout title="Privacy Policy" updated="27 September 2026">
+    <StaticPageLayout title="Privacy Policy" updated={seekerContact.enabled ? "29 October 2026" : "27 September 2026"}>
       <PageSection heading="Who processes your data">
         <p className="m-0">
           {entityOperatorSentence()} {LEGAL_ENTITY.legalName} is the data fiduciary responsible for the personal
@@ -127,6 +130,17 @@ export default function PrivacyPage() {
             share become visible to another user once you message each other about a listing, or once they unlock
             your listing&apos;s contact details.
           </li>
+          {seekerContact.enabled && (
+            <li>
+              <strong>Owners of ads you show interest in:</strong> when you open an ad while logged in, or save or message
+              about it, its owner is told, and the owner can see your name. If your mobile number is verified, the owner
+              can also see it and call you when their ad is Featured, or when they choose to unlock it, for 30 days after
+              you showed interest.{" "}
+              {seekerContact.consentMode === "opt_in"
+                ? "We do this only if you have agreed, and you can change your mind at any time in your profile."
+                : "You can turn this off at any time in your profile (Who can call you); we then stop showing your number to owners straight away."}
+            </li>
+          )}
           <li>
             <strong>Service providers</strong> that run parts of the Platform for us, only for that purpose:
             <ul className="list-[circle] mt-1 mb-0 pl-5">
