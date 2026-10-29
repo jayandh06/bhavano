@@ -36,6 +36,8 @@ import { PaymentsService } from '../payments/payments.service';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateAlertPreferenceDto } from './dto/alert-preference.dto';
+import { UpdateContactShareDto } from './dto/contact-share.dto';
+import type { ContactSharePreferenceDto } from '@bhavano/types/seekerContact';
 import { OwnerAlertsService } from '../owner-alerts/owner-alerts.service';
 import type { OwnerAlertPreferenceDto } from '@bhavano/types/ownerAlerts';
 import { RequestEmailCodeDto, VerifyEmailDto } from './dto/verify-email.dto';
@@ -88,6 +90,17 @@ export class UsersController {
     @Body() dto: UpdateAlertPreferenceDto,
   ): Promise<OwnerAlertPreferenceDto> {
     return this.ownerAlerts.setPreference(user.id, dto.channels);
+  }
+
+  /** The profile toggle: may owners of Featured ads I show interest in see my number. */
+  @Get('contact-share')
+  getContactShare(@CurrentUser() user: RequestUser): Promise<ContactSharePreferenceDto> {
+    return this.usersService.getContactSharePreference(user.id);
+  }
+
+  @Put('contact-share')
+  setContactShare(@CurrentUser() user: RequestUser, @Body() dto: UpdateContactShareDto): Promise<ContactSharePreferenceDto> {
+    return this.usersService.setContactShare(user.id, dto.sharing);
   }
 
   /** The city to pre-select in the "where are you?" step, guessed from this person's visit IPs.

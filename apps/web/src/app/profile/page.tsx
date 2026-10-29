@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { BffAuthError, fetchAlertPreferences, fetchContactRevealBalance, fetchProfile } from "@/lib/bff";
+import { BffAuthError, fetchAlertPreferences, fetchContactRevealBalance, fetchContactShare, fetchProfile } from "@/lib/bff";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { ProfileForm } from "@/components/home/ProfileForm";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { AlertPreferenceCard } from "@/components/home/AlertPreferenceCard";
+import { ContactShareCard } from "@/components/home/ContactShareCard";
 import { ContactRevealBalanceCard } from "@/components/home/ContactRevealBalanceCard";
 
 export default async function ProfilePage({
@@ -40,6 +41,7 @@ export default async function ProfilePage({
             </div>
             <div className="w-full lg:w-[300px] lg:shrink-0 flex flex-col gap-5">
               <AlertPreferenceFields accessToken={session.accessToken} />
+              <ContactShareFields accessToken={session.accessToken} />
               <ContactRevealBalanceFields accessToken={session.accessToken} />
               <div className="flex flex-col gap-2.5">
                 {/* Same outline-button style as "View" on my-listings, so the sidebar's actions
@@ -98,6 +100,16 @@ async function AlertPreferenceFields({ accessToken }: { accessToken: string }) {
   } catch (error) {
     if (error instanceof BffAuthError) return null;
     throw error;
+  }
+}
+
+// Shown only while an admin has seeker contact on; a failed read just leaves the card out.
+async function ContactShareFields({ accessToken }: { accessToken: string }) {
+  try {
+    return <ContactShareCard preference={await fetchContactShare(accessToken)} />;
+  } catch (error) {
+    if (error instanceof BffAuthError) return null;
+    return null;
   }
 }
 

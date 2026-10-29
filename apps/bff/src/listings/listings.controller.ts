@@ -15,6 +15,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { UnlockLeadContactResponseDto } from '@bhavano/types/seekerContact';
 import type { ContactRevealSettingsDto, PublicLoginNudgeDto, ListingClaimPreviewDto, ListingDetailDto, ListingInterestPage, ListingMetaDto, ListingSitemapEntry, ListingsPage, PopularSearchDto, RecordListingInterestResponseDto, RevealContactResponseDto } from '@bhavano/types';
 import { VIDEO_LIMITS } from '@bhavano/types/videoLimits';
 import { AuthGuard, OptionalAuthGuard } from '../auth/guards/auth.guard';
@@ -192,6 +193,17 @@ export class ListingsController {
       offset ? Number(offset) : 0,
       limit ? Math.min(Number(limit), 100) : 50,
     );
+  }
+
+  /** Owner opens one lead's phone number: free on a Featured ad, otherwise spends a credit (402 when there is none). See docs/plans/featured-seeker-contact-for-owners.md. */
+  @Post(':id/interests/:userId/reveal-contact')
+  @UseGuards(AuthGuard)
+  unlockLeadContact(
+    @Param('id') id: string,
+    @Param('userId') seekerId: string,
+    @CurrentUser() user: RequestUser,
+  ): Promise<UnlockLeadContactResponseDto> {
+    return this.listingsService.unlockLeadContact(id, user.id, seekerId);
   }
 
   /** Owner opens (or reuses) an inquiry thread with an interested buyer. */

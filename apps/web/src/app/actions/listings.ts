@@ -35,6 +35,7 @@ import {
   revealContact,
   recordListingInterest,
   fetchListingInterests,
+  unlockLeadContact,
   openInterestConversation,
   rotateOwnListingPhoto,
   setOwnListingCoverPhoto,
@@ -161,6 +162,26 @@ export async function openInterestConversationAction(
       requiresLogin: false,
       error: error instanceof Error ? error.message : "Couldn't open the conversation",
     };
+  }
+}
+
+export type UnlockLeadContactResult =
+  | { requiresLogin: true }
+  | { requiresLogin: false; insufficientCredits: true }
+  | { requiresLogin: false; insufficientCredits: false; phone: string }
+  | { requiresLogin: false; insufficientCredits: false; error: string };
+
+/** The owner opens one interested person's number: free on a Featured ad, otherwise one contact-reveal credit. */
+export async function unlockLeadContactAction(listingId: string, seekerId: string): Promise<UnlockLeadContactResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { requiresLogin: true };
+  try {
+    const { phone } = await unlockLeadContact(session.accessToken, listingId, seekerId);
+    return { requiresLogin: false, insufficientCredits: false, phone };
+  } catch (error) {
+    if (error instanceof BffAuthError) return { requiresLogin: true };
+    if (error instanceof InsufficientContactRevealCreditsError) return { requiresLogin: false, insufficientCredits: true };
+    return { requiresLogin: false, insufficientCredits: false, error: error instanceof Error ? error.message : "Couldn't unlock this contact" };
   }
 }
 

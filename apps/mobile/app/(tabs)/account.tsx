@@ -22,6 +22,7 @@ import {
 import { useContactRevealBalanceQuery } from "../../src/lib/queries";
 import { Icon } from "../../src/components/Icon";
 import { AlertPreferenceCard } from "../../src/components/home/AlertPreferenceCard";
+import { ContactShareCard } from "../../src/components/home/ContactShareCard";
 import { IosCreditsSheet } from "../../src/components/home/IosPurchaseSheets";
 
 type PhoneStep = "idle" | "otpSent";
@@ -725,6 +726,7 @@ function ProfileFields({
       <View style={{ marginTop: 28 }}>
         <AlertPreferenceCard accessToken={accessToken} />
       </View>
+      <ContactShareCard accessToken={accessToken} />
 
       <View style={[styles.balanceCard, { borderColor: colors.border, backgroundColor: colors.surface, marginTop: 14 }]}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>

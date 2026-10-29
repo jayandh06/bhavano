@@ -490,6 +490,11 @@ model User {
   proBoostCredits             ProBoostCredit[]
   contactRevealCreditBatches  ContactRevealCreditBatch[]
   contactReveals              ContactReveal[]
+  /// Whether this person's phone may be shown to the owners of ads they show interest in: unset | yes | no. In notice mode everything but "no" is shareable, in opt-in mode only "yes" is (SeekerContactSetting.consentMode). See docs/plans/featured-seeker-contact-for-owners.md.
+  contactShareChoice          String                     @default("unset")
+  /// Leads this person (as an ad owner) unlocked / was unlocked by.
+  leadRevealsAsOwner          LeadContactReveal[]        @relation("LeadOwner")
+  leadRevealsAsSeeker         LeadContactReveal[]        @relation("LeadSeeker")
   discountCodeRedemptions     DiscountCodeRedemption[]
   listingEditLogs             ListingEditLog[]
   listingInterests            ListingInterest[]
@@ -728,6 +733,7 @@ model Listing {
   notificationLogs     ListingNotificationLog[]
   listingRenewals      ListingRenewal[]
   contactReveals       ContactReveal[]
+  leadReveals          LeadContactReveal[]
   editLogs             ListingEditLog[]
   interests            ListingInterest[]
 
@@ -778,6 +784,8 @@ model ListingInterest {
   lastSeenAt     DateTime  @default(now())
   /// Last time we fired push / Instant Alerts for this pair — gates the 24h re-notify window.
   lastNotifiedAt DateTime?
+  /// First time the owner opened or dialled this person's number (audit and conversion metric).
+  contactViewedAt DateTime?
 
   @@unique([listingId, userId])
   @@index([listingId, lastSeenAt])
@@ -1765,6 +1773,7 @@ model ContactRevealCreditBatch {
   purchasedAt      DateTime        @default(now())
   expiresAt        DateTime
   reveals          ContactReveal[]
+  leadReveals      LeadContactReveal[]
 
   @@index([userId, expiresAt])
 }
@@ -1789,6 +1798,38 @@ model ContactReveal {
 
   @@unique([listingId, userId])
   @@index([userId, createdAt])
+}
+
+/**
+ * An ad owner unlocking one interested seeker's phone number with a contact-reveal credit (or a free lead
+ * reveal) — permanent once created, like ContactReveal in the other direction. Featured owners need no row: they
+ * see consenting leads' numbers for free while the ad is Featured. `source` is "credit" | "free".
+ */
+model LeadContactReveal {
+  id            String                    @id @default(cuid())
+  listingId     String
+  listing       Listing                   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  ownerId       String
+  owner         User                      @relation("LeadOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  seekerId      String
+  seeker        User                      @relation("LeadSeeker", fields: [seekerId], references: [id], onDelete: Cascade)
+  source        String
+  creditBatchId String?
+  creditBatch   ContactRevealCreditBatch? @relation(fields: [creditBatchId], references: [id])
+  createdAt     DateTime                  @default(now())
+
+  @@unique([listingId, seekerId])
+  @@index([ownerId, createdAt])
+}
+
+/// Singleton (id "default"): showing an interested seeker's phone to the owner. Off by default. consentMode is "notice" (shareable unless the seeker said no) or
+/// "opt_in" (only if the seeker said yes). Admin -> Settings -> Seeker contact.
+model SeekerContactSetting {
+  id                      String   @id
+  enabled                 Boolean  @default(false)
+  consentMode             String   @default("notice")
+  freeLeadRevealsPerOwner Int      @default(0)
+  updatedAt               DateTime @updatedAt
 }
 
 /**

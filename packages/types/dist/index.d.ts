@@ -382,10 +382,18 @@ export interface ListingInterestDto {
     lastSeenAt: string;
     /** Existing inquiry conversation with this user, if any — owner Message deep-links here. */
     conversationId: string | null;
+    /** The person's number, only when the server may show it: the owner's ad is Featured, or they unlocked this lead. Never set otherwise. */
+    phone?: string | null;
+    /** A masked number when it is shareable but still locked ("Unlock contact"). */
+    phoneMasked?: string | null;
+    /** What the owner can do about this lead's contact: see seekerContact.ts. Absent on older servers (treat as none). */
+    contact?: "available" | "unlockable" | "none";
 }
 export interface ListingInterestPage {
     items: ListingInterestDto[];
     total: number;
+    /** Pricing and balance for unlocking contacts; absent on older servers. */
+    leadContact?: import("./seekerContact").LeadContactSummaryDto;
 }
 export interface RecordListingInterestResponseDto {
     interested: true;

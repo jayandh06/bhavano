@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { LoginSettingsDto, MoveToMobileSendResultDto } from "@bhavano/types/loginSettings";
 import type { OwnerAlertSettingsDto } from "@bhavano/types/ownerAlerts";
 import type { FeaturedUpsellSettingsDto } from "@bhavano/types/featuredUpsell";
+import type { SeekerContactSettingsDto } from "@bhavano/types/seekerContact";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { AppVersionSettingsDto } from "@bhavano/types/appVersion";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
@@ -62,6 +63,7 @@ import {
   sendMoveToMobile,
   updateLoginSettings,
   updateFeaturedUpsellSettings,
+  updateSeekerContactSettings,
   updateOwnerAlertSettings,
   updateReminderSettings,
   updateSavedSearchSettings,
@@ -257,6 +259,17 @@ export async function sendMoveToMobileAction(
     return { success: true, result };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to send the messages" };
+  }
+}
+
+export async function updateSeekerContactSettingsAction(input: SeekerContactSettingsDto): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updateSeekerContactSettings(accessToken, input);
+    revalidatePath("/settings/seeker-contact");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update seeker contact settings" };
   }
 }
 

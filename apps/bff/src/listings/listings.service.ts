@@ -76,6 +76,7 @@ import { OwnerAlertsService } from '../owner-alerts/owner-alerts.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import { isListingBoosted } from './listing-boost.util';
+import { buildLeadContactView, unlockLeadContact } from '../contact-reveal/lead-contact';
 import { Prisma } from '@prisma/client';
 import type {
   Area,
@@ -3542,7 +3543,7 @@ export class ListingsService {
   ): Promise<ListingInterestPage> {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
-      select: { ownerId: true },
+      select: { ownerId: true, boostedUntil: true },
     });
     if (!listing) throw new NotFoundException('Listing not found');
     if (listing.ownerId !== ownerId) throw new ForbiddenException('Not your listing');
@@ -3553,10 +3554,17 @@ export class ListingsService {
         orderBy: { lastSeenAt: 'desc' },
         skip: offset,
         take: limit,
-        include: { user: { select: { id: true, name: true } } },
+        include: { user: { select: { id: true, name: true, phone: true, phoneVerifiedAt: true, role: true, contactShareChoice: true } } },
       }),
       this.prisma.listingInterest.count({ where: { listingId } }),
     ]);
+    // The seeker's phone, when the owner is allowed to see it (Featured, or unlocked with a credit); otherwise a mask or nothing. Off by default.
+    const lead = await buildLeadContactView(this.prisma, {
+      listingId,
+      ownerId,
+      listing,
+      interests: rows.map((r) => ({ userId: r.userId, lastSeenAt: r.lastSeenAt, user: r.user })),
+    });
 
     const userIds = rows.map((r) => r.userId);
     const conversations =
@@ -3579,9 +3587,15 @@ export class ListingsService {
       createdAt: r.createdAt.toISOString(),
       lastSeenAt: r.lastSeenAt.toISOString(),
       conversationId: conversationByInquirer.get(r.userId) ?? null,
+      ...lead.byUser.get(r.userId),
     }));
 
-    return { items, total };
+    return { items, total, leadContact: lead.summary };
+  }
+
+  /** Owner taps Call / WhatsApp on a lead, or pays to unlock it: see lead-contact.ts. */
+  unlockLeadContact(listingId: string, ownerId: string, seekerId: string) {
+    return unlockLeadContact(this.prisma, ownerId, listingId, seekerId);
   }
 
   /**

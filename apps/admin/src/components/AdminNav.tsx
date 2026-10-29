@@ -61,6 +61,7 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string }[] }[] 
       { href: "/settings/login", label: "Login methods" },
       { href: "/settings/owner-alerts", label: "Owner alerts" },
       { href: "/settings/featured-upsell", label: "Featured prompt" },
+      { href: "/settings/seeker-contact", label: "Seeker contact" },
       { href: "/settings/login-nudge", label: "Login prompt" },
       { href: "/settings/app-version", label: "App update" },
     ],

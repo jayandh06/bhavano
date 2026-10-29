@@ -1,6 +1,7 @@
 import type { LoginSettingsDto, MoveToMobileAudienceDto, MoveToMobileSendResultDto } from "@bhavano/types/loginSettings";
 import type { OwnerAlertSettingsDto } from "@bhavano/types/ownerAlerts";
 import type { FeaturedUpsellSettingsDto } from "@bhavano/types/featuredUpsell";
+import type { SeekerContactSettingsDto } from "@bhavano/types/seekerContact";
 import type { PageVisitAdOptionsDto } from "@bhavano/types/pageVisitAdOptions";
 import "server-only";
 import { headers } from "next/headers";
@@ -843,6 +844,14 @@ export function updatePostedConfirmationSettings(
     method: "PATCH",
     body: JSON.stringify(input),
   });
+}
+
+export function fetchSeekerContactSettings(accessToken: string): Promise<SeekerContactSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/seeker-contact-settings", { cache: "no-store" });
+}
+
+export function updateSeekerContactSettings(accessToken: string, input: SeekerContactSettingsDto): Promise<SeekerContactSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/seeker-contact-settings", { method: "PATCH", body: JSON.stringify(input) });
 }
 
 export function fetchFeaturedUpsellSettings(accessToken: string): Promise<FeaturedUpsellSettingsDto> {

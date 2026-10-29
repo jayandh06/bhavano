@@ -37,6 +37,10 @@
       "types": "./dist/websiteUrl.d.ts",
       "default": "./dist/websiteUrl.js"
     },
+    "./seekerContact": {
+      "types": "./dist/seekerContact.d.ts",
+      "default": "./dist/seekerContact.js"
+    },
     "./featuredUpsell": {
       "types": "./dist/featuredUpsell.d.ts",
       "default": "./dist/featuredUpsell.js"

@@ -8,6 +8,8 @@ import type { ProfileNudgeDto, UserProfileDto } from '@bhavano/types';
 import { getPhoneRequirementMode } from '../auth/login-settings';
 import type { User, City } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { normalizeContactShareChoice, seekerIsShareable, type ContactSharePreferenceDto } from '@bhavano/types/seekerContact';
+import { getSeekerContactSettings } from '../seeker-contact/seeker-contact-settings';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ListingSlotsService } from '../listing-slots/listing-slots.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -148,6 +150,21 @@ export class UsersService {
     const { activeCount, allowance } =
       await this.listingSlotsService.getSummary(userId);
     return toProfileDto(user, activeCount, allowance);
+  }
+
+  /** Whether owners of Featured ads this person shows interest in may see their number: the toggle on their profile. See docs/plans/featured-seeker-contact-for-owners.md. */
+  async getContactSharePreference(userId: string): Promise<ContactSharePreferenceDto> {
+    const [settings, user] = await Promise.all([
+      getSeekerContactSettings(this.prisma),
+      this.prisma.user.findUnique({ where: { id: userId }, select: { contactShareChoice: true } }),
+    ]);
+    const choice = normalizeContactShareChoice(user?.contactShareChoice);
+    return { enabled: settings.enabled, mode: settings.consentMode, choice, sharing: seekerIsShareable(settings.consentMode, choice) };
+  }
+
+  async setContactShare(userId: string, sharing: boolean): Promise<ContactSharePreferenceDto> {
+    await this.prisma.user.update({ where: { id: userId }, data: { contactShareChoice: sharing ? 'yes' : 'no' } });
+    return this.getContactSharePreference(userId);
   }
 }
 

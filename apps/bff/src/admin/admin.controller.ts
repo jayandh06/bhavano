@@ -94,6 +94,8 @@ import { UpdateReminderSettingsDto } from './dto/update-reminder-settings.dto';
 import { UpdateLoginSettingsDto } from './dto/update-login-settings.dto';
 import { UpdateOwnerAlertSettingsDto } from './dto/update-owner-alert-settings.dto';
 import { UpdateFeaturedUpsellSettingsDto } from './dto/update-featured-upsell-settings.dto';
+import { UpdateSeekerContactSettingsDto } from './dto/update-seeker-contact-settings.dto';
+import type { SeekerContactSettingsDto } from '@bhavano/types/seekerContact';
 import type { PageVisitAdOptionsDto } from '@bhavano/types/pageVisitAdOptions';
 import type { FeaturedUpsellSettingsDto } from '@bhavano/types/featuredUpsell';
 import type { OwnerAlertSettingsDto } from '@bhavano/types/ownerAlerts';
@@ -540,6 +542,16 @@ export class AdminController {
   @Patch('featured-upsell-settings')
   updateFeaturedUpsellSettings(@Body() dto: UpdateFeaturedUpsellSettingsDto): Promise<FeaturedUpsellSettingsDto> {
     return this.adminService.updateFeaturedUpsellSettings(dto);
+  }
+
+  @Get('seeker-contact-settings')
+  getSeekerContactSettings(): Promise<SeekerContactSettingsDto> {
+    return this.adminService.getSeekerContactSettings();
+  }
+
+  @Patch('seeker-contact-settings')
+  updateSeekerContactSettings(@Body() dto: UpdateSeekerContactSettingsDto): Promise<SeekerContactSettingsDto> {
+    return this.adminService.updateSeekerContactSettings(dto);
   }
 
   @Get('owner-alert-settings')

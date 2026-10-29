@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGate } from "./AuthGateProvider";
 import { useBuyCredits } from "./BuyCreditsProvider";
+import { ContactShareNotice } from "./ContactShareNotice";
 import { toggleFavouriteAction, revealContactAction } from "@/app/actions/listings";
 import { hasSessionAction } from "@/app/actions/auth";
 import { pushDataLayerEvent } from "@/lib/gtm";
@@ -187,6 +188,7 @@ export function ListingDetailActions({
           The owner may be notified that you viewed this ad and can message you on Bhavano.
         </p>
       )}
+      {!isOwner && !ownerUnverified && isLoggedIn && <ContactShareNotice />}
 
       {!isOwner && contactRevealed && (ownerPhone || ownerEmail) && (
         <div className="mt-2 border-[1.5px] border-border rounded-lg p-3 flex flex-col gap-1.5">

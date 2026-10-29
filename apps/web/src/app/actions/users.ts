@@ -3,18 +3,21 @@
 import type { City, LinkIdentifierResult, ProfileNudgeDto, UpdateProfileInput, UserProfileDto } from "@bhavano/types";
 import type { OwnerAlertChannel, OwnerAlertPreferenceDto } from "@bhavano/types/ownerAlerts";
 import { withPrimaryChannel } from "@bhavano/types/ownerAlerts";
+import type { ContactSharePreferenceDto } from "@bhavano/types/seekerContact";
 import { auth } from "@/auth";
 import {
   BffAuthError,
   confirmAccountMerge,
   deleteAccount,
   fetchAlertPreferences,
+  fetchContactShare,
   fetchProfile,
   fetchProfileNudge,
   fetchSellerAttention,
   fetchSuggestedCity,
   requestEmailCode,
   saveAlertPreferences,
+  saveContactShare,
   snoozeProfileNudge,
   updateProfile,
   verifyEmail,
@@ -80,6 +83,28 @@ export async function getAlertPreferencesAction(): Promise<OwnerAlertPreferenceD
     return await fetchAlertPreferences(session.accessToken);
   } catch {
     return null;
+  }
+}
+
+export async function getContactSharePreferenceAction(): Promise<ContactSharePreferenceDto | null> {
+  const session = await auth();
+  if (!session?.accessToken) return null;
+  try {
+    return await fetchContactShare(session.accessToken);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveContactShareAction(
+  sharing: boolean,
+): Promise<{ success: boolean; error?: string; preference?: ContactSharePreferenceDto }> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "Not logged in" };
+  try {
+    return { success: true, preference: await saveContactShare(session.accessToken, sharing) };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to save" };
   }
 }
 

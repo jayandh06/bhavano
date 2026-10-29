@@ -1046,6 +1046,22 @@ export function fetchAlertPreferences(accessToken: string): Promise<OwnerAlertPr
   return authedBffFetch(accessToken, "/users/me/alert-preferences", { cache: "no-store" });
 }
 
+export function fetchContactShare(accessToken: string): Promise<import("@bhavano/types/seekerContact").ContactSharePreferenceDto> {
+  return authedBffFetch(accessToken, "/users/me/contact-share", { cache: "no-store" });
+}
+
+export function saveContactShare(accessToken: string, sharing: boolean): Promise<import("@bhavano/types/seekerContact").ContactSharePreferenceDto> {
+  return authedBffFetch(accessToken, "/users/me/contact-share", { method: "PUT", body: JSON.stringify({ sharing }) });
+}
+
+export function unlockLeadContact(
+  accessToken: string,
+  listingId: string,
+  seekerId: string,
+): Promise<import("@bhavano/types/seekerContact").UnlockLeadContactResponseDto> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/interests/${seekerId}/reveal-contact`, { method: "POST" });
+}
+
 export function saveAlertPreferences(accessToken: string, channels: OwnerAlertChannel[]): Promise<OwnerAlertPreferenceDto> {
   return authedBffFetch(accessToken, "/users/me/alert-preferences", { method: "PUT", body: JSON.stringify({ channels }) });
 }

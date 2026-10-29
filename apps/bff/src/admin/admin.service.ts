@@ -88,6 +88,9 @@ import type { LoginSettingsDto, MoveToMobileAudienceDto, MoveToMobileSendResultD
 import { UpdateLoginSettingsDto } from './dto/update-login-settings.dto';
 import { UpdateOwnerAlertSettingsDto } from './dto/update-owner-alert-settings.dto';
 import { UpdateFeaturedUpsellSettingsDto } from './dto/update-featured-upsell-settings.dto';
+import { UpdateSeekerContactSettingsDto } from './dto/update-seeker-contact-settings.dto';
+import { getSeekerContactSettings, setSeekerContactSettings } from '../seeker-contact/seeker-contact-settings';
+import type { SeekerContactSettingsDto } from '@bhavano/types/seekerContact';
 import { getFeaturedUpsellSettings, setFeaturedUpsellSettings } from '../featured-upsell/featured-upsell-settings';
 import type { FeaturedUpsellSettingsDto } from '@bhavano/types/featuredUpsell';
 import { getOwnerAlertSettings, setOwnerAlertSettings } from '../owner-alerts/owner-alert-settings';
@@ -2699,6 +2702,14 @@ export class AdminService {
       }
     }
     return { sent, skipped };
+  }
+
+  getSeekerContactSettings(): Promise<SeekerContactSettingsDto> {
+    return getSeekerContactSettings(this.prisma);
+  }
+
+  updateSeekerContactSettings(dto: UpdateSeekerContactSettingsDto): Promise<SeekerContactSettingsDto> {
+    return setSeekerContactSettings(this.prisma, dto);
   }
 
   getFeaturedUpsellSettings(): Promise<FeaturedUpsellSettingsDto> {
