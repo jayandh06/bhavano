@@ -33,6 +33,10 @@
       "types": "./dist/loginSettings.d.ts",
       "default": "./dist/loginSettings.js"
     },
+    "./websiteUrl": {
+      "types": "./dist/websiteUrl.d.ts",
+      "default": "./dist/websiteUrl.js"
+    },
     "./ownerAlerts": {
       "types": "./dist/ownerAlerts.d.ts",
       "default": "./dist/ownerAlerts.js"

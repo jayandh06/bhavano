@@ -121,6 +121,7 @@ import {
   POST_AD_SUCCESS_CONVERSION_ACTION_ID,
 } from '../ads/google-ads-conversion.provider';
 import { postAdValueRupees } from '../ads/post-ad-value';
+import { websiteUrl, WEBSITE_URL_MESSAGE } from '@bhavano/types/websiteUrl';
 import { ContactRevealService, type ContactRevealState } from '../contact-reveal/contact-reveal.service';
 import { PlatformFeeSettingsService } from '../plans/platform-fee-settings.service';
 import { platformFeeApplies } from '@bhavano/types/platformFeePricing';
@@ -3705,6 +3706,10 @@ export class ListingsService {
       }
 
       if (value !== undefined && value !== null && value !== '') {
+        // A person's website must be a web address (an owner once typed a whole description here, which the page then linked); bulk imports bring real URLs and are not second-guessed.
+        if (field.key === 'website' && !notRequired && websiteUrl(value) === null) {
+          throw new BadRequestException(WEBSITE_URL_MESSAGE);
+        }
         if (field.type === 'number' || field.type === 'area') {
           const issue = numberFieldIssue(field, value);
           if (issue) throw new BadRequestException(issue);

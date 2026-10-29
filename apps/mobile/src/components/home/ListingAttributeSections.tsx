@@ -7,12 +7,10 @@ import {
   formatFieldValue,
   groupFieldsBySection,
 } from "@bhavano/types/categoryFields";
+import { websiteUrl } from "@bhavano/types/websiteUrl";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon, isIconName } from "../Icon";
 
-function websiteHref(value: string): string {
-  return /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
-}
 
 /**
  * Mirrors the website's grouped attribute cards on `ListingDetailView.tsx` — same visibility rule
@@ -62,12 +60,12 @@ export function ListingAttributeSections({
               {fields.map((field) => (
                 <View key={field.key} style={[styles.gridCell, { flexDirection: "row", alignItems: "flex-start", gap: 5 }]}>
                   {isIconName(field.iconName) && <Icon name={field.iconName} size={13} color={colors.muted} />}
-                  {field.key === "website" && attrs[field.key] ? (
+                  {field.key === "website" && websiteUrl(attrs[field.key]) ? (
                     <Text style={{ fontSize: 13, color: colors.textSoft, flexShrink: 1 }}>
                       <Text style={{ fontWeight: "700", color: colors.text }}>{field.label}</Text>
                       {": "}
                       <Text
-                        onPress={() => Linking.openURL(websiteHref(String(attrs[field.key])))}
+                        onPress={() => Linking.openURL(websiteUrl(attrs[field.key]) ?? "")}
                         style={{ color: colors.green, fontWeight: "600" }}
                       >
                         {String(attrs[field.key])}
