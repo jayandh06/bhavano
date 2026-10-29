@@ -1,6 +1,7 @@
 import type { LoginSettingsDto, MoveToMobileAudienceDto, MoveToMobileSendResultDto } from "@bhavano/types/loginSettings";
 import type { OwnerAlertSettingsDto } from "@bhavano/types/ownerAlerts";
 import type { FeaturedUpsellSettingsDto } from "@bhavano/types/featuredUpsell";
+import type { PageVisitAdOptionsDto } from "@bhavano/types/pageVisitAdOptions";
 import "server-only";
 import { headers } from "next/headers";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
@@ -609,6 +610,10 @@ export interface PageVisitsQuery {
   source?: string;
   medium?: string;
   ip?: string;
+  /** A Google Ads campaign id, or `none` for visits that did not come from an ad. */
+  campaignId?: string;
+  /** A Google Ads ad group id, or `none`. */
+  adGroupId?: string;
   landingPath?: string;
   /** Matches any page view in the session, not just the landing page — see ListPageVisitsDto. */
   pagePath?: string;
@@ -622,6 +627,10 @@ export interface PageVisitsQuery {
   phone?: string;
   sort?: AdminPageVisitSort;
   limit?: number;
+}
+
+export function fetchPageVisitAdOptions(accessToken: string): Promise<PageVisitAdOptionsDto> {
+  return authedBffFetch(accessToken, "/admin/page-visits/ad-options", { cache: "no-store" });
 }
 
 export function fetchPageVisits(accessToken: string, query: PageVisitsQuery = {}): Promise<PageVisitsPage> {

@@ -10,90 +10,88 @@
  * 2026-10-08. */
 export const CAMPAIGN_NAMES: Record<string, string> = {
   '24181952825': 'Leads-Performance Max-1', // paused
+  '24185962743': 'Metro-Rent Out Property (Owners)',
+  '24186099720': 'Metro-Lease Property',
   '24186759508': 'Leads-Search-1', // paused
   '24192021092': 'Metro-Generic Post Ad Intent',
-  '24186099720': 'Metro-Lease Property',
-  '24185962743': 'Metro-Rent Out Property (Owners)',
   '24196652086': 'Metro-Sell Property (Owners/Agents)',
-  '24285013659': 'Other-Metro-Generic Post Ad Intent',
-  '24296211541': 'Other-Metro-Lease Property', // paused
-  '24296141500': 'Other-Metro-Rent Out Property (Owners)',
   '24284961543': 'Other-Metro-Sell Property (Owners/Agents)',
+  '24285013659': 'Other-Metro-Generic Post Ad Intent',
+  '24296141500': 'Other-Metro-Rent Out Property (Owners)',
+  '24296211541': 'Other-Metro-Lease Property', // paused
   '24297610212': 'Metro-Seeker Intent',
-  '24334335817': 'Other-Metro-Lease Property-MaxConv',
+  '24334335817': 'Other-Metro-Lease Property-MaxConv', // paused
   '24392228394': 'Other-Metro-Seeker Intent',
 };
 
 export const AD_GROUP_NAMES: Record<string, string> = {
   '196798436102': 'Ad group 1', // Leads-Search-1
   '198419903663': 'Ad group 1', // Metro-Generic Post Ad Intent
+  '201736872379': 'Star - free property ads posting sites', // Metro-Generic Post Ad Intent
+  '201226790829': 'Star - post free ad for rent', // Metro-Generic Post Ad Intent
   '198411059486': 'Ad Group 3.1 — Lease Commercial/Office', // Metro-Lease Property
   '202586212471': 'Ad Group 3.2 — Lease Residential/Long-term', // Metro-Lease Property
   '199595834373': 'Ad Group 2.1 — Rent Out House/Apartment', // Metro-Rent Out Property (Owners)
   '201241143962': 'Ad Group 2.2 — Rent Out PG', // Metro-Rent Out Property (Owners)
   '201241519122': 'Ad Group 2.3 — Rent Out Villa/Independent House', // Metro-Rent Out Property (Owners)
   '199363402229': 'Ad Group 2.4 — Rent Out Commercial', // Metro-Rent Out Property (Owners)
-  '201629875084': 'Ad Group 2.5 - Rent out Furniture', // Metro-Rent Out Property (Owners)
+  '201629875084': 'Ad Group 2.5 - Rent out Furniture', // Metro-Rent Out Property (Owners) (paused)
+  '202031070856': 'Ad Group 2.6 - Rent Out Coworking', // Metro-Rent Out Property (Owners)
+  '202274622940': 'Star - best place to list apartment for rent', // Metro-Rent Out Property (Owners)
+  '201226780789': 'Star - post rental property for free', // Metro-Rent Out Property (Owners)
+  '199354221734': 'Ad Group — Bengaluru Buy Seekers', // Metro-Seeker Intent (paused)
+  '199354221574': 'Ad Group — Bengaluru Rent Seekers', // Metro-Seeker Intent
+  '201006388963': 'Ad Group — Chennai Buy Seekers', // Metro-Seeker Intent (paused)
+  '206491243652': 'Ad Group — Chennai Rent Seekers', // Metro-Seeker Intent
+  '206491243572': 'Ad Group — Delhi NCR Buy Seekers', // Metro-Seeker Intent (paused)
+  '206491243332': 'Ad Group — Delhi NCR Rent Seekers', // Metro-Seeker Intent
+  '201399937157': 'Ad Group — Hyderabad Buy Seekers', // Metro-Seeker Intent (paused)
+  '201399936637': 'Ad Group — Hyderabad Rent Seekers', // Metro-Seeker Intent
+  '202226465922': 'Ad Group — Kolkata Buy Seekers', // Metro-Seeker Intent (paused)
+  '202226465882': 'Ad Group — Kolkata Rent Seekers', // Metro-Seeker Intent
+  '201006389003': 'Ad Group — Mumbai Buy Seekers', // Metro-Seeker Intent (paused)
+  '206491243812': 'Ad Group — Mumbai Rent Seekers', // Metro-Seeker Intent
+  '199354221814': 'Ad Group — Pune Buy Seekers', // Metro-Seeker Intent (paused)
+  '199354221774': 'Ad Group — Pune Rent Seekers', // Metro-Seeker Intent
   '200702632978': 'Ad Group 1.1 — Sell House/Property Online', // Metro-Sell Property (Owners/Agents)
   '205333958048': 'Ad Group 1.2 — Sell Apartment/Flat', // Metro-Sell Property (Owners/Agents)
   '202583649071': 'Ad Group 1.3 — Sell Villa', // Metro-Sell Property (Owners/Agents)
   '201190284913': 'Ad Group 1.4 — Sell Plot/Land', // Metro-Sell Property (Owners/Agents)
   '196651916541': 'Ad Group 1.5 — Sell Commercial Property', // Metro-Sell Property (Owners/Agents)
+  '196844821410': 'Star - free property listing site', // Metro-Sell Property (Owners/Agents)
   '201547741818': 'Ad group 1', // Other-Metro-Generic Post Ad Intent
+  '201226788949': 'Star - free property ads posting sites', // Other-Metro-Generic Post Ad Intent
   '203420143351': 'Ad Group 3.1 — Lease Commercial/Office', // Other-Metro-Lease Property
   '203420143191': 'Ad Group 3.2 — Lease Residential/Long-term', // Other-Metro-Lease Property
+  '201054972699': 'Ad Group 3.1 — Lease Commercial/Office', // Other-Metro-Lease Property-MaxConv
+  '201054972659': 'Ad Group 3.2 — Lease Residential/Long-term', // Other-Metro-Lease Property-MaxConv
   '198875640405': 'Ad Group 2.1 — Rent Out House/Apartment', // Other-Metro-Rent Out Property (Owners)
   '198875640685': 'Ad Group 2.2 — Rent Out PG', // Other-Metro-Rent Out Property (Owners)
   '198875640445': 'Ad Group 2.3 — Rent Out Villa/Independent House', // Other-Metro-Rent Out Property (Owners)
   '198875640645': 'Ad Group 2.4 — Rent Out Commercial', // Other-Metro-Rent Out Property (Owners)
-  '198875640605': 'Ad Group 2.5 - Rent out Furniture', // Other-Metro-Rent Out Property (Owners)
+  '198875640605': 'Ad Group 2.5 - Rent out Furniture', // Other-Metro-Rent Out Property (Owners) (paused)
+  '201736871659': 'Star - post rental property for free', // Other-Metro-Rent Out Property (Owners)
+  '196803710130': 'Ad Group — Ahmedabad Buy Seekers', // Other-Metro-Seeker Intent (paused)
+  '196803709170': 'Ad Group — Ahmedabad Rent Seekers', // Other-Metro-Seeker Intent
+  '196803714610': 'Ad Group — Coimbatore Buy Seekers', // Other-Metro-Seeker Intent (paused)
+  '200780065919': 'Ad Group — Coimbatore Rent Seekers', // Other-Metro-Seeker Intent
+  '196803716610': 'Ad Group — Jaipur Buy Seekers', // Other-Metro-Seeker Intent (paused)
+  '196803715610': 'Ad Group — Jaipur Rent Seekers', // Other-Metro-Seeker Intent
+  '196803718970': 'Ad Group — Lucknow Buy Seekers', // Other-Metro-Seeker Intent (paused)
+  '196803717570': 'Ad Group — Lucknow Rent Seekers', // Other-Metro-Seeker Intent
   '200422013973': 'Ad Group 1.1 — Sell House/Property Online', // Other-Metro-Sell Property (Owners/Agents)
   '200422014173': 'Ad Group 1.2 — Sell Apartment/Flat', // Other-Metro-Sell Property (Owners/Agents)
   '200422013933': 'Ad Group 1.3 — Sell Villa', // Other-Metro-Sell Property (Owners/Agents)
   '200422013893': 'Ad Group 1.4 — Sell Plot/Land', // Other-Metro-Sell Property (Owners/Agents)
   '200422014133': 'Ad Group 1.5 — Sell Commercial Property', // Other-Metro-Sell Property (Owners/Agents)
-  '6742871063': 'Asset Group 1', // Leads-Performance Max-1 (Performance Max has no ad groups)
-  '199354221574': 'Ad Group — Bengaluru Rent Seekers', // Metro-Seeker Intent
-  '199354221734': 'Ad Group — Bengaluru Buy Seekers', // Metro-Seeker Intent
-  '199354221774': 'Ad Group — Pune Rent Seekers', // Metro-Seeker Intent
-  '199354221814': 'Ad Group — Pune Buy Seekers', // Metro-Seeker Intent
-  '202226465882': 'Ad Group — Kolkata Rent Seekers', // Metro-Seeker Intent
-  '202226465922': 'Ad Group — Kolkata Buy Seekers', // Metro-Seeker Intent
-  // Added 2026-10-21 by ads_add_seeker_city_ad_groups.py (the cities added to the campaign's location targeting)
-  '201399936637': 'Ad Group — Hyderabad Rent Seekers', // Metro-Seeker Intent
-  '201399937157': 'Ad Group — Hyderabad Buy Seekers', // Metro-Seeker Intent
-  '206491243332': 'Ad Group — Delhi NCR Rent Seekers', // Metro-Seeker Intent
-  '206491243572': 'Ad Group — Delhi NCR Buy Seekers', // Metro-Seeker Intent
-  '206491243652': 'Ad Group — Chennai Rent Seekers', // Metro-Seeker Intent
-  '201006388963': 'Ad Group — Chennai Buy Seekers', // Metro-Seeker Intent
-  '206491243812': 'Ad Group — Mumbai Rent Seekers', // Metro-Seeker Intent
-  '201006389003': 'Ad Group — Mumbai Buy Seekers', // Metro-Seeker Intent
-  '196803709170': 'Ad Group — Ahmedabad Rent Seekers', // Other-Metro-Seeker Intent
-  '196803710130': 'Ad Group — Ahmedabad Buy Seekers', // Other-Metro-Seeker Intent
-  '200780065919': 'Ad Group — Coimbatore Rent Seekers', // Other-Metro-Seeker Intent
-  '196803714610': 'Ad Group — Coimbatore Buy Seekers', // Other-Metro-Seeker Intent
-  '196803715610': 'Ad Group — Jaipur Rent Seekers', // Other-Metro-Seeker Intent
-  '196803716610': 'Ad Group — Jaipur Buy Seekers', // Other-Metro-Seeker Intent
-  '196803717570': 'Ad Group — Lucknow Rent Seekers', // Other-Metro-Seeker Intent
-  '196803718970': 'Ad Group — Lucknow Buy Seekers', // Other-Metro-Seeker Intent
-  '201054972699': 'Ad Group 3.1 — Lease Commercial/Office', // Other-Metro-Lease Property-MaxConv
-  '201054972659': 'Ad Group 3.2 — Lease Residential/Long-term', // Other-Metro-Lease Property-MaxConv
-  // Star ad groups, ads_star_keyword_groups.py (2026-10-27)
-  '196844821410': 'Star - free property listing site', // Metro-Sell Property (Owners/Agents)
   '201226778629': 'Star - free property listing site', // Other-Metro-Sell Property (Owners/Agents)
-  '201226780789': 'Star - post rental property for free', // Metro-Rent Out Property (Owners)
-  '201736871659': 'Star - post rental property for free', // Other-Metro-Rent Out Property (Owners)
-  '202274622940': 'Star - best place to list apartment for rent', // Metro-Rent Out Property (Owners)
-  '201226788949': 'Star - free property ads posting sites', // Other-Metro-Generic Post Ad Intent
-  '201736872379': 'Star - free property ads posting sites', // Metro-Generic Post Ad Intent
-  '201226790829': 'Star - post free ad for rent', // Metro-Generic Post Ad Intent
 };
 
 /** Ad id -> its first two headlines, for display (the admin campaign analytics). A responsive ad has no
  * name of its own, so the headlines stand in; the last four digits of the id keep ads that share
  * headlines apart. Ads are created and replaced often: regenerate with `python ads_ad_names.py` from
  * the repo root and paste the block over this one. An id missing here shows as the bare number.
- * Last regenerated 2026-10-24. */
+ * Last regenerated 2026-10-29. */
 export const AD_NAMES: Record<string, string> = {
   '822354745373': 'List Your Property Free / Post Property Ad Free (...5373)',
   '822598063377': 'Sell Your House Online Fast / Post Property Ad in Minutes (...3377)',

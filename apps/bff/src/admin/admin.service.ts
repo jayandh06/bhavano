@@ -106,6 +106,7 @@ import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
 import type { AgentProGrantReason } from './dto/grant-agent-pro.dto';
 import { utcMonthKey } from '../payments/payments.service';
 import { CAMPAIGN_NAMES, AD_GROUP_NAMES } from '../ads/campaign-names';
+import type { PageVisitAdOptionsDto } from '@bhavano/types/pageVisitAdOptions';
 import { PushService } from '../push/push.service';
 import { MessagingGateway } from '../messaging/messaging.gateway';
 import { STAFF_SENDER_LABEL } from '../messaging/messaging.service';
@@ -827,6 +828,40 @@ export class AdminService {
    * `User.acquisition*`, filterable on every column. `from`/`to` are already offset-adjusted ISO
    * strings (the admin page turns its IST date pickers into `+05:30` bounds), so a plain
    * `new Date()` here lands on the right instant. */
+  /** The Campaign / Ad group dropdowns on Page visits: every known campaign and ad group, plus any id seen on a visit in the last 120 days, with how many visits each had. */
+  async getPageVisitAdOptions(): Promise<PageVisitAdOptionsDto> {
+    const since = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000);
+    const rows = await this.prisma.visit.groupBy({
+      by: ['campaignId', 'adGroupId'],
+      where: { campaignId: { not: null }, createdAt: { gte: since } },
+      _count: { _all: true },
+    });
+    const campaignVisits = new Map<string, number>();
+    const adGroups = new Map<string, { campaignId: string | null; visits: number }>();
+    for (const row of rows) {
+      if (row.campaignId) campaignVisits.set(row.campaignId, (campaignVisits.get(row.campaignId) ?? 0) + row._count._all);
+      if (row.adGroupId) {
+        const seen = adGroups.get(row.adGroupId);
+        adGroups.set(row.adGroupId, { campaignId: seen?.campaignId ?? row.campaignId, visits: (seen?.visits ?? 0) + row._count._all });
+      }
+    }
+    for (const id of Object.keys(CAMPAIGN_NAMES)) if (!campaignVisits.has(id)) campaignVisits.set(id, 0);
+    for (const id of Object.keys(AD_GROUP_NAMES)) if (!adGroups.has(id)) adGroups.set(id, { campaignId: null, visits: 0 });
+    const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+    return {
+      campaigns: [...campaignVisits].map(([id, visits]) => ({ id, name: CAMPAIGN_NAMES[id] ?? `Campaign ${id}`, visits })).sort(byName),
+      adGroups: [...adGroups]
+        .map(([id, g]) => ({
+          id,
+          name: AD_GROUP_NAMES[id] ?? `Ad group ${id}`,
+          campaignId: g.campaignId,
+          campaignName: g.campaignId ? (CAMPAIGN_NAMES[g.campaignId] ?? null) : null,
+          visits: g.visits,
+        }))
+        .sort(byName),
+    };
+  }
+
   async listPageVisits(query: ListPageVisitsDto): Promise<PageVisitsPage> {
     const { offset, from, to, userId, identity, deviceType, os, traffic, sort, limit } = query;
 
@@ -900,6 +935,10 @@ export class AdminService {
       const clause = parseTextFilter(raw);
       if (clause) where[field] = clause;
     }
+
+    // Exact ids (chosen from dropdowns); `none` means the visit did not come from an ad.
+    if (query.campaignId) where.campaignId = query.campaignId === 'none' ? null : query.campaignId;
+    if (query.adGroupId) where.adGroupId = query.adGroupId === 'none' ? null : query.adGroupId;
 
     // Relation filters, not direct Visit columns — see ListPageVisitsDto's email/phone doc
     // comments for the Visit.userId-only scope limitation this inherits.

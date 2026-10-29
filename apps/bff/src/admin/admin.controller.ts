@@ -94,6 +94,7 @@ import { UpdateReminderSettingsDto } from './dto/update-reminder-settings.dto';
 import { UpdateLoginSettingsDto } from './dto/update-login-settings.dto';
 import { UpdateOwnerAlertSettingsDto } from './dto/update-owner-alert-settings.dto';
 import { UpdateFeaturedUpsellSettingsDto } from './dto/update-featured-upsell-settings.dto';
+import type { PageVisitAdOptionsDto } from '@bhavano/types/pageVisitAdOptions';
 import type { FeaturedUpsellSettingsDto } from '@bhavano/types/featuredUpsell';
 import type { OwnerAlertSettingsDto } from '@bhavano/types/ownerAlerts';
 import type { LoginSettingsDto, MoveToMobileAudienceDto, MoveToMobileSendResultDto } from '@bhavano/types/loginSettings';
@@ -383,6 +384,11 @@ export class AdminController {
   @Get('page-visits')
   listPageVisits(@Query() query: ListPageVisitsDto): Promise<PageVisitsPage> {
     return this.adminService.listPageVisits(query);
+  }
+
+  @Get('page-visits/ad-options')
+  getPageVisitAdOptions(): Promise<PageVisitAdOptionsDto> {
+    return this.adminService.getPageVisitAdOptions();
   }
 
   @Get('page-visits/:sessionId/trail')

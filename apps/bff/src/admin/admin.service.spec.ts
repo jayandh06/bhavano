@@ -129,6 +129,27 @@ function listingRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+describe('AdminService.getPageVisitAdOptions — the Campaign / Ad group dropdowns on Page visits', () => {
+  it('lists known campaigns and ad groups with their visit counts, keeping an unknown id as a number', async () => {
+    const groupBy = jest.fn().mockResolvedValue([
+      { campaignId: '24185962743', adGroupId: '201241143962', _count: { _all: 40 } },
+      { campaignId: '24185962743', adGroupId: '201241143962', _count: { _all: 2 } },
+      { campaignId: '99999999', adGroupId: '88888888', _count: { _all: 5 } },
+    ]);
+    const { service } = makeService({ visit: { groupBy } });
+    const options = await service.getPageVisitAdOptions();
+
+    const rentOut = options.campaigns.find((c) => c.id === '24185962743');
+    expect(rentOut).toEqual({ id: '24185962743', name: 'Metro-Rent Out Property (Owners)', visits: 42 });
+    expect(options.campaigns.find((c) => c.id === '99999999')).toEqual({ id: '99999999', name: 'Campaign 99999999', visits: 5 });
+    expect(options.adGroups.find((g) => g.id === '201241143962')).toMatchObject({ visits: 42, campaignId: '24185962743', campaignName: 'Metro-Rent Out Property (Owners)' });
+    expect(options.adGroups.find((g) => g.id === '88888888')).toMatchObject({ name: 'Ad group 88888888', visits: 5 });
+    // A campaign nobody has visited yet is still offered, with zero.
+    expect(options.campaigns.some((c) => c.visits === 0)).toBe(true);
+    expect(groupBy).toHaveBeenCalledWith(expect.objectContaining({ by: ['campaignId', 'adGroupId'] }));
+  });
+});
+
 describe('AdminService.listUsers', () => {
   it('filters, sorts, and returns live listing and contact reveal balances', async () => {
     const stats = {

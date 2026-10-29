@@ -41,6 +41,10 @@
       "types": "./dist/featuredUpsell.d.ts",
       "default": "./dist/featuredUpsell.js"
     },
+    "./pageVisitAdOptions": {
+      "types": "./dist/pageVisitAdOptions.d.ts",
+      "default": "./dist/pageVisitAdOptions.js"
+    },
     "./ownerAlerts": {
       "types": "./dist/ownerAlerts.d.ts",
       "default": "./dist/ownerAlerts.js"

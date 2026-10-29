@@ -6,6 +6,7 @@ import {
   AdminPageVisitSort,
   AdminPageVisitSortField,
   AdminPageVisitTraffic,
+  fetchPageVisitAdOptions,
   fetchPageVisits,
 } from "@/lib/bff";
 import {
@@ -94,6 +95,8 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const source = str(sp.source);
   const medium = str(sp.medium);
   const ip = str(sp.ip);
+  const campaignId = str(sp.campaignId);
+  const adGroupId = str(sp.adGroupId);
   const landingPath = str(sp.landingPath);
   const pagePath = str(sp.pagePath);
   const city = str(sp.city);
@@ -103,6 +106,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const phone = str(sp.phone);
   const sort = str(sp.sort) as AdminPageVisitSort | undefined;
 
+  const adOptions = await fetchPageVisitAdOptions(accessToken).catch(() => ({ campaigns: [], adGroups: [] }));
   const result = await fetchPageVisits(accessToken, {
     offset: (currentPage - 1) * limit,
     from: istDayStart(from),
@@ -115,6 +119,8 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
     source,
     medium,
     ip,
+    campaignId,
+    adGroupId,
     landingPath,
     pagePath,
     city,
@@ -193,6 +199,34 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                     {o.label}
                   </option>
                 ))}
+              </SelectField>
+            </Field>
+
+            <Field label="Campaign">
+              <SelectField name="campaignId" defaultValue={campaignId ?? ""} style={selectStyle}>
+                <option value="">All campaigns</option>
+                <option value="none">No ad (not from Google Ads)</option>
+                {adOptions.campaigns.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.visits.toLocaleString()})
+                  </option>
+                ))}
+              </SelectField>
+            </Field>
+
+            <Field label="Ad group">
+              <SelectField name="adGroupId" defaultValue={adGroupId ?? ""} style={selectStyle}>
+                <option value="">All ad groups</option>
+                <option value="none">No ad group</option>
+                {adOptions.adGroups
+                  // Once a campaign is chosen, only its ad groups are offered (an ad group seen on no visit has no known campaign, so it stays listed).
+                  .filter((g) => !campaignId || campaignId === "none" || g.campaignId === null || g.campaignId === campaignId)
+                  .map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                      {!campaignId && g.campaignName ? ` \u2014 ${g.campaignName}` : ""} ({g.visits.toLocaleString()})
+                    </option>
+                  ))}
               </SelectField>
             </Field>
 
