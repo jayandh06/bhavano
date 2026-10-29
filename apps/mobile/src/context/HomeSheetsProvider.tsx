@@ -40,6 +40,7 @@ import {
   verifyOtp,
 } from "../lib/bffClient";
 import { useGoogleSignIn } from "../lib/googleSignIn";
+import { useSeekerContactSettings } from "../lib/useSeekerContactSettings";
 import { useEmailLoginModeQuery } from "../lib/queries";
 import { emailLoginIsRestricted } from "@bhavano/types/loginSettings";
 import { getOrCreateViewerKey } from "../lib/viewerKey";
@@ -170,6 +171,7 @@ export function HomeSheetsProvider({
   // Android only: tracked so the profile-basics step can pad its scroll view by the keyboard's
   // height (see that sheet below). iOS's own sheet keyboard handling already copes there.
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const seekerContact = useSeekerContactSettings();
   useEffect(() => {
     if (Platform.OS !== "android") return;
     const show = Keyboard.addListener("keyboardDidShow", (e) => setKeyboardHeight(e.endCoordinates.height));
@@ -990,6 +992,11 @@ export function HomeSheetsProvider({
               {emailLoginIsRestricted(emailLogin) && (
                 <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
                   Google sign-in is for existing accounts. New here? Continue with your mobile number.
+                </Text>
+              )}
+              {seekerContact.enabled && seekerContact.consentMode === "notice" && (
+                <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
+                  If you show interest in an ad, its owner may be able to see your mobile number and call you. You can turn this off in your account.
                 </Text>
               )}
               {/* Same wording/links as the web login dialog's own disclaimer. */}

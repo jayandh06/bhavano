@@ -1,6 +1,7 @@
 import { Linking, Text, View } from "react-native";
 import { LEGAL_ENTITY, entityAddressLines, entityOperatorSentence } from "@bhavano/types/legalEntity";
 import { useAppTheme } from "../src/theme/ThemeContext";
+import { useSeekerContactSettings } from "../src/lib/useSeekerContactSettings";
 import { P, PageLink, PageSection, StaticPageLayout } from "../src/components/home/StaticPageLayout";
 
 function Bullet({ children, indent = false }: { children: React.ReactNode; indent?: boolean }) {
@@ -17,6 +18,8 @@ function Bullet({ children, indent = false }: { children: React.ReactNode; inden
 // duplicated rather than loaded from the live page. Keep both in sync.
 export default function PrivacyScreen() {
   const { colors } = useAppTheme();
+  // The paragraph about owners seeing a verified number is shown only while it is true (Admin -> Settings -> Seeker contact).
+  const seekerContact = useSeekerContactSettings();
   const addressLines = entityAddressLines();
   const b = (label: string) => <Text style={{ fontWeight: "700", color: colors.text }}>{label}</Text>;
   const mail = (
@@ -26,7 +29,7 @@ export default function PrivacyScreen() {
   );
 
   return (
-    <StaticPageLayout title="Privacy Policy" updated="27 September 2026">
+    <StaticPageLayout title="Privacy Policy" updated={seekerContact.enabled ? "29 October 2026" : "27 September 2026"}>
       <PageSection heading="Who processes your data">
         <P>
           {entityOperatorSentence()} {LEGAL_ENTITY.legalName} is the data fiduciary responsible for the personal
@@ -128,6 +131,16 @@ export default function PrivacyScreen() {
             become visible to another user once you message each other about a listing, or once they unlock your
             listing&rsquo;s contact details.
           </Bullet>
+          {seekerContact.enabled && (
+            <Bullet>
+              {b("Owners of ads you show interest in:")} when you open an ad while logged in, or save or message about it,
+              its owner is told, and the owner can see your name. If your mobile number is verified, the owner can also see it
+              and call you when their ad is Featured, or when they choose to unlock it, for 30 days after you showed interest.{" "}
+              {seekerContact.consentMode === "opt_in"
+                ? "We do this only if you have agreed, and you can change your mind at any time in your account."
+                : "You can turn this off at any time in your account (Who can call you); we then stop showing your number to owners straight away."}
+            </Bullet>
+          )}
           <Bullet>{b("Service providers")} that run parts of the Platform for us, only for that purpose:</Bullet>
           <Bullet indent>cloud hosting and database (Amazon Web Services, India);</Bullet>
           <Bullet indent>photo and video storage and delivery (Cloudflare);</Bullet>
