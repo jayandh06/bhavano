@@ -256,16 +256,23 @@ export class ContactRevealService {
 
     // Tell the advertiser a seeker just unlocked their number: the strongest buying signal they get, and one that used to reach nobody. Not for an unclaimed
     // bulk-import listing (its "owner" is the import account), and only the first reveal by this seeker (a repeat call is a plain read).
+    // Never when the one revealing is staff (checking or testing an ad): the owner must not be told.
     if (created && !isUnverified && listing.ownerId !== userId) {
-      void this.ownerAlerts
-        .alert(listing.ownerId, {
-          kind: 'reveal',
-          listingId,
-          listingTitle: listing.title,
-          featured: (listing.instantAlertsUntil?.getTime() ?? 0) > Date.now(),
-        })
-        .then((channel) =>
-          channel ? this.prisma.listingNotificationLog.create({ data: { listingId, kind: 'contact_revealed', channel } }) : undefined,
+      void this.prisma.user
+        .findUnique({ where: { id: userId }, select: { role: true } })
+        .then((requester) =>
+          requester?.role === 'admin'
+            ? undefined
+            : this.ownerAlerts
+                .alert(listing.ownerId, {
+                  kind: 'reveal',
+                  listingId,
+                  listingTitle: listing.title,
+                  featured: (listing.instantAlertsUntil?.getTime() ?? 0) > Date.now(),
+                })
+                .then((channel) =>
+                  channel ? this.prisma.listingNotificationLog.create({ data: { listingId, kind: 'contact_revealed', channel } }) : undefined,
+                ),
         )
         .catch(() => undefined);
     }

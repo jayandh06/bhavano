@@ -8,6 +8,7 @@ function makeService(
     ownerPhone?: string;
     phoneRequirement?: string;
     requesterPhone?: string | null;
+    requesterRole?: string;
     alreadyRevealed?: boolean;
     claimContact?: { phone: string | null; email: string | null } | null;
   } = {},
@@ -24,7 +25,7 @@ function makeService(
   };
   const prisma = {
     loginSetting: { findUnique: jest.fn().mockResolvedValue(opts.phoneRequirement ? { emailLogin: 'all', phoneRequirement: opts.phoneRequirement } : null) },
-    user: { findUnique: jest.fn().mockResolvedValue({ phone: opts.requesterPhone ?? null }) },
+    user: { findUnique: jest.fn().mockResolvedValue({ phone: opts.requesterPhone ?? null, role: opts.requesterRole ?? 'user' }) },
     listing: {
       findUnique: jest
         .fn()
@@ -56,8 +57,25 @@ function makeService(
     },
     $transaction: (run: (t: typeof tx) => unknown) => run(tx),
   } as unknown as PrismaService;
-  return { service: new ContactRevealService(prisma, { alert: jest.fn().mockResolvedValue(null) } as never), tx };
+  const ownerAlerts = { alert: jest.fn().mockResolvedValue(null) };
+  return { service: new ContactRevealService(prisma, ownerAlerts as never), tx, ownerAlerts };
 }
+
+describe('ContactRevealService — staff reveals never alert the owner', () => {
+  it('does not alert the owner when the one revealing is an admin', async () => {
+    const { service, ownerAlerts } = makeService({ requesterRole: 'admin', requesterPhone: '9876543210' });
+    await service.revealContact('admin1', 'l1');
+    await new Promise((r) => setImmediate(r));
+    expect(ownerAlerts.alert).not.toHaveBeenCalled();
+  });
+
+  it('still alerts the owner for an ordinary user', async () => {
+    const { service, ownerAlerts } = makeService({ requesterRole: 'user', requesterPhone: '9876543210' });
+    await service.revealContact('buyer1', 'l1');
+    await new Promise((r) => setImmediate(r));
+    expect(ownerAlerts.alert).toHaveBeenCalled();
+  });
+});
 
 describe('ContactRevealService — mobile number required', () => {
   it('locks contact details for an account with no phone while "required" is on', async () => {

@@ -51,3 +51,6 @@ Templates (approval takes days) in parallel with the model and dispatcher (about
 - `GET /users/me/alert-preferences` now returns `freeAdChannels`, and the Preview card, Profile and Account cards stop calling an open channel a Featured benefit (`ownerAlertPricingNote`, `paidChannelOpen`, `effectiveOwnerAlertChannel(..., freeAds)` in `@bhavano/types/ownerAlerts`). An older app that does not send the field is unaffected.
 - Cost: a WhatsApp utility message is roughly 30 to 50 paise; SMS costs more. Watch `ListingNotificationLog` rows with channel `whatsapp` and kinds `new_message` / `contact_revealed` for volume.
 - **Live setting on 2026-10-29:** WhatsApp on for all ads, SMS off.
+
+## Staff never trigger owner alerts (2026-10-29)
+A listing-details view, a contact reveal or a favourite **by an admin account** (checking, testing, moderating) sends the owner nothing on any channel: no push, email, WhatsApp or SMS. Enforced in `ListingsService.notifyOwnerOfInterest` and `notifyOwnerOfLike` (the acting user's `role === 'admin'` returns before any send) and in `ContactRevealService.revealContact` (the alert is skipped when the revealer is an admin). The interest row is still recorded, so it can still appear in the owner's "interested" list; the one-off backfill scripts (24 h and 3 days, 2026-10-29) excluded admin accounts the same way.

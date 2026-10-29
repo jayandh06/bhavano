@@ -3351,7 +3351,7 @@ export class ListingsService {
       }),
       this.prisma.user.findUnique({
         where: { id: likerId },
-        select: { name: true },
+        select: { name: true, role: true },
       }),
       this.prisma.listingPhoto.findFirst({
         where: { listingId },
@@ -3360,6 +3360,8 @@ export class ListingsService {
       }),
     ]);
     if (!owner) return;
+    // Staff favouriting an ad (checking, testing, moderating) must never tell the owner: no push, email, WhatsApp or SMS.
+    if (liker?.role === 'admin') return;
 
     const likerName = liker?.name?.trim() || 'Someone';
     const imageUrl = firstPhoto
@@ -3480,7 +3482,7 @@ export class ListingsService {
       }),
       this.prisma.user.findUnique({
         where: { id: interestedUserId },
-        select: { name: true },
+        select: { name: true, role: true },
       }),
       this.prisma.listingPhoto.findFirst({
         where: { listingId },
@@ -3489,6 +3491,8 @@ export class ListingsService {
       }),
     ]);
     if (!owner) return;
+    // Staff opening an ad's details must never tell the owner someone is interested: no push, email, WhatsApp or SMS.
+    if (interested?.role === 'admin') return;
 
     const interestedName = interested?.name?.trim() || 'Someone';
     const imageUrl = firstPhoto

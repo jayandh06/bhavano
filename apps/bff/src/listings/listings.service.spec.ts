@@ -1721,6 +1721,20 @@ describe('ListingsService', () => {
   });
 
   describe('toggleFavourite — like-notification is boost-gated', () => {
+    it('never notifies the owner when an admin favourites the ad, even a boosted one', async () => {
+      const { service, prisma, notificationsService, pushService } = makeService();
+      (prisma.favourite.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.favourite.create as jest.Mock).mockResolvedValue({});
+      (prisma.listing.update as jest.Mock).mockResolvedValue({ likeCount: 5, title: 'A boosted listing', ownerId: 'owner1', boostedUntil: future() });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ email: 'owner@example.com', phone: null, name: 'Staff', role: 'admin' });
+
+      await service.toggleFavourite('listing1', 'admin1');
+      await new Promise((r) => setImmediate(r));
+
+      expect(notificationsService.notifyListingLiked).not.toHaveBeenCalled();
+      expect(pushService.notifyListingFavourite).not.toHaveBeenCalled();
+    });
+
     it('notifies the owner when the listing is currently boosted and the liker is someone else', async () => {
       const { service, prisma, notificationsService } = makeService();
       (prisma.favourite.findUnique as jest.Mock).mockResolvedValue(null);
@@ -1923,6 +1937,22 @@ describe('ListingsService', () => {
       expect(prisma.listingInterest.upsert).toHaveBeenCalled();
       await new Promise((r) => setImmediate(r));
       expect(ownerAlerts.alert).toHaveBeenCalledWith('owner1', expect.objectContaining({ kind: 'interest', name: 'Riya' }));
+    });
+
+    it('never alerts the owner when an admin opens the ad (no push, no email / WhatsApp / SMS)', async () => {
+      const { service, prisma, ownerAlerts, pushService } = makeService();
+      (prisma.listing.findUnique as jest.Mock).mockResolvedValue(stubListing());
+      (prisma.listingInterest.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.listingInterest.upsert as jest.Mock).mockResolvedValue({});
+      (prisma.user.findUnique as jest.Mock)
+        .mockResolvedValueOnce({ email: 'owner@example.com', phone: null })
+        .mockResolvedValueOnce({ name: 'Staff', role: 'admin' });
+
+      await service.recordInterest('listing1', 'admin1', 'view');
+      await new Promise((r) => setImmediate(r));
+
+      expect(pushService.notifyListingInterest).not.toHaveBeenCalled();
+      expect(ownerAlerts.alert).not.toHaveBeenCalled();
     });
 
     it('does not send interest notify on message mode (message path covers notify)', async () => {
