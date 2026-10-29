@@ -1,3 +1,5 @@
+import { FeaturedUpsellCard } from "./FeaturedUpsellCard";
+import { fetchFeaturedUpsellSettings } from "@/lib/bff";
 import { websiteUrl } from "@bhavano/types/websiteUrl";
 import Link from "next/link";
 import type { Area, City, ListingDetailDto } from "@bhavano/types";
@@ -113,6 +115,9 @@ export async function ListingDetailView({
   // Best-effort: a failed settings read costs the login ask on this view, never the listing.
   const loginNudge = !accessToken && !listing.isOwner ? await fetchLoginNudgeSettings().catch(() => null) : null;
 
+  // The owner's own page only, and only while the ad is not Featured; a failed read just means no card.
+  const featuredUpsell = listing.isOwner && !listing.isBoosted ? await fetchFeaturedUpsellSettings() : null;
+
   return (
     <div className="min-h-screen bg-bg text-text">
       <Header
@@ -126,6 +131,21 @@ export async function ListingDetailView({
         areaName={listing.area}
       />
       <ViewTracker listingId={listing.id} recordInterest={!!accessToken && !listing.isOwner} />
+      {featuredUpsell?.listingCardEnabled && (
+        <FeaturedUpsellCard
+          settings={featuredUpsell}
+          listing={{
+            id: listing.id,
+            category: listing.category,
+            title: listing.title,
+            status: listing.status,
+            isBoosted: listing.isBoosted,
+            createdAt: listing.createdAt,
+            viewCount: listing.viewCount,
+            likeCount: listing.likeCount,
+          }}
+        />
+      )}
       {loginNudge && (
         <ListingLoginNudge listingId={listing.id} settings={loginNudge} googleClientId={process.env.GOOGLE_CLIENT_ID} />
       )}

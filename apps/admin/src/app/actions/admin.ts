@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { LoginSettingsDto, MoveToMobileSendResultDto } from "@bhavano/types/loginSettings";
 import type { OwnerAlertSettingsDto } from "@bhavano/types/ownerAlerts";
+import type { FeaturedUpsellSettingsDto } from "@bhavano/types/featuredUpsell";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { AppVersionSettingsDto } from "@bhavano/types/appVersion";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
@@ -60,6 +61,7 @@ import {
   updatePostedConfirmationSettings,
   sendMoveToMobile,
   updateLoginSettings,
+  updateFeaturedUpsellSettings,
   updateOwnerAlertSettings,
   updateReminderSettings,
   updateSavedSearchSettings,
@@ -255,6 +257,17 @@ export async function sendMoveToMobileAction(
     return { success: true, result };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to send the messages" };
+  }
+}
+
+export async function updateFeaturedUpsellSettingsAction(input: FeaturedUpsellSettingsDto): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updateFeaturedUpsellSettings(accessToken, input);
+    revalidatePath("/settings/featured-upsell");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update the Featured prompt" };
   }
 }
 

@@ -6,7 +6,7 @@ import { listingPriceText } from "@bhavano/types/priceWords";
 import { goLiveTimeText } from "@bhavano/types/goLive";
 import { postHref } from "@/lib/postHref";
 import { auth } from "@/auth";
-import { BffAuthError, fetchMyListings, fetchMyReferrals, fetchProfile, previewBoostPricing } from "@/lib/bff";
+import { BffAuthError, fetchFeaturedUpsellSettings, fetchMyListings, fetchMyReferrals, fetchProfile, previewBoostPricing } from "@/lib/bff";
 import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
 import { ListingSlotMeter } from "@/components/home/ListingSlotMeter";
 import { buildListingPath } from "@/lib/listingPath";
@@ -17,6 +17,7 @@ import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { BoostButton } from "@/components/home/BoostButton";
 import { ListingInterestsPanel } from "@/components/home/ListingInterestsPanel";
 import { AutoOpenPurchaseModal } from "@/components/home/AutoOpenPurchaseModal";
+import { FeaturedUpsellDialog } from "@/components/home/FeaturedUpsellDialog";
 import {
   AutoOpenPublishCheckout,
   CompletePublishPaymentButton,
@@ -138,6 +139,7 @@ async function MyListingsGrid({
   //
   // Best-effort: a failure leaves the dialog to its own fetch (with its retries), which is exactly
   // the behaviour this replaces rather than a new failure mode.
+  const upsellSettings = await fetchFeaturedUpsellSettings();
   const openBoostListing = openBoostId ? listings.find((item) => item.id === openBoostId) : undefined;
   const openBoostPricing = openBoostListing
     ? await previewBoostPricing(accessToken, openBoostListing.category, ACTIVE_PROMO_CODE).catch(
@@ -163,6 +165,23 @@ async function MyListingsGrid({
         listings={listings.map((l) => ({ id: l.id, category: l.category }))}
         initialPricing={openBoostPricing}
       />
+      {upsellSettings.enabled && (
+        <FeaturedUpsellDialog
+          settings={upsellSettings}
+          listings={listings.map((l) => ({
+            id: l.id,
+            category: l.category,
+            title: l.title,
+            status: l.status,
+            publishState: l.publishState,
+            isBoosted: l.isBoosted,
+            createdAt: l.createdAt,
+            viewCount: l.viewCount,
+            likeCount: l.likeCount,
+            interestCount: l.interestCount,
+          }))}
+        />
+      )}
       <ListingSlotMeter profile={profile} />
       {referrals && activeListings.some((item) => item.status === "active") && (
         <ReferralBanner referrals={referrals} />

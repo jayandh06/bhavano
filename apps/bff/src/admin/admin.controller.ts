@@ -93,6 +93,8 @@ import { UpdatePostedConfirmationSettingsDto } from './dto/update-posted-confirm
 import { UpdateReminderSettingsDto } from './dto/update-reminder-settings.dto';
 import { UpdateLoginSettingsDto } from './dto/update-login-settings.dto';
 import { UpdateOwnerAlertSettingsDto } from './dto/update-owner-alert-settings.dto';
+import { UpdateFeaturedUpsellSettingsDto } from './dto/update-featured-upsell-settings.dto';
+import type { FeaturedUpsellSettingsDto } from '@bhavano/types/featuredUpsell';
 import type { OwnerAlertSettingsDto } from '@bhavano/types/ownerAlerts';
 import type { LoginSettingsDto, MoveToMobileAudienceDto, MoveToMobileSendResultDto } from '@bhavano/types/loginSettings';
 import { SendMoveToMobileDto } from './dto/send-move-to-mobile.dto';
@@ -522,6 +524,16 @@ export class AdminController {
   @Patch('reminder-settings')
   updateReminderSettings(@Body() dto: UpdateReminderSettingsDto): Promise<ReminderSettingsDto> {
     return this.adminService.updateReminderSettings(dto);
+  }
+
+  @Get('featured-upsell-settings')
+  getFeaturedUpsellSettings(): Promise<FeaturedUpsellSettingsDto> {
+    return this.adminService.getFeaturedUpsellSettings();
+  }
+
+  @Patch('featured-upsell-settings')
+  updateFeaturedUpsellSettings(@Body() dto: UpdateFeaturedUpsellSettingsDto): Promise<FeaturedUpsellSettingsDto> {
+    return this.adminService.updateFeaturedUpsellSettings(dto);
   }
 
   @Get('owner-alert-settings')

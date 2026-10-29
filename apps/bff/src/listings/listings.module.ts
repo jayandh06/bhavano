@@ -1,3 +1,4 @@
+import { FeaturedUpsellController } from '../featured-upsell/featured-upsell.controller';
 import { Module } from '@nestjs/common';
 import { ListingsController } from './listings.controller';
 import { ListingsService } from './listings.service';
@@ -27,7 +28,7 @@ import { PostedConfirmationController } from './posted-confirmation.controller';
 
 @Module({
   imports: [ModerationModule, RateLimitModule, NotificationsModule, SavedSearchesModule, LocationsModule, StorageModule, ListingSlotsModule, AdsModule, ContactRevealModule, PlansModule, PushModule, AnalyticsModule, ReferralsModule, OwnerAlertsModule],
-  controllers: [ListingsController, PostedConfirmationController],
+  controllers: [ListingsController, PostedConfirmationController, FeaturedUpsellController],
   providers: [ListingsService, ListingPhotosService, AssistedListingExpiryJob, LoginNudgeService, QuickResponderService, PostedConfirmationService, PostedConfirmationJob, ScheduledPublishJob],
   exports: [ListingsService, ListingPhotosService, LoginNudgeService],
 })

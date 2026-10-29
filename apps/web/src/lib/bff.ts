@@ -1,5 +1,6 @@
 import type { OwnerAlertChannel, OwnerAlertPreferenceDto } from "@bhavano/types/ownerAlerts";
 import type { LoginMethodsDto } from "@bhavano/types/loginSettings";
+import { DEFAULT_FEATURED_UPSELL_SETTINGS, type FeaturedUpsellSettingsDto } from "@bhavano/types/featuredUpsell";
 import type { SearchInterpretationDto } from "@bhavano/types/searchInterpretation";
 import type { AreaOverviewDto, AreaPriceStats, CityOverviewDto, PublishedAreaOverviewLink } from "@bhavano/types/areaOverview";
 import "server-only";
@@ -426,6 +427,15 @@ export async function fetchAreaListingCounts(cityId: string): Promise<Record<str
 // ListingCardDto/ListingDetailDto instead (see those types' own doc comments).
 export function fetchContactRevealSettings(): Promise<ContactRevealSettingsDto> {
   return bffFetch<ContactRevealSettingsDto>("/listings/contact-reveal-settings", { cache: "no-store" });
+}
+
+/** Whether, and how often, to offer Featured to an owner (Admin -> Settings -> Featured prompt). A failed read counts as off. */
+export async function fetchFeaturedUpsellSettings(): Promise<FeaturedUpsellSettingsDto> {
+  try {
+    return await bffFetch<FeaturedUpsellSettingsDto>("/featured-upsell/settings", { next: { revalidate: 60 } });
+  } catch {
+    return DEFAULT_FEATURED_UPSELL_SETTINGS;
+  }
 }
 
 /** Read on every logged-out listing view, so cached briefly; an admin change lands within a minute. */

@@ -87,6 +87,9 @@ import { getLoginSettings, setLoginSettings } from '../auth/login-settings';
 import type { LoginSettingsDto, MoveToMobileAudienceDto, MoveToMobileSendResultDto } from '@bhavano/types/loginSettings';
 import { UpdateLoginSettingsDto } from './dto/update-login-settings.dto';
 import { UpdateOwnerAlertSettingsDto } from './dto/update-owner-alert-settings.dto';
+import { UpdateFeaturedUpsellSettingsDto } from './dto/update-featured-upsell-settings.dto';
+import { getFeaturedUpsellSettings, setFeaturedUpsellSettings } from '../featured-upsell/featured-upsell-settings';
+import type { FeaturedUpsellSettingsDto } from '@bhavano/types/featuredUpsell';
 import { getOwnerAlertSettings, setOwnerAlertSettings } from '../owner-alerts/owner-alert-settings';
 import type { OwnerAlertSettingsDto } from '@bhavano/types/ownerAlerts';
 import { getPostedTimingSettings, setPostedTimingSettings } from '../listings/posted-confirmation-settings';
@@ -2651,6 +2654,14 @@ export class AdminService {
       }
     }
     return { sent, skipped };
+  }
+
+  getFeaturedUpsellSettings(): Promise<FeaturedUpsellSettingsDto> {
+    return getFeaturedUpsellSettings(this.prisma);
+  }
+
+  updateFeaturedUpsellSettings(dto: UpdateFeaturedUpsellSettingsDto): Promise<FeaturedUpsellSettingsDto> {
+    return setFeaturedUpsellSettings(this.prisma, dto);
   }
 
   getOwnerAlertSettings(): Promise<OwnerAlertSettingsDto> {

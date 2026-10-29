@@ -1690,6 +1690,17 @@ model UserNotificationLog {
  * try them. No row means they have not chosen yet and the default order applies. See docs/plans/owner-notification-channel-preferences.md.
  */
 /// Singleton (id "default"): whether WhatsApp / SMS owner alerts are also sent for ads that are NOT Featured. Both default to off (Featured ads only). Admin -> Settings -> Owner alerts.
+/// Singleton (id "default"): the "make your ad Featured" dialog / card for owners with an unfeatured live ad. Off by default. Admin -> Settings -> Featured prompt.
+model FeaturedUpsellSetting {
+  id                 String   @id
+  enabled            Boolean  @default(false)
+  listingCardEnabled Boolean  @default(false)
+  minAgeHours        Int      @default(1)
+  quietDays          Int      @default(3)
+  maxShowsPerAd      Int      @default(3)
+  updatedAt          DateTime @updatedAt
+}
+
 model OwnerAlertSetting {
   id                String   @id
   whatsappForFreeAds Boolean @default(false)

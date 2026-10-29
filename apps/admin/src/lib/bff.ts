@@ -1,5 +1,6 @@
 import type { LoginSettingsDto, MoveToMobileAudienceDto, MoveToMobileSendResultDto } from "@bhavano/types/loginSettings";
 import type { OwnerAlertSettingsDto } from "@bhavano/types/ownerAlerts";
+import type { FeaturedUpsellSettingsDto } from "@bhavano/types/featuredUpsell";
 import "server-only";
 import { headers } from "next/headers";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
@@ -833,6 +834,14 @@ export function updatePostedConfirmationSettings(
     method: "PATCH",
     body: JSON.stringify(input),
   });
+}
+
+export function fetchFeaturedUpsellSettings(accessToken: string): Promise<FeaturedUpsellSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/featured-upsell-settings", { cache: "no-store" });
+}
+
+export function updateFeaturedUpsellSettings(accessToken: string, input: FeaturedUpsellSettingsDto): Promise<FeaturedUpsellSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/featured-upsell-settings", { method: "PATCH", body: JSON.stringify(input) });
 }
 
 export function fetchOwnerAlertSettings(accessToken: string): Promise<OwnerAlertSettingsDto> {
