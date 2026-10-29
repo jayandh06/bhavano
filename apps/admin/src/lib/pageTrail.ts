@@ -137,6 +137,12 @@ export function trailEntry(path: string): { text: string; isError: boolean } {
     try {
       const params = new URL(path, "https://x.invalid").searchParams;
       const screenParam = params.get("screen");
+      if (screenParam === "upsell") {
+        const where = params.get("surface") === "listing_page" ? "their listing page" : "My listings";
+        const event = params.get("event") ?? "unknown";
+        const what = event === "shown" ? "shown" : event === "clicked" ? "tapped Make it Featured" : event === "dismissed" ? "dismissed (Not now)" : event;
+        return { text: `Featured prompt \u2014 ${what} (${where})`, isError: false };
+      }
       const screen = screenParam === "offer" ? "Featured offer" : screenParam === "boost" ? "Featured upgrade" : "Ad live";
       const event = params.get("event") ?? "unknown";
       const days = params.get("days");

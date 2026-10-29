@@ -5,6 +5,7 @@ import type { ListingCategory } from "@bhavano/types";
 import { FEATURED_BENEFITS } from "@bhavano/types/featuredBenefits";
 import { pickFeaturedUpsell, type FeaturedUpsellSettingsDto } from "@bhavano/types/featuredUpsell";
 import { pushDataLayerEvent } from "@/lib/gtm";
+import { reportPostAction } from "@/lib/postActionTrail";
 import { readUpsellMemory, sessionFlag, setSessionFlag, writeUpsellMemory } from "@/lib/featuredUpsellMemory";
 import { useBoost } from "./BoostProvider";
 import { Icon } from "./Icon";
@@ -44,6 +45,7 @@ export function FeaturedUpsellDialog({ settings, listings }: { settings: Feature
       writeUpsellMemory(pick.id, { shows: memory.shows + 1, dismissedAtMs: memory.dismissedAtMs });
       setActive(pick);
       pushDataLayerEvent("featured_upsell_shown", { surface: "my_listings" });
+      reportPostAction("upsell", "shown", { surface: "my_listings" });
     }, SHOW_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, [settings, listings]);
@@ -63,6 +65,7 @@ export function FeaturedUpsellDialog({ settings, listings }: { settings: Feature
     const memory = readUpsellMemory(active.id);
     writeUpsellMemory(active.id, { shows: memory.shows, dismissedAtMs: Date.now() });
     pushDataLayerEvent("featured_upsell_dismissed", { surface: "my_listings" });
+    reportPostAction("upsell", "dismissed", { surface: "my_listings" });
     setActive(null);
   }
 
@@ -70,6 +73,7 @@ export function FeaturedUpsellDialog({ settings, listings }: { settings: Feature
     if (!active) return;
     const listing = active;
     pushDataLayerEvent("featured_upsell_clicked", { surface: "my_listings" });
+    reportPostAction("upsell", "clicked", { surface: "my_listings" });
     setActive(null);
     boost({ listingId: listing.id, category: listing.category, source: "my_listings" });
   }

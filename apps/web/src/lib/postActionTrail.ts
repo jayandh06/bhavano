@@ -10,10 +10,11 @@
  * Best-effort and fire-and-forget: a dropped write must never affect the screen. */
 // "boost" is the Featured dialog opened from My listings (or a deep link), outside the post flow, so a purchase made
 // days after posting still leaves a trail in Page visits (docs/plans/admin-purchases-trail.md).
-export type PostActionScreen = "offer" | "live" | "boost";
+// "upsell" is the "make your ad Featured" prompt (dialog on My listings, card on the owner's listing page): events shown / clicked / dismissed, with `surface`.
+export type PostActionScreen = "offer" | "live" | "boost" | "upsell";
 
-export function reportPostAction(screen: PostActionScreen, event: string, detail?: { days?: number }) {
-  const days = detail?.days != null ? `&days=${detail.days}` : "";
+export function reportPostAction(screen: PostActionScreen, event: string, detail?: { days?: number; surface?: string }) {
+  const days = (detail?.days != null ? `&days=${detail.days}` : "") + (detail?.surface ? `&surface=${encodeURIComponent(detail.surface)}` : "");
   void fetch("/api/analytics/pageview", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

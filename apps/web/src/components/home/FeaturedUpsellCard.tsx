@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { pickFeaturedUpsell, type FeaturedUpsellSettingsDto } from "@bhavano/types/featuredUpsell";
 import { pushDataLayerEvent } from "@/lib/gtm";
+import { reportPostAction } from "@/lib/postActionTrail";
 import { readUpsellMemory, sessionFlag, setSessionFlag, writeUpsellMemory } from "@/lib/featuredUpsellMemory";
 import { useBoost } from "./BoostProvider";
 import { Icon } from "./Icon";
@@ -27,6 +28,7 @@ export function FeaturedUpsellCard({ settings, listing }: { settings: FeaturedUp
     writeUpsellMemory(listing.id, { shows: memory.shows + 1, dismissedAtMs: memory.dismissedAtMs });
     setVisible(true);
     pushDataLayerEvent("featured_upsell_shown", { surface: "listing_page" });
+    reportPostAction("upsell", "shown", { surface: "listing_page" });
   }, [settings, listing]);
 
   if (!visible) return null;
@@ -35,11 +37,13 @@ export function FeaturedUpsellCard({ settings, listing }: { settings: FeaturedUp
     const memory = readUpsellMemory(listing.id);
     writeUpsellMemory(listing.id, { shows: memory.shows, dismissedAtMs: Date.now() });
     pushDataLayerEvent("featured_upsell_dismissed", { surface: "listing_page" });
+    reportPostAction("upsell", "dismissed", { surface: "listing_page" });
     setVisible(false);
   }
 
   function makeFeatured() {
     pushDataLayerEvent("featured_upsell_clicked", { surface: "listing_page" });
+    reportPostAction("upsell", "clicked", { surface: "listing_page" });
     setVisible(false);
     boost({ listingId: listing.id, category: listing.category, source: "my_listings" });
   }

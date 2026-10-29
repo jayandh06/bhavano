@@ -162,6 +162,14 @@ describe("trailEntryHref", () => {
   });
 });
 
+describe("trailEntry — the Featured prompt", () => {
+  it("reads as shown / clicked / dismissed with where it appeared", () => {
+    expect(trailEntry("/post/action?screen=upsell&event=shown&surface=my_listings")).toEqual({ text: "Featured prompt \u2014 shown (My listings)", isError: false });
+    expect(trailEntry("/post/action?screen=upsell&event=clicked&surface=listing_page")).toEqual({ text: "Featured prompt \u2014 tapped Make it Featured (their listing page)", isError: false });
+    expect(trailEntry("/post/action?screen=upsell&event=dismissed&surface=my_listings")).toEqual({ text: "Featured prompt \u2014 dismissed (Not now) (My listings)", isError: false });
+  });
+});
+
 describe("trailEntry — /post/action clicks", () => {
   it("reads a Featured upgrade from My listings, outside the post flow", () => {
     expect(trailEntry("/post/action?screen=boost&event=opened")).toEqual({ text: "Featured upgrade — opened the Featured screen", isError: false });
