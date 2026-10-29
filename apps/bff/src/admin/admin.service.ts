@@ -106,6 +106,7 @@ import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
 import type { AgentProGrantReason } from './dto/grant-agent-pro.dto';
 import { utcMonthKey } from '../payments/payments.service';
 import { CAMPAIGN_NAMES, AD_GROUP_NAMES } from '../ads/campaign-names';
+import { adIdClause } from './ad-id-filter';
 import type { PageVisitAdOptionsDto } from '@bhavano/types/pageVisitAdOptions';
 import { PushService } from '../push/push.service';
 import { MessagingGateway } from '../messaging/messaging.gateway';
@@ -936,9 +937,14 @@ export class AdminService {
       if (clause) where[field] = clause;
     }
 
-    // Exact ids (chosen from dropdowns); `none` means the visit did not come from an ad.
-    if (query.campaignId) where.campaignId = query.campaignId === 'none' ? null : query.campaignId;
-    if (query.adGroupId) where.adGroupId = query.adGroupId === 'none' ? null : query.adGroupId;
+    // Exact ids chosen from the dropdowns (several allowed); `none` means the visit did not come from an ad.
+    const adClauses = [adIdClause('campaignId', query.campaignId), adIdClause('adGroupId', query.adGroupId)].filter(
+      (c): c is Prisma.VisitWhereInput => !!c,
+    );
+    if (adClauses.length) {
+      const existing = where.AND ? (Array.isArray(where.AND) ? where.AND : [where.AND]) : [];
+      where.AND = [...existing, ...adClauses];
+    }
 
     // Relation filters, not direct Visit columns — see ListPageVisitsDto's email/phone doc
     // comments for the Visit.userId-only scope limitation this inherits.

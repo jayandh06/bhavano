@@ -27,6 +27,7 @@ import { SelectField } from "@/components/SelectField";
 import { SortableHeader } from "@/components/SortableHeader";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { PageVisitsTable } from "@/components/PageVisitsTable";
+import { AdFilterPicker } from "@/components/AdFilterPicker";
 
 import { FullPageLink } from "@/components/FullPageLink";
 /** What the BFF falls back to with no `?sort=` — named here so the Time column's header still
@@ -202,33 +203,8 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
               </SelectField>
             </Field>
 
-            <Field label="Campaign">
-              <SelectField name="campaignId" defaultValue={campaignId ?? ""} style={selectStyle}>
-                <option value="">All campaigns</option>
-                <option value="none">No ad (not from Google Ads)</option>
-                {adOptions.campaigns.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.visits.toLocaleString()})
-                  </option>
-                ))}
-              </SelectField>
-            </Field>
-
-            <Field label="Ad group">
-              <SelectField name="adGroupId" defaultValue={adGroupId ?? ""} style={selectStyle}>
-                <option value="">All ad groups</option>
-                <option value="none">No ad group</option>
-                {adOptions.adGroups
-                  // Once a campaign is chosen, only its ad groups are offered (an ad group seen on no visit has no known campaign, so it stays listed).
-                  .filter((g) => !campaignId || campaignId === "none" || g.campaignId === null || g.campaignId === campaignId)
-                  .map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                      {!campaignId && g.campaignName ? ` \u2014 ${g.campaignName}` : ""} ({g.visits.toLocaleString()})
-                    </option>
-                  ))}
-              </SelectField>
-            </Field>
+            {/* Several of each allowed; the ad group list follows the campaigns ticked. */}
+            <AdFilterPicker options={adOptions} defaultCampaignIds={campaignId} defaultAdGroupIds={adGroupId} />
 
             <Field label="Traffic">
               <SelectField name="traffic" defaultValue={traffic} style={selectStyle}>

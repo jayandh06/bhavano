@@ -149,16 +149,16 @@ export class ListPageVisitsDto {
   @MaxLength(500)
   pagePath?: string;
 
-  /** A Google Ads campaign id (see apps/bff/src/ads/campaign-names.ts), or `none` for visits that did not come from an ad. */
+  /** Comma-separated Google Ads campaign ids (see apps/bff/src/ads/campaign-names.ts); `none` in the list means visits that did not come from an ad. */
   @IsOptional()
   @IsString()
-  @MaxLength(40)
+  @MaxLength(2000)
   campaignId?: string;
 
-  /** A Google Ads ad group id, or `none` for visits with no ad group. */
+  /** Comma-separated Google Ads ad group ids; `none` in the list means visits with no ad group. */
   @IsOptional()
   @IsString()
-  @MaxLength(40)
+  @MaxLength(2000)
   adGroupId?: string;
 
   @IsOptional()
