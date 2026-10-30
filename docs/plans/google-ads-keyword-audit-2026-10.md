@@ -258,3 +258,9 @@ There was no coworking ad group: the only coworking keyword in the account was a
 - **One responsive ad:** 15 headlines and 4 descriptions that repeat the keyword words (ad relevance), final URL the home page, paths rent/Coworking. Claims limited to what the product does ("No brokerage", "direct enquiries"); no "verified" and no fee promises.
 - **Landing card:** `apps/web/src/lib/adLandingCard.ts` maps the new ad group id to a new `rent_coworking` card (headline "Fill your coworking seats", opens the posting form on category coworking / rent), so its clicks do not get the generic card.
 - **Check on about 12 Nov:** impressions, clicks, Quality Score per keyword and posted ads. Search volume is the unknown: the owner-keyword plan expects only "a handful of impressions each". Remove keywords with no impressions; if the group works, add it to Other-Metro-Rent Out as well. 
+
+## "Free" keywords paused (2026-10-30)
+
+On request, all 39 enabled positive keywords containing the word "free" were paused (not removed) across the Metro and Other-Metro Generic, Rent Out and Sell campaigns, with `python ads_pause_free_keywords.py` (`--dry-run` lists, `--rollback` re-enables from `ads_pause_free_keywords_backup.json`).
+
+Last 30 days those keywords were 469 clicks, Rs 20,199 and 122 conversions (conversions here are sign-ups / posted ads, not revenue), i.e. most of the converting traffic, for example "free property listing site" (109 clicks, 24 conv), "post rental property for free" (56, 15.7), "free property ads posting sites" (51, 11.5). Expect clicks and sign-ups to drop sharply; check Campaign analytics paid revenue (not just conversions) after a week to decide whether to roll back.
