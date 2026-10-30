@@ -516,6 +516,11 @@ model User {
   acquisitionCampaignId       String?
   acquisitionAdGroupId        String?
   acquisitionAdId             String?
+  /// Facebook / Instagram click id and the Pixel's `_fbp` browser id captured at signup, for the Meta Conversions API (ads/meta-capi.ts). Only people who came from Meta are ever reported.
+  acquisitionFbclid           String?
+  acquisitionFbp              String?
+  /// Set when the sign-up was reported to Meta, so a repeat login never reports it twice.
+  metaConversionSentAt        DateTime?
   /**
    * Non-null once this user's signup conversion has been uploaded to Google Ads
    * (GoogleAdsConversionProvider.uploadClickConversion) — set immediately before the upload

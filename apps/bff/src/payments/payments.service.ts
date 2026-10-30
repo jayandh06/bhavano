@@ -51,6 +51,7 @@ import { toBoostPriceSettings } from '../plans/boost-pricing-settings.service';
 import { platformFeeFor } from '@bhavano/types/platformFeePricing';
 import type { PurchaseSource } from '@bhavano/types/purchaseSource';
 import { ListingsService } from '../listings/listings.service';
+import { isMetaTraffic, sendMetaConversion } from '../ads/meta-capi';
 
 interface RazorpayWebhookPayload {
   event: string;
@@ -143,9 +144,33 @@ export class PaymentsService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: payment.userId },
-      select: { email: true, phone: true, acquisitionGclid: true },
+      select: {
+        email: true,
+        phone: true,
+        acquisitionGclid: true,
+        acquisitionSource: true,
+        acquisitionMedium: true,
+        acquisitionFbclid: true,
+        acquisitionFbp: true,
+      },
     });
     if (!user) return;
+
+    // Meta: a buyer who arrived from a Meta ad, reported as a Purchase with the amount actually charged. Independent of the Google upload below; the payment id keeps it idempotent.
+    if (isMetaTraffic({ source: user.acquisitionSource, medium: user.acquisitionMedium, fbclid: user.acquisitionFbclid })) {
+      void sendMetaConversion({
+        eventName: 'Purchase',
+        eventId: payment.id,
+        eventTime: payment.paidAt,
+        email: user.email,
+        phone: user.phone,
+        userId: payment.userId,
+        fbclid: user.acquisitionFbclid,
+        fbp: user.acquisitionFbp,
+        value: payment.amount / 100,
+        currency: payment.currency,
+      });
+    }
 
     await this.googleAdsConversionProvider
       .uploadClickConversion({

@@ -16,9 +16,11 @@ export default async function PrivacyPage() {
   const addressLines = entityAddressLines();
   // The paragraph about owners seeing a verified number is shown only while it is true (Admin -> Settings -> Seeker contact).
   const seekerContact = await fetchSeekerContactSettings();
+  // Shown only once the Meta Pixel / Conversions API is switched on (the dataset id is set at build time), so the policy never claims something that is not happening.
+  const metaAds = !!process.env.NEXT_PUBLIC_META_PIXEL_ID;
 
   return (
-    <StaticPageLayout title="Privacy Policy" updated={seekerContact.enabled ? "29 October 2026" : "27 September 2026"}>
+    <StaticPageLayout title="Privacy Policy" updated={metaAds ? "30 October 2026" : seekerContact.enabled ? "29 October 2026" : "27 September 2026"}>
       <PageSection heading="Who processes your data">
         <p className="m-0">
           {entityOperatorSentence()} {LEGAL_ENTITY.legalName} is the data fiduciary responsible for the personal
@@ -163,6 +165,16 @@ export default async function PrivacyPage() {
             address and/or phone number in hashed (one-way encrypted) form, so Google can attribute that result to
             the ad. On iOS we only do this if you allow tracking when the app asks. See also section 4.
           </li>
+          {metaAds && (
+            <li>
+              <strong>Advertising and analytics (Meta):</strong> our website uses the Meta Pixel to count page views from
+              Facebook and Instagram ads. When you arrive from one of those ads and then sign up, post an ad or make a
+              purchase, we send Meta (Facebook and Instagram) the ad click identifier, the Pixel&apos;s browser
+              identifier, your account id in hashed form, and your email address and/or phone number in hashed (one-way
+              encrypted) form, so Meta can attribute that result to the ad. We do not send these details for visitors who
+              did not arrive from a Meta ad.
+            </li>
+          )}
           <li>
             <strong>Legal and safety:</strong> where required by law, court order or a government authority, or to
             protect the rights and safety of our users and the Platform.

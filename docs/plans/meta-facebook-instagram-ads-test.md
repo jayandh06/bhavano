@@ -95,3 +95,20 @@ Locations (12, Meta's default 17 km radius; Bengaluru 25 km): Bengaluru, Hyderab
 The ad set holds ads A, B and C (images per placement: 4:5/1:1 for Feeds, 9:16 for Stories and Reels; Sign up button; the URL parameters above).
 
 Known before publishing: (1) the ad account has no access to the Instagram account's Threads profile, so ads B and C show "Ad account has no access to Threads account (#4588023)"; Meta's account placement controls cannot exclude Threads, so assign the Threads/Instagram profile to the ad account in Business Settings (ad A, the original, has no Threads value and no error); (2) the ad set shows a "securities and investments" declaration prompt (leave it unticked, it does not apply, but Meta asks you to review it); (3) the images use AI-generated photos, so consider ticking "Ad includes media created or edited with AI"; (4) Advantage+ creative and "music on Reels" were switched off on the duplicates so the images stay exactly as designed.
+
+## Meta conversions (built 2026-10-30, off until configured)
+
+Lets Ads Manager show sign-ups, posted ads and purchases from Meta ads, and optimise for them.
+
+- **What is sent, and when:** server to server through the Conversions API (`apps/bff/src/ads/meta-capi.ts`), only for people who arrived from Meta (`isMetaTraffic`: a Meta click id, `utm_medium=paid_social`, or a facebook / instagram source). `CompleteRegistration` at sign-up (once per user, `User.metaConversionSentAt`), `PostAdSuccess` when an ad goes live (value = the same expected value Google gets), `Purchase` from the payment webhook (the amount actually charged, payment id as `event_id`). Each carries hashed email and phone (SHA-256, phone as digits with country code), a hashed user id, the click id as `fbc` and the Pixel's `fbp`. Nothing goes for visitors who did not come from Meta; iOS app users who denied tracking are skipped, like Google.
+- **Browser:** a Pixel page view only (`apps/web/src/app/layout.tsx`, `NEXT_PUBLIC_META_PIXEL_ID`), so Meta can count landing page views and set its `_fbp` cookie, which is read at login. Single-page navigations after the first load are not counted.
+- **Plumbing:** `fbclid` is stored per visit and in the acquisition cookie; at login the website sends `acquisitionFbclid` / `acquisitionFbp` and they are saved on the user (`User.acquisitionFbclid`, `acquisitionFbp`).
+- **Privacy:** `/privacy` gets an "Advertising and analytics (Meta)" bullet, shown only while the Pixel id is set at build time. The mobile app does not send Meta anything.
+
+**To switch on**
+1. Events Manager (business `2341781933258687`, ad account `1985028886216991`): Connect data > Web, create a dataset named "Bhavano web". Copy its id.
+2. Dataset > Settings > Conversions API > Generate access token. Copy it (it is a secret).
+3. Production `.env`: `META_PIXEL_ID`, `META_CAPI_ACCESS_TOKEN` (and, while testing, `META_CAPI_TEST_EVENT_CODE` from the dataset's Test events tab). `.env.prod.build`: `NEXT_PUBLIC_META_PIXEL_ID`. Redeploy web and bff.
+4. Test: open a tagged ad link (`?utm_source=facebook&utm_medium=paid_social&fbclid=test123`), sign up, and check Test events. Remove `META_CAPI_TEST_EVENT_CODE` to go live.
+5. In the campaign, change the goal from landing page views to the conversion once the dataset has received a few events.
+

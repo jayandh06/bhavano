@@ -21,6 +21,8 @@ function visitFromCredentials(credentials: Partial<Record<string, unknown>>): Vi
     acquisitionMedium: str("acquisitionMedium"),
     acquisitionCampaign: str("acquisitionCampaign"),
     acquisitionGclid: str("acquisitionGclid"),
+    acquisitionFbclid: str("acquisitionFbclid"),
+    acquisitionFbp: str("acquisitionFbp"),
     acquisitionCampaignId: str("acquisitionCampaignId"),
     acquisitionAdGroupId: str("acquisitionAdGroupId"),
     acquisitionAdId: str("acquisitionAdId"),

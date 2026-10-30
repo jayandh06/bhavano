@@ -165,6 +165,10 @@ services:
       GOOGLE_ADS_CLIENT_ID: ${GOOGLE_ADS_CLIENT_ID}
       GOOGLE_ADS_CLIENT_SECRET: ${GOOGLE_ADS_CLIENT_SECRET}
       GOOGLE_ADS_REFRESH_TOKEN: ${GOOGLE_ADS_REFRESH_TOKEN}
+      # Meta (Facebook / Instagram) Conversions API (apps/bff/src/ads/meta-capi.ts): dataset id and access token from Events Manager; both unset = off.
+      META_PIXEL_ID: ${META_PIXEL_ID:-}
+      META_CAPI_ACCESS_TOKEN: ${META_CAPI_ACCESS_TOKEN:-}
+      META_CAPI_TEST_EVENT_CODE: ${META_CAPI_TEST_EVENT_CODE:-}
       # Video upload/transcode temp storage (see docs/plans/listing-video-uploads.md) — reuses
       # the image's existing /app/apps/bff/uploads dir, given its own volume below so a container
       # restart mid-upload/transcode doesn't strand temp files in the writable layer.
@@ -233,6 +237,7 @@ services:
         NEXT_PUBLIC_BFF_URL: ${NEXT_PUBLIC_BFF_URL}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
         NEXT_PUBLIC_GTM_ID: ${NEXT_PUBLIC_GTM_ID}
+        NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID:-}
         NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY}
     restart: unless-stopped
     logging: *default-logging
@@ -245,6 +250,7 @@ services:
       NEXT_PUBLIC_BFF_URL: ${NEXT_PUBLIC_BFF_URL}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
       NEXT_PUBLIC_GTM_ID: ${NEXT_PUBLIC_GTM_ID}
+      NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID:-}
       # Google Maps JavaScript API + Places — the posting flow's map pin-picker (see
       # docs/plans/google-maps-location-picker.md). HTTP-referrer restricted, safe for the
       # browser — never reuse GOOGLE_MAPS_SERVER_KEY (bff, above) here.

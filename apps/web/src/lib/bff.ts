@@ -744,6 +744,8 @@ export interface VisitContext {
   acquisitionMedium?: string;
   acquisitionCampaign?: string;
   acquisitionGclid?: string;
+  acquisitionFbclid?: string;
+  acquisitionFbp?: string;
   acquisitionCampaignId?: string;
   acquisitionAdGroupId?: string;
   acquisitionAdId?: string;
@@ -777,15 +779,18 @@ export async function getVisitContext(): Promise<VisitContext> {
   const sessionId = jar.get(SESSION_COOKIE)?.value;
   const viewerKey = jar.get(VIEWER_KEY_COOKIE)?.value;
   const referralCode = jar.get(REFERRAL_COOKIE)?.value;
+  // The Meta Pixel's own browser id, when the Pixel has run (Meta Conversions API matching).
+  const acquisitionFbp = jar.get("_fbp")?.value;
 
   const raw = jar.get(ACQUISITION_COOKIE)?.value;
-  if (!raw) return { sessionId, viewerKey, referralCode };
+  if (!raw) return { sessionId, viewerKey, referralCode, acquisitionFbp };
   try {
     const parsed = JSON.parse(raw) as {
       source?: string;
       medium?: string;
       campaign?: string;
       gclid?: string;
+      fbclid?: string;
       campaignId?: string;
       adGroupId?: string;
       adId?: string;
@@ -795,6 +800,8 @@ export async function getVisitContext(): Promise<VisitContext> {
       acquisitionMedium: parsed.medium,
       acquisitionCampaign: parsed.campaign,
       acquisitionGclid: parsed.gclid,
+      acquisitionFbclid: parsed.fbclid,
+      acquisitionFbp,
       acquisitionCampaignId: parsed.campaignId,
       acquisitionAdGroupId: parsed.adGroupId,
       acquisitionAdId: parsed.adId,
@@ -803,7 +810,7 @@ export async function getVisitContext(): Promise<VisitContext> {
       referralCode,
     };
   } catch {
-    return { sessionId, viewerKey, referralCode };
+    return { sessionId, viewerKey, referralCode, acquisitionFbp };
   }
 }
 

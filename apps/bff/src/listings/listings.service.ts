@@ -136,6 +136,7 @@ import {
   scheduledPublishAt,
 } from './posted-confirmation-settings';
 import { assistedClaimCutoff, assistedClaimUrl, maskClaimPhone } from './assisted-listing';
+import { isMetaTraffic, sendMetaConversion } from '../ads/meta-capi';
 
 /** `create`'s admin-assisted mode — see ListingsService.createAssisted. */
 export interface AssistedCreateOptions {
@@ -1542,6 +1543,11 @@ export class ListingsService {
       email: string | null;
       phone: string | null;
       acquisitionGclid: string | null;
+      // Meta Conversions API: only set when the poster arrived from a Meta ad.
+      acquisitionSource?: string | null;
+      acquisitionMedium?: string | null;
+      acquisitionFbclid?: string | null;
+      acquisitionFbp?: string | null;
     } | null,
     trackingAuthorized: boolean | undefined,
     ownerId: string,
@@ -1585,6 +1591,27 @@ export class ListingsService {
           currency: 'INR',
         })
         .catch(() => undefined);
+    }
+
+    // Meta: a poster who arrived from a Meta ad. Independent of the Google report above; nothing leaves unless the Conversions API is configured.
+    if (
+      trackingAuthorized !== false &&
+      !isBulkImportOwner &&
+      owner &&
+      isMetaTraffic({ source: owner.acquisitionSource, medium: owner.acquisitionMedium, fbclid: owner.acquisitionFbclid })
+    ) {
+      void sendMetaConversion({
+        eventName: 'PostAdSuccess',
+        eventId: `listing-${listing.id}`,
+        eventTime: listing.publishedAt ?? listing.createdAt,
+        email: owner.email,
+        phone: owner.phone,
+        userId: listing.ownerId,
+        fbclid: owner.acquisitionFbclid,
+        fbp: owner.acquisitionFbp,
+        value: postAdValueRupees(listing.category, listing.transactionType),
+        currency: 'INR',
+      });
     }
 
     const holdPostedConfirmation =
@@ -1703,6 +1730,10 @@ export class ListingsService {
         email: true,
         phone: true,
         acquisitionGclid: true,
+        acquisitionSource: true,
+        acquisitionMedium: true,
+        acquisitionFbclid: true,
+        acquisitionFbp: true,
       },
     });
     if (owner?.deletedAt) return;
@@ -1779,6 +1810,10 @@ export class ListingsService {
         email: true,
         phone: true,
         acquisitionGclid: true,
+        acquisitionSource: true,
+        acquisitionMedium: true,
+        acquisitionFbclid: true,
+        acquisitionFbp: true,
         sellerType: true,
       },
     });
@@ -2958,7 +2993,7 @@ export class ListingsService {
 
     const owner = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { deletedAt: true, name: true, email: true, phone: true, acquisitionGclid: true, sellerType: true },
+      select: { deletedAt: true, name: true, email: true, phone: true, acquisitionGclid: true, acquisitionSource: true, acquisitionMedium: true, acquisitionFbclid: true, acquisitionFbp: true, sellerType: true },
     });
     if (!owner || owner.deletedAt) throw new UnauthorizedException('This account was deleted');
 

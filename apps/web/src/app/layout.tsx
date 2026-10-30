@@ -34,6 +34,8 @@ const manrope = Manrope({
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
+// Meta (Facebook / Instagram) Pixel: page views only. Sign-ups, posted ads and purchases reach Meta server to server (apps/bff/src/ads/meta-capi.ts). Off until the dataset id is set.
+const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 const GOOGLE_MAPS_JS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY;
 const SITE_NAME = "Bhavano";
 const ENTITY_ADDRESS_LINES = entityAddressLines();
@@ -114,6 +116,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <Script id="android-flag" strategy="beforeInteractive">
           {`document.documentElement.dataset.android=/Android/i.test(navigator.userAgent)&&!/; wv\\)/.test(navigator.userAgent)?'1':'0';`}
         </Script>
+        {META_PIXEL_ID && (
+          <Script id="meta-pixel" strategy="afterInteractive">
+            {`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init',${JSON.stringify(META_PIXEL_ID)});fbq('track','PageView');`}
+          </Script>
+        )}
         {GTM_ID && (
           <Script id="gtm-loader" strategy="afterInteractive">
             {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${GTM_ID}');`}

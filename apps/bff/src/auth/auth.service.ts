@@ -26,6 +26,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { ListingsService } from '../listings/listings.service';
 import { ReferralsService } from '../referrals/referrals.service';
+import { isMetaTraffic, sendMetaConversion } from '../ads/meta-capi';
 import {
   GoogleAdsConversionProvider,
   NEW_REGISTRATION_CONVERSION_ACTION_ID,
@@ -53,6 +54,9 @@ export interface VisitContext {
   /** Google Ads click-identifying params, from the account's Final URL suffix — captured
    * independently of source/medium/campaign above (see the matching Visit/User schema comments). */
   gclid?: string;
+  /** Facebook / Instagram click id and the Pixel's `_fbp` browser id (Meta Conversions API). */
+  fbclid?: string;
+  fbp?: string;
   campaignId?: string;
   adGroupId?: string;
   adId?: string;
@@ -87,6 +91,8 @@ function acquisitionCreateFields(visit?: VisitContext) {
     acquisitionMedium: visit.medium,
     acquisitionCampaign: visit.campaign,
     acquisitionGclid: visit.gclid,
+    acquisitionFbclid: visit.fbclid,
+    acquisitionFbp: visit.fbp,
     acquisitionCampaignId: visit.campaignId,
     acquisitionAdGroupId: visit.adGroupId,
     acquisitionAdId: visit.adId,
@@ -474,7 +480,26 @@ export class AuthService {
    * with user-provided data rather than only ones that also have a click id (see
    * GoogleAdsConversionProvider.uploadClickConversion's doc comment) — so this is only a no-op
    * when the user has neither a gclid nor any contact info, or was already reported. */
+  /** Tells Meta a person who arrived from a Meta ad just signed up. Independent of the Google report below (a Facebook visitor has no gclid), once per user, and
+   * a no-op until the Meta Conversions API is configured. */
+  private async reportMetaSignup(user: User, visit?: VisitContext): Promise<void> {
+    if (user.metaConversionSentAt || visit?.trackingAuthorized === false) return;
+    if (!isMetaTraffic({ source: visit?.source, medium: visit?.medium, fbclid: visit?.fbclid })) return;
+    await this.prisma.user.update({ where: { id: user.id }, data: { metaConversionSentAt: new Date() } });
+    void sendMetaConversion({
+      eventName: 'CompleteRegistration',
+      eventId: `signup-${user.id}`,
+      eventTime: user.createdAt,
+      email: user.email,
+      phone: user.phone,
+      userId: user.id,
+      fbclid: visit?.fbclid,
+      fbp: visit?.fbp,
+    }).catch(() => undefined);
+  }
+
   private async reportSignupConversion(user: User, visit?: VisitContext): Promise<void> {
+    await this.reportMetaSignup(user, visit).catch(() => undefined);
     if (
       user.adsConversionUploadedAt ||
       visit?.trackingAuthorized === false ||

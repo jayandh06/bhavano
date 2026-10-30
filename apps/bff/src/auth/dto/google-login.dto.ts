@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, Matches } from 'class-validator';
 
 export class GoogleLoginDto {
   @IsString()
@@ -26,6 +26,19 @@ export class GoogleLoginDto {
   @IsString()
   @MaxLength(100)
   acquisitionGclid?: string;
+
+  /** Facebook / Instagram click id and the Pixel's `_fbp` browser id, captured like the Google ids above (Meta Conversions API). */
+  @IsOptional()
+  @IsString()
+  @Matches(/^[\w-]+$/)
+  @MaxLength(300)
+  acquisitionFbclid?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[\w.-]+$/)
+  @MaxLength(100)
+  acquisitionFbp?: string;
 
   @IsOptional()
   @IsString()
