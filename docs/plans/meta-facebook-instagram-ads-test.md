@@ -83,3 +83,18 @@ sits whole in a band and the headline and "Post your free ad" button on a brand-
 
 Use the 4:5 and 1:1 images for Feed and the 9:16 for Stories / Reels (Advantage+ placements pick the right one if all three are attached to the ad).
 The copy makes no speed, price or "no brokerage" claim, only things Bhavano does today (free to post, your own photos).
+
+## Meta account draft (built 2026-10-30, NOT published)
+
+Campaign **Owners test - Oct 2026** (`120250394350500061`, objective Traffic, ad set budgets, special ad category Housing), website destination `https://bhavano.com/post`, goal landing page views, 14 days (30 Oct - 13 Nov 2026), Rs 400 a day split over three ad sets:
+
+| Ad set | Daily | Locations (Meta default 17 km radius, Bengaluru 25 km) |
+|---|---|---|
+| Bengaluru - owners | Rs 134 | Bengaluru + 25 km |
+| Delhi NCR - owners | Rs 133 | New Delhi, Gurugram, Noida, Ghaziabad, Faridabad, Greater Noida |
+| Hyderabad Pune Mumbai - owners | Rs 133 | Hyderabad, Pune, Mumbai, Navi Mumbai, Thane |
+
+Each ad set holds ads A, B and C (images per placement: 4:5/1:1 for Feeds, 9:16 for Stories and Reels; Sign up button; the URL parameters above). Chennai and the Other-Metro group are not in this first test.
+
+Known before publishing: (1) the ad account has no access to the Instagram account's Threads profile, so every ad except the original ad A shows "Ad account has no access to Threads account (#4588023)"; Meta's account placement controls cannot exclude Threads, so assign the Threads/Instagram profile to the ad account in Business Settings; (2) the ad sets show a "securities and investments" declaration prompt (leave it unticked, it does not apply, but Meta asks you to review it); (3) the images use AI-generated photos, so consider ticking "Ad includes media created or edited with AI"; (4) Advantage+ creative and "music on Reels" were switched off on the duplicates so the images stay exactly as designed.
+
