@@ -68,3 +68,18 @@ Gurugram, Noida, Ghaziabad, Faridabad, Greater Noida); Mumbai (Mumbai, Navi Mumb
 
 Cost per sign-up and per posted ad from Campaign analytics (source = facebook), compared with Google's Rs 167-218 per conversion; keep going only if it is
 within about 1.5x of Google's, or the volume is clearly additive. Stop and keep the Pixel data if not.
+
+## Ad images and copy (made 2026-10-30)
+
+`python marketing/meta-ads/make_meta_ads.py` builds 9 images in `marketing/meta-ads/out/` from the owner-intent photos already made for Google Ads: three photos
+in 4:5 feed (1080x1350), 1:1 feed (1080x1080) and 9:16 stories / reels (1080x1920, text kept out of the top and bottom ~250 px that the apps cover). The photo
+sits whole in a band and the headline and "Post your free ad" button on a brand-green panel; nothing is cropped tight or upscaled.
+
+| Ad | Image prefix | Headline (image) | Primary text (above the image) | Ad headline | Button |
+|---|---|---|---|---|---|
+| A | `post-free-*` | Selling or renting your property? | Selling or renting out a property? Post a free ad on Bhavano with your own photos and reach people searching in your city. | List your property free | Sign Up |
+| B | `sell-flat-*` | Got a flat to sell? | Got a flat to sell? Post a free ad in minutes and let buyers in your city find it. | Post a free ad | Sign Up |
+| C | `rent-out-*` | Have a home to rent out? | Have a home to rent out? Free ad, your photos, your price, all done on your phone. | Rent out your home | Sign Up |
+
+Use the 4:5 and 1:1 images for Feed and the 9:16 for Stories / Reels (Advantage+ placements pick the right one if all three are attached to the ad).
+The copy makes no speed, price or "no brokerage" claim, only things Bhavano does today (free to post, your own photos).
