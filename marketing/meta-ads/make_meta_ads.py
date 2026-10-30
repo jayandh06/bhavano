@@ -28,9 +28,9 @@ PHOTO_H = round(720 * W / 1280)  # 608: the whole photo, scaled down
 
 # name: (source photo, headline, supporting line, call to action)
 ADS = {
-    "post-free": ("generic-owner-posting-phone", "Selling or renting\nyour property?", "List it free on Bhavano and reach people searching in your city.", "Post your free ad"),
-    "sell-flat": ("sell-owner-photographing-balcony", "Got a flat\nto sell?", "Post a free ad in minutes with your own photos.", "Post a free ad"),
-    "rent-out": ("generic-phone-at-window", "Have a home\nto rent out?", "Free ad, your photos, your price. Done on your phone.", "Post your free ad"),
+    "post-ad": ("generic-owner-posting-phone", "Selling or renting\nyour property?", "List it on Bhavano and reach people searching in your city.", "Post your ad"),
+    "sell-flat": ("sell-owner-photographing-balcony", "Got a flat\nto sell?", "Post an ad in minutes with your own photos.", "Post your ad"),
+    "rent-out": ("generic-phone-at-window", "Have a home\nto rent out?", "Your photos, your price. Done on your phone.", "Post your ad"),
 }
 
 SIZES = {"feed-4x5": (1080, 1350), "feed-1x1": (1080, 1080), "story-9x16": (1080, 1920)}

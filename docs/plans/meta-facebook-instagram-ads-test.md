@@ -77,9 +77,9 @@ sits whole in a band and the headline and "Post your free ad" button on a brand-
 
 | Ad | Image prefix | Headline (image) | Primary text (above the image) | Ad headline | Button |
 |---|---|---|---|---|---|
-| A | `post-free-*` | Selling or renting your property? | Selling or renting out a property? Post a free ad on Bhavano with your own photos and reach people searching in your city. | List your property free | Sign Up |
-| B | `sell-flat-*` | Got a flat to sell? | Got a flat to sell? Post a free ad in minutes and let buyers in your city find it. | Post a free ad | Sign Up |
-| C | `rent-out-*` | Have a home to rent out? | Have a home to rent out? Free ad, your photos, your price, all done on your phone. | Rent out your home | Sign Up |
+| A | `post-ad-*` | Selling or renting your property? | Selling or renting out a property? Post an ad on Bhavano with your own photos and reach people searching in your city. | List your property on Bhavano | Sign Up |
+| B | `sell-flat-*` | Got a flat to sell? | Got a flat to sell? Post an ad in minutes and let buyers in your city find it. | Post your ad | Sign Up |
+| C | `rent-out-*` | Have a home to rent out? | Have a home to rent out? Your photos, your price, all done on your phone. | Rent out your home | Sign Up |
 
 Use the 4:5 and 1:1 images for Feed and the 9:16 for Stories / Reels (Advantage+ placements pick the right one if all three are attached to the ad).
 The copy makes no speed, price or "no brokerage" claim, only things Bhavano does today (free to post, your own photos).
@@ -114,3 +114,6 @@ Lets Ads Manager show sign-ups, posted ads and purchases from Meta ads, and opti
 4. Test: open a tagged ad link (`?utm_source=facebook&utm_medium=paid_social&fbclid=test123`), sign up, and check Test events. Remove `META_CAPI_TEST_EVENT_CODE` to go live.
 5. In the campaign, change the goal from landing page views to the conversion once the dataset has received a few events.
 
+### "Free" removed from the Meta ads (2026-10-30)
+
+Same reason as Google (free posters never buy Featured): the copy table above is the new wording, and the images were regenerated without "free" (`post-free-*` is now `post-ad-*`; button reads "Post your ad"). The ads in Ads Manager must be edited to match (text, then new images), which sends them back through Meta review. The page they land on (`/post`) still says what the product does; only the ad text changed.
