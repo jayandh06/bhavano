@@ -86,15 +86,12 @@ The copy makes no speed, price or "no brokerage" claim, only things Bhavano does
 
 ## Meta account draft (built 2026-10-30, NOT published)
 
-Campaign **Owners test - Oct 2026** (`120250394350500061`, objective Traffic, ad set budgets, special ad category Housing), website destination `https://bhavano.com/post`, goal landing page views, 14 days (30 Oct - 13 Nov 2026), Rs 400 a day split over three ad sets:
+Campaign **Owners test - Oct 2026** (`120250394350500061`, objective Traffic, ad set budget, special ad category Housing), one ad set **Metro cities - owners** at **Rs 400 a day** for 14 days (30 Oct - 13 Nov 2026), website destination `https://bhavano.com/post`, goal landing page views.
 
-| Ad set | Daily | Locations (Meta default 17 km radius, Bengaluru 25 km) |
-|---|---|---|
-| Bengaluru - owners | Rs 134 | Bengaluru + 25 km |
-| Delhi NCR - owners | Rs 133 | New Delhi, Gurugram, Noida, Ghaziabad, Faridabad, Greater Noida |
-| Hyderabad Pune Mumbai - owners | Rs 133 | Hyderabad, Pune, Mumbai, Navi Mumbai, Thane |
+Locations (12, Meta's default 17 km radius; Bengaluru 25 km): Bengaluru, Hyderabad, Pune, Mumbai, Navi Mumbai, Thane, and the Delhi NCR set New Delhi, Gurugram, Noida, Ghaziabad, Faridabad, Greater Noida. Chennai and the Other-Metro group are not in this first test.
 
-Each ad set holds ads A, B and C (images per placement: 4:5/1:1 for Feeds, 9:16 for Stories and Reels; Sign up button; the URL parameters above). Chennai and the Other-Metro group are not in this first test.
+**Why one ad set, not one per city or region:** at Rs 400 a day, separate ad sets left about Rs 133 each, close to the minimum Meta needs to learn, and Meta moves spend to the cheapest clicks on its own. It was first built as three regional ad sets (Rs 134 / 133 / 133) and merged on request. City-level results come from admin (Visit IP city) and the ad ids on every click, not from the ad set structure.
 
-Known before publishing: (1) the ad account has no access to the Instagram account's Threads profile, so every ad except the original ad A shows "Ad account has no access to Threads account (#4588023)"; Meta's account placement controls cannot exclude Threads, so assign the Threads/Instagram profile to the ad account in Business Settings; (2) the ad sets show a "securities and investments" declaration prompt (leave it unticked, it does not apply, but Meta asks you to review it); (3) the images use AI-generated photos, so consider ticking "Ad includes media created or edited with AI"; (4) Advantage+ creative and "music on Reels" were switched off on the duplicates so the images stay exactly as designed.
+The ad set holds ads A, B and C (images per placement: 4:5/1:1 for Feeds, 9:16 for Stories and Reels; Sign up button; the URL parameters above).
 
+Known before publishing: (1) the ad account has no access to the Instagram account's Threads profile, so ads B and C show "Ad account has no access to Threads account (#4588023)"; Meta's account placement controls cannot exclude Threads, so assign the Threads/Instagram profile to the ad account in Business Settings (ad A, the original, has no Threads value and no error); (2) the ad set shows a "securities and investments" declaration prompt (leave it unticked, it does not apply, but Meta asks you to review it); (3) the images use AI-generated photos, so consider ticking "Ad includes media created or edited with AI"; (4) Advantage+ creative and "music on Reels" were switched off on the duplicates so the images stay exactly as designed.
