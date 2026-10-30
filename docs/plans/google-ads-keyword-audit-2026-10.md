@@ -264,3 +264,11 @@ There was no coworking ad group: the only coworking keyword in the account was a
 On request, all 39 enabled positive keywords containing the word "free" were paused (not removed) across the Metro and Other-Metro Generic, Rent Out and Sell campaigns, with `python ads_pause_free_keywords.py` (`--dry-run` lists, `--rollback` re-enables from `ads_pause_free_keywords_backup.json`).
 
 Last 30 days those keywords were 469 clicks, Rs 20,199 and 122 conversions (conversions here are sign-ups / posted ads, not revenue), i.e. most of the converting traffic, for example "free property listing site" (109 clicks, 24 conv), "post rental property for free" (56, 15.7), "free property ads posting sites" (51, 11.5). Expect clicks and sign-ups to drop sharply; check Campaign analytics paid revenue (not just conversions) after a week to decide whether to roll back.
+
+### Follow-up: ad text and negatives (2026-10-30)
+
+Reason: most ad-acquired users posted free and never bought Featured.
+- `ads_remove_free_from_remaining_ads.py`: 7 enabled responsive search ads in ad groups that still have live keywords were recreated without the word "free" (old ones paused). Description "Free to post, no commission. Upgrade to Featured later..." became "No commission, no broker. Go Featured for more views." An ad group allows 3 enabled RSAs, so the script pauses the old ad first. 7 ads in the "Star - ..." groups still say free; those groups have no enabled keywords, so nothing serves.
+- `ads_add_free_negatives.py`: negatives `free` (broad), "no cost" and "without paying" (phrase) on all 7 enabled campaigns, so remaining phrase keywords stop matching "... free" queries.
+- `ads_free_in_ads_report.py`: read-only check of what still says free.
+- Not done: switch bidding to the Purchase conversion goal (the larger lever; needs a learning period at lower budget).
