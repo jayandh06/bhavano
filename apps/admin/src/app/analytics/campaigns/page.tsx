@@ -45,7 +45,9 @@ const DEVICE_OPTIONS = [
 
 const PAID_OPTIONS = [
   { value: "any", label: "Paid and organic" },
-  { value: "paid", label: "Paid ad clicks only" },
+  { value: "paid", label: "All paid ad clicks" },
+  { value: "google", label: "Google Ads only" },
+  { value: "meta", label: "Facebook / Instagram ads only" },
   { value: "organic", label: "Not from an ad" },
 ];
 

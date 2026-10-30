@@ -103,3 +103,7 @@ side by side; attribution by **same session** only (first touch and last paid cl
 
 Not yet: first-touch and last-paid-click models, cohorts, ad cost and clicks, the conversion upload
 log, keywords (phases 2 to 4 above).
+
+## Filter by ad network (2026-10-30)
+
+The "Arrived from" filter now splits paid clicks by network: **All paid ad clicks**, **Google Ads only** (a gclid or `utm_medium=cpc`, never a `paid_social` visit) and **Facebook / Instagram ads only** (`utm_medium=paid_social`), next to **Not from an ad** and the default (all). Query value is `paid=any|paid|google|meta|organic`; the logic is in `visitFilters` (`apps/bff/src/campaign-analytics/campaign-analytics.service.ts`) with a test in the spec. Group by Source / medium still shows both networks side by side when the filter is on "All".

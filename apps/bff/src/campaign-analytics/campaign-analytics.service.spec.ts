@@ -53,6 +53,14 @@ describe('buildCampaignAnalyticsSql', () => {
     expect(text({ paid: 'organic' })).toContain('NOT (');
   });
 
+  it('narrows paid clicks to one ad network', () => {
+    expect(text({ paid: 'meta' })).toContain(`v."medium" = 'paid_social'`);
+    const google = text({ paid: 'google' });
+    expect(google).toContain(`v."gclid" IS NOT NULL OR v."medium" = 'cpc'`);
+    expect(google).toContain(`v."medium" IS DISTINCT FROM 'paid_social'`);
+    expect(text()).not.toContain(`v."medium" = 'paid_social'`);
+  });
+
   it('groups by the chosen dimension', () => {
     expect(text({ groupBy: 'adGroup' })).toContain('v."adGroupId" IS NOT NULL');
     expect(text({ groupBy: 'ad' })).toContain('v."adId" IS NOT NULL');

@@ -78,6 +78,9 @@ function visitFilters(q: CampaignAnalyticsQueryDto, from: Date, to: Date): Prism
   const paidClick = Prisma.sql`(v."gclid" IS NOT NULL OR v."medium" IN ('cpc', 'paid_social'))`;
   if (q.paid === 'paid') conditions.push(paidClick);
   if (q.paid === 'organic') conditions.push(Prisma.sql`NOT ${paidClick}`);
+  // One network at a time: Meta is paid_social, Google is everything else that counts as a paid click.
+  if (q.paid === 'meta') conditions.push(Prisma.sql`v."medium" = 'paid_social'`);
+  if (q.paid === 'google') conditions.push(Prisma.sql`(v."gclid" IS NOT NULL OR v."medium" = 'cpc') AND v."medium" IS DISTINCT FROM 'paid_social'`);
 
   if (q.campaignId) conditions.push(Prisma.sql`v."campaignId" = ${q.campaignId}`);
   if (q.adGroupId) conditions.push(Prisma.sql`v."adGroupId" = ${q.adGroupId}`);

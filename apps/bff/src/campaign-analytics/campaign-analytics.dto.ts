@@ -40,8 +40,8 @@ export class CampaignAnalyticsQueryDto {
   @IsOptional() @IsIn(TRAFFIC_VALUES as unknown as string[]) traffic?: CampaignAnalyticsTraffic;
   @IsOptional() @IsIn(['any', 'web', 'app']) platform?: 'any' | 'web' | 'app';
   @IsOptional() @IsIn(['any', 'desktop', 'mobile', 'tablet', 'mobile_app']) deviceType?: string;
-  /** `paid` = arrived on a Google Ads click (a gclid, or medium cpc); `organic` = everything else. */
-  @IsOptional() @IsIn(['any', 'paid', 'organic']) paid?: 'any' | 'paid' | 'organic';
+  /** `paid` = arrived on any ad click (Google: a gclid or medium cpc; Meta: medium paid_social); `google` / `meta` = one network only; `organic` = everything else. */
+  @IsOptional() @IsIn(['any', 'paid', 'google', 'meta', 'organic']) paid?: 'any' | 'paid' | 'google' | 'meta' | 'organic';
   /** `yes` keeps only rows with at least one sign-up, posted ad or payment; `no` only rows with none. */
   @IsOptional() @IsIn(['any', 'yes', 'no']) converted?: 'any' | 'yes' | 'no';
 

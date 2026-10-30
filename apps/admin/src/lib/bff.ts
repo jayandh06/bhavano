@@ -1003,7 +1003,7 @@ export interface CampaignAnalyticsQuery {
   traffic?: "humans" | "js_confirmed" | "any" | "bots" | "unclassified";
   platform?: "any" | "web" | "app";
   deviceType?: string;
-  paid?: "any" | "paid" | "organic";
+  paid?: "any" | "paid" | "google" | "meta" | "organic";
   converted?: "any" | "yes" | "no";
   campaignId?: string;
   adGroupId?: string;
