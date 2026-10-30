@@ -106,7 +106,7 @@ Lets Ads Manager show sign-ups, posted ads and purchases from Meta ads, and opti
 - **Privacy:** `/privacy` gets an "Advertising and analytics (Meta)" bullet, shown only while the Pixel id is set at build time. The mobile app does not send Meta anything.
 
 **To switch on**
-1. Events Manager (business `2341781933258687`, ad account `1985028886216991`): Connect data > Web, create a dataset named "Bhavano web". Copy its id.
+1. ~~Create the dataset~~ Done 2026-10-30: dataset **Bhavano web**, id `1112805525054100` (business `2341781933258687`, ad account `1985028886216991`), connected to the Bhavano_Ads account only; the portfolio-wide "connect all datasets to the Conversions API" option was left off. Its id is not a secret.
 2. Dataset > Settings > Conversions API > Generate access token. Copy it (it is a secret).
 3. Production `.env`: `META_PIXEL_ID`, `META_CAPI_ACCESS_TOKEN` (and, while testing, `META_CAPI_TEST_EVENT_CODE` from the dataset's Test events tab). `.env.prod.build`: `NEXT_PUBLIC_META_PIXEL_ID`. Redeploy web and bff.
 4. Test: open a tagged ad link (`?utm_source=facebook&utm_medium=paid_social&fbclid=test123`), sign up, and check Test events. Remove `META_CAPI_TEST_EVENT_CODE` to go live.
