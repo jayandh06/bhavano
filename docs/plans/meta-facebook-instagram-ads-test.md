@@ -88,7 +88,7 @@ The copy makes no speed, price or "no brokerage" claim, only things Bhavano does
 
 **Published 2026-10-30** after payment was added and the user confirmed Rs 400 a day for 14 days. Placements are **Facebook and Instagram only** (Threads feed and Audience Network unticked in the ad set's Placements list; the account's Threads access is not needed then, which also cleared the Threads error on ads B and C). Ends 13 Nov 2026 11:08 IST.
 
-Campaign **Owners test - Oct 2026** (`120250394350500061`, objective Traffic, ad set budget, special ad category Housing), one ad set **Metro cities - owners** at **Rs 400 a day** for 14 days (30 Oct - 13 Nov 2026), website destination `https://bhavano.com/post`, goal landing page views.
+Campaign **Owners - Oct 2026** (renamed on 2026-10-30 from "Owners test - Oct 2026"; the id `120250394350500061` is unchanged, so earlier visits keep the old name in admin, new ones get the new name because `utm_campaign` is `{{campaign.name}}`; objective Traffic, ad set budget, special ad category Housing), one ad set **Metro cities - owners** at **Rs 400 a day** for 14 days (30 Oct - 13 Nov 2026), website destination `https://bhavano.com/post`, goal landing page views.
 
 Locations (12, Meta's default 17 km radius; Bengaluru 25 km): Bengaluru, Hyderabad, Pune, Mumbai, Navi Mumbai, Thane, and the Delhi NCR set New Delhi, Gurugram, Noida, Ghaziabad, Faridabad, Greater Noida. Chennai and the Other-Metro group are not in this first test.
 
