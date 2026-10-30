@@ -1113,6 +1113,9 @@ model Visit {
    * independently of source/medium/campaign above; see the matching User.acquisition* fields.
    */
   gclid         String?
+  /// Facebook / Instagram click id (`fbclid`), kept for matching a visit to a Meta ad click (Conversions API later). Present on organic Facebook clicks too, so it never means "paid" by itself.
+  fbclid        String?
+  /// For a Meta (Facebook / Instagram) ad these three hold its campaign, ad set and ad ids, from the ad's URL parameters (meta_campaign_id, meta_adset_id, meta_ad_id) -- the same columns a Google Ads click fills; the ids never collide (Meta's are 15+ digits). See docs/plans/meta-facebook-instagram-ads-test.md.
   campaignId    String?
   adGroupId     String?
   adId          String?

@@ -49,7 +49,7 @@ describe('buildCampaignAnalyticsSql', () => {
   });
 
   it('filters paid ad clicks against everything else', () => {
-    expect(text({ paid: 'paid' })).toContain(`v."gclid" IS NOT NULL OR v."medium" = 'cpc'`);
+    expect(text({ paid: 'paid' })).toContain(`v."gclid" IS NOT NULL OR v."medium" IN ('cpc', 'paid_social')`);
     expect(text({ paid: 'organic' })).toContain('NOT (');
   });
 
@@ -77,6 +77,9 @@ describe('toRow', () => {
 
   it('keeps an unknown campaign id as its label', () => {
     expect(toRow(raw({ key: '999', campaignId: '999' }), 'campaign').label).toBe('999');
+    // A Meta campaign (an 18-digit id) not in the name list yet is shown by the utm_campaign its ad sent; a short Google id never is.
+    expect(toRow(raw({ key: '120250394350500061', campaignId: '120250394350500061', utmCampaign: 'Owners Bengaluru' } as never), 'campaign').label).toBe('Owners Bengaluru');
+    expect(toRow(raw({ key: '999', campaignId: '999', utmCampaign: 'something' } as never), 'campaign').label).toBe('999');
   });
 
   it('labels non-ad traffic by its source and does not offer a drill-down', () => {

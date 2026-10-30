@@ -31,6 +31,8 @@ interface ResolvedSource {
    * independently of source/medium/campaign below, since a Google Ads click carries these
    * regardless of whether the link was also UTM-tagged. */
   gclid?: string;
+  /** Facebook / Instagram click id; on organic Facebook clicks too, so it is stored but never treated as "paid". */
+  fbclid?: string;
   campaignId?: string;
   adGroupId?: string;
   adId?: string;
@@ -45,11 +47,13 @@ interface ResolvedSource {
 function resolveSource(request: NextRequest): ResolvedSource {
   const { searchParams } = request.nextUrl;
   const gclid = searchParams.get("gclid") ?? undefined;
+  // A Meta (Facebook / Instagram) ad carries its ids in the ad's URL parameters (meta_campaign_id={{campaign.id}} and so on); they fill the same three fields a Google Ads click does.
   const googleAdsParams = {
     gclid,
-    campaignId: searchParams.get("campaignid") ?? undefined,
-    adGroupId: searchParams.get("adgroupid") ?? undefined,
-    adId: searchParams.get("adid") ?? undefined,
+    fbclid: searchParams.get("fbclid") ?? undefined,
+    campaignId: searchParams.get("campaignid") ?? searchParams.get("meta_campaign_id") ?? undefined,
+    adGroupId: searchParams.get("adgroupid") ?? searchParams.get("meta_adset_id") ?? undefined,
+    adId: searchParams.get("adid") ?? searchParams.get("meta_ad_id") ?? undefined,
   };
 
   const utmSource = searchParams.get("utm_source");
@@ -366,6 +370,7 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
           medium: resolved.medium,
           campaign: resolved.campaign,
           gclid: resolved.gclid,
+          fbclid: resolved.fbclid,
           campaignId: resolved.campaignId,
           adGroupId: resolved.adGroupId,
           adId: resolved.adId,

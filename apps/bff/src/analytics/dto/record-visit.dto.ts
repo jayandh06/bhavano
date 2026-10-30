@@ -28,6 +28,13 @@ export class RecordVisitDto {
   @MaxLength(100)
   gclid?: string;
 
+  /** Facebook / Instagram click id: an opaque token, characters and hyphens/underscores only. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^[\w-]+$/)
+  @MaxLength(300)
+  fbclid?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(100)

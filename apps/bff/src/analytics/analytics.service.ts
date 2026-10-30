@@ -121,11 +121,11 @@ export class AnalyticsService {
 
     await this.prisma.$executeRaw`
       INSERT INTO "Visit" (
-        "id", "sessionId", "source", "medium", "campaign", "gclid", "campaignId", "adGroupId",
+        "id", "sessionId", "source", "medium", "campaign", "gclid", "fbclid", "campaignId", "adGroupId",
         "adId", "landingPath", "ip", "ipCity", "ipRegion", "ipCountry", "deviceType", "os", "isBot", "lastActivityAt"
       ) VALUES (
         ${newVisitId()}, ${dto.sessionId}, ${dto.source ?? null}, ${dto.medium ?? null},
-        ${dto.campaign ?? null}, ${dto.gclid ?? null}, ${dto.campaignId ?? null},
+        ${dto.campaign ?? null}, ${dto.gclid ?? null}, ${dto.fbclid ?? null}, ${dto.campaignId ?? null},
         ${dto.adGroupId ?? null}, ${dto.adId ?? null}, ${dto.landingPath ?? null},
         ${dto.ip ?? null}, ${geo?.city ?? null}, ${geo?.region ?? null}, ${geo?.country ?? null},
         ${deviceTypeFromUserAgent(dto.userAgent, dto.fromApp ?? false) ?? null},
@@ -136,6 +136,7 @@ export class AnalyticsService {
         "medium"      = CASE WHEN "Visit"."source" IS NULL THEN EXCLUDED."medium"      ELSE "Visit"."medium"      END,
         "campaign"    = CASE WHEN "Visit"."source" IS NULL THEN EXCLUDED."campaign"    ELSE "Visit"."campaign"    END,
         "gclid"       = CASE WHEN "Visit"."source" IS NULL THEN EXCLUDED."gclid"       ELSE "Visit"."gclid"       END,
+        "fbclid"      = CASE WHEN "Visit"."source" IS NULL THEN EXCLUDED."fbclid"      ELSE "Visit"."fbclid"      END,
         "campaignId"  = CASE WHEN "Visit"."source" IS NULL THEN EXCLUDED."campaignId"  ELSE "Visit"."campaignId"  END,
         "adGroupId"   = CASE WHEN "Visit"."source" IS NULL THEN EXCLUDED."adGroupId"   ELSE "Visit"."adGroupId"   END,
         "adId"        = CASE WHEN "Visit"."source" IS NULL THEN EXCLUDED."adId"        ELSE "Visit"."adId"        END,

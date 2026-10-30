@@ -17,6 +17,7 @@ interface RawRow {
   key: string;
   campaignId: string | null;
   adGroupId: string | null;
+  utmCampaign?: string | null;
   visits: bigint | number;
   bots: bigint | number;
   engaged: bigint | number;
@@ -73,7 +74,8 @@ function visitFilters(q: CampaignAnalyticsQueryDto, from: Date, to: Date): Prism
   if (q.platform === 'web') conditions.push(Prisma.sql`v."deviceType" IS DISTINCT FROM 'mobile_app'`);
   if (q.deviceType && q.deviceType !== 'any') conditions.push(Prisma.sql`v."deviceType" = ${q.deviceType}`);
 
-  const paidClick = Prisma.sql`(v."gclid" IS NOT NULL OR v."medium" = 'cpc')`;
+  // Google Ads (a gclid, or medium cpc) and Meta ads (utm_medium=paid_social). fbclid alone is not paid: organic Facebook clicks carry it too.
+  const paidClick = Prisma.sql`(v."gclid" IS NOT NULL OR v."medium" IN ('cpc', 'paid_social'))`;
   if (q.paid === 'paid') conditions.push(paidClick);
   if (q.paid === 'organic') conditions.push(Prisma.sql`NOT ${paidClick}`);
 
@@ -92,7 +94,7 @@ export function buildCampaignAnalyticsSql(q: CampaignAnalyticsQueryDto, from: Da
 
   return Prisma.sql`
     WITH base AS (
-      SELECT v."sessionId", v."userId", v."createdAt", v."isBot", v."campaignId", v."adGroupId",
+      SELECT v."sessionId", v."userId", v."createdAt", v."isBot", v."campaignId", v."adGroupId", v."campaign" AS "utmCampaign",
              ${key} AS "groupKey"
       FROM "Visit" v
       WHERE ${where}
@@ -120,6 +122,7 @@ export function buildCampaignAnalyticsSql(q: CampaignAnalyticsQueryDto, from: Da
     SELECT b."groupKey" AS "key",
            max(b."campaignId") AS "campaignId",
            max(b."adGroupId") AS "adGroupId",
+           max(b."utmCampaign") AS "utmCampaign",
            count(*) AS "visits",
            count(*) FILTER (WHERE b."isBot" = true) AS "bots",
            count(*) FILTER (WHERE pages.n >= 2) AS "engaged",
@@ -142,9 +145,13 @@ const n = (value: bigint | number | null | undefined): number => Number(value ??
 /** A readable name for a group: a campaign or ad group's name when known, the source for traffic
  * that did not come from an ad, otherwise the bare id (a campaign created after the name list was
  * last updated). */
-function labelFor(key: string, groupBy: CampaignAnalyticsGroupBy): string {
+/** A Meta (Facebook / Instagram) id: 15 digits or more. Google Ads ids are shorter, so the two never collide in the same columns. */
+const isMetaId = (id: string): boolean => /^\d{15,}$/.test(id);
+
+function labelFor(key: string, groupBy: CampaignAnalyticsGroupBy, utmCampaign?: string | null): string {
   if (key.startsWith(SOURCE_KEY_PREFIX)) return key.slice(SOURCE_KEY_PREFIX.length);
-  if (groupBy === 'campaign') return CAMPAIGN_NAMES[key] ?? key;
+  // A Meta campaign not in the name list yet is shown by the utm_campaign its ad sent ({{campaign.name}}), which beats a bare 18-digit id.
+  if (groupBy === 'campaign') return CAMPAIGN_NAMES[key] ?? (isMetaId(key) && utmCampaign ? utmCampaign : key);
   if (groupBy === 'adGroup') return AD_GROUP_NAMES[key] ?? key;
   if (groupBy === 'ad') return AD_NAMES[key] ?? key;
   return key;
@@ -154,7 +161,7 @@ export function toRow(raw: RawRow, groupBy: CampaignAnalyticsGroupBy): CampaignA
   const fromAds = !raw.key.startsWith(SOURCE_KEY_PREFIX) && (groupBy === 'campaign' || groupBy === 'adGroup' || groupBy === 'ad');
   return {
     key: raw.key,
-    label: labelFor(raw.key, groupBy),
+    label: labelFor(raw.key, groupBy, raw.utmCampaign),
     fromAds,
     campaignId: fromAds ? raw.campaignId : null,
     campaignName: fromAds && raw.campaignId ? (CAMPAIGN_NAMES[raw.campaignId] ?? null) : null,
