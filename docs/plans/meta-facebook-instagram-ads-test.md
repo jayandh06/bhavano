@@ -84,7 +84,9 @@ sits whole in a band and the headline and "Post your free ad" button on a brand-
 Use the 4:5 and 1:1 images for Feed and the 9:16 for Stories / Reels (Advantage+ placements pick the right one if all three are attached to the ad).
 The copy makes no speed, price or "no brokerage" claim, only things Bhavano does today (free to post, your own photos).
 
-## Meta account draft (built 2026-10-30, NOT published)
+## Meta account campaign (built 2026-10-30, PUBLISHED 2026-10-30; in Meta review when published)
+
+**Published 2026-10-30** after payment was added and the user confirmed Rs 400 a day for 14 days. Placements are **Facebook and Instagram only** (Threads feed and Audience Network unticked in the ad set's Placements list; the account's Threads access is not needed then, which also cleared the Threads error on ads B and C). Ends 13 Nov 2026 11:08 IST.
 
 Campaign **Owners test - Oct 2026** (`120250394350500061`, objective Traffic, ad set budget, special ad category Housing), one ad set **Metro cities - owners** at **Rs 400 a day** for 14 days (30 Oct - 13 Nov 2026), website destination `https://bhavano.com/post`, goal landing page views.
 
@@ -94,7 +96,7 @@ Locations (12, Meta's default 17 km radius; Bengaluru 25 km): Bengaluru, Hyderab
 
 The ad set holds ads A, B and C (images per placement: 4:5/1:1 for Feeds, 9:16 for Stories and Reels; Sign up button; the URL parameters above).
 
-Known before publishing: (1) the ad account has no access to the Instagram account's Threads profile, so ads B and C show "Ad account has no access to Threads account (#4588023)"; Meta's account placement controls cannot exclude Threads, so assign the Threads/Instagram profile to the ad account in Business Settings (ad A, the original, has no Threads value and no error); (2) the ad set shows a "securities and investments" declaration prompt (leave it unticked, it does not apply, but Meta asks you to review it); (3) the images use AI-generated photos, so consider ticking "Ad includes media created or edited with AI"; (4) Advantage+ creative and "music on Reels" were switched off on the duplicates so the images stay exactly as designed.
+Known before publishing (all resolved at publish time, see above): (1) the ad account has no access to the Instagram account's Threads profile, so ads B and C show "Ad account has no access to Threads account (#4588023)"; Meta's account placement controls cannot exclude Threads, so assign the Threads/Instagram profile to the ad account in Business Settings (ad A, the original, has no Threads value and no error); (2) the ad set shows a "securities and investments" declaration prompt (leave it unticked, it does not apply, but Meta asks you to review it); (3) the images use AI-generated photos, so consider ticking "Ad includes media created or edited with AI"; (4) Advantage+ creative and "music on Reels" were switched off on the duplicates so the images stay exactly as designed.
 
 ## Meta conversions (built 2026-10-30, off until configured)
 
