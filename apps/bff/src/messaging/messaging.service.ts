@@ -141,6 +141,14 @@ export class MessagingService {
     };
   }
 
+  /** The admin's moderation thread for a listing if one exists, without creating it. The admin listing page only needs to *read*
+   * the thread; creating it on every view left an empty thread for every listing an admin had opened. */
+  findModerationThread(listingId: string, adminId: string): Promise<Conversation | null> {
+    return this.prisma.conversation.findUnique({
+      where: { listingId_inquirerId_type: { listingId, inquirerId: adminId, type: 'moderation' } },
+    });
+  }
+
   /** Admin↔owner thread about a flagged listing — kept as its own `type` so it can never
    * collide with (or be mistaken for) a genuine buyer inquiry on the same listing. */
   async getOrCreateModerationThread(listingId: string, adminId: string): Promise<Conversation> {

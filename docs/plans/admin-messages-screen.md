@@ -57,3 +57,11 @@ Messages screen listed many like it. Nothing had been sent to the advertiser. Op
 (`messages: { some: { deletedAt: null } }`); the admin Messages screen did not. Now `listConversationsAsAdmin` leaves out a moderation thread that has no message
 (`NOT: { type: 'moderation', messages: { none: {} } }`), in the rows and in the total. Empty buyer enquiries still show, since a lazily created
 enquiry has a message and only old rows from before that change can be empty. Existing empty rows stay in the database, harmless.
+
+## Stop creating the empty threads (2026-11-01)
+The hide filter above only hid them; every admin opening of a listing still created one. Now `GET /admin/listings/:id/thread` is a lookup (`MessagingService.findModerationThread`)
+and returns `id: null` until a message has been sent. The listing page shows no messages in that case instead of creating a thread to read from. A new
+`POST /admin/listings/:id/thread` (`AdminService.createThread`, the old get-or-create) is used only by `sendThreadMessageAction`, so the thread comes into existence with the
+first message. The internal flows that post a moderation note (flag, approve, status change, update) already create the thread together with the message and are unchanged.
+The hide filter stays, for the empty rows already in the database. Those are harmless; deleting them (no messages, `type = 'moderation'`) is a separate, approved
+production clean-up and has not been done.

@@ -397,9 +397,15 @@ export class AdminService {
     return this.listingsService.setAdminReviewed(id, adminReviewed);
   }
 
-  /** Get-or-create is safe/idempotent here — used by the admin UI to open a listing's
-   * moderation thread for ongoing back-and-forth, not just the one-shot flag/approve notes. */
-  async getThread(id: string, adminId: string): Promise<{ id: string }> {
+  /** The listing's moderation thread for this admin, or `id: null` when nothing has been sent yet. Lookup only: opening a listing
+   * must not create a thread, because an empty thread is a phantom "message" in the admin Messages views. */
+  async getThread(id: string, adminId: string): Promise<{ id: string | null }> {
+    const thread = await this.messagingService.findModerationThread(id, adminId);
+    return { id: thread?.id ?? null };
+  }
+
+  /** Get-or-create, used only when an admin is about to send a message in the thread. Safe and idempotent. */
+  async createThread(id: string, adminId: string): Promise<{ id: string }> {
     const thread = await this.messagingService.getOrCreateModerationThread(id, adminId);
     return { id: thread.id };
   }

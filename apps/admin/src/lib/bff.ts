@@ -446,8 +446,14 @@ export function setCoverPhoto(
   return authedBffFetch(accessToken, `/admin/listings/${id}/photos/${photoNo}/set-cover`, { method: "POST" });
 }
 
-export function fetchThread(accessToken: string, listingId: string): Promise<{ id: string }> {
+/** The listing's moderation thread, or `id: null` when nothing has been sent in it yet. Never creates one. */
+export function fetchThread(accessToken: string, listingId: string): Promise<{ id: string | null }> {
   return authedBffFetch(accessToken, `/admin/listings/${listingId}/thread`, { cache: "no-store" });
+}
+
+/** Creates the thread if there is none yet. Only for the moment a message is sent. */
+export function createThread(accessToken: string, listingId: string): Promise<{ id: string }> {
+  return authedBffFetch(accessToken, `/admin/listings/${listingId}/thread`, { method: "POST" });
 }
 
 export function fetchConversations(accessToken: string): Promise<ConversationSummaryDto[]> {

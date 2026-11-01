@@ -169,7 +169,8 @@ export default async function ListingModerationPage({
     fetchListingNotificationHistory(accessToken, id),
     fetchPayments(accessToken, { listingId: id, limit: 25 }).catch(() => ({ items: [], total: 0 })),
   ]);
-  const messages = await fetchMessages(accessToken, thread.id);
+  // No thread yet means nothing has been sent to the owner; opening the listing must not create an empty one.
+  const messages = thread.id ? await fetchMessages(accessToken, thread.id) : [];
   const likedTotalPages = Math.max(1, Math.ceil(engagement.total / likedLimit));
   const msgTotalPages = Math.max(1, Math.ceil(conversations.total / msgLimit));
   const historyTotalPages = Math.max(1, Math.ceil(history.total / historyLimit));

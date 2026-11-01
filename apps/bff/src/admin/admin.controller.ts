@@ -298,9 +298,16 @@ export class AdminController {
     return this.listingPhotos.setCoverAsAdmin(id, Number(photoNo));
   }
 
+  /** Lookup only; `id` is null until a message has been sent. */
   @Get('listings/:id/thread')
-  getThread(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<{ id: string }> {
+  getThread(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<{ id: string | null }> {
     return this.adminService.getThread(id, user.id);
+  }
+
+  /** Creates the thread if needed, for the moment a message is sent. */
+  @Post('listings/:id/thread')
+  createThread(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<{ id: string }> {
+    return this.adminService.createThread(id, user.id);
   }
 
   @Get('listings/:id/owner')

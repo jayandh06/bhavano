@@ -74,6 +74,7 @@ function makeService(
       listingTitle: 'A listing',
     }),
     getOrCreateModerationThread: jest.fn().mockResolvedValue({ id: 'modThread1' }),
+    findModerationThread: jest.fn().mockResolvedValue(null),
     sendMessage: jest.fn().mockResolvedValue({
       message: { id: 'modMsg1', conversationId: 'modThread1', senderId: 'admin1', body: 'x', createdAt: '', readAt: null, deletedAt: null },
       recipientId: 'owner1',
@@ -276,6 +277,27 @@ describe('AdminService.listUsers — purchase filter', () => {
     const sql = await sqlFor();
     expect(sql).not.toContain('"Payment" pay');
     expect(sql).not.toContain('"UserSubscription" sub');
+  });
+});
+
+describe('AdminService moderation thread', () => {
+  it('opening a listing only looks the thread up, so no empty thread is created', async () => {
+    const { service, messagingService } = makeService();
+    expect(await service.getThread('listing1', 'admin1')).toEqual({ id: null });
+    expect(messagingService.findModerationThread).toHaveBeenCalledWith('listing1', 'admin1');
+    expect(messagingService.getOrCreateModerationThread).not.toHaveBeenCalled();
+  });
+
+  it('returns the existing thread id when messages have been sent', async () => {
+    const { service, messagingService } = makeService();
+    (messagingService.findModerationThread as jest.Mock).mockResolvedValue({ id: 'modThread9' });
+    expect(await service.getThread('listing1', 'admin1')).toEqual({ id: 'modThread9' });
+  });
+
+  it('creates the thread only when a message is about to be sent', async () => {
+    const { service, messagingService } = makeService();
+    expect(await service.createThread('listing1', 'admin1')).toEqual({ id: 'modThread1' });
+    expect(messagingService.getOrCreateModerationThread).toHaveBeenCalledWith('listing1', 'admin1');
   });
 });
 

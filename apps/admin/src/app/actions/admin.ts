@@ -38,7 +38,7 @@ import {
   fetchListingConversationMessages,
   fetchNotificationDayDetail,
   fetchSessionTrail,
-  fetchThread,
+  createThread,
   fetchUserLoginHistory,
   fetchAreas,
   flagListing,
@@ -218,7 +218,7 @@ export async function sendBoostMessageAction(
 export async function sendThreadMessageAction(listingId: string, body: string): Promise<ActionResult> {
   const { accessToken } = await requireAdmin();
   try {
-    const thread = await fetchThread(accessToken, listingId);
+    const thread = await createThread(accessToken, listingId);
     await sendMessage(accessToken, thread.id, body);
     revalidatePath(`/listings/${listingId}`);
     return { success: true };
