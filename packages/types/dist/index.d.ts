@@ -1044,6 +1044,22 @@ export interface PageVisitDto {
      * merge flow needs. Empty for a session nobody logged in during, and for sessions that predate
      * LoginEvent.sessionId. */
     sessionLogins: PageVisitSessionLogin[];
+    /** What the admin Page visits list highlights, see docs/plans/admin-page-visit-highlights.md. Filled on the
+     * list only; the single-session trail does not carry it. */
+    highlights?: PageVisitHighlights;
+}
+/** Row highlights on the admin Page visits list. `ad` and `featured` are about listings this session created;
+ * `purchased` and `activePurchase` are about the person, so they show on every visit of an account that paid. */
+export interface PageVisitHighlights {
+    /** An ad posted in this session: `live` is visible on the site now, `pipeline` is posted but waiting for checkout
+     * or a scheduled go-live. Null for none, or for one that is over, hidden or unclaimed. */
+    ad: "live" | "pipeline" | null;
+    /** A listing from this session that was featured: `active` while the boost runs, `past` once it has lapsed. */
+    featured: "active" | "past" | null;
+    /** The account has made at least one paid purchase, ever. */
+    purchased: boolean;
+    /** The account holds something paid right now: a running boost, instant alerts or an unexpired plan. */
+    activePurchase: boolean;
 }
 export interface PageVisitSessionLogin {
     userId: string;

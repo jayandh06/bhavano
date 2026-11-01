@@ -23,6 +23,7 @@ import type {
   LoginMethod,
   MessageDto,
   OsFamily,
+  PageVisitHighlights,
   PageVisitSessionLogin,
   PageVisitsPage,
   RateLimitSettingsDto,
@@ -71,6 +72,7 @@ import type { CreateAssistedListingDto } from './dto/create-assisted-listing.dto
 import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
 import { ListUserLoginHistoryDto } from './dto/list-user-login-history.dto';
 import { ListPageVisitsDto, PageVisitSort } from './dto/list-page-visits.dto';
+import { visitHighlights, type SessionListingFacts } from './page-visit-highlights';
 import { PostFunnelQueryDto } from './dto/post-funnel-query.dto';
 import { summarizePostFieldEvents, type PostDetailsBlockersDto, type PostFunnelDto } from '@bhavano/types/postFunnel';
 import { parsePostFieldEventPath, POST_FIELD_PATH_PREFIX } from '@bhavano/types/postFieldEvents';
@@ -1030,6 +1032,11 @@ export class AdminService {
       loginsBySessionId.set(login.sessionId, list);
     }
 
+    const highlightsBySessionId = await this.pageVisitHighlights(
+      rows.map((r) => ({ sessionId: r.sessionId, userId: r.userId })),
+      loginsBySessionId,
+    );
+
     return {
       items: rows.map((row) => ({
         id: row.id,
@@ -1059,10 +1066,93 @@ export class AdminService {
         jsConfirmedAt: row.jsConfirmedAt?.toISOString() ?? null,
         pageViewCount: pageViewCountBySessionId.get(row.sessionId) ?? 0,
         sessionLogins: loginsBySessionId.get(row.sessionId) ?? [],
+        highlights: highlightsBySessionId.get(row.sessionId),
       })),
       total,
       avgPageViewsPerSession: avgRow && avgRow.sessions > 0 ? avgRow.views / avgRow.sessions : null,
     };
+  }
+
+  /** Highlights for the page of visits on screen, in five small queries scoped to those sessions and accounts:
+   * the listings each session created (and whether any was featured), then each account's payments and what it holds
+   * right now. The rules live in page-visit-highlights.ts. */
+  private async pageVisitHighlights(
+    visits: { sessionId: string; userId: string | null }[],
+    loginsBySessionId: Map<string, PageVisitSessionLogin[]>,
+  ): Promise<Map<string, PageVisitHighlights>> {
+    const result = new Map<string, PageVisitHighlights>();
+    if (visits.length === 0) return result;
+    const now = new Date();
+
+    const userIdsBySession = new Map<string, string[]>();
+    for (const v of visits) {
+      const ids = new Set<string>(v.userId ? [v.userId] : []);
+      for (const login of loginsBySessionId.get(v.sessionId) ?? []) ids.add(login.userId);
+      userIdsBySession.set(v.sessionId, [...ids]);
+    }
+    const allUserIds = [...new Set([...userIdsBySession.values()].flat())];
+
+    const [listings, paid, subscriptions, runningListings] = await Promise.all([
+      this.prisma.listing.findMany({
+        where: { createSessionId: { in: visits.map((v) => v.sessionId) } },
+        select: {
+          createSessionId: true,
+          publishState: true,
+          status: true,
+          expiresAt: true,
+          boostedUntil: true,
+          _count: { select: { listingBoosts: true } },
+        },
+      }),
+      allUserIds.length
+        ? this.prisma.payment.groupBy({ by: ['userId'], where: { userId: { in: allUserIds }, status: 'paid' } })
+        : [],
+      allUserIds.length
+        ? this.prisma.userSubscription.findMany({
+            where: { userId: { in: allUserIds }, startsAt: { lte: now }, endsAt: { gt: now } },
+            select: { userId: true },
+          })
+        : [],
+      allUserIds.length
+        ? this.prisma.listing.findMany({
+            where: {
+              ownerId: { in: allUserIds },
+              OR: [{ boostedUntil: { gt: now } }, { instantAlertsUntil: { gt: now } }],
+            },
+            select: { ownerId: true },
+          })
+        : [],
+    ]);
+
+    const listingsBySession = new Map<string, SessionListingFacts[]>();
+    for (const l of listings) {
+      if (!l.createSessionId) continue;
+      const list = listingsBySession.get(l.createSessionId) ?? [];
+      list.push({
+        publishState: l.publishState,
+        status: l.status,
+        expiresAt: l.expiresAt,
+        boostedUntil: l.boostedUntil,
+        everBoosted: l._count.listingBoosts > 0,
+      });
+      listingsBySession.set(l.createSessionId, list);
+    }
+    const paidUserIds = new Set(paid.map((p) => p.userId));
+    const activeUserIds = new Set([...subscriptions.map((s) => s.userId), ...runningListings.map((l) => l.ownerId)]);
+
+    for (const v of visits) {
+      result.set(
+        v.sessionId,
+        visitHighlights({
+          listings: listingsBySession.get(v.sessionId) ?? [],
+          userIds: userIdsBySession.get(v.sessionId) ?? [],
+          paidUserIds,
+          activeUserIds,
+          now,
+        }),
+      );
+    }
+    return result;
   }
 
   /** Ordered session counts through the `/post` wizard's five real steps (plus the bare `/post`

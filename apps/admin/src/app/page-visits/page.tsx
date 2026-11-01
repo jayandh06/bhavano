@@ -26,7 +26,7 @@ import { Pagination } from "@/components/Pagination";
 import { SelectField } from "@/components/SelectField";
 import { SortableHeader } from "@/components/SortableHeader";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
-import { PageVisitsTable } from "@/components/PageVisitsTable";
+import { PageVisitLegend, PageVisitsTable } from "@/components/PageVisitsTable";
 import { AdFilterPicker } from "@/components/AdFilterPicker";
 
 import { FullPageLink } from "@/components/FullPageLink";
@@ -250,6 +250,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
           {sort && <input type="hidden" name="sort" value={sort} />}
           {str(sp.limit) && <input type="hidden" name="limit" value={str(sp.limit)} />}
 
+          <PageVisitLegend />
           <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 10 }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
               <thead>
