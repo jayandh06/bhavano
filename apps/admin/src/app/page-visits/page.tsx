@@ -67,6 +67,16 @@ const DEVICE_TYPE_OPTIONS: { value: DeviceType | "any"; label: string }[] = [
   { value: "mobile_app", label: "Mobile App" },
 ];
 
+/** `all` sends nothing; the rest are the BFF's `highlight` values, the same four rules as the row colours. */
+const HIGHLIGHT_OPTIONS: { value: string; label: string }[] = [
+  { value: "all", label: "All visits" },
+  { value: "any", label: "Highlighted only" },
+  { value: "ad", label: "Ad posted (live or pending)" },
+  { value: "featured", label: "Featured listing" },
+  { value: "purchased", label: "Has purchased" },
+  { value: "active", label: "Active purchase now" },
+];
+
 /** Orthogonal to DEVICE_TYPE_OPTIONS — see Visit.os's own schema comment. */
 const OS_OPTIONS: { value: OsFamily | "any"; label: string }[] = [
   { value: "any", label: "Any OS" },
@@ -86,6 +96,8 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const traffic = (str(sp.traffic) as AdminPageVisitTraffic | undefined) ?? DEFAULT_TRAFFIC;
   const deviceTypeRaw = str(sp.deviceType);
   const deviceType = deviceTypeRaw && deviceTypeRaw !== "any" ? (deviceTypeRaw as DeviceType) : undefined;
+  const highlightRaw = str(sp.highlight);
+  const highlight = HIGHLIGHT_OPTIONS.some((o) => o.value === highlightRaw && o.value !== "all") ? highlightRaw : undefined;
   const osRaw = str(sp.os);
   const os = osRaw && osRaw !== "any" ? (osRaw as OsFamily) : undefined;
   // Same silent-default pattern as DEFAULT_TRAFFIC above: absent from/to defaults to a 1-day
@@ -115,6 +127,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
     userId,
     identity,
     traffic,
+    highlight,
     deviceType,
     os,
     source,
@@ -209,6 +222,16 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
             <Field label="Traffic">
               <SelectField name="traffic" defaultValue={traffic} style={selectStyle}>
                 {TRAFFIC_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectField>
+            </Field>
+
+            <Field label="Highlights">
+              <SelectField name="highlight" defaultValue={highlight ?? "all"} style={selectStyle}>
+                {HIGHLIGHT_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>

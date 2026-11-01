@@ -606,6 +606,8 @@ export interface PageVisitsQuery {
   /** `anonymous`/`logged_in` are mutually exclusive with `userId` in the admin page's UI. */
   identity?: AdminPageVisitIdentity;
   traffic?: AdminPageVisitTraffic;
+  /** `any`, `ad`, `featured`, `purchased` or `active`: keep only visits with that row highlight. */
+  highlight?: string;
   deviceType?: DeviceType;
   os?: OsFamily;
   source?: string;

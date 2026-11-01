@@ -71,7 +71,7 @@ import { ListListingPerformanceDto } from './dto/list-listing-performance.dto';
 import type { CreateAssistedListingDto } from './dto/create-assisted-listing.dto';
 import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
 import { ListUserLoginHistoryDto } from './dto/list-user-login-history.dto';
-import { ListPageVisitsDto, PageVisitSort } from './dto/list-page-visits.dto';
+import { ListPageVisitsDto, PageVisitHighlightFilter, PageVisitSort } from './dto/list-page-visits.dto';
 import { visitHighlights, type SessionListingFacts } from './page-visit-highlights';
 import { PostFunnelQueryDto } from './dto/post-funnel-query.dto';
 import { summarizePostFieldEvents, type PostDetailsBlockersDto, type PostFunnelDto } from '@bhavano/types/postFunnel';
@@ -951,6 +951,11 @@ export class AdminService {
       where.AND = [...existing, ...adClauses];
     }
 
+    if (query.highlight) {
+      const existing = where.AND ? (Array.isArray(where.AND) ? where.AND : [where.AND]) : [];
+      where.AND = [...existing, await this.highlightWhere(query.highlight, new Date())];
+    }
+
     // Relation filters, not direct Visit columns — see ListPageVisitsDto's email/phone doc
     // comments for the Visit.userId-only scope limitation this inherits.
     const emailClause = parseTextFilter(query.email);
@@ -1073,6 +1078,70 @@ export class AdminService {
     };
   }
 
+  /** Accounts with at least one paid Payment, ever; narrowed to `among` when given. */
+  private async usersWithPurchase(among?: string[]): Promise<Set<string>> {
+    const rows = await this.prisma.payment.groupBy({
+      by: ['userId'],
+      where: { status: 'paid', ...(among ? { userId: { in: among } } : {}) },
+    });
+    return new Set(rows.map((r) => r.userId));
+  }
+
+  /** Accounts holding something paid right now: an unexpired subscription, or a listing they own with a running boost or
+   * instant-alerts window. Narrowed to `among` when given. */
+  private async usersWithActivePurchase(now: Date, among?: string[]): Promise<Set<string>> {
+    const owner = among ? { in: among } : undefined;
+    const [subscriptions, running] = await Promise.all([
+      this.prisma.userSubscription.findMany({
+        where: { ...(owner ? { userId: owner } : {}), startsAt: { lte: now }, endsAt: { gt: now } },
+        select: { userId: true },
+      }),
+      this.prisma.listing.findMany({
+        where: { ...(owner ? { ownerId: owner } : {}), OR: [{ boostedUntil: { gt: now } }, { instantAlertsUntil: { gt: now } }] },
+        select: { ownerId: true },
+      }),
+    ]);
+    return new Set([...subscriptions.map((s) => s.userId), ...running.map((l) => l.ownerId)]);
+  }
+
+  /** The Visit filter behind `highlight`: the same four rules as the row colours (page-visit-highlights.ts), expressed as a
+   * query. Person-level rules match a visit whose account is one of those users or who logged in during that session. */
+  private async highlightWhere(highlight: PageVisitHighlightFilter, now: Date): Promise<Prisma.VisitWhereInput> {
+    const byUsers = async (ids: Set<string>): Promise<Prisma.VisitWhereInput> => {
+      if (ids.size === 0) return { id: { in: [] } };
+      const list = [...ids];
+      const logins = await this.prisma.loginEvent.findMany({
+        where: { userId: { in: list }, sessionId: { not: null } },
+        select: { sessionId: true },
+        distinct: ['sessionId'],
+      });
+      return { OR: [{ userId: { in: list } }, { sessionId: { in: logins.map((l) => l.sessionId as string) } }] };
+    };
+    const bySessions = async (where: Prisma.ListingWhereInput): Promise<Prisma.VisitWhereInput> => {
+      const rows = await this.prisma.listing.findMany({
+        where: { createSessionId: { not: null }, ...where },
+        select: { createSessionId: true },
+        distinct: ['createSessionId'],
+      });
+      return { sessionId: { in: rows.map((r) => r.createSessionId as string) } };
+    };
+
+    const clauses: Record<Exclude<PageVisitHighlightFilter, 'any'>, () => Promise<Prisma.VisitWhereInput>> = {
+      ad: () =>
+        bySessions({
+          OR: [
+            { publishState: 'live', status: 'active', expiresAt: { gt: now } },
+            { publishState: { in: ['pending_checkout', 'scheduled'] } },
+          ],
+        }),
+      featured: () => bySessions({ listingBoosts: { some: {} } }),
+      purchased: async () => byUsers(await this.usersWithPurchase()),
+      active: async () => byUsers(await this.usersWithActivePurchase(now)),
+    };
+    if (highlight !== 'any') return clauses[highlight]();
+    return { OR: await Promise.all(Object.values(clauses).map((build) => build())) };
+  }
+
   /** Highlights for the page of visits on screen, in five small queries scoped to those sessions and accounts:
    * the listings each session created (and whether any was featured), then each account's payments and what it holds
    * right now. The rules live in page-visit-highlights.ts. */
@@ -1092,7 +1161,7 @@ export class AdminService {
     }
     const allUserIds = [...new Set([...userIdsBySession.values()].flat())];
 
-    const [listings, paid, subscriptions, runningListings] = await Promise.all([
+    const [listings, paidUserIds, activeUserIds] = await Promise.all([
       this.prisma.listing.findMany({
         where: { createSessionId: { in: visits.map((v) => v.sessionId) } },
         select: {
@@ -1104,24 +1173,8 @@ export class AdminService {
           _count: { select: { listingBoosts: true } },
         },
       }),
-      allUserIds.length
-        ? this.prisma.payment.groupBy({ by: ['userId'], where: { userId: { in: allUserIds }, status: 'paid' } })
-        : [],
-      allUserIds.length
-        ? this.prisma.userSubscription.findMany({
-            where: { userId: { in: allUserIds }, startsAt: { lte: now }, endsAt: { gt: now } },
-            select: { userId: true },
-          })
-        : [],
-      allUserIds.length
-        ? this.prisma.listing.findMany({
-            where: {
-              ownerId: { in: allUserIds },
-              OR: [{ boostedUntil: { gt: now } }, { instantAlertsUntil: { gt: now } }],
-            },
-            select: { ownerId: true },
-          })
-        : [],
+      allUserIds.length ? this.usersWithPurchase(allUserIds) : new Set<string>(),
+      allUserIds.length ? this.usersWithActivePurchase(now, allUserIds) : new Set<string>(),
     ]);
 
     const listingsBySession = new Map<string, SessionListingFacts[]>();
@@ -1137,9 +1190,6 @@ export class AdminService {
       });
       listingsBySession.set(l.createSessionId, list);
     }
-    const paidUserIds = new Set(paid.map((p) => p.userId));
-    const activeUserIds = new Set([...subscriptions.map((s) => s.userId), ...runningListings.map((l) => l.ownerId)]);
-
     for (const v of visits) {
       result.set(
         v.sessionId,

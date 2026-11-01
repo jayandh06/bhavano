@@ -63,6 +63,13 @@ const PAGE_VISIT_TRAFFIC_VALUES = ['any', 'humans', 'js_confirmed', 'bots', 'unc
 
 export type PageVisitTraffic = (typeof PAGE_VISIT_TRAFFIC_VALUES)[number];
 
+/** Keep only visits that carry a row highlight (docs/plans/admin-page-visit-highlights.md): `any` is any of the four,
+ * `ad` an ad posted live or in the pipeline, `featured` a featured listing from the session, `purchased` an account that
+ * has paid at least once, `active` an account holding something paid now. */
+const PAGE_VISIT_HIGHLIGHT_VALUES = ['any', 'ad', 'featured', 'purchased', 'active'] as const;
+
+export type PageVisitHighlightFilter = (typeof PAGE_VISIT_HIGHLIGHT_VALUES)[number];
+
 /**
  * Each text filter (`source`, `medium`, `ip`, `landingPath`, `city`, `region`, `country`, `email`,
  * `phone`) is a tiny query DSL, parsed by `parseTextFilter` in admin.service.ts — plain text is a
@@ -109,6 +116,11 @@ export class ListPageVisitsDto {
   @IsOptional()
   @IsIn(PAGE_VISIT_TRAFFIC_VALUES)
   traffic?: PageVisitTraffic;
+
+  /** See PAGE_VISIT_HIGHLIGHT_VALUES. Unset or an unknown value means no filter. */
+  @IsOptional()
+  @IsIn(PAGE_VISIT_HIGHLIGHT_VALUES)
+  highlight?: PageVisitHighlightFilter;
 
   @IsOptional()
   @IsIn(DEVICE_TYPES)

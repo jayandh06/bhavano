@@ -27,6 +27,16 @@ valuable thing about it (order below); every applicable badge still shows. A leg
 - UI: `apps/admin/src/components/PageVisitsTable.tsx` (`PageVisitLegend`, row styles) and `apps/admin/src/app/page-visits/page.tsx`.
 
 ## Not done
-- No filter yet ("show only buyers"); the highlight is visual. A filter would need these conditions in the visit query itself.
 - A visit by a buyer who logged in on an earlier session only (not this one) is not marked: the link is the login in that session.
 - The same colours could go on the Campaign analytics rows; not asked for.
+
+## Filter (added 2026-11-01)
+A "Highlights" dropdown in the filter bar keeps only the matching visits: All visits, Highlighted only (any of the four), Ad posted (live or pending),
+Featured listing, Has purchased, Active purchase now. It is `highlight` on `GET /admin/page-visits` (`ListPageVisitsDto`), turned into a Visit
+`where` by `AdminService.highlightWhere`, which asks the database the same four questions as the row colours:
+- Ad posted: sessions with a listing that is live and unexpired, or `pending_checkout` / `scheduled`.
+- Featured: sessions with a listing that has any `ListingBoost`.
+- Purchased / Active purchase: the matching accounts, plus the sessions they logged in during (Visit.userId or any LoginEvent), so a buyer's visits all show.
+  When no account qualifies the filter returns nothing, not everything.
+- The helpers `usersWithPurchase` and `usersWithActivePurchase` are shared with the row colours, so the two cannot disagree.
+Tests: `page-visit-highlight-filter.spec.ts`. The date range still applies (default one day), so widen it to find older buyers.
