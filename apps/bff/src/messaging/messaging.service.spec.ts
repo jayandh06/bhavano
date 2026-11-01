@@ -574,6 +574,15 @@ describe('MessagingService.listConversationsAsAdmin — the admin Messages scree
     expect(result.items[0].lastMessageUnread).toBe(true);
   });
 
+  it('leaves out staff moderation threads that have no message, which opening a listing in admin creates', async () => {
+    const { service, prisma } = setup([row({ type: 'moderation' })]);
+    await service.listConversationsAsAdmin({ type: 'any', limit: 25 });
+    const call = (prisma.conversation.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.NOT).toEqual({ type: 'moderation', messages: { none: {} } });
+    // The same filter counts the total, so the page numbers match the rows.
+    expect((prisma.conversation.count as jest.Mock).mock.calls[0][0].where.NOT).toEqual(call.where.NOT);
+  });
+
   it('names who actually wrote first, which is not always who opened the conversation', async () => {
     // The buyer opened the chat, but the owner wrote the first (and only) message.
     const { service } = setup(

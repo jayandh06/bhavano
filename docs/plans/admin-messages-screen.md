@@ -49,3 +49,11 @@ It reuses the Messages screen: `fetchAdminConversations` with that user, type `a
 no date range (all time), newest started first, 25 shown; the same `MessagesTable`, so a row opens the whole thread and a name opens that person's messages.
 "See all N in Messages" links to `/messages?userId=…&type=any&from=&to=` when there are more than 25. No backend change. Reading a thread never marks it read.
 Privacy note above applies: this puts private messages on the user page, visible to admins only.
+
+## Fix 2026-11-01: empty "messages" from staff to advertisers
+The user page's Messages section showed a staff moderation thread with no messages ("—" in Msgs and Last message) from the admin to an advertiser, and the
+Messages screen listed many like it. Nothing had been sent to the advertiser. Opening any listing in admin calls `getOrCreateModerationThread`
+(`AdminService.getThread`) so the listing's Messages box can send, and that creates the thread row. The customer inbox already hides these
+(`messages: { some: { deletedAt: null } }`); the admin Messages screen did not. Now `listConversationsAsAdmin` leaves out a moderation thread that has no message
+(`NOT: { type: 'moderation', messages: { none: {} } }`), in the rows and in the total. Empty buyer enquiries still show, since a lazily created
+enquiry has a message and only old rows from before that change can be empty. Existing empty rows stay in the database, harmless.

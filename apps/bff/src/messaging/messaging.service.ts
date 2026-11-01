@@ -442,6 +442,10 @@ export class MessagingService {
     const type = query.type ?? 'inquiry';
     const where: Prisma.ConversationWhereInput = {
       ...(type === 'any' ? {} : { type }),
+      // A staff moderation thread with no message is not a conversation: opening any listing in admin gets-or-creates its thread
+      // (getOrCreateModerationThread) so the Messages box can send, and nothing is sent. Showing them listed an empty
+      // "message to the advertiser" for every listing an admin had looked at. Buyer enquiries are only created with a first message.
+      NOT: { type: 'moderation', messages: { none: {} } },
       ...(query.listingId ? { listingId: query.listingId } : {}),
       ...(query.from || query.to
         ? {
