@@ -42,3 +42,10 @@ that person and **To** = the other, each tagged buyer, owner or staff. The Last 
 moved to the **To** side and now means "the person it was sent to has not read the latest message" (`lastMessageUnread`,
 replacing `unreadByOwner` on this screen only; the per-listing Messages box is unchanged). A conversation nobody has written in
 yet falls back to opener -> owner.
+
+## On the user page (2026-11-01)
+`/users/[id]` now has a **Messages (N)** section between Purchases and Visit history, so one page shows listings, activity, purchases, messages and visits.
+It reuses the Messages screen: `fetchAdminConversations` with that user, type `any` (buyer enquiries plus staff moderation and announcement threads) and
+no date range (all time), newest started first, 25 shown; the same `MessagesTable`, so a row opens the whole thread and a name opens that person's messages.
+"See all N in Messages" links to `/messages?userId=…&type=any&from=&to=` when there are more than 25. No backend change. Reading a thread never marks it read.
+Privacy note above applies: this puts private messages on the user page, visible to admins only.

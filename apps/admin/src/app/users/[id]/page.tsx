@@ -4,12 +4,16 @@ import type { ActivityEventDto, AdminUserListingDto, DeviceType, VisitDto } from
 import { postedByLabel } from "@bhavano/types/sellerType";
 import { DEFAULT_OWNER_ALERT_ORDER, OWNER_ALERT_CHANNEL_LABELS } from "@bhavano/types/ownerAlerts";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { fetchCities, fetchPayments, fetchUserActivity, fetchUserSavedSearches } from "@/lib/bff";
+import { fetchAdminConversations, fetchCities, fetchPayments, fetchUserActivity, fetchUserSavedSearches } from "@/lib/bff";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
 import { DeleteUserPanel } from "@/components/DeleteUserPanel";
 import { AgentStatusPanel } from "@/components/AgentStatusPanel";
 import { UserSavedSearchesPanel } from "@/components/UserSavedSearchesPanel";
 import { PurchasesPanel } from "@/components/PurchasesPanel";
+import { MessagesTable } from "@/components/MessagesTable";
+
+/** Conversations shown on this page; the Messages screen has the rest. */
+const MESSAGES_SHOWN = 25;
 
 const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
   desktop: "Desktop",
@@ -44,12 +48,14 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
   const { accessToken } = await requireAdmin();
   const { id } = await params;
 
-  const [activity, savedSearches, cities, purchases] = await Promise.all([
+  const [activity, savedSearches, cities, purchases, conversations] = await Promise.all([
     fetchUserActivity(accessToken, id).catch(() => null),
     fetchUserSavedSearches(accessToken, id),
     fetchCities(undefined, true),
     // Everything this person bought or started to buy, so an upgrade made days after posting is visible here.
     fetchPayments(accessToken, { userId: id, limit: 25 }).catch(() => ({ items: [], total: 0 })),
+    // Every conversation this person is in, as sender or receiver: buyer enquiries and staff threads, all time, newest first.
+    fetchAdminConversations(accessToken, { userId: id, type: "any", limit: MESSAGES_SHOWN }).catch(() => ({ items: [], total: 0 })),
   ]);
   if (!activity) notFound();
 
@@ -186,6 +192,28 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
           showListing
           seeAllHref={`/subscriptions?userId=${encodeURIComponent(id)}&from=&to=`}
         />
+
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12, margin: "24px 0 12px" }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Messages ({conversations.total.toLocaleString()})</h2>
+          {conversations.total > 0 && (
+            <Link
+              href={`/messages?userId=${encodeURIComponent(id)}&userLabel=${encodeURIComponent(user.name ?? user.phone ?? user.email ?? "")}&type=any&from=&to=`}
+              style={{ fontSize: 12, color: "var(--green)", fontWeight: 700 }}
+            >
+              {conversations.total > conversations.items.length ? `See all ${conversations.total.toLocaleString()} in Messages →` : "Open in Messages →"}
+            </Link>
+          )}
+        </div>
+        {conversations.items.length === 0 ? (
+          <p style={{ color: "var(--muted)", fontSize: 14 }}>This user has not sent or received any messages.</p>
+        ) : (
+          <>
+            <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 8px" }}>
+              Every conversation this person is in, as sender or receiver, newest first. Click a row to read the thread; reading here never marks anything read.
+            </p>
+            <MessagesTable items={conversations.items} linkParams="&type=any&from=&to=" />
+          </>
+        )}
 
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: "24px 0 12px" }}>Visit history</h2>
         {visits.length === 0 ? (
