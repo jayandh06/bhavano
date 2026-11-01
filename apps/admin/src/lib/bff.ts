@@ -1009,6 +1009,8 @@ export interface CampaignAnalyticsQuery {
   deviceType?: string;
   paid?: "any" | "paid" | "google" | "meta" | "organic";
   converted?: "any" | "yes" | "no";
+  /** `first_click` credits sign-ups, posts and payments to the person's first landing instead of the visit they followed. */
+  attribution?: "visit" | "first_click";
   campaignId?: string;
   adGroupId?: string;
   search?: string;

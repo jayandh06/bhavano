@@ -1,6 +1,7 @@
 import type { PrismaService } from '../prisma/prisma.service';
 import {
   buildCampaignAnalyticsSql,
+  usesFirstClick,
   CampaignAnalyticsService,
   parseSort,
   shapeRows,
@@ -50,7 +51,7 @@ describe('buildCampaignAnalyticsSql', () => {
 
   it('filters paid ad clicks against everything else', () => {
     expect(text({ paid: 'paid' })).toContain(`v."gclid" IS NOT NULL OR v."medium" IN ('cpc', 'paid_social')`);
-    expect(text({ paid: 'organic' })).toContain('NOT (');
+    expect(text({ paid: 'organic' })).toContain('NOT COALESCE(');
   });
 
   it('narrows paid clicks to one ad network', () => {
@@ -67,6 +68,26 @@ describe('buildCampaignAnalyticsSql', () => {
     const sql = text();
     expect(sql.match(/NOT EXISTS \(SELECT 1 FROM base e/g)).toHaveLength(3);
     expect(sql).toContain('e."createdAt" < b."createdAt"');
+  });
+
+  it("credits conversions to the person's first landing in first-click mode", () => {
+    // Run against a real Postgres on 2026-11-01: a user who clicked an ad, signed up, came back direct and posted gave the ad one
+    // sign-up, post and payment; visit mode gave the post and payment to "direct".
+    const sql = text({ attribution: 'first_click' });
+    expect(sql).toContain('FULL OUTER JOIN acq');
+    expect(sql).toContain('u."acquisitionCampaignId"');
+    expect(sql).toContain('FROM "LoginEvent" le');
+    expect(text({ attribution: 'first_click', groupBy: 'adGroup' })).toContain('u."acquisitionAdGroupId"');
+    expect(text({ attribution: 'first_click', paid: 'google' })).toContain('u."acquisitionGclid" IS NOT NULL');
+    expect(text({ attribution: 'first_click', campaignId: '111' })).toContain('u."acquisitionCampaignId" =');
+    expect(text()).not.toContain('FULL OUTER JOIN acq');
+  });
+
+  it('keeps visit attribution for the landing page, which an account does not record', () => {
+    expect(usesFirstClick({ attribution: 'first_click', groupBy: 'landing' })).toBe(false);
+    expect(usesFirstClick({ attribution: 'first_click' })).toBe(true);
+    expect(usesFirstClick({ attribution: 'visit' })).toBe(false);
+    expect(text({ attribution: 'first_click', groupBy: 'landing' })).not.toContain('FULL OUTER JOIN acq');
   });
 
   it('groups by the chosen dimension', () => {

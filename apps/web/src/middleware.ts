@@ -3,6 +3,7 @@ import type { NextFetchEvent } from "next/server";
 import { isBotUserAgent } from "@bhavano/types/botUserAgent";
 import { sanitizePageViewQuery } from "@bhavano/types/pageViewQuery";
 import { citySlugForRoute } from "@/lib/cityFromRoute";
+import { shouldReplaceAcquisition } from "@/lib/acquisitionCookie";
 
 const ACQUISITION_COOKIE = "bhavano_acq";
 const SESSION_COOKIE = "bhavano_sid";
@@ -288,9 +289,13 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
   // established — an already-cookied returning visitor clicking a *new* share link still needs to
   // overwrite the old referrer.
   const refParam = request.nextUrl.searchParams.get("ref");
-  if (hasAcquisitionCookie && hasSessionCookie && !cityChanged && !refParam) return NextResponse.next();
-
   const resolved = resolveSource(request);
+  // A visitor whose cookie says direct or organic, but who now arrives from an ad click, would otherwise be remembered as direct
+  // for 30 days and the ad would never get credit for their sign-up. See docs/plans/ad-first-click-attribution.md.
+  const upgradeAcquisition =
+    hasAcquisitionCookie && shouldReplaceAcquisition(request.cookies.get(ACQUISITION_COOKIE)?.value, resolved);
+  if (hasAcquisitionCookie && hasSessionCookie && !cityChanged && !refParam && !upgradeAcquisition) return NextResponse.next();
+
   const response = NextResponse.next();
 
   // Explicit rather than left to default: every one of these three cookies was set without it,
@@ -317,7 +322,7 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
     }
   }
 
-  if (!hasAcquisitionCookie) {
+  if (!hasAcquisitionCookie || upgradeAcquisition) {
     response.cookies.set(ACQUISITION_COOKIE, JSON.stringify(resolved), {
       httpOnly: true,
       sameSite: "lax",

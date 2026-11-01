@@ -47,6 +47,8 @@ export interface CampaignAnalyticsDto {
   from: string;
   to: string;
   groupBy: CampaignAnalyticsGroupByDto;
+  /** How sign-ups, posted ads and payments were credited: to the visit they followed, or to the person's first landing. */
+  attribution?: "visit" | "first_click";
   rows: CampaignAnalyticsRowDto[];
   /** True when more rows matched than the limit shown. */
   truncated: boolean;

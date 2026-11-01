@@ -51,6 +51,11 @@ const PAID_OPTIONS = [
   { value: "organic", label: "Not from an ad" },
 ];
 
+const ATTRIBUTION_OPTIONS = [
+  { value: "visit", label: "The visit it followed (24 hours)" },
+  { value: "first_click", label: "The person's first ad click" },
+];
+
 const CONVERTED_OPTIONS = [
   { value: "any", label: "All rows" },
   { value: "yes", label: "Rows with a conversion" },
@@ -78,6 +83,7 @@ export default async function CampaignAnalyticsPage({ searchParams }: { searchPa
   const deviceType = str(sp.deviceType) ?? "any";
   const paid = str(sp.paid) ?? "any";
   const converted = str(sp.converted) ?? "any";
+  const attribution = str(sp.attribution) === "first_click" ? "first_click" : "visit";
   const search = str(sp.search);
   const minVisits = str(sp.minVisits);
   const campaignId = str(sp.campaignId);
@@ -96,6 +102,7 @@ export default async function CampaignAnalyticsPage({ searchParams }: { searchPa
     deviceType: deviceType === "any" ? undefined : deviceType,
     paid: paid as CampaignAnalyticsQuery["paid"],
     converted: converted as CampaignAnalyticsQuery["converted"],
+    attribution,
     search,
     minVisits: minVisits ? Number(minVisits) : undefined,
     campaignId,
@@ -192,6 +199,9 @@ export default async function CampaignAnalyticsPage({ searchParams }: { searchPa
             <Field label="Conversions">
               <Select name="converted" value={converted} options={CONVERTED_OPTIONS} />
             </Field>
+            <Field label="Credit sign-ups, posts and payments to">
+              <Select name="attribution" value={attribution} options={ATTRIBUTION_OPTIONS} />
+            </Field>
             <Field label="Search name or id">
               <input name="search" defaultValue={search ?? ""} placeholder="e.g. Rent Out" style={{ ...inputStyle, minWidth: 170 }} />
             </Field>
@@ -213,6 +223,21 @@ export default async function CampaignAnalyticsPage({ searchParams }: { searchPa
           {/* Kept across Apply, so narrowing further does not drop the drill-down or the sort. */}
           {campaignId && <input type="hidden" name="campaignId" value={campaignId} />}
           {adGroupId && <input type="hidden" name="adGroupId" value={adGroupId} />}
+          {attribution === "first_click" && (
+            <p style={{ margin: "0 0 12px", fontSize: 12, lineHeight: 1.6, color: "var(--muted)" }}>
+              {result.attribution === "first_click" ? (
+                <>
+                  Sign-ups, posted ads, payments and revenue are credited to the campaign or source of each person&apos;s <strong>first landing</strong>, saved on
+                  their account when they signed up, whenever in the range they happened. A person who clicked an ad and posted days later as a direct visitor counts for
+                  the ad. Each person counts once per outcome. Visits, bots and engaged still count sessions in the range, so a row can show conversions with
+                  few or no visits (the click was earlier) and the percentages are not a conversion rate of the same people. Traffic, platform and device filters narrow
+                  the visits only.
+                </>
+              ) : (
+                <>Landing pages are not saved on an account, so this grouping still credits conversions to the visit they followed.</>
+              )}
+            </p>
+          )}
           {sort && <input type="hidden" name="sort" value={sort} />}
         </form>
 

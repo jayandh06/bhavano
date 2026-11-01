@@ -42,6 +42,9 @@ export class CampaignAnalyticsQueryDto {
   @IsOptional() @IsIn(['any', 'desktop', 'mobile', 'tablet', 'mobile_app']) deviceType?: string;
   /** `paid` = arrived on any ad click (Google: a gclid or medium cpc; Meta: medium paid_social); `google` / `meta` = one network only; `organic` = everything else. */
   @IsOptional() @IsIn(['any', 'paid', 'google', 'meta', 'organic']) paid?: 'any' | 'paid' | 'google' | 'meta' | 'organic';
+  /** `visit` credits a sign-up, post or payment to the visit it followed within 24 hours; `first_click` credits it to the campaign or
+   * source of the person's first landing, saved on their account. */
+  @IsOptional() @IsIn(['visit', 'first_click']) attribution?: 'visit' | 'first_click';
   /** `yes` keeps only rows with at least one sign-up, posted ad or payment; `no` only rows with none. */
   @IsOptional() @IsIn(['any', 'yes', 'no']) converted?: 'any' | 'yes' | 'no';
 

@@ -77,7 +77,8 @@ function visitFilters(q: CampaignAnalyticsQueryDto, from: Date, to: Date): Prism
   // Google Ads (a gclid, or medium cpc) and Meta ads (utm_medium=paid_social). fbclid alone is not paid: organic Facebook clicks carry it too.
   const paidClick = Prisma.sql`(v."gclid" IS NOT NULL OR v."medium" IN ('cpc', 'paid_social'))`;
   if (q.paid === 'paid') conditions.push(paidClick);
-  if (q.paid === 'organic') conditions.push(Prisma.sql`NOT ${paidClick}`);
+  // COALESCE: a visit with no gclid and no medium (direct traffic) makes the test NULL, and NOT NULL is NULL, which dropped every direct visit from "Not from an ad".
+  if (q.paid === 'organic') conditions.push(Prisma.sql`NOT COALESCE(${paidClick}, false)`);
   // One network at a time: Meta is paid_social, Google is everything else that counts as a paid click.
   if (q.paid === 'meta') conditions.push(Prisma.sql`v."medium" = 'paid_social'`);
   if (q.paid === 'google') conditions.push(Prisma.sql`(v."gclid" IS NOT NULL OR v."medium" = 'cpc') AND v."medium" IS DISTINCT FROM 'paid_social'`);
@@ -87,16 +88,13 @@ function visitFilters(q: CampaignAnalyticsQueryDto, from: Date, to: Date): Prism
   return conditions;
 }
 
-/** The whole report query: one row per group with counts of sessions at each step. Exported so the
- * SQL shape can be tested without a database. */
-export function buildCampaignAnalyticsSql(q: CampaignAnalyticsQueryDto, from: Date, to: Date): Prisma.Sql {
+/** The `base` and `pages` CTEs both attribution modes start from: the visits in view, and how many pages each looked at. */
+function visitCtes(q: CampaignAnalyticsQueryDto, from: Date, to: Date): Prisma.Sql {
   const where = Prisma.join(visitFilters(q, from, to), ' AND ');
   const key = keyExpression(q.groupBy ?? 'campaign');
-  const window = Prisma.sql`${CONVERSION_WINDOW_HOURS} * interval '1 hour'`;
   const pageViewEnd = new Date(to.getTime() + DAY_MS);
-
   return Prisma.sql`
-    WITH base AS (
+    base AS (
       SELECT v."sessionId", v."userId", v."createdAt", v."isBot", v."campaignId", v."adGroupId", v."campaign" AS "utmCampaign",
              ${key} AS "groupKey"
       FROM "Visit" v
@@ -108,7 +106,129 @@ export function buildCampaignAnalyticsSql(q: CampaignAnalyticsQueryDto, from: Da
       WHERE p."createdAt" >= ${from} AND p."createdAt" <= ${pageViewEnd}
         AND p."sessionId" IN (SELECT "sessionId" FROM base)
       GROUP BY p."sessionId"
+    )`;
+}
+
+/** First-click mode applies to every grouping except the landing page, which a person's account does not record. */
+export function usesFirstClick(q: CampaignAnalyticsQueryDto): boolean {
+  return q.attribution === 'first_click' && (q.groupBy ?? 'campaign') !== 'landing';
+}
+
+const ACQUISITION_SOURCE_KEY = Prisma.sql`'src:' || COALESCE(u."acquisitionSource", 'direct') || ' / ' || COALESCE(u."acquisitionMedium", 'none')`;
+
+/** The same group keys as keyExpression, read from the account's saved first landing instead of a visit. */
+function acquisitionKeyExpression(groupBy: CampaignAnalyticsGroupBy): Prisma.Sql {
+  switch (groupBy) {
+    case 'campaign':
+      return Prisma.sql`CASE WHEN u."acquisitionCampaignId" IS NOT NULL THEN u."acquisitionCampaignId" ELSE ${ACQUISITION_SOURCE_KEY} END`;
+    case 'adGroup':
+      return Prisma.sql`CASE WHEN u."acquisitionAdGroupId" IS NOT NULL THEN u."acquisitionAdGroupId" ELSE ${ACQUISITION_SOURCE_KEY} END`;
+    case 'ad':
+      return Prisma.sql`CASE WHEN u."acquisitionAdId" IS NOT NULL THEN u."acquisitionAdId" ELSE ${ACQUISITION_SOURCE_KEY} END`;
+    default:
+      return ACQUISITION_SOURCE_KEY;
+  }
+}
+
+/** The "Arrived from" and drill-down filters, applied to the account's first landing. The traffic, platform and device filters
+ * describe a visit and have no equivalent on an account, so they only narrow the visits column. */
+function acquisitionFilters(q: CampaignAnalyticsQueryDto): Prisma.Sql[] {
+  const conditions: Prisma.Sql[] = [];
+  const paidClick = Prisma.sql`(u."acquisitionGclid" IS NOT NULL OR u."acquisitionMedium" IN ('cpc', 'paid_social'))`;
+  if (q.paid === 'paid') conditions.push(paidClick);
+  if (q.paid === 'organic') conditions.push(Prisma.sql`NOT COALESCE(${paidClick}, false)`);
+  if (q.paid === 'meta') conditions.push(Prisma.sql`u."acquisitionMedium" = 'paid_social'`);
+  if (q.paid === 'google') {
+    conditions.push(Prisma.sql`((u."acquisitionGclid" IS NOT NULL OR u."acquisitionMedium" = 'cpc') AND u."acquisitionMedium" IS DISTINCT FROM 'paid_social')`);
+  }
+  if (q.campaignId) conditions.push(Prisma.sql`u."acquisitionCampaignId" = ${q.campaignId}`);
+  if (q.adGroupId) conditions.push(Prisma.sql`u."acquisitionAdGroupId" = ${q.adGroupId}`);
+  return conditions;
+}
+
+/** First-click attribution: visits are counted as before, but sign-ups, posted ads, payments and revenue are credited to the
+ * campaign or source of the person's FIRST landing (saved on the account at sign-up), whenever in the range they happened. A person
+ * who clicked an ad, came back direct the next day and posted is one post for the ad, not for "direct". Each person counts once
+ * per outcome. Rows can appear with conversions and no visits in the range (the click was earlier). */
+function buildFirstClickSql(q: CampaignAnalyticsQueryDto, from: Date, to: Date): Prisma.Sql {
+  const groupBy = q.groupBy ?? 'campaign';
+  const accountWhere = acquisitionFilters(q);
+  const accountFilter = accountWhere.length ? Prisma.sql`WHERE ${Prisma.join(accountWhere, ' AND ')}` : Prisma.empty;
+
+  return Prisma.sql`
+    WITH ${visitCtes(q, from, to)},
+    vis AS (
+      SELECT b."groupKey" AS "key",
+             max(b."campaignId") AS "campaignId",
+             max(b."adGroupId") AS "adGroupId",
+             max(b."utmCampaign") AS "utmCampaign",
+             count(*) AS "visits",
+             count(*) FILTER (WHERE b."isBot" = true) AS "bots",
+             count(*) FILTER (WHERE pages.n >= 2) AS "engaged",
+             count(*) FILTER (WHERE pages."reachedPost") AS "reachedPost"
+      FROM base b
+      LEFT JOIN pages ON pages."sessionId" = b."sessionId"
+      GROUP BY b."groupKey"
     ),
+    people AS (
+      SELECT u."id",
+             ${acquisitionKeyExpression(groupBy)} AS "groupKey",
+             u."acquisitionCampaignId" AS "campaignId",
+             u."acquisitionAdGroupId" AS "adGroupId",
+             u."acquisitionCampaign" AS "utmCampaign",
+             -- A sign-up is an account created in the range that someone actually logged in to: imported owners awaiting a claim are not.
+             (u."createdAt" >= ${from} AND u."createdAt" <= ${to}
+                AND EXISTS (SELECT 1 FROM "LoginEvent" le WHERE le."userId" = u."id")) AS "signedUp",
+             EXISTS (SELECT 1 FROM "Listing" l
+                WHERE l."ownerId" = u."id" AND l."source" = 'direct' AND l."publishState" <> 'awaiting_claim'
+                  AND l."createdAt" >= ${from} AND l."createdAt" <= ${to}) AS "posted",
+             EXISTS (SELECT 1 FROM "Payment" pay
+                WHERE pay."userId" = u."id" AND pay."status" = 'paid' AND pay."paidAt" >= ${from} AND pay."paidAt" <= ${to}) AS "paid",
+             (SELECT COALESCE(sum(pay."amount"), 0) FROM "Payment" pay
+                WHERE pay."userId" = u."id" AND pay."status" = 'paid' AND pay."paidAt" >= ${from} AND pay."paidAt" <= ${to}) AS "revenuePaise"
+      FROM "User" u
+      ${accountFilter}
+    ),
+    acq AS (
+      SELECT p."groupKey" AS "key",
+             max(p."campaignId") AS "campaignId",
+             max(p."adGroupId") AS "adGroupId",
+             max(p."utmCampaign") AS "utmCampaign",
+             count(*) FILTER (WHERE p."signedUp") AS "signups",
+             count(*) FILTER (WHERE p."posted") AS "posted",
+             count(*) FILTER (WHERE p."paid") AS "paid",
+             sum(p."revenuePaise") AS "revenuePaise"
+      FROM people p
+      WHERE p."signedUp" OR p."posted" OR p."paid"
+      GROUP BY p."groupKey"
+    )
+    SELECT COALESCE(vis."key", acq."key") AS "key",
+           COALESCE(vis."campaignId", acq."campaignId") AS "campaignId",
+           COALESCE(vis."adGroupId", acq."adGroupId") AS "adGroupId",
+           COALESCE(vis."utmCampaign", acq."utmCampaign") AS "utmCampaign",
+           COALESCE(vis."visits", 0) AS "visits",
+           COALESCE(vis."bots", 0) AS "bots",
+           COALESCE(vis."engaged", 0) AS "engaged",
+           COALESCE(vis."reachedPost", 0) AS "reachedPost",
+           COALESCE(acq."signups", 0) AS "signups",
+           COALESCE(acq."posted", 0) AS "posted",
+           COALESCE(acq."paid", 0) AS "paid",
+           COALESCE(acq."revenuePaise", 0) AS "revenuePaise"
+    FROM vis
+    FULL OUTER JOIN acq ON acq."key" = vis."key"
+    ORDER BY COALESCE(vis."visits", 0) DESC, COALESCE(acq."signups", 0) DESC
+    LIMIT ${MAX_GROUPS}
+  `;
+}
+
+/** The whole report query: one row per group with counts of sessions at each step. Exported so the
+ * SQL shape can be tested without a database. */
+export function buildCampaignAnalyticsSql(q: CampaignAnalyticsQueryDto, from: Date, to: Date): Prisma.Sql {
+  if (usesFirstClick(q)) return buildFirstClickSql(q, from, to);
+  const window = Prisma.sql`${CONVERSION_WINDOW_HOURS} * interval '1 hour'`;
+
+  return Prisma.sql`
+    WITH ${visitCtes(q, from, to)},
     outcome AS (
       -- A payment or a sign-up counts once: for the user's first visit in this view that covers it. Without the NOT EXISTS guards,
       -- a user with two visits inside the window (the app opened twice in a day) had the same payment counted for both.
@@ -264,6 +384,7 @@ export class CampaignAnalyticsService {
       from: from.toISOString(),
       to: to.toISOString(),
       groupBy,
+      attribution: usesFirstClick({ ...query, groupBy }) ? 'first_click' : 'visit',
       rows,
       truncated,
       totals: {
