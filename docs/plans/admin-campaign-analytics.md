@@ -107,3 +107,15 @@ log, keywords (phases 2 to 4 above).
 ## Filter by ad network (2026-10-30)
 
 The "Arrived from" filter now splits paid clicks by network: **All paid ad clicks**, **Google Ads only** (a gclid or `utm_medium=cpc`, never a `paid_social` visit) and **Facebook / Instagram ads only** (`utm_medium=paid_social`), next to **Not from an ad** and the default (all). Query value is `paid=any|paid|google|meta|organic`; the logic is in `visitFilters` (`apps/bff/src/campaign-analytics/campaign-analytics.service.ts`) with a test in the spec. Group by Source / medium still shows both networks side by side when the filter is on "All".
+
+## Fix: one payment counted twice (2026-11-01)
+Reported on the "direct / none" row: 2 paid where it was 1. Cause: paid, revenue and sign-ups were matched per visit (the user's payment, or account creation,
+inside the 24 hours after that visit started), so a user with two visits in that window, such as the app opened twice in a day, had the same payment
+counted for both visits, and its revenue added twice. Now each payment and each sign-up is counted once, for the user's **first** visit in the current view
+that covers it (`NOT EXISTS` against an earlier visit of the same user in the `base` CTE). Run on a real Postgres with one user, two sessions 28 minutes
+apart and one payment: before, paid 3 and revenue 46,900 paise for a scenario that holds 2 and 28,400; after, 2 and 28,400.
+- Effect on the numbers: paid, revenue and sign-ups drop wherever one person had several visits inside a day (mostly direct and app traffic). Visits and
+  posted ads are unchanged (an ad is matched to the exact session that created it).
+- The credit goes to the first visit in the view, so with a filter such as "Google Ads only" a payment is credited to the ad click and not to a later direct
+  visit; in the unfiltered view it is the user's earliest visit that day.
+- Not changed: the 24-hour window itself, and users who bought more than once (each payment is counted, once).

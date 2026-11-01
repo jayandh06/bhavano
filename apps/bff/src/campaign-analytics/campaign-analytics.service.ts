@@ -110,15 +110,26 @@ export function buildCampaignAnalyticsSql(q: CampaignAnalyticsQueryDto, from: Da
       GROUP BY p."sessionId"
     ),
     outcome AS (
+      -- A payment or a sign-up counts once: for the user's first visit in this view that covers it. Without the NOT EXISTS guards,
+      -- a user with two visits inside the window (the app opened twice in a day) had the same payment counted for both.
       SELECT b."sessionId",
-             (u."id" IS NOT NULL AND u."createdAt" >= b."createdAt" AND u."createdAt" <= b."createdAt" + ${window}) AS "signedUp",
+             (u."id" IS NOT NULL AND u."createdAt" >= b."createdAt" AND u."createdAt" <= b."createdAt" + ${window}
+                AND NOT EXISTS (SELECT 1 FROM base e
+                  WHERE e."userId" = b."userId" AND (e."createdAt" < b."createdAt" OR (e."createdAt" = b."createdAt" AND e."sessionId" < b."sessionId"))
+                    AND u."createdAt" >= e."createdAt" AND u."createdAt" <= e."createdAt" + ${window})) AS "signedUp",
              EXISTS (SELECT 1 FROM "Listing" l WHERE l."createSessionId" = b."sessionId") AS "posted",
              (SELECT COALESCE(sum(pay."amount"), 0) FROM "Payment" pay
                 WHERE pay."userId" = b."userId" AND pay."status" = 'paid'
-                  AND pay."paidAt" >= b."createdAt" AND pay."paidAt" <= b."createdAt" + ${window}) AS "revenuePaise",
+                  AND pay."paidAt" >= b."createdAt" AND pay."paidAt" <= b."createdAt" + ${window}
+                  AND NOT EXISTS (SELECT 1 FROM base e
+                    WHERE e."userId" = b."userId" AND (e."createdAt" < b."createdAt" OR (e."createdAt" = b."createdAt" AND e."sessionId" < b."sessionId"))
+                      AND pay."paidAt" >= e."createdAt" AND pay."paidAt" <= e."createdAt" + ${window})) AS "revenuePaise",
              EXISTS (SELECT 1 FROM "Payment" pay
                 WHERE pay."userId" = b."userId" AND pay."status" = 'paid'
-                  AND pay."paidAt" >= b."createdAt" AND pay."paidAt" <= b."createdAt" + ${window}) AS "paid"
+                  AND pay."paidAt" >= b."createdAt" AND pay."paidAt" <= b."createdAt" + ${window}
+                  AND NOT EXISTS (SELECT 1 FROM base e
+                    WHERE e."userId" = b."userId" AND (e."createdAt" < b."createdAt" OR (e."createdAt" = b."createdAt" AND e."sessionId" < b."sessionId"))
+                      AND pay."paidAt" >= e."createdAt" AND pay."paidAt" <= e."createdAt" + ${window})) AS "paid"
       FROM base b
       LEFT JOIN "User" u ON u."id" = b."userId"
     )

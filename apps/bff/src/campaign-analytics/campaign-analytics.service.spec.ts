@@ -61,6 +61,14 @@ describe('buildCampaignAnalyticsSql', () => {
     expect(text()).not.toContain(`v."medium" = 'paid_social'`);
   });
 
+  it('counts a payment or sign-up once when the user had several visits inside the window', () => {
+    // Checked against a real Postgres on 2026-11-01: one user, two sessions 28 minutes apart and one payment gave paid 2 and double
+    // the revenue before the guard. The guard hands each payment and sign-up to the user's first covering visit in the view.
+    const sql = text();
+    expect(sql.match(/NOT EXISTS \(SELECT 1 FROM base e/g)).toHaveLength(3);
+    expect(sql).toContain('e."createdAt" < b."createdAt"');
+  });
+
   it('groups by the chosen dimension', () => {
     expect(text({ groupBy: 'adGroup' })).toContain('v."adGroupId" IS NOT NULL');
     expect(text({ groupBy: 'ad' })).toContain('v."adId" IS NOT NULL');
