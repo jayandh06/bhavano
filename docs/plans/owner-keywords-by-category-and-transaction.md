@@ -76,3 +76,10 @@ terms for seeker leakage, whether the exact copies take the converting traffic, 
 **Ads vs keywords:** each ad group has one or two enabled responsive search ads whose headlines match its category (flat, villa, shop/office, lease,
 generic), strength Good or Excellent, villa-for-rent Average. Headlines do not yet mention warehouse, showroom or "by owner". All ads land on the
 home page. Coworking (8 keywords, 0 impressions) was not diagnosed.
+
+**Headlines for the new keywords (2026-11-01, `ads_add_keyword_headlines.py`):** 10 enabled ads in Sell Apartment, Sell Villa, Sell Commercial,
+Lease Commercial and Rent Out Villa (Metro and Other-Metro) were replaced by new ads with headlines that echo the added phrases ("Sell Flat By
+Owner", "Lease Out Your Warehouse", "Rent Out Your Villa" and so on), swapping out slogan headlines ("Villa Sale Made Simple", "Trusted ... Site")
+so each ad stays at 15; the old ads are paused, not removed. **Not done: the four enabled Generic Post Ad Intent ads (Metro and Other-Metro).**
+Creating a new ad failed with "limit on the number of allowed resources": those two ad groups are at Google's ad limit because of paused ads
+from earlier rewrites. Room needs one or more old paused ads removed, which the pause-never-remove rule forbids, so it is a decision for the owner.
