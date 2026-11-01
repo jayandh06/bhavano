@@ -359,6 +359,15 @@ export function AdminListingsTable({
       key: "boosted",
       label: "Featured",
       sortField: "boosted",
+      filter: (
+        <select name="boosted" defaultValue={str(sp.boosted) ?? ""} style={headerSelectStyle}>
+          <option value="">Any</option>
+          <option value="now">Featured now</option>
+          <option value="ended">Was featured (ended)</option>
+          <option value="ever">Ever featured</option>
+          <option value="never">Never featured</option>
+        </select>
+      ),
       render: (item) => <BoostedBadge boostedUntil={item.boostedUntil} isBoosted={item.isBoosted} />,
       defaultVisible: true,
       nowrap: true,

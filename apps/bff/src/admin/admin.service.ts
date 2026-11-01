@@ -1744,6 +1744,7 @@ export class AdminService {
       maxContactRevealsLeft,
       role,
       welcomed,
+      purchase,
       sellerType,
       sort = 'createdAt_desc',
       limit,
@@ -1772,6 +1773,17 @@ export class AdminService {
       userConditions.push(
         Prisma.sql`NOT EXISTS (SELECT 1 FROM "UserNotificationLog" welcome WHERE welcome."userId" = u."id" AND welcome."kind" = 'welcome')`,
       );
+    }
+
+    // Purchase filter: the same three questions as the row highlights (usersWithPurchase / usersWithActivePurchase).
+    const hasPaid = Prisma.sql`EXISTS (SELECT 1 FROM "Payment" pay WHERE pay."userId" = u."id" AND pay."status" = 'paid')`;
+    if (purchase === 'purchased') userConditions.push(hasPaid);
+    else if (purchase === 'never') userConditions.push(Prisma.sql`NOT ${hasPaid}`);
+    else if (purchase === 'active') {
+      userConditions.push(Prisma.sql`(
+        EXISTS (SELECT 1 FROM "UserSubscription" sub WHERE sub."userId" = u."id" AND sub."startsAt" <= NOW() AND sub."endsAt" > NOW())
+        OR EXISTS (SELECT 1 FROM "Listing" live WHERE live."ownerId" = u."id" AND (live."boostedUntil" > NOW() OR live."instantAlertsUntil" > NOW()))
+      )`);
     }
 
     const normalizedQuery = q?.trim();

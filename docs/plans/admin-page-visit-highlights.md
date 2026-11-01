@@ -63,5 +63,14 @@ The first build only did Page visits (a misreading), so the Listings and Users s
   boost running but at least one `ListingBoost` ever (`everFeatured` on `AdminListingRowDto`, from a `listingBoosts` count in the existing `_count`).
 - **Users**: dark green **Active purchase** and light green **Purchased** badges under the name, and the same row colours. `purchased` / `activePurchase` on
   `UserSummaryDto`, computed for the page's users by the same `usersWithPurchase` / `usersWithActivePurchase` the Page visits highlights use.
-- Each table has its own legend with only its colours. No filters on these two screens yet (Page visits has one); a "Featured now / Was featured" or
-  "Purchased / Active purchase" filter would need the same conditions in the list queries.
+- Each table has its own legend with only its colours.
+
+### Filters on Listings and Users (added 2026-11-01)
+- **Listings:** the **Featured** column header has a dropdown (`boosted` on `GET /admin/listings`): Featured now (`boostedUntil` in the future), Was featured
+  (ended: a past `ListingBoost` and no boost running), Ever featured, Never featured. Applied in `listForAdmin` inside `AND`, because the bulk-import
+  filter already uses `OR`. If the Featured column is hidden the filter is kept and the existing hidden-filter notice names it.
+- **Users:** a **Purchases** dropdown in the filter bar (`purchase` on `GET /admin/users`): Has purchased (a paid payment), Active purchase now (an unexpired
+  plan, or a listing they own with a running boost or instant-alerts window), Never purchased (no paid payment; a failed payment alone does not count).
+  Raw SQL conditions in `listUsers`, the same three questions as the row highlights.
+- Tests: `listings.service.spec.ts` and `admin.service.spec.ts` pin the conditions; the three users conditions were also run on a real Postgres with an expired
+  plan, an expired boost, a running boost, an unexpired plan and a failed payment, and returned exactly the expected users.

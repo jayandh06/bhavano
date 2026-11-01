@@ -107,6 +107,12 @@ export class ListUsersDto {
   @IsIn(['yes', 'no'])
   welcomed?: 'yes' | 'no';
 
+  /** `purchased` = has paid at least once; `active` = holds something paid right now (an unexpired plan, or a running boost or
+   * instant-alerts window on a listing they own); `never` = has never paid. The same rules as the Users row highlights. */
+  @IsOptional()
+  @IsIn(['purchased', 'active', 'never'])
+  purchase?: 'purchased' | 'active' | 'never';
+
   /** `unset` = never answered "Owner or agent?". */
   @IsOptional()
   @IsIn(['owner', 'agent', 'unset'])

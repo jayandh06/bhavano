@@ -81,6 +81,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const status = str(sp.status) as ListingStatus | undefined;
   const cityId = str(sp.cityId);
   const areaId = str(sp.areaId);
+  const boostedRaw = str(sp.boosted);
+  const boosted = boostedRaw === "now" || boostedRaw === "ended" || boostedRaw === "ever" || boostedRaw === "never" ? boostedRaw : undefined;
   const sort = str(sp.sort) as AdminListingSort | undefined;
   const currentPage = parsePage(str(sp.page));
   const limit = parsePageSize(str(sp.limit));
@@ -89,6 +91,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     fetchAdminListings(accessToken, {
       ...tabToQuery(tab),
       bulkImport,
+      boosted,
       search,
       category,
       transactionType,

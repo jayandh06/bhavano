@@ -278,6 +278,8 @@ export function logout(accessToken: string): Promise<{ success: true }> {
 
 export interface AdminListingsQuery {
   search?: string;
+  /** `now`, `ended`, `ever` or `never`: the Featured filter. */
+  boosted?: "now" | "ended" | "ever" | "never";
   moderationState?: ModerationState;
   adminReviewed?: boolean;
   category?: ListingCategory;
@@ -308,6 +310,7 @@ export function fetchAdminListings(accessToken: string, query: AdminListingsQuer
   if (query.status) params.set("status", query.status);
   if (query.publishState) params.set("publishState", query.publishState);
   if (query.bulkImport) params.set("bulkImport", query.bulkImport);
+  if (query.boosted) params.set("boosted", query.boosted);
   if (query.cityId) params.set("cityId", query.cityId);
   if (query.areaId) params.set("areaId", query.areaId);
   if (query.userId) params.set("userId", query.userId);
@@ -763,6 +766,8 @@ export interface AdminUsersQuery {
   maxContactRevealsLeft?: number;
   role?: UserRole;
   welcomed?: "yes" | "no";
+  /** `purchased`, `active` or `never`: the same rules as the Users row highlights. */
+  purchase?: "purchased" | "active" | "never";
   sellerType?: "owner" | "agent" | "unset";
   sort?: AdminUserSort;
   limit?: number;

@@ -72,10 +72,18 @@ const ADMIN_LISTING_SORT_VALUES = [
 
 export type AdminListingSort = (typeof ADMIN_LISTING_SORT_VALUES)[number];
 
+/** Featured filter: `now` = a boost is running; `ended` = was featured but no boost is running; `ever` = has had a boost; `never` = has not. */
+export const BOOSTED_FILTERS = ['now', 'ended', 'ever', 'never'] as const;
+export type BoostedFilter = (typeof BOOSTED_FILTERS)[number];
+
 export class ListAdminListingsDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @IsIn(BOOSTED_FILTERS)
+  boosted?: BoostedFilter;
 
   @IsOptional()
   @IsIn(MODERATION_STATES)

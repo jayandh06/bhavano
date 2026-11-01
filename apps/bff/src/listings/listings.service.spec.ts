@@ -2142,6 +2142,23 @@ describe('ListingsService.listForAdmin — status filter and sort', () => {
     expect((await callWith({})).orderBy).toEqual([{ createdAt: 'desc' }, { id: 'asc' }]);
   });
 
+  it('filters by the Featured column: running, ended, ever, never', async () => {
+    const now = (await callWith({ boosted: 'now' })).where.AND[0];
+    expect(now).toEqual({ boostedUntil: { gt: expect.any(Date) } });
+    const ended = (await callWith({ boosted: 'ended' })).where.AND[0];
+    expect(ended.listingBoosts).toEqual({ some: {} });
+    expect(ended.OR).toEqual([{ boostedUntil: null }, { boostedUntil: { lte: expect.any(Date) } }]);
+    expect((await callWith({ boosted: 'ever' })).where.AND[0]).toEqual({ listingBoosts: { some: {} } });
+    expect((await callWith({ boosted: 'never' })).where.AND[0]).toEqual({ listingBoosts: { none: {} } });
+    expect((await callWith({})).where).not.toHaveProperty('AND');
+  });
+
+  it('keeps the Featured filter alongside the bulk-import filter, which uses OR', async () => {
+    const { where } = await callWith({ boosted: 'ended', bulkImport: 'exclude' });
+    expect(where.OR).toHaveLength(3);
+    expect(where.AND[0].OR).toHaveLength(2);
+  });
+
   it('filters by title (partial, case-insensitive) when a search term is given', async () => {
     const { where } = await callWith({ search: 'gents pg' });
     expect(where).toMatchObject({ title: { contains: 'gents pg', mode: 'insensitive' } });

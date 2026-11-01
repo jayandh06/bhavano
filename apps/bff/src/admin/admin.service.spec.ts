@@ -242,6 +242,43 @@ describe('AdminService.listUsers', () => {
   });
 });
 
+describe('AdminService.listUsers — purchase filter', () => {
+  async function sqlFor(purchase?: 'purchased' | 'active' | 'never') {
+    const queries: Prisma.Sql[] = [];
+    const rawQuery = jest.fn((query: Prisma.Sql) => {
+      queries.push(query);
+      return Promise.resolve(queries.length === 1 ? [{ total: 0 }] : []);
+    });
+    const { service } = makeService({ $queryRaw: rawQuery, user: { findMany: jest.fn().mockResolvedValue([]) } });
+    await service.listUsers({ limit: 25, ...(purchase ? { purchase } : {}) } as never);
+    return queries[0].sql;
+  }
+
+  it('has purchased: needs a paid payment', async () => {
+    const sql = await sqlFor('purchased');
+    expect(sql).toContain(`EXISTS (SELECT 1 FROM "Payment" pay WHERE pay."userId" = u."id" AND pay."status" = 'paid')`);
+    expect(sql).not.toContain('NOT EXISTS (SELECT 1 FROM "Payment"');
+  });
+
+  it('never purchased: no paid payment', async () => {
+    expect(await sqlFor('never')).toContain('NOT EXISTS (SELECT 1 FROM "Payment" pay');
+  });
+
+  it('active purchase: an unexpired plan, or a running boost or alerts window on a listing they own', async () => {
+    const sql = await sqlFor('active');
+    expect(sql).toContain('FROM "UserSubscription" sub');
+    expect(sql).toContain('sub."endsAt" > NOW()');
+    expect(sql).toContain('live."boostedUntil" > NOW()');
+    expect(sql).toContain('live."instantAlertsUntil" > NOW()');
+  });
+
+  it('adds nothing when no purchase filter is given', async () => {
+    const sql = await sqlFor();
+    expect(sql).not.toContain('"Payment" pay');
+    expect(sql).not.toContain('"UserSubscription" sub');
+  });
+});
+
 describe('AdminService.getUserActivity', () => {
   it('returns every owned listing with moderation details for the admin user page', async () => {
     const createdAt = new Date('2026-09-12T12:02:00Z');

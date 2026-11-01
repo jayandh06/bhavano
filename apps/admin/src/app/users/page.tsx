@@ -48,6 +48,8 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const maxContactRevealsLeft = nonNegativeInteger(str(sp.maxContactRevealsLeft));
   const role = str(sp.role) as UserRole | undefined;
   const welcomed = str(sp.welcomed) as "yes" | "no" | undefined;
+  const purchaseRaw = str(sp.purchase);
+  const purchase = purchaseRaw === "purchased" || purchaseRaw === "active" || purchaseRaw === "never" ? purchaseRaw : undefined;
   const sellerType = str(sp.sellerType) as "owner" | "agent" | "unset" | undefined;
   const from = str(sp.from);
   const to = str(sp.to);
@@ -64,6 +66,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     maxContactRevealsLeft,
     role,
     welcomed,
+    purchase,
     sellerType,
     from,
     to,
@@ -142,6 +145,15 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                   {o.label}
                 </option>
               ))}
+            </SelectField>
+          </Field>
+
+          <Field label="Purchases">
+            <SelectField name="purchase" defaultValue={purchase ?? ""} style={selectStyle}>
+              <option value="">Any</option>
+              <option value="purchased">Has purchased</option>
+              <option value="active">Active purchase now</option>
+              <option value="never">Never purchased</option>
             </SelectField>
           </Field>
 

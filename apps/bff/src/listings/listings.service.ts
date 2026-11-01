@@ -947,6 +947,7 @@ export class ListingsService {
       status,
       publishState,
       bulkImport,
+      boosted,
       cityId,
       areaId,
       userId,
@@ -958,6 +959,7 @@ export class ListingsService {
       offset,
       limit,
     } = query;
+    const now = new Date();
     const where: Prisma.ListingWhereInput = {
       ...(search ? { title: { contains: search, mode: 'insensitive' } } : {}),
       ...(moderationState ? { moderationState } : {}),
@@ -969,6 +971,21 @@ export class ListingsService {
       ...(cityId ? { cityId } : {}),
       ...(areaId ? { areaId } : {}),
       ...(userId ? { ownerId: userId } : {}),
+      // Featured filter, matching the row highlight: "now" is a boost still running (the same test as isBoosted), "ended" a past boost
+      // with none running. In AND, not spread, because the bulk-import filter below already uses OR.
+      ...(boosted
+        ? {
+            AND: [
+              boosted === 'now'
+                ? { boostedUntil: { gt: now } }
+                : boosted === 'ended'
+                  ? { listingBoosts: { some: {} }, OR: [{ boostedUntil: null }, { boostedUntil: { lte: now } }] }
+                  : boosted === 'ever'
+                    ? { listingBoosts: { some: {} } }
+                    : { listingBoosts: { none: {} } },
+            ],
+          }
+        : {}),
       // A bulk import is a listing still owned by the Bulk Import account (what bulk_upload_listings.py and
       // OutreachService.createListingFromContact create under) — an admin-assisted listing awaiting its claim is
       // owned by it too but is a different thing, so it is left out of both sides. "exclude" is written as
