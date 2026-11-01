@@ -40,8 +40,9 @@ export function ListingGrid({
     // minmax(min(340px,100%), …) so a card never overflows a narrow phone viewport — the
     // auto-fill grid collapses to a single full-width column below ~340px on its own.
     <div className="grid gap-6 [grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr))]">
-      {items.map((item) => (
-        <ListingCard key={item.id} item={item} />
+      {items.map((item, index) => (
+        // The first card is the top of the page on desktop; load it eagerly rather than waiting for the lazy-load observer.
+        <ListingCard key={item.id} item={item} imageLoading={index === 0 ? "eager" : undefined} />
       ))}
     </div>
   );

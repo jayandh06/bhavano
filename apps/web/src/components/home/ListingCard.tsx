@@ -227,6 +227,7 @@ export function ListingCard({
             quality={60}
             className="object-cover"
             preload={imageLoading === "preload"}
+            fetchPriority={imageLoading === "preload" ? "high" : undefined}
             loading={imageLoading === "eager" ? "eager" : undefined}
           />
         )}
