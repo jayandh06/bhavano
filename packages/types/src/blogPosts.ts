@@ -11,6 +11,7 @@
  *
  * Inline links inside text use [label](/path) and are rendered by the post page. */
 
+import { ANSWER_GUIDES } from "./answerGuides";
 import { BUILDER_GUIDES } from "./builderGuides";
 
 export type BlogBlock =
@@ -2373,6 +2374,8 @@ export const POSTS: BlogPost[] = [
   },
   // "Established builders in <city>" guides: kept in their own file so each correction is one line.
   ...BUILDER_GUIDES,
+  // Answer-first guides for questions put to AI assistants (docs/plans/ai-visibility-backlinks-and-articles.md).
+  ...ANSWER_GUIDES,
 ];
 
 export function getPost(slug: string): BlogPost | undefined {

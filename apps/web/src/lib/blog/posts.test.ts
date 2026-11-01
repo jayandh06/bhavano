@@ -82,6 +82,15 @@ const KNOWN_ROUTES = new Set([
   "/blog/a-khata-b-khata-bengaluru",
   "/blog/bda-approved-sites-bengaluru",
   "/blog/dtcp-approved-plots-explained",
+  // The answer-first guides (answerGuides.ts).
+  "/blog/rent-a-house-without-a-broker-india",
+  "/blog/owner-direct-vs-broker-listings",
+  "/blog/police-verification-and-tenant-documents-for-landlords",
+  "/blog/rent-agreement-types-india",
+  "/blog/pg-vs-co-living-vs-renting-a-flat",
+  "/blog/property-registration-process-india",
+  "/blog/buying-property-in-india-as-an-nri",
+  "/blog/tds-on-rent-and-property-purchase-india",
 ]);
 
 function textsOf(block: BlogBlock): string[] {

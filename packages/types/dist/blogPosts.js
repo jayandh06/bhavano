@@ -17,6 +17,7 @@ exports.getPost = getPost;
 exports.sortedPosts = sortedPosts;
 exports.bylineFor = bylineFor;
 exports.parseInline = parseInline;
+const answerGuides_1 = require("./answerGuides");
 const builderGuides_1 = require("./builderGuides");
 exports.DEFAULT_BYLINE = "Bhavano Editorial Team";
 exports.POSTS = [
@@ -2307,6 +2308,8 @@ exports.POSTS = [
     },
     // "Established builders in <city>" guides: kept in their own file so each correction is one line.
     ...builderGuides_1.BUILDER_GUIDES,
+    // Answer-first guides for questions put to AI assistants (docs/plans/ai-visibility-backlinks-and-articles.md).
+    ...answerGuides_1.ANSWER_GUIDES,
 ];
 function getPost(slug) {
     return exports.POSTS.find((p) => p.slug === slug);
