@@ -27,6 +27,18 @@ const nextConfig: NextConfig = {
     // Next 16 only serves the qualities listed here. 60 is used for listing-card photos (Lighthouse flagged the
     // default 75 as over-compressed for small thumbnails); 75 stays for anything that doesn't ask.
     qualities: [60, 75],
+    // Optimised copies are kept (and sent to browsers) for 30 days instead of the 4-hour default. Listing photo URLs carry a
+    // version stamp (?t=), so an edited photo is a new URL and is not held back by this.
+    minimumCacheTTL: 60 * 60 * 24 * 30,
+  },
+  // Brand images in /public are served with max-age=0 by default, so the browser re-checks them on every visit. They
+  // change rarely and are replaced under a new name when they do, so cache them for 30 days.
+  async headers() {
+    const cache = [{ key: "Cache-Control", value: "public, max-age=2592000" }];
+    return ["/logo.png", "/badges/:path*", "/app-qr/:path*", "/blog/covers/:path*", "/photos/:path*"].map((source) => ({
+      source,
+      headers: cache,
+    }));
   },
 };
 

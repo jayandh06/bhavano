@@ -12,3 +12,8 @@ through it. Events pushed before the script loads replay when it does, so none a
 - A visitor who leaves within 3.5 s without interacting is not seen by GA4 / Ads / Meta browser tags. Attribution used for conversions is
   server side (`bhavano_acq` cookie, `User.acquisition*`, Data Manager upload), so it is unaffected.
 - Not done: removing duplicate tags inside the GTM container (needs the GTM console), trimming Pixel events.
+
+## Caching (same PageSpeed pass)
+"Use efficient cache lifetimes" (~252 KiB): optimised listing photos were cached 4 h and `/public` images (`/logo.png` etc.) had `max-age=0`.
+`next.config.ts` now sets `images.minimumCacheTTL` to 30 days and a 30-day `Cache-Control` on `/logo.png`, `/badges`, `/app-qr`, `/blog/covers`
+and `/photos`. Replacing one of these files under the same name will show the old copy for up to 30 days, so rename on change.
