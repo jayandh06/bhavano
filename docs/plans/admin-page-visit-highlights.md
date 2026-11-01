@@ -54,3 +54,14 @@ across many people, so that would join strangers' trails.
 - **Where:** `apps/bff/src/admin/page-visit-groups.ts` (rules, tested in `page-visit-groups.spec.ts`), `AdminService.listPageVisitsGrouped` and
   `buildPageVisitItems`, `groupBy=user` on the list API, `PageVisitDto.groupedSessionIds`, and `PageVisitsTable.tsx` for the row and combined trail.
 - **Not done:** session boundaries inside the combined trail (it is one time-ordered list); grouping by a logged-out visitor's cookie across sessions.
+
+## Listings and Users screens (added 2026-11-01)
+The original request named three things to highlight: Page visit records, **Listings** that got featured, and **users** with a purchase or an active purchase.
+The first build only did Page visits (a misreading), so the Listings and Users screens had nothing. Now all three use one shared module,
+`apps/admin/src/components/RowHighlights.tsx`, so a colour always means the same thing.
+- **Listings** (`/` listings table): gold row and a badge under the title. **Featured now** = `isBoosted` (a boost running). **Was featured** (lighter gold) = no
+  boost running but at least one `ListingBoost` ever (`everFeatured` on `AdminListingRowDto`, from a `listingBoosts` count in the existing `_count`).
+- **Users**: dark green **Active purchase** and light green **Purchased** badges under the name, and the same row colours. `purchased` / `activePurchase` on
+  `UserSummaryDto`, computed for the page's users by the same `usersWithPurchase` / `usersWithActivePurchase` the Page visits highlights use.
+- Each table has its own legend with only its colours. No filters on these two screens yet (Page visits has one); a "Featured now / Was featured" or
+  "Purchased / Active purchase" filter would need the same conditions in the list queries.

@@ -1028,7 +1028,7 @@ export class ListingsService {
           // Buyer-inquiry count for the admin dashboard's Messages column — a filtered relation
           // count, not a second query, and never includes the admin↔owner moderation thread
           // (same listingId, different `type`).
-          _count: { select: { conversations: { where: { type: 'inquiry' } } } },
+          _count: { select: { conversations: { where: { type: 'inquiry' } }, listingBoosts: true } },
         },
         orderBy: ADMIN_ORDER_BY[sort ?? 'createdAt_desc'],
         skip: offset ?? 0,
@@ -1057,6 +1057,7 @@ export class ListingsService {
           lastSentAt: promos[0]?.sentAt.toISOString() ?? null,
         },
         messageCount: row._count.conversations,
+        everFeatured: row._count.listingBoosts > 0,
         source: row.source,
         claimSource: row.claimSource,
         };

@@ -179,9 +179,13 @@ describe('AdminService.listUsers', () => {
         notificationLogs: [],
       },
     ]);
+    // Row highlights: u1 has bought before and holds a running boost, so both flags are set.
     const { service } = makeService({
       $queryRaw: rawQuery,
       user: { findMany: userFindMany },
+      payment: { groupBy: jest.fn().mockResolvedValue([{ userId: 'u1' }]) },
+      userSubscription: { findMany: jest.fn().mockResolvedValue([]) },
+      listing: { findMany: jest.fn().mockResolvedValue([{ ownerId: 'u1' }]) },
     });
 
     const result = await service.listUsers({
@@ -229,6 +233,8 @@ describe('AdminService.listUsers', () => {
           freeRevealsRemaining: 1,
           revealCreditsRemaining: 4,
           enquiries: 2,
+          purchased: true,
+          activePurchase: true,
         }),
       ],
       total: 1,

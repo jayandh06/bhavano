@@ -877,6 +877,8 @@ export interface AdminListingRowDto {
    * that field's own doc comment. */
   isBoosted: boolean;
   boostedUntil: string | null;
+  /** The listing has had at least one paid boost, running or ended. With `isBoosted` it tells "featured now" from "was featured". */
+  everFeatured?: boolean;
   price: string;
   /** Same as ListingCardDto.priceInWords — the queue shows `price` with these words in brackets. */
   priceInWords?: string;
@@ -1312,6 +1314,10 @@ export interface UserSummaryDto {
   welcomedAt: string | null;
   /** How this person asked to be alerted when a seeker contacts them, first = tried first. Null until they have chosen (the default order applies). */
   alertChannels: OwnerAlertChannel[] | null;
+  /** Has made at least one paid purchase, ever. For the row highlight (docs/plans/admin-page-visit-highlights.md). */
+  purchased?: boolean;
+  /** Holds something paid right now: an unexpired plan, or a running boost or instant-alerts window on a listing they own. */
+  activePurchase?: boolean;
 }
 
 export interface AdminUsersPage {

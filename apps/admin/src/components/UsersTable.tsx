@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { HighlightBadge, HighlightLegend, rowHighlightStyle, type HighlightKey } from "@/components/RowHighlights";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { SendWelcomeResponseDto, UserSummaryDto, WelcomeChannel } from "@bhavano/types";
@@ -134,6 +135,7 @@ export function UsersTable({ users, searchParams }: { users: UserSummaryDto[]; s
         <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 12px" }}>{summary}</p>
       )}
 
+      <HighlightLegend keys={["activePurchase", "purchased"]} />
       <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 10 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
           <thead>
@@ -158,7 +160,7 @@ export function UsersTable({ users, searchParams }: { users: UserSummaryDto[]; s
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} style={{ borderTop: "1px solid var(--border)" }}>
+              <tr key={u.id} style={{ borderTop: "1px solid var(--border)", ...rowHighlightStyle(purchaseMarks(u)) }}>
                 <td style={tdStyle}>
                   <input type="checkbox" checked={selected.has(u.id)} onChange={() => toggleOne(u.id)} />
                 </td>
@@ -167,6 +169,13 @@ export function UsersTable({ users, searchParams }: { users: UserSummaryDto[]; s
                   <Link href={`/users/${u.id}`} style={{ color: "var(--green)", fontWeight: 700 }}>
                     {u.name ?? u.phone ?? u.email ?? "View user"}
                   </Link>
+                  {purchaseMarks(u).length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
+                      {purchaseMarks(u).map((key) => (
+                        <HighlightBadge key={key} highlight={key} />
+                      ))}
+                    </div>
+                  )}
                 </td>
                 <td style={tdStyle}>
                   {u.phone ? (
@@ -391,4 +400,12 @@ function MergeUsersDialog({
       </div>
     </div>
   );
+}
+
+/** Strongest first: holding something paid now outranks having bought before. */
+function purchaseMarks(u: { purchased?: boolean; activePurchase?: boolean }): HighlightKey[] {
+  const marks: HighlightKey[] = [];
+  if (u.activePurchase) marks.push("activePurchase");
+  if (u.purchased) marks.push("purchased");
+  return marks;
 }

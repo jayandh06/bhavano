@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useState, type ReactNode } from "react";
+import { HighlightBadge, HighlightLegend, rowHighlightStyle, type HighlightKey } from "@/components/RowHighlights";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type {
@@ -187,7 +188,19 @@ export function AdminListingsTable({
       label: "Title",
       sortField: "title",
       filter: <input name="search" defaultValue={str(sp.search) ?? ""} placeholder="contains…" style={headerInputStyle} />,
-      render: (item) => item.title,
+      render: (item) => {
+        const mark = featuredMark(item);
+        return mark ? (
+          <>
+            {item.title}
+            <div style={{ marginTop: 4, fontWeight: 400 }}>
+              <HighlightBadge highlight={mark} text={mark === "featured" ? "Featured now" : "Was featured"} />
+            </div>
+          </>
+        ) : (
+          item.title
+        );
+      },
       defaultVisible: true,
     },
     {
@@ -546,6 +559,7 @@ export function AdminListingsTable({
           ...visible.filter((c) => c.filter).map((c) => filterNameFor(c)),
         ]}
       />
+      <HighlightLegend keys={["featured", "featuredPast"]} labels={{ featured: "Featured now", featuredPast: "Was featured" }} />
       <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 10 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
           <thead>
@@ -587,7 +601,7 @@ export function AdminListingsTable({
                   <tr
                     className="admin-table-row"
                     onClick={() => router.push(`/listings/${item.id}`)}
-                    style={{ borderTop: "1px solid var(--border)" }}
+                    style={{ borderTop: "1px solid var(--border)", ...rowHighlightStyle(featuredMark(item) ? [featuredMark(item)!] : []) }}
                   >
                     <td style={{ ...tdStyle, whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1048,3 +1062,9 @@ const actionButtonStyle: React.CSSProperties = {
   fontWeight: 700,
   cursor: "pointer",
 };
+
+/** A listing's highlight: featured while a boost runs, "was featured" once it has ended (the BFF's `everFeatured`). */
+function featuredMark(item: { isBoosted: boolean; everFeatured?: boolean }): HighlightKey | null {
+  if (item.isBoosted) return "featured";
+  return item.everFeatured ? "featuredPast" : null;
+}

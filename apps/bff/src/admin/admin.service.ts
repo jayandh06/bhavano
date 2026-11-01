@@ -1894,6 +1894,12 @@ export class AdminService {
       },
     });
     const userById = new Map(userRows.map((user) => [user.id, user]));
+    // Row highlights: who has bought before, and who holds something paid now (the same rules as the Page visits highlights).
+    const pageUserIds = userRows.map((user) => user.id);
+    const [purchasedIds, activePurchaseIds] = await Promise.all([
+      this.usersWithPurchase(pageUserIds),
+      this.usersWithActivePurchase(new Date(), pageUserIds),
+    ]);
 
     return {
       items: pageStats.flatMap((stats) => {
@@ -1919,6 +1925,8 @@ export class AdminService {
             welcomedChannel: u.notificationLogs[0]?.channel ?? null,
             welcomedAt: u.notificationLogs[0]?.sentAt.toISOString() ?? null,
             alertChannels: u.ownerAlertPreference ? normalizeOwnerAlertOrder(u.ownerAlertPreference.channels) : null,
+            purchased: purchasedIds.has(u.id),
+            activePurchase: activePurchaseIds.has(u.id),
           },
         ];
       }),

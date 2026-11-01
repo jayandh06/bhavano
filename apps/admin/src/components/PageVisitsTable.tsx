@@ -6,6 +6,7 @@ import type { DeviceType, OsFamily, PageVisitDto, PageVisitHighlights, SessionTr
 import { fetchSessionTrailAction } from "@/app/actions/admin";
 import { formatDateTime } from "@/lib/formatDateTime";
 import { trailEntry, trailEntryHref, trailPath } from "@/lib/pageTrail";
+import { HighlightBadge, HighlightLegend, rowHighlightStyle, type HighlightKey } from "@/components/RowHighlights";
 
 const dash = <span style={{ color: "var(--muted)" }}>—</span>;
 
@@ -24,18 +25,6 @@ const OS_LABELS: Record<OsFamily, string> = {
   ios: "iOS",
 };
 
-/** Row highlights, strongest first: a row takes the colour of the most valuable thing about it, and every applicable
- * badge still shows under the time. Colours are translucent so they read on the page background. See
- * docs/plans/admin-page-visit-highlights.md. */
-const HIGHLIGHT_STYLES = {
-  activePurchase: { tint: "rgba(11, 61, 46, 0.16)", edge: "#0b3d2e", label: "Active purchase", hint: "Holds a paid boost, alert or plan right now" },
-  purchased: { tint: "rgba(11, 61, 46, 0.07)", edge: "#4f8a73", label: "Purchased", hint: "This account has paid at least once" },
-  featured: { tint: "rgba(201, 161, 90, 0.22)", edge: "#c9a15a", label: "Featured", hint: "An ad from this visit was featured" },
-  ad: { tint: "rgba(60, 110, 170, 0.10)", edge: "#3c6eaa", label: "Ad posted", hint: "An ad from this visit is live or on its way to going live" },
-} as const;
-
-type HighlightKey = keyof typeof HIGHLIGHT_STYLES;
-
 function highlightKeys(h: PageVisitHighlights | undefined): HighlightKey[] {
   if (!h) return [];
   const keys: HighlightKey[] = [];
@@ -49,24 +38,12 @@ function highlightKeys(h: PageVisitHighlights | undefined): HighlightKey[] {
 function badgeText(key: HighlightKey, h: PageVisitHighlights): string {
   if (key === "featured") return h.featured === "active" ? "Featured now" : "Featured (ended)";
   if (key === "ad") return h.ad === "live" ? "Ad live" : "Ad in pipeline";
-  return HIGHLIGHT_STYLES[key].label;
+  return key === "activePurchase" ? "Active purchase" : "Purchased";
 }
 
 /** The colour key above the table. */
 export function PageVisitLegend() {
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center", fontSize: 12, color: "var(--muted)", margin: "0 0 8px" }}>
-      <span style={{ fontWeight: 700 }}>Row colours</span>
-      {(Object.keys(HIGHLIGHT_STYLES) as HighlightKey[]).map((key) => (
-        <span key={key} title={HIGHLIGHT_STYLES[key].hint} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <span
-            style={{ width: 14, height: 14, borderRadius: 3, background: HIGHLIGHT_STYLES[key].tint, borderLeft: `4px solid ${HIGHLIGHT_STYLES[key].edge}` }}
-          />
-          {HIGHLIGHT_STYLES[key].label}
-        </span>
-      ))}
-    </div>
-  );
+  return <HighlightLegend keys={["activePurchase", "purchased", "featured", "ad"]} />;
 }
 
 /** The page-visits table body, split out of page.tsx so the row-expand state (which session's
@@ -120,10 +97,9 @@ export function PageVisitsTable({
       {items.map((v) => {
         const isOpen = expandedIds.has(v.sessionId);
         const marks = highlightKeys(v.highlights);
-        const top = marks.length ? HIGHLIGHT_STYLES[marks[0]] : null;
         return (
           <Fragment key={v.id}>
-            <tr style={{ borderTop: "1px solid var(--border)", background: top?.tint, boxShadow: top ? `inset 4px 0 0 ${top.edge}` : undefined }}>
+            <tr style={{ borderTop: "1px solid var(--border)", ...rowHighlightStyle(marks) }}>
               <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                 {formatDateTime(v.lastActivityAt ?? v.createdAt)}
                 {v.groupedSessionIds && (
@@ -137,22 +113,7 @@ export function PageVisitsTable({
                 {v.highlights && marks.length > 0 && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4, whiteSpace: "normal" }}>
                     {marks.map((key) => (
-                      <span
-                        key={key}
-                        title={HIGHLIGHT_STYLES[key].hint}
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          lineHeight: 1,
-                          padding: "3px 6px",
-                          borderRadius: 999,
-                          border: `1px solid ${HIGHLIGHT_STYLES[key].edge}`,
-                          color: "var(--text)",
-                          background: "var(--surface)",
-                        }}
-                      >
-                        {badgeText(key, v.highlights!)}
-                      </span>
+                      <HighlightBadge key={key} highlight={key} text={badgeText(key, v.highlights!)} />
                     ))}
                   </div>
                 )}
