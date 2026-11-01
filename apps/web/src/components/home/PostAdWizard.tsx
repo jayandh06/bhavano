@@ -3138,6 +3138,7 @@ export function PostAdWizard({
               listingId={createdListing.id}
               category={createdListing.category}
               transactionType={createdListing.transactionType}
+              source="post_success"
               hideBenefits
               effectiveness={planPricingSettings?.boostEffectiveness ?? null}
               onActivating={() => {

@@ -73,3 +73,12 @@ migration `20261026140000_reminder_settings`); the jobs read it at the start of 
   read the defaults apply. Not on the page (fixed in code): the 09:05 to 20:05 IST window and 40 a run for the nudge, 10:00 IST for the expiry reminder,
   the 12-hour minimum gap between messages for one ad.
 
+
+## Measured result of the post-ad follow-ups (1 Nov 2026)
+Before this, follow-ups went out 4 h, 1 d and 3 d after posting. Of 501 sent (144 / 175 / 182) none was followed by a paid boost within 3 days,
+and over the previous 60 days no paid boost came from `admin_boost_message`. 62 of the 64 paid boosts (about ₹9,900 of ₹11,100) had no
+source, i.e. were bought in the post flow; 2 came from My listings. The owner then set the new-ad follow-up to a single message at 24 hours
+(Admin → Settings → Reminders); judge it again after about 4 weeks.
+
+To see where the unlabelled sales really start, `PURCHASE_SOURCES` gained `post_success` (post-ad success screen, web) and `listing_detail`
+(the Featured card on a listing page, web; it used to be recorded as `my_listings`). The app's post flow stays unlabelled until a mobile release.

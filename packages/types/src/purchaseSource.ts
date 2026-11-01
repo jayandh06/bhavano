@@ -8,9 +8,11 @@
  *   in-app "Bhavano Admin" Boost message — see docs/plans/admin-in-app-boost-message.md.
  * - `my_listings`: the Boost button on a listing in My listings (web or app), i.e. the seller came back on their own
  * rather than through the post flow or the admin message.
+ * - `post_success`: the Boost offer on the post-ad success screen (web), i.e. bought straight after posting.
+ * - `listing_detail`: the Featured upsell card on a listing's own page (web). Before this value existed it was recorded as `my_listings`.
  * - `featured_expiry_message`: the Renew button in the "your Featured ad is ending" reminder (docs/plans/featured-expiry-reminder.md).
  */
-export const PURCHASE_SOURCES = ["admin_boost_message", "my_listings", "featured_expiry_message"] as const;
+export const PURCHASE_SOURCES = ["admin_boost_message", "my_listings", "featured_expiry_message", "post_success", "listing_detail"] as const;
 
 export type PurchaseSource = (typeof PURCHASE_SOURCES)[number];
 
@@ -24,4 +26,6 @@ export const PURCHASE_SOURCE_LABELS: Record<PurchaseSource, string> = {
   admin_boost_message: "Admin boost message",
   my_listings: "My listings",
   featured_expiry_message: "Featured expiry reminder",
+  post_success: "Post-ad success screen",
+  listing_detail: "Listing page upsell",
 };

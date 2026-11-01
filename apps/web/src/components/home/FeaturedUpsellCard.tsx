@@ -45,7 +45,7 @@ export function FeaturedUpsellCard({ settings, listing }: { settings: FeaturedUp
     pushDataLayerEvent("featured_upsell_clicked", { surface: "listing_page" });
     reportPostAction("upsell", "clicked", { surface: "listing_page" });
     setVisible(false);
-    boost({ listingId: listing.id, category: listing.category, source: "my_listings" });
+    boost({ listingId: listing.id, category: listing.category, source: "listing_detail" });
   }
 
   return (
