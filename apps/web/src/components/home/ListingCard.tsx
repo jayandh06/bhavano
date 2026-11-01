@@ -224,6 +224,7 @@ export function ListingCard({
             alt={item.title}
             fill
             sizes="(max-width: 768px) 100vw, 400px"
+            quality={60}
             className="object-cover"
             preload={imageLoading === "preload"}
             loading={imageLoading === "eager" ? "eager" : undefined}
