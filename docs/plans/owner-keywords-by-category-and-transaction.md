@@ -65,3 +65,14 @@ Seeker phrases that match owner keywords by accident, per the audit: `house rent
 - **Coworking and storage** have low search volume. Expect a handful of impressions each.
 - **Landing pages:** an owner keyword should land on a posting page (`/post?...`), not a browse page. `/post` is disallowed in robots.txt, which is fine for paid traffic.
 - Phrases that already exist in the account (`sell my villa`, `lease my flat`, `list my pg`, …) will be duplicates; check before loading.
+
+## Thin ad groups filled (2026-11-01)
+`ads_keyword_coverage.py` showed Sell Apartment / Villa / Commercial, Lease Commercial, both Generic Post Ad Intent groups and both Rent Out
+Villa groups at 1-4 keywords each, and every keyword in the account as phrase match. `ads_add_thin_group_keywords.py` added **139 keywords**
+(applied; a re-run reports nothing to add): about 80 owner-phrased phrase keywords in those ten ad groups (no "free"; phrases that
+`ads_intent.classify()` reads as seeker, e.g. "post flat for sale", were skipped) and 57 exact-match copies of phrases that converted in the last
+90 days, in the same ad group. Bids, ads and landing pages were not touched. Groups are now 7-16 keywords. **Check after about a week:** search
+terms for seeker leakage, whether the exact copies take the converting traffic, and the Rent Out Villa groups (still near zero impressions).
+**Ads vs keywords:** each ad group has one or two enabled responsive search ads whose headlines match its category (flat, villa, shop/office, lease,
+generic), strength Good or Excellent, villa-for-rent Average. Headlines do not yet mention warehouse, showroom or "by owner". All ads land on the
+home page. Coworking (8 keywords, 0 impressions) was not diagnosed.
