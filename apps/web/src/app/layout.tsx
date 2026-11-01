@@ -12,6 +12,7 @@ import { BoostProvider } from "@/components/home/BoostProvider";
 import { ProfileCompletionBanner } from "@/components/home/ProfileCompletionBanner";
 import { ProfileCompletionDialog } from "@/components/home/ProfileCompletionDialog";
 import { JsConfirmation } from "@/components/home/JsConfirmation";
+import { LayoutShiftReporter } from "@/components/home/LayoutShiftReporter";
 import { SessionUserLink } from "@/components/home/SessionUserLink";
 import { SoftNavPageViews } from "@/components/home/SoftNavPageViews";
 import { SignupConversionTracker } from "@/components/home/SignupConversionTracker";
@@ -150,6 +151,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <BuyCreditsProvider>
               <BoostProvider>
                 <JsConfirmation />
+                <LayoutShiftReporter />
                 <SessionUserLink />
                 <VisitEntryRecorder />
                 {/* useSearchParams inside needs a Suspense boundary; it renders nothing either way. */}
