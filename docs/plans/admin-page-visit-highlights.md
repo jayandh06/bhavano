@@ -40,3 +40,17 @@ Featured listing, Has purchased, Active purchase now. It is `highlight` on `GET 
   When no account qualifies the filter returns nothing, not everything.
 - The helpers `usersWithPurchase` and `usersWithActivePurchase` are shared with the row colours, so the two cannot disagree.
 Tests: `page-visit-highlight-filter.spec.ts`. The date range still applies (default one day), so widen it to find older buyers.
+
+## Group by user (added 2026-11-01)
+Asked after seeing one buyer on two rows: the same person opened the mobile app twice, which is two sessions (one `Visit` row each). A "View" dropdown
+now offers **Group by user**; the default stays one row per session. We did **not** merge by IP: a mobile carrier or an office shares one public IP
+across many people, so that would join strangers' trails.
+- **Rule:** visits are grouped by `Visit.userId`. A visit nobody logged in on stays a row of its own (nothing ties it to a person).
+- **Row:** the first session's source, campaign, device, landing page and IP (how the person arrived); started at the first session's start; last
+  active at the newest session's; pages added up; "N sessions" under the time; highlights merged (strongest ad and featured state, any purchase flag);
+  logins de-duplicated. Opening the row shows every session's page views as one trail in time order.
+- **Paging and order:** by group, newest activity first; column sorting is off in this view. Grouping happens in memory over the newest 5,000 matching
+  visits (`PAGE_VISIT_GROUP_SCAN_CAP`); when the range holds more, the page says the oldest were left out, so narrow the dates.
+- **Where:** `apps/bff/src/admin/page-visit-groups.ts` (rules, tested in `page-visit-groups.spec.ts`), `AdminService.listPageVisitsGrouped` and
+  `buildPageVisitItems`, `groupBy=user` on the list API, `PageVisitDto.groupedSessionIds`, and `PageVisitsTable.tsx` for the row and combined trail.
+- **Not done:** session boundaries inside the combined trail (it is one time-ordered list); grouping by a logged-out visitor's cookie across sessions.

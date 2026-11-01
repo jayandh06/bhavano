@@ -98,6 +98,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const deviceType = deviceTypeRaw && deviceTypeRaw !== "any" ? (deviceTypeRaw as DeviceType) : undefined;
   const highlightRaw = str(sp.highlight);
   const highlight = HIGHLIGHT_OPTIONS.some((o) => o.value === highlightRaw && o.value !== "all") ? highlightRaw : undefined;
+  const groupByUser = str(sp.group) === "user";
   const osRaw = str(sp.os);
   const os = osRaw && osRaw !== "any" ? (osRaw as OsFamily) : undefined;
   // Same silent-default pattern as DEFAULT_TRAFFIC above: absent from/to defaults to a 1-day
@@ -128,6 +129,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
     identity,
     traffic,
     highlight,
+    groupBy: groupByUser ? "user" : undefined,
     deviceType,
     os,
     source,
@@ -229,6 +231,13 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
               </SelectField>
             </Field>
 
+            <Field label="View">
+              <SelectField name="group" defaultValue={groupByUser ? "user" : "session"} style={selectStyle}>
+                <option value="session">One row per session</option>
+                <option value="user">Group by user</option>
+              </SelectField>
+            </Field>
+
             <Field label="Highlights">
               <SelectField name="highlight" defaultValue={highlight ?? "all"} style={selectStyle}>
                 {HIGHLIGHT_OPTIONS.map((o) => (
@@ -273,6 +282,13 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
           {sort && <input type="hidden" name="sort" value={sort} />}
           {str(sp.limit) && <input type="hidden" name="limit" value={str(sp.limit)} />}
 
+          {groupByUser && (
+            <p style={{ margin: "0 0 8px", fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
+              One row per logged-in user, newest activity first (sorting by column is off). Each row combines that user&apos;s sessions: it shows the
+              first session&apos;s source and device, the latest activity and the total pages. Visits nobody logged in on stay one row each.
+              {result.groupedScanCapped && " This range has more visits than grouping looks at, so the oldest are left out. Narrow the dates to see them."}
+            </p>
+          )}
           <PageVisitLegend />
           <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 10 }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>

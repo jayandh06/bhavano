@@ -92,7 +92,7 @@ export function PageVisitsTable({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [trails, setTrails] = useState<Record<string, SessionTrailDto | "loading" | "error">>({});
 
-  async function onToggle(sessionId: string) {
+  async function onToggle(sessionId: string, groupedIds?: string[]) {
     setExpandedIds((prev) => {
       const next = new Set(prev);
       if (next.has(sessionId)) next.delete(sessionId);
@@ -102,8 +102,17 @@ export function PageVisitsTable({
     if (trails[sessionId] !== undefined) return;
 
     setTrails((prev) => ({ ...prev, [sessionId]: "loading" }));
-    const result = await fetchSessionTrailAction(sessionId);
-    setTrails((prev) => ({ ...prev, [sessionId]: result.success ? result.trail : "error" }));
+    // A grouped row (Group by user) opens every session of the account as one trail, in time order.
+    const results = await Promise.all((groupedIds ?? [sessionId]).map((id) => fetchSessionTrailAction(id)));
+    const trailsOk = results.flatMap((r) => (r.success ? [r.trail] : []));
+    const combined: SessionTrailDto | "error" =
+      trailsOk.length === 0 || trailsOk.length < results.length
+        ? "error"
+        : {
+            visit: { ...trailsOk[0].visit, pageViewCount: trailsOk.reduce((sum, t) => sum + t.visit.pageViewCount, 0) },
+            pageViews: trailsOk.flatMap((t) => t.pageViews).sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+          };
+    setTrails((prev) => ({ ...prev, [sessionId]: combined }));
   }
 
   return (
@@ -117,6 +126,11 @@ export function PageVisitsTable({
             <tr style={{ borderTop: "1px solid var(--border)", background: top?.tint, boxShadow: top ? `inset 4px 0 0 ${top.edge}` : undefined }}>
               <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                 {formatDateTime(v.lastActivityAt ?? v.createdAt)}
+                {v.groupedSessionIds && (
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--green)" }} title="Sessions of this account, combined">
+                    {v.groupedSessionIds.length} sessions
+                  </div>
+                )}
                 {v.lastActivityAt && v.lastActivityAt.slice(0, 10) !== v.createdAt.slice(0, 10) && (
                   <div style={{ fontSize: 10.5, color: "var(--muted)" }}>started {formatDateTime(v.createdAt)}</div>
                 )}
@@ -155,7 +169,7 @@ export function PageVisitsTable({
               <td style={tdStyle}>
                 <button
                   type="button"
-                  onClick={() => onToggle(v.sessionId)}
+                  onClick={() => onToggle(v.sessionId, v.groupedSessionIds)}
                   style={{
                     background: "none",
                     border: "none",
@@ -199,7 +213,7 @@ export function PageVisitsTable({
             {isOpen && (
               <tr>
                 <td colSpan={17} style={{ padding: 0, borderTop: "1px solid var(--border)" }}>
-                  <SessionTrailPanel state={trails[v.sessionId]} sessionId={v.sessionId} />
+                  <SessionTrailPanel state={trails[v.sessionId]} sessionId={v.sessionId} sessionCount={v.groupedSessionIds?.length} />
                 </td>
               </tr>
             )}
@@ -241,7 +255,16 @@ export function PageVisitsTable({
 /** The page-view trail for one session, condensed from what the standalone
  * /page-visits/[sessionId] page shows (that route still exists for direct links, this is the
  * same data inline instead of a navigation). */
-function SessionTrailPanel({ state, sessionId }: { state: SessionTrailDto | "loading" | "error" | undefined; sessionId: string }) {
+function SessionTrailPanel({
+  state,
+  sessionId,
+  sessionCount,
+}: {
+  state: SessionTrailDto | "loading" | "error" | undefined;
+  sessionId: string;
+  /** Set on a grouped row: how many sessions the trail below combines. */
+  sessionCount?: number;
+}) {
   if (state === undefined || state === "loading") {
     return <p style={{ fontSize: 13, color: "var(--muted)", padding: 16, margin: 0 }}>Loading…</p>;
   }
@@ -256,9 +279,10 @@ function SessionTrailPanel({ state, sessionId }: { state: SessionTrailDto | "loa
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
         <h3 style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>
           Page trail — {visit.pageViewCount} page{visit.pageViewCount === 1 ? "" : "s"}
+          {sessionCount ? ` across ${sessionCount} sessions, in time order` : ""}
         </h3>
         <Link href={`/page-visits/${sessionId}`} style={{ fontSize: 12, color: "var(--green)", fontWeight: 700 }}>
-          Open full session page →
+          {sessionCount ? "Open the first session's page →" : "Open full session page →"}
         </Link>
       </div>
       {pageViews.length === 0 ? (

@@ -608,6 +608,8 @@ export interface PageVisitsQuery {
   traffic?: AdminPageVisitTraffic;
   /** `any`, `ad`, `featured`, `purchased` or `active`: keep only visits with that row highlight. */
   highlight?: string;
+  /** `user` folds one account's sessions into a row. */
+  groupBy?: "user";
   deviceType?: DeviceType;
   os?: OsFamily;
   source?: string;

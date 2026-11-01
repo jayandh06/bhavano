@@ -122,6 +122,11 @@ export class ListPageVisitsDto {
   @IsIn(PAGE_VISIT_HIGHLIGHT_VALUES)
   highlight?: PageVisitHighlightFilter;
 
+  /** `user` folds one account's sessions into a single row, newest activity first. Anything else is one row per session. */
+  @IsOptional()
+  @IsIn(['session', 'user'])
+  groupBy?: 'session' | 'user';
+
   @IsOptional()
   @IsIn(DEVICE_TYPES)
   deviceType?: (typeof DEVICE_TYPES)[number];

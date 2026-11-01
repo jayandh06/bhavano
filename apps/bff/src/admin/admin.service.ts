@@ -23,6 +23,7 @@ import type {
   LoginMethod,
   MessageDto,
   OsFamily,
+  PageVisitDto,
   PageVisitHighlights,
   PageVisitSessionLogin,
   PageVisitsPage,
@@ -73,6 +74,9 @@ import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
 import { ListUserLoginHistoryDto } from './dto/list-user-login-history.dto';
 import { ListPageVisitsDto, PageVisitHighlightFilter, PageVisitSort } from './dto/list-page-visits.dto';
 import { visitHighlights, type SessionListingFacts } from './page-visit-highlights';
+import { groupVisitsByUser, mergeVisitGroup, PAGE_VISIT_GROUP_SCAN_CAP } from './page-visit-groups';
+
+type VisitWithUser = Prisma.VisitGetPayload<{ include: { user: { select: { name: true; phone: true; email: true; deletedAt: true } } } }>;
 import { PostFunnelQueryDto } from './dto/post-funnel-query.dto';
 import { summarizePostFieldEvents, type PostDetailsBlockersDto, type PostFunnelDto } from '@bhavano/types/postFunnel';
 import { parsePostFieldEventPath, POST_FIELD_PATH_PREFIX } from '@bhavano/types/postFieldEvents';
@@ -985,6 +989,11 @@ export class AdminService {
              OR (${traffic}::text = 'bots' AND v."isBot" = true)
              OR (${traffic}::text = 'unclassified' AND v."isBot" IS NULL))`;
 
+    if (query.groupBy === 'user') {
+      const grouped = await this.listPageVisitsGrouped(where, offset ?? 0, limit);
+      return { ...grouped, avgPageViewsPerSession: avgRow && avgRow.sessions > 0 ? avgRow.views / avgRow.sessions : null };
+    }
+
     const [rows, total] = await Promise.all([
       this.prisma.visit.findMany({
         where,
@@ -996,6 +1005,15 @@ export class AdminService {
       this.prisma.visit.count({ where }),
     ]);
 
+    return {
+      items: await this.buildPageVisitItems(rows),
+      total,
+      avgPageViewsPerSession: avgRow && avgRow.sessions > 0 ? avgRow.views / avgRow.sessions : null,
+    };
+  }
+
+  /** Turns a page of Visit rows into the list items: page-view counts, every account that logged in, and the row highlights. */
+  private async buildPageVisitItems(rows: VisitWithUser[]): Promise<PageVisitDto[]> {
     const sessionIds = rows.map((r) => r.sessionId);
 
     const pageViewCounts = rows.length
@@ -1042,8 +1060,7 @@ export class AdminService {
       loginsBySessionId,
     );
 
-    return {
-      items: rows.map((row) => ({
+    return rows.map((row) => ({
         id: row.id,
         sessionId: row.sessionId,
         createdAt: row.createdAt.toISOString(),
@@ -1072,10 +1089,36 @@ export class AdminService {
         pageViewCount: pageViewCountBySessionId.get(row.sessionId) ?? 0,
         sessionLogins: loginsBySessionId.get(row.sessionId) ?? [],
         highlights: highlightsBySessionId.get(row.sessionId),
-      })),
-      total,
-      avgPageViewsPerSession: avgRow && avgRow.sessions > 0 ? avgRow.views / avgRow.sessions : null,
-    };
+      }));
+  }
+
+  /** "Group by user": looks at the newest matching visits, folds each account's sessions into one row and pages over those
+   * rows, so a person who opened the app three times is one row with the three sessions combined (page-visit-groups.ts). */
+  private async listPageVisitsGrouped(
+    where: Prisma.VisitWhereInput,
+    offset: number,
+    limit: number,
+  ): Promise<{ items: PageVisitDto[]; total: number; groupedScanCapped: boolean }> {
+    const scanned = await this.prisma.visit.findMany({
+      where,
+      select: { id: true, userId: true },
+      orderBy: PAGE_VISIT_ORDER_BY.lastActivity_desc,
+      take: PAGE_VISIT_GROUP_SCAN_CAP + 1,
+    });
+    const capped = scanned.length > PAGE_VISIT_GROUP_SCAN_CAP;
+    const groups = groupVisitsByUser(capped ? scanned.slice(0, PAGE_VISIT_GROUP_SCAN_CAP) : scanned);
+    const pageGroups = groups.slice(offset, offset + limit);
+
+    const ids = pageGroups.flatMap((g) => g.ids);
+    const rows = ids.length
+      ? await this.prisma.visit.findMany({
+          where: { id: { in: ids } },
+          include: { user: { select: { name: true, phone: true, email: true, deletedAt: true } } },
+        })
+      : [];
+    const byId = new Map((await this.buildPageVisitItems(rows)).map((item) => [item.id, item]));
+    const items = pageGroups.map((g) => mergeVisitGroup(g.ids.map((id) => byId.get(id)).filter((i): i is PageVisitDto => !!i)));
+    return { items: items.filter((i) => !!i), total: groups.length, groupedScanCapped: capped };
   }
 
   /** Accounts with at least one paid Payment, ever; narrowed to `among` when given. */

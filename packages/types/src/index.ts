@@ -1123,6 +1123,9 @@ export interface PageVisitDto {
   /** What the admin Page visits list highlights, see docs/plans/admin-page-visit-highlights.md. Filled on the
    * list only; the single-session trail does not carry it. */
   highlights?: PageVisitHighlights;
+  /** Set only on a row that folds several sessions of one account together ("Group by user"): every session id, earliest
+   * first. The row's details are the first session's; `lastActivityAt` is the newest session's and `pageViewCount` the total. */
+  groupedSessionIds?: string[];
 }
 
 /** Row highlights on the admin Page visits list. `ad` and `featured` are about listings this session created;
@@ -1161,6 +1164,8 @@ export interface PageVisitsPage {
    * session by construction (they discard cookies, so every request is a new session), so
    * including them pins this number at ~1.0 and makes it meaningless. */
   avgPageViewsPerSession: number | null;
+  /** "Group by user" only: true when there were more matching visits than it looks at, so the oldest were left out. */
+  groupedScanCapped?: boolean;
 }
 
 /** One page view within a session's trail — see the BFF's `PageView` model. */
