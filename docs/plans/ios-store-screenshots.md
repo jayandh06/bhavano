@@ -21,7 +21,7 @@ Shot list, in order. Save as `raw/01-home.png`, `raw/02-search.png`, ... (the na
 5. `post` The Post ad form (details step)
 6. `alerts` The saved search / alerts screen
 7. `saved` Saved listings
-8. `requirements` "Tell us what you are looking for"
+8. `requirements` The Requirements feed ("See what people are looking for")
 
 **Apple 2.3.7:** none of the screens may show a price in the app's own paid offers, the word "free", a discount, or a plan with a price. Listing
 prices on ads are fine; avoid the Plans, Featured and boost screens. Do not show real phone numbers, emails or other people's names.

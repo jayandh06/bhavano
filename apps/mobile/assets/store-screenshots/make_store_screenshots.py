@@ -39,7 +39,7 @@ CAPTIONS = {
     "post": "Post your ad in minutes",
     "alerts": "Get alerts when something new matches",
     "saved": "Save listings and compare later",
-    "requirements": "Tell us what you are looking for",
+    "requirements": "See what people are looking for",
 }
 
 # Apple 2.3.7: no price references in creative assets.
