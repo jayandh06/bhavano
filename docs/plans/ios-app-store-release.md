@@ -303,3 +303,30 @@ which reviews nothing for internal testers.
 - **3.1.1 In-App Purchase.** Apple says paid plans are accessed in the app but are not purchasable with In-App Purchase. Check in App Store Connect that every product in `packages/types/src/appleProducts.ts` exists, is "Ready to Submit" and is attached to the 1.2.0 submission (first-time products are reviewed with the binary), and that the review notes explain how to test them. Anything the iOS app shows that is only purchasable elsewhere (publish fee, Instant Alerts alone, multi-unit Agent Pro) must not look like a plan the user can use or buy there. Apple's four attached screenshots show which screen they hit; they need to be looked at.
 
 **Done 2026-10-31:** Admin > Settings > Login methods was set to **Allowed for everyone** with phone requirement **Don't ask** (was "Move existing accounts to mobile" + "Require a mobile number"), so App Review's Apple ID can create an account. Confirmed from `GET /auth/login-methods` (`emailLogin: all`, `phoneRequirement: off`). **Put it back to "Move existing accounts to mobile" + "Require" once 1.2.0 is approved**, if the migration to mobile sign-in is still wanted. While it is open, new Google / Apple accounts can again be created, so watch the email-only sign-up count.
+
+## 2026-11-02: submission blocked, no Terms of Use (EULA) link in the app metadata (3.1.2)
+
+Apple's automated message: the submission offers auto-renewable subscriptions (Bhavano Plus 1 / 6 / 12 months, Seller Slot Pack 1 month,
+Agent Pro 1 month) but the App Store product page has no functional link to the Terms of Use (EULA). The review cannot proceed until the
+metadata is fixed. **No new build is needed:** this is App Store Connect metadata, not the binary (the purchase sheet in
+`IosPurchaseSheets.tsx` already shows the auto-renewal notice and Terms of Use / Privacy Policy / Restore links).
+
+**Do in App Store Connect (for every localization, then reply to the review message):**
+1. App Store > the version > **Description**: add this line at the end (a plain URL; it must be in the description itself, not only in
+   the Terms or Privacy fields):
+   ```
+   Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+   Privacy Policy: https://www.bhavano.com/privacy
+   ```
+   This uses Apple's standard EULA, the quickest route. (A custom EULA instead goes in App Information > License Agreement > Edit.)
+2. App Information > **Privacy Policy URL** = `https://www.bhavano.com/privacy` (already required for submission, check it is still set) and
+   the version's **Support URL** is filled.
+3. Reply to the message in App Store Connect: "Added a link to the Apple Standard EULA and our Privacy Policy to the App Description in
+   all localizations. Terms of Use and Privacy Policy links are also shown in the app's subscription purchase screen." Then resubmit.
+
+**Code change (web only, shipped 2 Nov 2026):** `/terms` gained "9. Paid features and subscriptions" (subscriptions and Featured ads, how an
+iPhone purchase renews and is cancelled, Apple handles its refunds, and the same Apple Standard EULA link), so the Terms of Use opened from
+the app agree with the metadata. Later sections were renumbered.
+
+**Also check while there:** the in-app purchase products are attached to this version and "Ready to Submit" (see the 2026-10-31 notes), and
+the login setting is still "Allowed for everyone" for the reviewer's Apple ID (to be put back after approval).

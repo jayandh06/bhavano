@@ -9,7 +9,7 @@ export const metadata = {
 
 export default function TermsPage() {
   return (
-    <StaticPageLayout title="Terms of Service" updated="26 August 2026">
+    <StaticPageLayout title="Terms of Service" updated="2 November 2026">
       <PageSection heading="1. Acceptance of these terms">
         <p className="m-0">
           By accessing or using Bhavano (the &quot;Platform&quot;) you agree to be bound by these Terms of Service.
@@ -91,18 +91,42 @@ export default function TermsPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="9. Changes to these terms">
+      <PageSection heading="9. Paid features and subscriptions">
+        <p className="m-0">
+          Some features are paid: Featured ads (a one-time payment for a fixed number of days), Instant Alerts, and
+          subscriptions such as Bhavano Plus, Seller Slot Packs and Agent Pro. The price and length are shown before
+          you pay. On the website, payments are processed by Razorpay.
+        </p>
+        <p className="m-0 mt-2">
+          <strong>Purchases in the Bhavano iPhone app</strong> are charged to your Apple ID when you confirm the
+          purchase. A subscription renews automatically at the same price and length unless you cancel it at least 24
+          hours before the end of the current period. You can manage or cancel it at any time in Settings &gt; Apple
+          ID &gt; Subscriptions. Apple handles refunds for purchases made through the app. Apple&apos;s standard
+          Licensed Application End User License Agreement (EULA) applies to those purchases:{" "}
+          <a
+            href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-green font-bold"
+          >
+            Apple Standard EULA
+          </a>
+          .
+        </p>
+      </PageSection>
+
+      <PageSection heading="10. Changes to these terms">
         <p className="m-0">
           We may update these Terms from time to time. Continued use of the Platform after a change means you
           accept the updated Terms.
         </p>
       </PageSection>
 
-      <PageSection heading="10. Governing law">
+      <PageSection heading="11. Governing law">
         <p className="m-0">These Terms are governed by the laws of India.</p>
       </PageSection>
 
-      <PageSection heading="11. Contact">
+      <PageSection heading="12. Contact">
         <p className="m-0">
           Questions about these Terms? Reach us at{" "}
           <Link href="/contact" className="text-green font-bold">
