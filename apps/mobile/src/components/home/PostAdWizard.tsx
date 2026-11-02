@@ -106,6 +106,7 @@ import { BoostPlanSelector } from "./BoostPlanSelector";
 import { BoostRecoveryDialog } from "./BoostRecoveryDialog";
 import { ListingPreviewCard } from "./ListingPreviewCard";
 import { OwnerWhatsAppShare } from "./OwnerWhatsAppShare";
+import { PostFeedbackForm } from "./PostFeedbackForm";
 import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
 import { iosPurchases } from "../../lib/iosPurchasesClient";
 import { IosBoostSheet } from "./IosPurchaseSheets";
@@ -3082,6 +3083,10 @@ export function PostAdWizard({
           )}
 
           <OwnerWhatsAppShare listing={createdListing} />
+
+          {/* Below the Featured offer and the share card, never above them: this screen is where most Featured sales happen
+              (docs/plans/post-ad-experience-feedback.md). The BFF needs the owner, so only for a logged-in poster. */}
+          {accessToken ? <PostFeedbackForm accessToken={accessToken} listingId={createdListing.id} source="success_screen" /> : null}
 
           {/* A real push (not the replace() this used to do straight out of onSubmit) — see this
               screen's own header comment for why that mattered: it's what makes the listing's

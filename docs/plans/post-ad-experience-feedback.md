@@ -1,6 +1,6 @@
 # Post-ad experience feedback
 
-## Status: Phases 1 and 2 built (2 Nov 2026); Phase 3 (mobile app) not started
+## Status: Phases 1, 2 and 3 built (2 Nov 2026); Phase 3 is in the code but not in any app build until the next release
 
 Decisions taken (defaults, 2 Nov 2026): no incentive, 5 stars, every poster is asked, nudge at about 48 h.
 
@@ -29,6 +29,16 @@ picker from any `boost_offer` card. Builds that do not know the kind show the pl
 **One push, not two:** the message's own push (the same one every staff message sends) carries the opening sentence and opens the thread, where
 the card and button are. A separate push with a `path` deep link would have doubled the notifications, so it was left out; the `path`
 deep link comes with the Phase 3 app screen. Candidate rules are exactly those below, plus ads older than 72 h past their due time are left alone.
+
+**Phase 3 as built (app code only, not released):** `src/components/home/PostFeedbackForm.tsx` (stars, chips, note, contact switch; saves the
+rating at once), the card on the post-ad success screen in `PostAdWizard.tsx` (below the Featured offer and the share card, logged-in
+posters only), the screen `app/feedback/post/[listingId].tsx` (same address as the web page, so the card's button, a push with a `path`,
+and a shared link all open it; `?src=push|in_app_message` sets the source), `FeedbackRequestMessageCard.tsx` drawn from `ConversationThread.tsx`
+for the `feedback_request` card, and `fetchMyPostFeedback` / `savePostFeedback` in `bffClient.ts` (sends `X-Client: app` and the app
+version). Until a build with this ships, the app shows the request as plain text with the web link, which works. Android goes out
+through the Mobile build workflow (GitHub Actions, `workflow_dispatch`, profile production); iOS only after it is live. Checked with
+`tsc` (needs `node --stack-size=8000`, the default stack overflows on this app); the mobile jest run does not start in this checkout
+(`MODULE_NOT_FOUND`), so the app screens were not run on a device or emulator.
 
 ## What we ask (kept to under 30 seconds)
 

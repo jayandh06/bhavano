@@ -18,6 +18,7 @@ import { getSocket } from "../../lib/socket";
 import { Icon } from "../Icon";
 import { MessageBody } from "./MessageBody";
 import { BoostOfferMessageCard } from "./BoostOfferMessageCard";
+import { FeedbackRequestMessageCard } from "./FeedbackRequestMessageCard";
 import { ScreenHeader } from "./ScreenHeader";
 import { ReportSheet } from "./ReportSheet";
 
@@ -246,6 +247,9 @@ export function ConversationThread({
           const isDeleted = item.deletedAt != null;
           if (!isDeleted && item.card?.kind === "boost_offer") {
             return <BoostOfferMessageCard card={item.card} accessToken={accessToken} />;
+          }
+          if (!isDeleted && item.card?.kind === "feedback_request") {
+            return <FeedbackRequestMessageCard card={item.card} />;
           }
           const bubble = (
             <View

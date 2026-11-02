@@ -8,6 +8,8 @@ import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricin
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type { AiGenerateUsageDto, GenerateListingCopyInput, GenerateListingCopyResult } from "@bhavano/types/listingCopyAssist";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
+import type { PostFeedbackDto, SavePostFeedbackRequest } from "@bhavano/types/postFeedback";
+import Constants from "expo-constants";
 import {
   encodeRequirementFeedQuery,
   type RequirementFeedDto,
@@ -968,6 +970,19 @@ export function closeMyRequirement(
 ): Promise<RequirementDto> {
   const path = reason === "fulfilled" ? "fulfilled" : "withdraw";
   return authedBffFetch(accessToken, `/requirements/mine/${id}/${path}`, { method: "POST" });
+}
+
+/** What the owner already told us about posting this listing, or null — docs/plans/post-ad-experience-feedback.md. */
+export function fetchMyPostFeedback(accessToken: string, listingId: string): Promise<PostFeedbackDto | null> {
+  return authedBffFetch(accessToken, `/feedback/post/${encodeURIComponent(listingId)}`);
+}
+
+/** Creates or updates the one feedback row for a listing; fields left out stay as they were. The BFF reads `X-Client: app`. */
+export function savePostFeedback(accessToken: string, body: SavePostFeedbackRequest): Promise<PostFeedbackDto> {
+  return authedBffFetch(accessToken, "/feedback/post", {
+    method: "POST",
+    body: JSON.stringify({ ...body, platform: "app", appVersion: Constants.expoConfig?.version }),
+  });
 }
 
 /** Mirrors the website's identical call (bff.ts's createBoostOrder) — activation happens via the
