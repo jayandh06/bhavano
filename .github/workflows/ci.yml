@@ -1,0 +1,160 @@
+# Checks that run on every push to master and every pull request: type checks, unit tests, and the browser (Playwright) tests.
+# Nothing here deploys. See docs/plans/ci-checks.md for what each job covers, what is not covered, and how to run the same steps locally.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Type checks and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # `prisma generate` wants a URL; it never connects.
+      DATABASE_URL: postgresql://bhavano:bhavano@localhost:5432/bhavano
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The compiled output of packages/types is committed (the apps import it). Rebuilding it must change nothing: a changed file means
+      # someone edited src/ and forgot to commit the rebuilt dist/.
+      - name: Build shared types
+        run: pnpm --filter @bhavano/types build
+
+      - name: Shared types dist is up to date
+        run: |
+          if [ -n "$(git status --porcelain -- packages/types/dist)" ]; then
+            echo "packages/types/dist is out of date. Run: pnpm --filter @bhavano/types build, then commit it."
+            git status --short -- packages/types/dist
+            exit 1
+          fi
+
+      - name: Generate the Prisma client
+        run: pnpm --filter @bhavano/bff prisma:generate
+
+      - name: Type check (types, bff, web, admin)
+        run: pnpm --filter @bhavano/types --filter @bhavano/bff --filter @bhavano/web --filter @bhavano/admin typecheck
+
+      # The app's type check overflows Node's default stack, so it runs with a bigger one.
+      - name: Type check (mobile)
+        working-directory: apps/mobile
+        run: node --stack-size=8000 ../../node_modules/typescript/bin/tsc --noEmit -p .
+
+      - name: Unit tests (bff)
+        run: pnpm --filter @bhavano/bff test
+
+      - name: Unit tests (web)
+        run: pnpm --filter @bhavano/web test
+
+      - name: Unit tests (admin)
+        run: pnpm --filter @bhavano/admin test
+
+      # Informational for now: these did not run on the machine they were last tried on (a broken local install), so a first red here may be
+      # the setup and not a real failure. Remove continue-on-error once it has been green.
+      - name: Unit tests (mobile)
+        continue-on-error: true
+        run: pnpm --filter @bhavano/mobile test
+
+  e2e:
+    name: Browser tests (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: bhavano
+          POSTGRES_PASSWORD: bhavano
+          POSTGRES_DB: bhavano
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bhavano"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://bhavano:bhavano@localhost:5432/bhavano
+      # The BFF: just enough to boot. No payments, messaging or storage keys, so those paths are not exercised.
+      PORT: "4000"
+      AUTH_JWT_SECRET: ci-only-bff-secret
+      ALLOW_DEV_LOGIN: "true"
+      # The web app. NEXTAUTH_URL must be plain http://localhost:3000 (not the local https domain) or logged-in tests run as a guest.
+      BFF_INTERNAL_URL: http://localhost:4000
+      NEXT_PUBLIC_BFF_URL: http://localhost:4000
+      NEXTAUTH_URL: http://localhost:3000
+      AUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ci-only-web-secret
+      AUTH_SECRET: ci-only-web-secret
+      AUTH_TRUST_HOST: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build shared types
+        run: pnpm --filter @bhavano/types build
+
+      - name: Prepare the database
+        working-directory: apps/bff
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+          npx prisma db seed
+
+      - name: Install the browser
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+
+      - name: Start the BFF and the web app
+        run: |
+          (cd apps/bff && nohup npx nest start > "$RUNNER_TEMP/bff.log" 2>&1 &)
+          (cd apps/web && nohup npx next dev > "$RUNNER_TEMP/web.log" 2>&1 &)
+          for i in $(seq 1 90); do
+            bff=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/ || true)
+            web=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ || true)
+            if [ "$bff" = "200" ] && [ "$web" = "200" ]; then echo "up after $((i*4))s"; exit 0; fi
+            sleep 4
+          done
+          echo "servers did not start (bff=$bff web=$web)"; tail -40 "$RUNNER_TEMP/bff.log" "$RUNNER_TEMP/web.log"; exit 1
+
+      - name: Run the browser tests
+        working-directory: apps/web
+        run: npx playwright test
+
+      - name: Keep the failure report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failures
+          path: |
+            apps/web/test-results
+            ${{ runner.temp }}/bff.log
+            ${{ runner.temp }}/web.log
+          retention-days: 7

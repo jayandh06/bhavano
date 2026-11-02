@@ -101,7 +101,8 @@ describe('ReferralsService.recordShareTap', () => {
 
 describe('ReferralsService.attributeSignupIfReferred', () => {
   it('attributes a new signup to the referrer, carrying over a matching click timestamp', async () => {
-    const clickedAt = new Date('2026-10-01T00:00:00Z');
+    // Relative to now: a fixed date here stopped the test the day it fell outside the default 30-day attribution window (it failed on 2 Nov 2026).
+    const clickedAt = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const { service, prisma } = makeService({ referrerExists: true, matchingClick: { createdAt: clickedAt } });
     await service.attributeSignupIfReferred('newUser1', 'referrer1', 'sess1');
     expect(prisma.referral.create).toHaveBeenCalledWith({
