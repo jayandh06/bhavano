@@ -15,7 +15,7 @@ function run(over: Partial<Parameters<typeof visitHighlights>[0]> = {}) {
 describe('visitHighlights', () => {
   it('leaves a plain visit unmarked', () => {
     const h = run();
-    expect(h).toEqual({ ad: null, featured: null, purchased: false, activePurchase: false });
+    expect(h).toEqual({ ad: null, featured: null, requirement: null, purchased: false, activePurchase: false });
     expect(hasHighlight(h)).toBe(false);
   });
 
@@ -48,6 +48,16 @@ describe('visitHighlights', () => {
   it('keeps an active boost over a lapsed one on another listing', () => {
     const l = [listing({ boostedUntil: PAST, everBoosted: true }), listing({ boostedUntil: FUTURE, everBoosted: true })];
     expect(run({ listings: l }).featured).toBe('active');
+  });
+
+  it('marks a requirement posted in the session, open while live and closed once over', () => {
+    expect(run({ requirements: [{ status: 'open', expiresAt: FUTURE }] }).requirement).toBe('open');
+    expect(run({ requirements: [{ status: 'working', expiresAt: FUTURE }] }).requirement).toBe('open');
+    expect(run({ requirements: [{ status: 'closed', expiresAt: FUTURE }] }).requirement).toBe('closed');
+    expect(run({ requirements: [{ status: 'open', expiresAt: PAST }] }).requirement).toBe('closed');
+    expect(run({ requirements: [{ status: 'closed', expiresAt: PAST }, { status: 'open', expiresAt: FUTURE }] }).requirement).toBe('open');
+    expect(run().requirement).toBeNull();
+    expect(hasHighlight(run({ requirements: [{ status: 'open', expiresAt: FUTURE }] }))).toBe(true);
   });
 
   it('marks a buyer by any account in the session, and active only when something is running', () => {

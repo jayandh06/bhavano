@@ -73,6 +73,7 @@ const HIGHLIGHT_OPTIONS: { value: string; label: string }[] = [
   { value: "any", label: "Highlighted only" },
   { value: "ad", label: "Ad posted (live or pending)" },
   { value: "featured", label: "Featured listing" },
+  { value: "requirement", label: "Requirement posted" },
   { value: "purchased", label: "Has purchased" },
   { value: "active", label: "Active purchase now" },
 ];

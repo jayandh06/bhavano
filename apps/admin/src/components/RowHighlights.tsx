@@ -9,6 +9,7 @@ export const HIGHLIGHT_STYLES = {
   featured: { tint: "rgba(201, 161, 90, 0.22)", edge: "#c9a15a", label: "Featured", hint: "Featured now (a running boost), or an ad from this visit that was" },
   featuredPast: { tint: "rgba(201, 161, 90, 0.10)", edge: "#dcc791", label: "Was featured", hint: "Was featured before; the boost has ended" },
   ad: { tint: "rgba(60, 110, 170, 0.10)", edge: "#3c6eaa", label: "Ad posted", hint: "An ad from this visit is live or on its way to going live" },
+  requirement: { tint: "rgba(130, 80, 170, 0.12)", edge: "#8250aa", label: "Requirement posted", hint: "A requirement was posted in this visit (open now, or ended)" },
 } as const;
 
 export type HighlightKey = keyof typeof HIGHLIGHT_STYLES;

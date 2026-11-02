@@ -38,13 +38,16 @@ export function mergeHighlights(all: (PageVisitHighlights | undefined)[]): PageV
   if (present.length === 0) return undefined;
   let ad: PageVisitHighlights['ad'] = null;
   let featured: PageVisitHighlights['featured'] = null;
+  let requirement: PageVisitHighlights['requirement'] = null;
   for (const h of present) {
+    if (h.requirement === 'open' || (h.requirement === 'closed' && requirement === null)) requirement = h.requirement;
     if (h.ad && (!ad || adRank[h.ad] > adRank[ad])) ad = h.ad;
     if (h.featured && (!featured || featuredRank[h.featured] > featuredRank[featured])) featured = h.featured;
   }
   return {
     ad,
     featured,
+    requirement,
     purchased: present.some((h) => h.purchased),
     activePurchase: present.some((h) => h.activePurchase),
   };

@@ -32,18 +32,20 @@ function highlightKeys(h: PageVisitHighlights | undefined): HighlightKey[] {
   if (h.purchased) keys.push("purchased");
   if (h.featured) keys.push("featured");
   if (h.ad) keys.push("ad");
+  if (h.requirement) keys.push("requirement");
   return keys;
 }
 
 function badgeText(key: HighlightKey, h: PageVisitHighlights): string {
   if (key === "featured") return h.featured === "active" ? "Featured now" : "Featured (ended)";
   if (key === "ad") return h.ad === "live" ? "Ad live" : "Ad in pipeline";
+  if (key === "requirement") return h.requirement === "open" ? "Requirement open" : "Requirement (ended)";
   return key === "activePurchase" ? "Active purchase" : "Purchased";
 }
 
 /** The colour key above the table. */
 export function PageVisitLegend() {
-  return <HighlightLegend keys={["activePurchase", "purchased", "featured", "ad"]} />;
+  return <HighlightLegend keys={["activePurchase", "purchased", "featured", "ad", "requirement"]} />;
 }
 
 /** The page-visits table body, split out of page.tsx so the row-expand state (which session's

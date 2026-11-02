@@ -1053,7 +1053,7 @@ export interface PageVisitDto {
      * first. The row's details are the first session's; `lastActivityAt` is the newest session's and `pageViewCount` the total. */
     groupedSessionIds?: string[];
 }
-/** Row highlights on the admin Page visits list. `ad` and `featured` are about listings this session created;
+/** Row highlights on the admin Page visits list. `ad`, `featured` and `requirement` are about what this session created;
  * `purchased` and `activePurchase` are about the person, so they show on every visit of an account that paid. */
 export interface PageVisitHighlights {
     /** An ad posted in this session: `live` is visible on the site now, `pipeline` is posted but waiting for checkout
@@ -1065,6 +1065,9 @@ export interface PageVisitHighlights {
     purchased: boolean;
     /** The account holds something paid right now: a running boost, instant alerts or an unexpired plan. */
     activePurchase: boolean;
+    /** A requirement ("looking for ...") posted by an account in this session: `open` while it is still live (open or being
+     * worked, not expired), `closed` once it has ended. Null for none. */
+    requirement: "open" | "closed" | null;
 }
 export interface PageVisitSessionLogin {
     userId: string;

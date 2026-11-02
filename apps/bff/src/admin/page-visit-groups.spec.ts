@@ -29,7 +29,7 @@ function visit(over: Partial<PageVisitDto> = {}): PageVisitDto {
   };
 }
 
-const quiet: PageVisitHighlights = { ad: null, featured: null, purchased: false, activePurchase: false };
+const quiet: PageVisitHighlights = { ad: null, featured: null, requirement: null, purchased: false, activePurchase: false };
 
 describe('groupVisitsByUser', () => {
   it("puts one account's sessions together and leaves visits nobody logged in on alone", () => {
@@ -60,7 +60,7 @@ describe('mergeHighlights', () => {
       { ...quiet, ad: 'live', purchased: true },
       { ...quiet, featured: 'active', activePurchase: true },
     ]);
-    expect(merged).toEqual({ ad: 'live', featured: 'active', purchased: true, activePurchase: true });
+    expect(merged).toEqual({ ad: 'live', featured: 'active', requirement: null, purchased: true, activePurchase: true });
   });
 
   it('is undefined when no session had any', () => {
@@ -84,7 +84,7 @@ describe('mergeVisitGroup', () => {
     expect(merged.lastActivityAt).toBe(late.lastActivityAt);
     expect(merged.pageViewCount).toBe(51);
     expect(merged.groupedSessionIds).toEqual(['s1', 's2']);
-    expect(merged.highlights).toEqual({ ad: 'live', featured: 'active', purchased: true, activePurchase: true });
+    expect(merged.highlights).toEqual({ ad: 'live', featured: 'active', requirement: null, purchased: true, activePurchase: true });
   });
 
   it('lists each account that logged in once', () => {

@@ -73,7 +73,13 @@ import type { CreateAssistedListingDto } from './dto/create-assisted-listing.dto
 import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
 import { ListUserLoginHistoryDto } from './dto/list-user-login-history.dto';
 import { ListPageVisitsDto, PageVisitHighlightFilter, PageVisitSort } from './dto/list-page-visits.dto';
-import { visitHighlights, type SessionListingFacts } from './page-visit-highlights';
+import {
+  REQUIREMENT_SESSION_LEAD_MS,
+  REQUIREMENT_SESSION_SLACK_MS,
+  visitHighlights,
+  type SessionListingFacts,
+  type SessionRequirementFacts,
+} from './page-visit-highlights';
 import { groupVisitsByUser, mergeVisitGroup, PAGE_VISIT_GROUP_SCAN_CAP } from './page-visit-groups';
 
 type VisitWithUser = Prisma.VisitGetPayload<{ include: { user: { select: { name: true; phone: true; email: true; deletedAt: true } } } }>;
@@ -1062,7 +1068,7 @@ export class AdminService {
     }
 
     const highlightsBySessionId = await this.pageVisitHighlights(
-      rows.map((r) => ({ sessionId: r.sessionId, userId: r.userId })),
+      rows.map((r) => ({ sessionId: r.sessionId, userId: r.userId, createdAt: r.createdAt, lastActivityAt: r.lastActivityAt })),
       loginsBySessionId,
     );
 
@@ -1184,6 +1190,18 @@ export class AdminService {
           ],
         }),
       featured: () => bySessions({ listingBoosts: { some: {} } }),
+      requirement: async () => {
+        // A requirement belongs to the visit its seeker was logged into when it was created (no session id is stored on it).
+        const rows = await this.prisma.$queryRaw<{ sessionId: string }[]>`
+          SELECT DISTINCT v."sessionId"
+          FROM "Requirement" r
+          JOIN "Visit" v
+            ON r."createdAt" >= v."createdAt" - (${REQUIREMENT_SESSION_LEAD_MS} * interval '1 millisecond')
+           AND r."createdAt" <= COALESCE(v."lastActivityAt", v."createdAt") + (${REQUIREMENT_SESSION_SLACK_MS} * interval '1 millisecond')
+           AND (v."userId" = r."seekerId"
+                OR EXISTS (SELECT 1 FROM "LoginEvent" le WHERE le."sessionId" = v."sessionId" AND le."userId" = r."seekerId"))`;
+        return { sessionId: { in: rows.map((r) => r.sessionId) } };
+      },
       purchased: async () => byUsers(await this.usersWithPurchase()),
       active: async () => byUsers(await this.usersWithActivePurchase(now)),
     };
@@ -1195,7 +1213,7 @@ export class AdminService {
    * the listings each session created (and whether any was featured), then each account's payments and what it holds
    * right now. The rules live in page-visit-highlights.ts. */
   private async pageVisitHighlights(
-    visits: { sessionId: string; userId: string | null }[],
+    visits: { sessionId: string; userId: string | null; createdAt: Date; lastActivityAt: Date | null }[],
     loginsBySessionId: Map<string, PageVisitSessionLogin[]>,
   ): Promise<Map<string, PageVisitHighlights>> {
     const result = new Map<string, PageVisitHighlights>();
@@ -1210,7 +1228,7 @@ export class AdminService {
     }
     const allUserIds = [...new Set([...userIdsBySession.values()].flat())];
 
-    const [listings, paidUserIds, activeUserIds] = await Promise.all([
+    const [listings, requirements, paidUserIds, activeUserIds] = await Promise.all([
       this.prisma.listing.findMany({
         where: { createSessionId: { in: visits.map((v) => v.sessionId) } },
         select: {
@@ -1222,6 +1240,15 @@ export class AdminService {
           _count: { select: { listingBoosts: true } },
         },
       }),
+      allUserIds.length
+        ? this.prisma.requirement.findMany({
+            where: {
+              seekerId: { in: allUserIds },
+              createdAt: { gte: new Date(Math.min(...visits.map((v) => v.createdAt.getTime())) - REQUIREMENT_SESSION_LEAD_MS) },
+            },
+            select: { seekerId: true, createdAt: true, status: true, expiresAt: true },
+          })
+        : Promise.resolve([] as { seekerId: string; createdAt: Date; status: string; expiresAt: Date }[]),
       allUserIds.length ? this.usersWithPurchase(allUserIds) : new Set<string>(),
       allUserIds.length ? this.usersWithActivePurchase(now, allUserIds) : new Set<string>(),
     ]);
@@ -1239,11 +1266,19 @@ export class AdminService {
       });
       listingsBySession.set(l.createSessionId, list);
     }
+    // A requirement counts for the session its seeker was in when it was saved: created between the visit's start and its last
+    // activity (with a little slack either side).
+    const requirementsFor = (v: (typeof visits)[number], userIds: string[]): SessionRequirementFacts[] => {
+      const from = v.createdAt.getTime() - REQUIREMENT_SESSION_LEAD_MS;
+      const to = (v.lastActivityAt ?? v.createdAt).getTime() + REQUIREMENT_SESSION_SLACK_MS;
+      return requirements.filter((r) => userIds.includes(r.seekerId) && r.createdAt.getTime() >= from && r.createdAt.getTime() <= to);
+    };
     for (const v of visits) {
       result.set(
         v.sessionId,
         visitHighlights({
           listings: listingsBySession.get(v.sessionId) ?? [],
+          requirements: requirementsFor(v, userIdsBySession.get(v.sessionId) ?? []),
           userIds: userIdsBySession.get(v.sessionId) ?? [],
           paidUserIds,
           activeUserIds,

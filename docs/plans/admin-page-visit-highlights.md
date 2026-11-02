@@ -74,3 +74,12 @@ The first build only did Page visits (a misreading), so the Listings and Users s
   Raw SQL conditions in `listUsers`, the same three questions as the row highlights.
 - Tests: `listings.service.spec.ts` and `admin.service.spec.ts` pin the conditions; the three users conditions were also run on a real Postgres with an expired
   plan, an expired boost, a running boost, an unexpired plan and a failed payment, and returned exactly the expected users.
+
+## Requirement posted (2 Nov 2026)
+A fifth highlight, purple: a requirement ("looking for ...") was posted in the visit. A `Requirement` stores no session id, so it is matched to
+a visit by person and time: its seeker is the visit's account (`Visit.userId`) or logged in during it (`LoginEvent`), and it was created
+between 1 minute before the visit started and 15 minutes after its last activity (`REQUIREMENT_SESSION_LEAD_MS` / `_SLACK_MS` in
+`page-visit-highlights.ts`). Badge: "Requirement open" while the requirement is open or being worked and not expired, otherwise
+"Requirement (ended)". The Highlight filter has a "Requirement posted" option and "Highlighted only" includes it. In "Group by user" a
+group shows the strongest (open over ended). Checked against a throwaway Postgres: direct and login-linked seekers match, a requirement
+outside the visit's window does not.

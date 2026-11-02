@@ -64,9 +64,9 @@ const PAGE_VISIT_TRAFFIC_VALUES = ['any', 'humans', 'js_confirmed', 'bots', 'unc
 export type PageVisitTraffic = (typeof PAGE_VISIT_TRAFFIC_VALUES)[number];
 
 /** Keep only visits that carry a row highlight (docs/plans/admin-page-visit-highlights.md): `any` is any of the four,
- * `ad` an ad posted live or in the pipeline, `featured` a featured listing from the session, `purchased` an account that
+ * `ad` an ad posted live or in the pipeline, `featured` a featured listing from the session, `requirement` a requirement posted in the session, `purchased` an account that
  * has paid at least once, `active` an account holding something paid now. */
-const PAGE_VISIT_HIGHLIGHT_VALUES = ['any', 'ad', 'featured', 'purchased', 'active'] as const;
+const PAGE_VISIT_HIGHLIGHT_VALUES = ['any', 'ad', 'featured', 'requirement', 'purchased', 'active'] as const;
 
 export type PageVisitHighlightFilter = (typeof PAGE_VISIT_HIGHLIGHT_VALUES)[number];
 

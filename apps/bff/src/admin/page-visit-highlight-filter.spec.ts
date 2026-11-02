@@ -2,8 +2,8 @@ import { AdminService } from './admin.service';
 
 const NOW = new Date('2026-11-01T10:00:00Z');
 
-/** The `highlight` filter on the Page visits list: the same four rules as the row colours, as database queries. */
-function makeService(over: { paid?: string[]; subscriptions?: string[]; running?: string[]; adSessions?: string[]; logins?: string[] } = {}) {
+/** The `highlight` filter on the Page visits list: the same five rules as the row colours, as database queries. */
+function makeService(over: { paid?: string[]; subscriptions?: string[]; running?: string[]; adSessions?: string[]; logins?: string[]; requirementSessions?: string[] } = {}) {
   const prisma = {
     payment: { groupBy: jest.fn().mockResolvedValue((over.paid ?? []).map((userId) => ({ userId }))) },
     userSubscription: { findMany: jest.fn().mockResolvedValue((over.subscriptions ?? []).map((userId) => ({ userId }))) },
@@ -16,11 +16,12 @@ function makeService(over: { paid?: string[]; subscriptions?: string[]; running?
         ),
       ),
     },
+    $queryRaw: jest.fn().mockResolvedValue((over.requirementSessions ?? []).map((sessionId) => ({ sessionId }))),
     loginEvent: { findMany: jest.fn().mockResolvedValue((over.logins ?? []).map((sessionId) => ({ sessionId }))) },
   };
   const none = {} as never;
   const service = new AdminService(prisma as never, none, none, none, none, none, none, none, none, none, none, none, none, none, none);
-  const where = (h: 'any' | 'ad' | 'featured' | 'purchased' | 'active') =>
+  const where = (h: 'any' | 'ad' | 'featured' | 'requirement' | 'purchased' | 'active') =>
     (service as unknown as { highlightWhere: (h: string, now: Date) => Promise<unknown> }).highlightWhere(h, NOW);
   return { prisma, where };
 }
@@ -60,9 +61,14 @@ describe('page visits highlight filter', () => {
     expect(await where('purchased')).toEqual({ id: { in: [] } });
   });
 
-  it('any: all four rules ORed together', async () => {
+  it('requirement: sessions in which an account saved a requirement', async () => {
+    const { where } = makeService({ requirementSessions: ['s3'] });
+    expect(await where('requirement')).toEqual({ sessionId: { in: ['s3'] } });
+  });
+
+  it('any: all five rules ORed together', async () => {
     const { where } = makeService({ adSessions: ['s1'], paid: ['u1'], subscriptions: ['u1'] });
     const clause = (await where('any')) as { OR: unknown[] };
-    expect(clause.OR).toHaveLength(4);
+    expect(clause.OR).toHaveLength(5);
   });
 });
