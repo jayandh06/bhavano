@@ -369,6 +369,16 @@ export function forcePublishListing(accessToken: string, id: string): Promise<Li
 }
 
 /** Permanent hard-delete with full R2 + DB cleanup — see BFF ListingsService.deleteCompletely. */
+/** How many admin test-scenario ads ("[TEST]" title, admin owner) exist — see BFF AdminService.countTestAds. */
+export async function fetchTestAdCount(accessToken: string): Promise<number> {
+  const result = await authedBffFetch<{ count: number }>(accessToken, "/admin/test-ads", { cache: "no-store" });
+  return result.count;
+}
+
+export function deleteTestAds(accessToken: string): Promise<{ deleted: number; failed: number }> {
+  return authedBffFetch(accessToken, "/admin/test-ads", { method: "DELETE" });
+}
+
 export function deleteListing(accessToken: string, id: string): Promise<void> {
   return authedBffFetch(accessToken, `/admin/listings/${id}`, { method: "DELETE" });
 }

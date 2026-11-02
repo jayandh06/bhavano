@@ -33,6 +33,7 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import {
   approveListing,
   deleteListing,
+  deleteTestAds,
   fetchListingById,
   fetchAnyConversationMessages,
   fetchListingConversationMessages,
@@ -97,6 +98,18 @@ export async function flagListingAction(listingId: string, message: string): Pro
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to flag listing" };
+  }
+}
+
+/** Removes every admin test-scenario ad ("[TEST]" title, admin owner), with the same asset cleanup as a single delete. */
+export async function deleteTestAdsAction(): Promise<ActionResult & { deleted?: number; failed?: number }> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const { deleted, failed } = await deleteTestAds(accessToken);
+    revalidatePath("/");
+    return { success: true, deleted, failed };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to remove test ads" };
   }
 }
 

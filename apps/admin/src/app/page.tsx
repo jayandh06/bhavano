@@ -7,7 +7,7 @@ import type {
   TransactionType,
 } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { AdminListingSort, fetchAdminListings, fetchAreas, fetchCities } from "@/lib/bff";
+import { AdminListingSort, fetchAdminListings, fetchAreas, fetchCities, fetchTestAdCount } from "@/lib/bff";
 import { buildPageHref, carriedValue, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
 import { bulkImportChoice, bulkImportQueryValue } from "@/lib/bulkImportFilter";
@@ -15,6 +15,7 @@ import { daysAgoIST, istDayEnd, istDayStart, todayIST } from "@/lib/dateRangeDef
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
 import { AdminListingsTable } from "@/components/AdminListingsTable";
+import { RemoveTestAds } from "@/components/RemoveTestAds";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 
 type FilterTab = "needsReview" | "flagged" | "awaitingClaim" | "scheduled" | "all";
@@ -87,7 +88,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const currentPage = parsePage(str(sp.page));
   const limit = parsePageSize(str(sp.limit));
 
-  const [result, cities, areas] = await Promise.all([
+  const [result, cities, areas, testAdCount] = await Promise.all([
     fetchAdminListings(accessToken, {
       ...tabToQuery(tab),
       bulkImport,
@@ -117,6 +118,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     }),
     fetchCities(undefined, true),
     cityId ? fetchAreas(cityId, undefined, true) : Promise.resolve([]),
+    // Never lets a failed count break the moderation queue.
+    fetchTestAdCount(accessToken).catch(() => 0),
   ]);
   const totalPages = Math.max(1, Math.ceil(result.total / limit));
 
@@ -124,6 +127,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 24px" }}>Listing moderation</h1>
+
+        <RemoveTestAds count={testAdCount} />
 
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           {/* prefetch={false} — same reasoning as SortableHeader.tsx/Pagination.tsx: all three

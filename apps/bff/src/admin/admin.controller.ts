@@ -235,6 +235,18 @@ export class AdminController {
 
   /** Permanent hard-delete with full R2 + DB cleanup. For spam/junk/duplicates — the softer
    * "flag & message owner" is the tool for a fixable listing. */
+  /** The test ads made from the /post admin test scenarios, and removing them all (admin-owned "[TEST]" ads only). Not under
+   * `listings/` so it can never be read as a listing id. */
+  @Get('test-ads')
+  async countTestAds(): Promise<{ count: number }> {
+    return { count: await this.adminService.countTestAds() };
+  }
+
+  @Delete('test-ads')
+  deleteTestAds(@CurrentUser() user: RequestUser): Promise<{ deleted: number; failed: number }> {
+    return this.adminService.deleteTestAds(user.id);
+  }
+
   @Delete('listings/:id')
   @HttpCode(204)
   deleteListing(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<void> {

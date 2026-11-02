@@ -23,8 +23,11 @@ amounts scaled to the price), so a new field is filled without editing the scena
 
 ## Cleanup
 
-Posting creates a **real, live listing** titled `[TEST] ...`. It is not hidden from public search: remove or deactivate it in admin
-afterwards (search the Listings screen for `[TEST]`). Test ads are owned by the admin account who posted them.
+Posting creates a **real, live listing** titled `[TEST] ...`, owned by the admin who posted it. It is not hidden from public search.
+The admin **Listings** screen shows a "N test ads" bar with a **Remove test ads** button whenever any exist (`RemoveTestAds.tsx`). One
+confirmed click hard-deletes them all, with the same photo and video cleanup as deleting a single listing (`GET/DELETE /admin/test-ads`,
+`AdminService.countTestAds` / `deleteTestAds`, at most 500 per click; one failure does not stop the rest and is reported). Only ads that
+are **both** titled `[TEST]...` **and** owned by an admin are matched, so a real user's ad can never be removed this way.
 
 ## Checks
 
@@ -34,4 +37,4 @@ an admin login when it shipped.
 
 ## Not done
 
-Mobile app; a "remove all [TEST] ads" button; filling a different city than the one on screen.
+Mobile app; filling a different city than the one on screen.

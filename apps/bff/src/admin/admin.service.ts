@@ -361,6 +361,8 @@ const OWNER_ALERT_LOG_KINDS = new Set(['new_message', 'listing_interest', 'conta
 
 /** `ListingNotificationLog.channel` for a message delivered inside the app (an announcement thread). */
 const IN_APP_CHANNEL = 'in_app';
+/** The title prefix the /post test scenarios give their ads (apps/web/src/lib/postAdScenarios.ts). */
+export const TEST_AD_TITLE_PREFIX = '[TEST]';
 
 /** `ListingNotificationLog.kind` of the "add your mobile number" in-app message; its presence on any of an owner's ads means they were already sent it. */
 const MOVE_TO_MOBILE_KIND = 'move_to_mobile';
@@ -491,6 +493,34 @@ export class AdminService {
    * line is emitted by ListingsService. */
   async deleteListing(id: string, _adminId: string): Promise<void> {
     await this.listingsService.deleteCompletely(id);
+  }
+
+  /** Ads made from the admin test scenarios on /post (docs/plans/post-ad-test-scenarios.md): a title that starts with "[TEST]" AND
+   * an owner who is an admin. Both, so a real user's ad that happens to be titled "[TEST] ..." is never matched. */
+  private testAdsWhere(): Prisma.ListingWhereInput {
+    return { title: { startsWith: TEST_AD_TITLE_PREFIX }, owner: { role: 'admin' } };
+  }
+
+  countTestAds(): Promise<number> {
+    return this.prisma.listing.count({ where: this.testAdsWhere() });
+  }
+
+  /** Hard-deletes every test ad (with the same asset cleanup as a single admin delete) and returns how many went. One bad row does not
+   * stop the rest; the ids that failed are logged. */
+  async deleteTestAds(adminId: string): Promise<{ deleted: number; failed: number }> {
+    const rows = await this.prisma.listing.findMany({ where: this.testAdsWhere(), select: { id: true }, take: 500 });
+    let deleted = 0;
+    let failed = 0;
+    for (const { id } of rows) {
+      try {
+        await this.deleteListing(id, adminId);
+        deleted += 1;
+      } catch (error) {
+        failed += 1;
+        this.logger.warn(`Test ad ${id} could not be deleted: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    return { deleted, failed };
   }
 
   /** Permanent removal of a user: hard-deletes every listing they own (with R2 asset cleanup),
