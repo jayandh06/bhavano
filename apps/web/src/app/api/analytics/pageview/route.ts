@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { sessionCookieOptions } from "@/lib/sessionCookie";
 
 const SESSION_COOKIE = "bhavano_sid";
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
@@ -42,5 +43,9 @@ export async function POST(request: Request): Promise<NextResponse> {
   } catch {
     // Best-effort, same as middleware.ts's waitUntil pageview fetch.
   }
-  return new NextResponse(null, { status: 204 });
+  // A client-side navigation is a page view too: push the session's 30-minute expiry forward, since no document request (which
+  // middleware.ts would refresh it on) happens while someone browses by client-side links (lib/sessionCookie.ts).
+  const response = new NextResponse(null, { status: 204 });
+  response.cookies.set(SESSION_COOKIE, sessionId, sessionCookieOptions(process.env.NODE_ENV === "production"));
+  return response;
 }

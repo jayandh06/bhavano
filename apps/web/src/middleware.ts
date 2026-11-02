@@ -4,6 +4,7 @@ import { isBotUserAgent } from "@bhavano/types/botUserAgent";
 import { sanitizePageViewQuery } from "@bhavano/types/pageViewQuery";
 import { citySlugForRoute } from "@/lib/cityFromRoute";
 import { shouldReplaceAcquisition } from "@/lib/acquisitionCookie";
+import { sessionCookieOptions } from "@/lib/sessionCookie";
 
 const ACQUISITION_COOKIE = "bhavano_acq";
 const SESSION_COOKIE = "bhavano_sid";
@@ -294,7 +295,12 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
   // for 30 days and the ad would never get credit for their sign-up. See docs/plans/ad-first-click-attribution.md.
   const upgradeAcquisition =
     hasAcquisitionCookie && shouldReplaceAcquisition(request.cookies.get(ACQUISITION_COOKIE)?.value, resolved);
-  if (hasAcquisitionCookie && hasSessionCookie && !cityChanged && !refParam && !upgradeAcquisition) return NextResponse.next();
+  if (hasAcquisitionCookie && hasSessionCookie && !cityChanged && !refParam && !upgradeAcquisition) {
+    // The one cookie written on every page view: the session lasts 30 minutes from the last one (lib/sessionCookie.ts).
+    const steady = NextResponse.next();
+    steady.cookies.set(SESSION_COOKIE, sessionId, sessionCookieOptions(process.env.NODE_ENV === "production"));
+    return steady;
+  }
 
   const response = NextResponse.next();
 
@@ -355,16 +361,11 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
     );
   }
 
-  if (!hasSessionCookie) {
-    response.cookies.set(SESSION_COOKIE, sessionId, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: secureCookie,
-      path: "/",
-      // No maxAge: a session cookie, cleared when the browser closes — reopening later starts a
-      // new session/visit.
-    });
+  // Written on every page view, not only the first: the session lasts 30 minutes from the last one, so a person who comes back
+  // inside that window (a second tap on the same link from another app) continues the session instead of starting another.
+  response.cookies.set(SESSION_COOKIE, sessionId, sessionCookieOptions(secureCookie));
 
+  if (!hasSessionCookie) {
     event.waitUntil(
       fetch(`${BFF_URL}/analytics/visit`, {
         method: "POST",
