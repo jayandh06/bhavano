@@ -72,3 +72,5 @@ restored on the next bare visit from the menu. Same mechanism as the Listings ow
 
 **Fix:** those four links now carry `SKIP_REMEMBER_PARAM`. Filters typed into the Messages form and applied are still remembered. A cookie
 already polluted stays until Reset is pressed on Messages (or a filter is applied once).
+
+Messages also gained a Reset link (`?__clearFilters=1`), which it lacked, so a stuck filter can be cleared.

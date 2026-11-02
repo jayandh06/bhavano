@@ -1,5 +1,7 @@
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchAdminConversations } from "@/lib/bff";
+import Link from "next/link";
+import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { daysAgoIST, istDayEnd, istDayStart, todayIST } from "@/lib/dateRangeDefaults";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
@@ -107,6 +109,10 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
             <button type="submit" style={applyButtonStyle}>
               Apply filters
             </button>
+            {/* CLEAR_FILTERS_PARAM + prefetch={false}: the same Reset link as page-visits/page.tsx (see rememberedFilters.ts). */}
+            <Link href={`/messages?${CLEAR_FILTERS_PARAM}=1`} prefetch={false} style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
+              Reset
+            </Link>
           </div>
         </form>
 
