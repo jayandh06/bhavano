@@ -320,7 +320,10 @@ metadata is fixed. **No new build is needed:** this is App Store Connect metadat
    ```
    This uses Apple's standard EULA, the quickest route. (A custom EULA instead goes in App Information > License Agreement > Edit.)
 2. App Information > **Privacy Policy URL** = `https://www.bhavano.com/privacy` (already required for submission, check it is still set) and
-   the version's **Support URL** is filled.
+   the version's **Support URL** is filled. Values: Support URL `https://www.bhavano.com/contact` (the Contact us form; `/support` does not
+   exist and returns 404), Marketing URL `https://www.bhavano.com`. The Support and Marketing URL fields are on the **version page**
+   (App Store > iOS App > the version, below Keywords, one set per language); the Privacy Policy URL is on a different page (General >
+   App Information).
 3. Reply to the message in App Store Connect: "Added a link to the Apple Standard EULA and our Privacy Policy to the App Description in
    all localizations. Terms of Use and Privacy Policy links are also shown in the app's subscription purchase screen." Then resubmit.
 
