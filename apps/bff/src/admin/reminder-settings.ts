@@ -8,7 +8,16 @@ export const DEFAULT_REMINDER_SETTINGS: ReminderSettingsDto = {
   featuredExpiryDays: [3, 1],
   followupEnabled: true,
   followupHours: [4, 24, 72],
+  feedbackRequestEnabled: true,
+  feedbackRequestHours: 48,
 };
+
+export const MAX_FEEDBACK_REQUEST_HOURS = 168;
+
+function cleanHours(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 1 && n <= MAX_FEEDBACK_REQUEST_HOURS ? n : fallback;
+}
 
 export const MAX_FEATURED_EXPIRY_DAYS = 14;
 export const MAX_FEATURED_EXPIRY_STAGES = 4;
@@ -34,18 +43,27 @@ export async function getReminderSettings(prisma: PrismaService): Promise<Remind
       featuredExpiryDays: cleanList(row.featuredExpiryDays, 1, MAX_FEATURED_EXPIRY_DAYS, MAX_FEATURED_EXPIRY_STAGES, DEFAULT_REMINDER_SETTINGS.featuredExpiryDays).sort((a, b) => b - a),
       followupEnabled: row.followupEnabled,
       followupHours: cleanList(row.followupHours, 1, MAX_FOLLOWUP_HOURS, MAX_FOLLOWUP_STAGES, DEFAULT_REMINDER_SETTINGS.followupHours).sort((a, b) => a - b),
+      feedbackRequestEnabled: row.feedbackRequestEnabled,
+      feedbackRequestHours: cleanHours(row.feedbackRequestHours, DEFAULT_REMINDER_SETTINGS.feedbackRequestHours),
     };
   } catch {
     return DEFAULT_REMINDER_SETTINGS;
   }
 }
 
-export async function setReminderSettings(prisma: PrismaService, input: ReminderSettingsDto): Promise<ReminderSettingsDto> {
+/** What a save carries: the feedback-request fields are optional so an older admin build's save still works. */
+export type ReminderSettingsInput = Omit<ReminderSettingsDto, 'feedbackRequestEnabled' | 'feedbackRequestHours'> &
+  Partial<Pick<ReminderSettingsDto, 'feedbackRequestEnabled' | 'feedbackRequestHours'>>;
+
+export async function setReminderSettings(prisma: PrismaService, input: ReminderSettingsInput): Promise<ReminderSettingsDto> {
   const data = {
     featuredExpiryEnabled: input.featuredExpiryEnabled,
     featuredExpiryDays: cleanList(input.featuredExpiryDays, 1, MAX_FEATURED_EXPIRY_DAYS, MAX_FEATURED_EXPIRY_STAGES, DEFAULT_REMINDER_SETTINGS.featuredExpiryDays),
     followupEnabled: input.followupEnabled,
     followupHours: cleanList(input.followupHours, 1, MAX_FOLLOWUP_HOURS, MAX_FOLLOWUP_STAGES, DEFAULT_REMINDER_SETTINGS.followupHours),
+    // Absent from an older admin build's save: keep the defaults rather than failing the whole save.
+    feedbackRequestEnabled: input.feedbackRequestEnabled ?? DEFAULT_REMINDER_SETTINGS.feedbackRequestEnabled,
+    feedbackRequestHours: cleanHours(input.feedbackRequestHours, DEFAULT_REMINDER_SETTINGS.feedbackRequestHours),
   };
   await prisma.reminderSetting.upsert({ where: { id: SETTINGS_ID }, update: data, create: { id: SETTINGS_ID, ...data } });
   return getReminderSettings(prisma);

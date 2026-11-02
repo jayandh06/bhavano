@@ -135,6 +135,12 @@ import {
   expiryReminderPath,
   type BoostMessageInput,
 } from './boost-message';
+import {
+  POST_FEEDBACK_REQUEST_KIND,
+  buildPostFeedbackBody,
+  buildPostFeedbackCard,
+  postFeedbackRequestPath,
+} from './post-feedback-message';
 import { normalizedPhoneDigitsForSearch, buildUserSearchOr } from './user-search';
 import { isListingBoosted } from '../listings/listing-boost.util';
 
@@ -2428,6 +2434,39 @@ export class AdminService {
       data: {
         listingId: listing.id,
         kind: `featured_expiry_${daysLeft}d`,
+        channel: IN_APP_CHANNEL,
+        providerMessageId: message.id,
+      },
+    });
+    return true;
+  }
+
+  /** "How was posting this ad?" (docs/plans/post-ad-experience-feedback.md): the same announcement thread, push and unread update as
+   * the Boost message, with a Share feedback button that opens the feedback page. Returns false when the ad is gone or its owner is
+   * a placeholder account. The caller (PostFeedbackRequestJob) owns the once-per-ad rule; this writes the log row it reads. */
+  async sendPostFeedbackRequest(listingId: string, adminId: string): Promise<boolean> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      include: { city: true, area: true, owner: { select: { phone: true } } },
+    });
+    if (!listing || listing.owner.phone === BULK_IMPORT_OWNER_PHONE) return false;
+    const input = {
+      title: listing.title,
+      location: `${listing.area.name}, ${listing.city.name}`,
+      link: `${process.env.PUBLIC_SITE_URL ?? 'https://www.bhavano.com'}${postFeedbackRequestPath(listing.id)}`,
+    };
+    const imageUrl = await this.messagingService.getListingPushImageUrl(listing.id).catch(() => undefined);
+    const { conversationId, message, recipientId, listingTitle } = await this.messagingService.sendAnnouncement(
+      listing.id,
+      adminId,
+      buildPostFeedbackBody(input),
+      buildPostFeedbackCard(input, { id: listing.id, imageUrl: imageUrl ?? null }),
+    );
+    this.deliverStaffMessage({ conversationId, message, recipientId, listingId: listing.id, listingTitle, imageUrl });
+    await this.prisma.listingNotificationLog.create({
+      data: {
+        listingId: listing.id,
+        kind: POST_FEEDBACK_REQUEST_KIND,
         channel: IN_APP_CHANNEL,
         providerMessageId: message.id,
       },

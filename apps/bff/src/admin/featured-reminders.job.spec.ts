@@ -203,6 +203,8 @@ describe('reminder settings', () => {
       featuredExpiryDays: [3, 1],
       followupEnabled: true,
       followupHours: [4, 24, 72],
+      feedbackRequestEnabled: true,
+      feedbackRequestHours: 48,
     });
   });
 

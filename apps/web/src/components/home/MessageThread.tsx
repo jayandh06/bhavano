@@ -17,6 +17,7 @@ import {
 import { useAuthGate } from "./AuthGateProvider";
 import { MessageBody } from "./MessageBody";
 import { BoostOfferMessageCard } from "./BoostOfferMessageCard";
+import { FeedbackRequestMessageCard } from "./FeedbackRequestMessageCard";
 import { GetAppCard } from "./GetAppCard";
 import { ReportDialog } from "./ReportDialog";
 import { Icon } from "./Icon";
@@ -237,6 +238,9 @@ export function MessageThread({
           const isDeleted = m.deletedAt != null;
           if (!isDeleted && m.card?.kind === "boost_offer") {
             return <BoostOfferMessageCard key={m.id} card={m.card} />;
+          }
+          if (!isDeleted && m.card?.kind === "feedback_request") {
+            return <FeedbackRequestMessageCard key={m.id} card={m.card} />;
           }
           return (
             <div

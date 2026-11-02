@@ -2639,6 +2639,9 @@ model ReminderSetting {
   featuredExpiryDays    Int[]    @default([3, 1])
   followupEnabled       Boolean  @default(true)
   followupHours         Int[]    @default([4, 24, 72])
+  /// Ask the owner how posting the ad went (docs/plans/post-ad-experience-feedback.md), this many hours after it went live.
+  feedbackRequestEnabled Boolean @default(true)
+  feedbackRequestHours  Int      @default(48)
   updatedAt             DateTime @updatedAt
 }
 

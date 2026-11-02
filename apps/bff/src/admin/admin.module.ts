@@ -4,6 +4,7 @@ import { AdminService } from './admin.service';
 import { BoostNudgeJob } from './boost-nudge.job';
 import { BoostFollowupJob } from './boost-followup.job';
 import { FeaturedExpiryReminderJob } from './featured-expiry-reminder.job';
+import { PostFeedbackRequestJob } from './post-feedback-request.job';
 import { ListingsModule } from '../listings/listings.module';
 import { MessagingModule } from '../messaging/messaging.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -31,6 +32,6 @@ import { ReferralsModule } from '../referrals/referrals.module';
     ReferralsModule,
   ],
   controllers: [AdminController],
-  providers: [AdminService, BoostNudgeJob, BoostFollowupJob, FeaturedExpiryReminderJob],
+  providers: [AdminService, BoostNudgeJob, BoostFollowupJob, FeaturedExpiryReminderJob, PostFeedbackRequestJob],
 })
 export class AdminModule {}

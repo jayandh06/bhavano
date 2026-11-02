@@ -1,6 +1,6 @@
 # Post-ad experience feedback
 
-## Status: Phase 1 built (2 Nov 2026); Phases 2 and 3 not started
+## Status: Phases 1 and 2 built (2 Nov 2026); Phase 3 (mobile app) not started
 
 Decisions taken (defaults, 2 Nov 2026): no incentive, 5 stars, every poster is asked, nudge at about 48 h.
 
@@ -19,6 +19,16 @@ enough context to act on it, and show it in admin.
 Why now: the post flow is where nearly all revenue starts (62 of 64 paid boosts in 60 days, see
 [`featured-expiry-reminder.md`](featured-expiry-reminder.md)), and the funnel data (`post-ad-funnel-step-tracking-and-entry-attribution.md`,
 `post-details-step-experience.md`) says *where* people stop but not *why*.
+
+**Phase 2 as built:** `PostFeedbackRequestJob` (`apps/bff/src/admin/post-feedback-request.job.ts`, hourly at :35 between 09:00 and 20:59 IST,
+`POST_FEEDBACK_REQUEST_ENABLED=false` switches it off) sends an in-app "Bhavano Admin" message through `AdminService.sendPostFeedbackRequest`.
+Settings → Reminders has a new "Ask how posting went" card (on/off and hours, default 48; columns on `ReminderSetting`, migration
+`20261102130000_reminder_feedback_request`). The message is a new card kind `feedback_request` (`FeedbackRequestMessageCardDto`), drawn on
+web by `FeedbackRequestMessageCard`; it is deliberately **not** the `boost_offer` kind, because the current Android build opens the Boost
+picker from any `boost_offer` card. Builds that do not know the kind show the plain-text body, whose last line is the link.
+**One push, not two:** the message's own push (the same one every staff message sends) carries the opening sentence and opens the thread, where
+the card and button are. A separate push with a `path` deep link would have doubled the notifications, so it was left out; the `path`
+deep link comes with the Phase 3 app screen. Candidate rules are exactly those below, plus ads older than 72 h past their due time are left alone.
 
 ## What we ask (kept to under 30 seconds)
 

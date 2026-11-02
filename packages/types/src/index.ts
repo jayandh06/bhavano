@@ -675,7 +675,23 @@ export interface BoostOfferMessageCardDto {
   ctaPath: string;
 }
 
-export type MessageCardDto = BoostOfferMessageCardDto;
+/** "How was posting this ad?" — the feedback request sent about one of the recipient's own listings, see
+ * docs/plans/post-ad-experience-feedback.md. Older app builds do not know this kind and show the plain-text body, which carries the link. */
+export interface FeedbackRequestMessageCardDto {
+  kind: "feedback_request";
+  listingId: string;
+  title: string;
+  /** "Area, City". */
+  location: string;
+  imageUrl: string | null;
+  headline: string;
+  paragraphs: string[];
+  ctaLabel: string;
+  /** Site-relative, e.g. "/feedback/post/<id>?src=in_app_message". */
+  ctaPath: string;
+}
+
+export type MessageCardDto = BoostOfferMessageCardDto | FeedbackRequestMessageCardDto;
 
 export interface MessageDeletedEvent {
   messageId: string;
@@ -2034,6 +2050,10 @@ export interface ReminderSettingsDto {
   followupEnabled: boolean;
   /** Hours after the ad goes live, e.g. [4, 24, 72]. 1 to 5 values, each 1 to 720. */
   followupHours: number[];
+  /** Ask the owner how posting the ad went, once per ad (docs/plans/post-ad-experience-feedback.md). */
+  feedbackRequestEnabled: boolean;
+  /** Hours after the ad goes live to ask, 1 to 168. */
+  feedbackRequestHours: number;
 }
 
 /** What an owner is shown about demand matching their own inventory — deliberately carries no

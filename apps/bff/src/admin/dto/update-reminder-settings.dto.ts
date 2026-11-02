@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsInt, Max, Min } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
 import {
+  MAX_FEEDBACK_REQUEST_HOURS,
   MAX_FEATURED_EXPIRY_DAYS,
   MAX_FEATURED_EXPIRY_STAGES,
   MAX_FOLLOWUP_HOURS,
@@ -33,4 +34,16 @@ export class UpdateReminderSettingsDto {
   @Min(1, { each: true })
   @Max(MAX_FOLLOWUP_HOURS, { each: true })
   followupHours!: number[];
+
+  @IsOptional()
+  @IsBoolean()
+  feedbackRequestEnabled?: boolean;
+
+  /** Hours after an ad goes live to ask how posting went. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(MAX_FEEDBACK_REQUEST_HOURS)
+  feedbackRequestHours?: number;
 }

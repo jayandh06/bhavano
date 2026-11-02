@@ -8,6 +8,7 @@ const MAX_EXPIRY_DAYS = 14;
 const MAX_EXPIRY_STAGES = 4;
 const MAX_FOLLOWUP_HOURS = 720;
 const MAX_FOLLOWUP_STAGES = 5;
+const MAX_FEEDBACK_HOURS = 168;
 
 /** "3, 1" to [3, 1]; null when anything is not a whole number in range, or there are too many or none. */
 function parseList(text: string, max: number, maxCount: number): number[] | null {
@@ -34,12 +35,16 @@ export function ReminderSettingsForm({ initial }: { initial: ReminderSettingsDto
   const [expiryDays, setExpiryDays] = useState(initial.featuredExpiryDays.join(", "));
   const [followupEnabled, setFollowupEnabled] = useState(initial.followupEnabled);
   const [followupHours, setFollowupHours] = useState(initial.followupHours.join(", "));
+  const [feedbackEnabled, setFeedbackEnabled] = useState(initial.feedbackRequestEnabled);
+  const [feedbackHours, setFeedbackHours] = useState(String(initial.feedbackRequestHours));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const days = parseList(expiryDays, MAX_EXPIRY_DAYS, MAX_EXPIRY_STAGES);
   const hours = parseList(followupHours, MAX_FOLLOWUP_HOURS, MAX_FOLLOWUP_STAGES);
-  const valid = days !== null && hours !== null;
+  const feedbackHoursNumber = Number(feedbackHours);
+  const feedbackValid = Number.isInteger(feedbackHoursNumber) && feedbackHoursNumber >= 1 && feedbackHoursNumber <= MAX_FEEDBACK_HOURS;
+  const valid = days !== null && hours !== null && feedbackValid;
 
   async function onSave() {
     if (!days || !hours) return;
@@ -50,6 +55,8 @@ export function ReminderSettingsForm({ initial }: { initial: ReminderSettingsDto
       featuredExpiryDays: days,
       followupEnabled,
       followupHours: hours,
+      feedbackRequestEnabled: feedbackEnabled,
+      feedbackRequestHours: feedbackHoursNumber,
     });
     setSaving(false);
     setMessage(
@@ -95,6 +102,23 @@ export function ReminderSettingsForm({ initial }: { initial: ReminderSettingsDto
         <p style={{ fontSize: 12, color: "var(--muted)", margin: "12px 0 0", maxWidth: 600 }}>
           Default <strong>3, 1</strong>: 3 days and 1 day before. Checked once a day at 10 am IST; each reminder goes out once per Feature period, and a Feature
           period no longer than the number of days skips that reminder. The message has a Renew Feature button, and renewing adds to the days still left.
+        </p>
+      </div>
+
+      <div style={cardStyle}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Ask how posting went</div>
+        <label style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer", marginBottom: 14 }}>
+          <input type="checkbox" checked={feedbackEnabled} onChange={(e) => setFeedbackEnabled(e.target.checked)} />
+          <span style={{ fontSize: 13.5, fontWeight: 700 }}>Send this automatically</span>
+        </label>
+        <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span style={{ fontSize: 12.5, color: "var(--muted)" }}>Hours after the ad goes live (1 to {MAX_FEEDBACK_HOURS})</span>
+          <input value={feedbackHours} onChange={(e) => setFeedbackHours(e.target.value)} style={inputStyle} />
+        </label>
+        <p style={{ fontSize: 12, color: "var(--muted)", margin: "12px 0 0", maxWidth: 600 }}>
+          Default <strong>48</strong>. An in-app message (and push, if the app is installed) from Bhavano Admin with a Share feedback button, sent once per ad to
+          an owner who has not already answered, at most once per owner every 30 days, never within 12 hours of another in-app message about the ad, between 9 am
+          and 8 pm IST. Answers are on the Post feedback screen.
         </p>
       </div>
 
