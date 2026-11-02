@@ -1,6 +1,14 @@
 # Post-ad experience feedback
 
-## Status: plan (2 Nov 2026), nothing built yet
+## Status: Phase 1 built (2 Nov 2026); Phases 2 and 3 not started
+
+Decisions taken (defaults, 2 Nov 2026): no incentive, 5 stars, every poster is asked, nudge at about 48 h.
+
+**Phase 1 as built:** `PostFeedback` table (migration `20261102120000_post_feedback`), shared contract `packages/types/src/postFeedback.ts`,
+BFF `src/feedback/` (`GET/POST /feedback/post`, owner only; `GET /admin/feedback/post` with filters and summary), web card
+`PostFeedbackForm` at the bottom of the post-ad success screen (logged-in posters only), page `/feedback/post/[listingId]` (`?src=push|in_app_message`
+sets the source), admin screen **Analytics → Post feedback** (`/feedback`), and a line in the privacy policy. The older "Feedback on
+posting" link on the success screen (support-form topic `posting_feedback`) is kept: that is for writing to staff, this is the rating.
 
 ## Goal
 

@@ -11,6 +11,7 @@ import type { CampaignAnalyticsDto, CampaignAnalyticsGroupByDto } from "@bhavano
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
+import type { AdminPostFeedbackPage } from "@bhavano/types/postFeedback";
 import type { PostDetailsBlockersDto, PostFunnelDto } from "@bhavano/types/postFunnel";
 import type {
   AdminAreaOverviewDetail,
@@ -532,6 +533,32 @@ export function fetchAdminConversations(
     if (value !== undefined && value !== "") params.set(key, String(value));
   }
   return authedBffFetch(accessToken, `/admin/conversations?${params.toString()}`, { cache: "no-store" });
+}
+
+/** Filters for the admin Feedback screen (the poster feedback of docs/plans/post-ad-experience-feedback.md); `from`/`to` are full ISO strings. */
+export interface PostFeedbackQuery {
+  from?: string;
+  to?: string;
+  rating?: number;
+  band?: "low";
+  difficulty?: string;
+  source?: string;
+  category?: string;
+  platform?: "web" | "app";
+  hasText?: "yes";
+  canContact?: "yes";
+  listingId?: string;
+  userId?: string;
+  offset?: number;
+  limit?: number;
+}
+
+export function fetchAdminPostFeedback(accessToken: string, query: PostFeedbackQuery = {}): Promise<AdminPostFeedbackPage> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
+  return authedBffFetch(accessToken, `/admin/feedback/post?${params.toString()}`, { cache: "no-store" });
 }
 
 export function fetchAnyConversationMessages(accessToken: string, conversationId: string): Promise<MessageDto[]> {

@@ -141,6 +141,10 @@
       "types": "./dist/featuredRenewal.d.ts",
       "default": "./dist/featuredRenewal.js"
     },
+    "./postFeedback": {
+      "types": "./dist/postFeedback.d.ts",
+      "default": "./dist/postFeedback.js"
+    },
     "./purchaseSource": {
       "types": "./dist/purchaseSource.d.ts",
       "default": "./dist/purchaseSource.js"

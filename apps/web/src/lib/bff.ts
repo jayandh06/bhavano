@@ -68,6 +68,7 @@ import type {
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
 import type { LastListingDetailsDto } from "@bhavano/types/listingReuse";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
+import type { PostFeedbackDto, SavePostFeedbackRequest } from "@bhavano/types/postFeedback";
 import type { CreateSupportTicketResponse } from "@bhavano/types/support";
 import type { RequirementFeedDto, RequirementFeedSummaryDto } from "@bhavano/types/requirementFeed";
 import type { LinkIdentifierResult } from "@bhavano/types";
@@ -875,6 +876,20 @@ export function createBoostOrder(
   return authedBffFetch(accessToken, "/payments/orders", {
     method: "POST",
     body: JSON.stringify({ listingId, boostDays, discountCode, includeInstantAlerts, source, useReferralCredit }),
+  });
+}
+
+/** What the owner already told us about posting this listing, or null. See docs/plans/post-ad-experience-feedback.md. */
+export function fetchMyPostFeedback(accessToken: string, listingId: string): Promise<PostFeedbackDto | null> {
+  return authedBffFetch(accessToken, `/feedback/post/${encodeURIComponent(listingId)}`, { cache: "no-store" });
+}
+
+/** Creates or updates the one feedback row for a listing; fields left out stay as they were. */
+export function savePostFeedback(accessToken: string, body: SavePostFeedbackRequest): Promise<PostFeedbackDto> {
+  return authedBffFetch(accessToken, "/feedback/post", {
+    method: "POST",
+    headers: { "x-client": "web" },
+    body: JSON.stringify(body),
   });
 }
 

@@ -449,6 +449,7 @@ model User {
   subscriptions               UserSubscription[]
   savedSearches               SavedSearch[]
   requirements                Requirement[]
+  postFeedbacks               PostFeedback[]
   searchEvents                SearchEvent[]
   /**
    * Denormalized from the latest active UserSubscription (tier: buyerPremium) — cheap reads
@@ -736,6 +737,7 @@ model Listing {
   listingBoosts        ListingBoost[]
   listingInstantAlerts ListingInstantAlert[]
   notificationLogs     ListingNotificationLog[]
+  postFeedbacks        PostFeedback[]
   listingRenewals      ListingRenewal[]
   contactReveals       ContactReveal[]
   leadReveals          LeadContactReveal[]
@@ -2723,4 +2725,35 @@ model SearchEvent {
   @@index([cityId, category])
   @@index([resultCount, createdAt])
   @@index([sessionId])
+}
+
+/**
+ * What a poster told us about filling in the post-ad form, one row per listing (docs/plans/post-ad-experience-feedback.md).
+ * Saved piece by piece: tapping a star writes `rating` alone, and a later call fills in the rest of the same row.
+ * `category` and `transactionType` are copied from the listing so a later edit does not change the report.
+ */
+model PostFeedback {
+  id              String   @id @default(cuid())
+  listingId       String   @unique
+  listing         Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** 1 to 5, null until they pick one. */
+  rating          Int?
+  /** Values of POST_FEEDBACK_DIFFICULTIES in @bhavano/types/postFeedback. */
+  difficulties    String[] @default([])
+  suggestion      String?
+  /** Whether they said we may contact them about this; off unless they ticked it. */
+  canContact      Boolean  @default(false)
+  /** One of POST_FEEDBACK_SOURCES: where the request reached them. */
+  source          String
+  platform        String?
+  appVersion      String?
+  category        String
+  transactionType String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([userId])
 }

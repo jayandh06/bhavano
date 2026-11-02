@@ -116,6 +116,7 @@ import { BoostPlanSelector } from "./BoostPlanSelector";
 import { BoostRecoveryDialog } from "./BoostRecoveryDialog";
 import { ListingPreviewCard } from "./ListingPreviewCard";
 import { OwnerWhatsAppShare } from "./OwnerWhatsAppShare";
+import { PostFeedbackForm } from "./PostFeedbackForm";
 import { GetAppCard } from "./GetAppCard";
 import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
 import { LocationMapPicker } from "./LocationMapPicker";
@@ -3360,6 +3361,10 @@ export function PostAdWizard({
               heading="Never miss an enquiry"
               body="The Bhavano Android app notifies you the moment someone messages about your ad, so you can reply first."
             />
+
+            {/* Below the Featured offer, the share card and the app card, never above them: this screen is where most Featured
+              * sales happen (docs/plans/post-ad-experience-feedback.md). Only for a logged-in poster, the BFF needs the owner. */}
+            {token && <PostFeedbackForm listingId={createdListing.id} source="success_screen" />}
           </div>
 
           {!showRegenerateBanner && (

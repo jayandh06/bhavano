@@ -32,6 +32,7 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string }[] }[] 
       { href: "/post-funnel", label: "Post funnel" },
       { href: "/listing-performance", label: "Listing performance" },
       { href: "/search-demand", label: "Search demand" },
+      { href: "/feedback", label: "Post feedback" },
     ],
   },
   {

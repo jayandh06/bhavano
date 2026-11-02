@@ -20,7 +20,7 @@ export default async function PrivacyPage() {
   const metaAds = !!process.env.NEXT_PUBLIC_META_PIXEL_ID;
 
   return (
-    <StaticPageLayout title="Privacy Policy" updated={metaAds ? "30 October 2026" : seekerContact.enabled ? "29 October 2026" : "27 September 2026"}>
+    <StaticPageLayout title="Privacy Policy" updated="2 November 2026">
       <PageSection heading="Who processes your data">
         <p className="m-0">
           {entityOperatorSentence()} {LEGAL_ENTITY.legalName} is the data fiduciary responsible for the personal
@@ -120,6 +120,10 @@ export default async function PrivacyPage() {
             us;
           </li>
           <li>understand how the Platform is used and measure how well our advertising works;</li>
+          <li>
+            ask how posting an ad went and keep your answer, with the ad it is about, to improve the posting form (we contact you
+            about it only if you tick the box that allows it);
+          </li>
           <li>moderate content, prevent fraud and abuse, and enforce our Terms of Service.</li>
         </ul>
       </PageSection>
