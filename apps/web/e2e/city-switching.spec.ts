@@ -8,7 +8,8 @@ test.describe("city switching", () => {
     await page.goto("/");
     await selectCity(page, "Pune");
 
-    await expect(page).toHaveURL(/city=/);
+    // A selected city is a path now (/pune), not a ?city= query.
+    await expect(page).toHaveURL(/\/pune/);
     await expect(page.getByRole("button", { name: "Change city" })).toBeVisible();
     await expect(page.getByText("Areas in Pune", { exact: true })).toBeVisible();
 

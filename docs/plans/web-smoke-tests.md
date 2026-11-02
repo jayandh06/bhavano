@@ -130,3 +130,30 @@ build and verify these first.
 - **CI wiring** — no `.github/workflows` exists in this repo at all; this suite is designed for a
   manual/local run against dev servers per the decision above. Wiring it into CI is a separate,
   later decision once a CI pipeline exists.
+
+## Refreshed 2 November 2026
+
+The suite had not run since 21 October. A run against the current app gave 4 passed, 20 failed, 1 skipped; almost all of it was the specs
+drifting from the UI, plus one environment trap. All 24 now pass (2 skipped) in about a minute. What had changed:
+
+- **Environment trap:** `apps/web/.env` sets `NEXTAUTH_URL=https://local.bhavano.com`, so the app expects a differently named session
+  cookie than the one `auth.setup.ts` mints and every "logged in" test ran as a guest. Start the web app with
+  `NEXTAUTH_URL=http://localhost:3000` (see `apps/web/e2e/README.md`).
+- **URLs are paths:** category tabs go to `/rent-lease`, `/coworking`; a selected city is `/pune`, not `?city=`; `/post` links carry
+  `?from=header_desktop&city=<slug>`.
+- **UI wording:** the card button is "Contact" (was "Contact owner"); favourites are icon buttons named "Save to favourites" / "Remove
+  from favourites"; header links are "Favourites" / "Messages" without emoji; the sort control reads "Auto"; the price filter takes typed
+  bounds with Apply (no preset brackets); Furnishing is a radio group; Furniture is no longer a top-level tab; the listing title appears
+  twice (visible and screen-reader copy), so locators use `.first()`.
+- **Structured data:** property listings emit `RealEstateListing`; `Product` is only for non-property categories (this was intended, the
+  test expected `Product`).
+- **Posting flow:** one screen asks Sell / Rent out / Lease out and the category; location comes from a Google Maps pin (not a typed
+  locality or a city `<select>`); at least 3 photos; the form asks "Owner or Agent"; the preview publishes with "Reach more <audience>"
+  after an alert channel is chosen. The post-ad specs now seed a draft (`e2e/support/postAd.ts`) instead of typing.
+
+Downgraded rather than preserved: "the city select defaults to the homepage city" (the select no longer exists on the first details
+screen) now checks that the selected city is carried into `/post` and followed on a second visit.
+
+Still not covered: notification and alert preferences, saved searches, messaging screens, the success screen with the Featured offer, the
+feedback card, checkout, the admin app and the mobile app. Nothing runs these automatically yet (no CI on push).
+

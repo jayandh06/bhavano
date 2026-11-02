@@ -11,26 +11,25 @@ import { selectCity } from "./support/selectCity";
  * default on its own — verified by temporarily reverting the `?city=` link-threading fix and
  * confirming both tests below go red. */
 
-async function openPostAdWizardDetailsStep(page: import("@playwright/test").Page) {
-  await page.getByRole("link", { name: "+ Post ad" }).click();
-  await expect(page).toHaveURL(/\/post\?city=/);
-  // "PG / Hostel" is rent-only (see packages/types/src/postingRules.ts), so picking it skips
-  // the transaction-type step and lands straight on "details", where the City <select> lives.
-  await page.getByRole("button", { name: "PG / Hostel" }).click();
+async function openPostAdFromHeader(page: import("@playwright/test").Page, citySlug: string) {
+  await page.getByRole("link", { name: "+ Post ad" }).first().click();
+  // The header link carries the selected city (and a `from=` marker before it), as /post?...&city=<slug>.
+  await expect(page).toHaveURL(new RegExp(`/post\?(?:.*&)?city=${citySlug}(?:&|$)`));
 }
 
-async function citySelectValue(page: import("@playwright/test").Page): Promise<string> {
-  const select = page.locator("select").filter({ has: page.locator('option:has-text("Bengaluru")') });
-  return select.locator("option:checked").innerText();
+async function expectCityChip(page: import("@playwright/test").Page, cityName: string) {
+  await expect(page.getByRole("button", { name: "Change city" }).getByText(cityName, { exact: true })).toBeVisible();
 }
 
+/** The wizard no longer has its own city `<select>` on the first details screen: city and area now come from the map pin, so what is left
+ * to protect is the part that broke originally — the selected city has to be carried into /post, and a second visit with a different
+ * city has to follow the new one instead of keeping the first. */
 test.describe("post-ad city default", () => {
-  test("the city select defaults to whatever city was selected on the homepage", async ({ page }) => {
+  test("the post-ad link and page follow the city selected on the homepage", async ({ page }) => {
     await page.goto("/");
     await selectCity(page, "Pune");
-    await openPostAdWizardDetailsStep(page);
-
-    expect(await citySelectValue(page)).toBe("Pune");
+    await openPostAdFromHeader(page, "pune");
+    await expectCityChip(page, "Pune");
   });
 
   test("revisiting /post a second time with a different city doesn't keep the first visit's city (repeat-visit regression)", async ({
@@ -38,16 +37,15 @@ test.describe("post-ad city default", () => {
   }) => {
     await page.goto("/");
     await selectCity(page, "Mumbai");
-    await openPostAdWizardDetailsStep(page);
-    expect(await citySelectValue(page)).toBe("Mumbai");
+    await openPostAdFromHeader(page, "mumbai");
+    await expectCityChip(page, "Mumbai");
 
-    // Back to the homepage via an in-app link (not page.goto — a hard reload would remount
-    // everything regardless, defeating the point of this test), switch city, and revisit /post:
-    // same route, only ?city= differs, which is exactly the client-side-nav case that didn't
-    // remount the wizard before the fix.
+    // Back to the homepage via an in-app link (not page.goto — a hard reload would remount everything regardless, defeating the point of
+    // this test), switch city, and revisit /post: same route, only ?city= differs, which is the client-side-nav case.
     await page.getByRole("link", { name: "← Back to listings" }).click();
     await selectCity(page, "Hyderabad");
-    await openPostAdWizardDetailsStep(page);
-    expect(await citySelectValue(page)).toBe("Hyderabad");
+    await openPostAdFromHeader(page, "hyderabad");
+    await expectCityChip(page, "Hyderabad");
+    await expect(page).not.toHaveURL(/city=mumbai/);
   });
 });

@@ -19,7 +19,11 @@ export default defineConfig({
   // contention (verified: reliable at 4, flaky at the 8-worker default). One retry absorbs the
   // rest of that environmental noise without masking a genuine, consistently-reproducing
   // regression, which fails on retry too.
-  workers: 4,
+  // The dev server compiles pages on first hit, so give assertions and tests room under parallel load (run with `pnpm dev` already warm
+  // and NEXTAUTH_URL=http://localhost:3000, see e2e/README.md).
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
+  workers: 3,
   retries: 1,
   reporter: "list",
   use: {

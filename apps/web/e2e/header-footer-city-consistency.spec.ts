@@ -14,7 +14,7 @@ async function navigateViaLink(page: Page, linkName: string, urlPattern: RegExp)
   // switch, presumably a hydration timing thing) — Promise.all pairs the click with the actual
   // navigation wait so a silently-failed click surfaces as a real failure instead of a false
   // pass against whatever page we were already on.
-  await Promise.all([page.waitForURL(urlPattern), page.getByRole("link", { name: linkName }).click()]);
+  await Promise.all([page.waitForURL(urlPattern), page.getByRole("link", { name: linkName, exact: true }).first().click()]);
 }
 
 async function assertCityConsistent(page: Page, cityName: string) {
@@ -26,14 +26,14 @@ test.describe("header/footer city consistency across account pages", () => {
   test("Favourites keeps the selected city", async ({ page }) => {
     await page.goto("/");
     await selectCity(page, "Pune");
-    await navigateViaLink(page, "♡ Favourites", /\/favourites/);
+    await navigateViaLink(page, "Favourites", /\/favourites/);
     await assertCityConsistent(page, "Pune");
   });
 
   test("Messages keeps the selected city", async ({ page }) => {
     await page.goto("/");
     await selectCity(page, "Pune");
-    await navigateViaLink(page, "💬 Messages", /\/messages/);
+    await navigateViaLink(page, "Messages", /\/messages/);
     await assertCityConsistent(page, "Pune");
   });
 

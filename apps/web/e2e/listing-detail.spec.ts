@@ -2,12 +2,15 @@ import { test, expect } from "@playwright/test";
 
 const LISTING_TITLE = "3 BHK Apartment in Koramangala";
 
+// Public page: run as a guest. The demo user owns every seeded listing, so a logged-in view hides the Contact buttons.
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test.describe("listing detail", () => {
   test("opens from the grid (new tab) and renders title/specs/breadcrumbs/JSON-LD", async ({ page, context }) => {
     await page.goto("/bengaluru/buy/apartment");
 
     // ListingCard opens the detail page in a new tab (target="_blank").
-    const [detailPage] = await Promise.all([context.waitForEvent("page"), page.getByText(LISTING_TITLE).click()]);
+    const [detailPage] = await Promise.all([context.waitForEvent("page"), page.getByText(LISTING_TITLE).first().click()]);
     await detailPage.waitForLoadState();
 
     await expect(detailPage.getByRole("heading", { name: LISTING_TITLE })).toBeVisible();
@@ -18,6 +21,7 @@ test.describe("listing detail", () => {
     expect(jsonLdBlocks.length).toBeGreaterThan(0);
     const parsed = jsonLdBlocks.map((json) => JSON.parse(json));
     expect(parsed.some((d) => d["@type"] === "BreadcrumbList")).toBe(true);
-    expect(parsed.some((d) => d["@type"] === "Product")).toBe(true);
+    // Property categories use RealEstateListing (page.tsx); Product is only for the non-property ones (e.g. furniture).
+    expect(parsed.some((d) => d["@type"] === "RealEstateListing")).toBe(true);
   });
 });
