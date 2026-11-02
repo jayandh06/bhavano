@@ -37,6 +37,9 @@ import {
 } from "@bhavano/types/listingLimits";
 import { listingPriceIssue } from "@bhavano/types/priceBounds";
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
+import { reverseGeocodeAction } from "@/app/actions/locations";
+import { AdminTestScenarios } from "./AdminTestScenarios";
+import { scenarioAttributes, scenarioById, scenarioCopy, scenarioPhotos, scenarioPrice, scenarioQualifier } from "@/lib/postAdScenarios";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import type { VideoEntitlement } from "@bhavano/types/videoLimits";
@@ -733,6 +736,48 @@ export function PostAdWizard({
 
   // Leaving /post in-app (no reload) makes a return to it a new visit, which offers the draft.
   useEffect(() => () => releaseDraftFromThisTab(), []);
+
+  // Admin test scenarios (components/home/AdminTestScenarios.tsx, lib/postAdScenarios.ts): fills the whole form and opens Preview.
+  const [scenarioBusy, setScenarioBusy] = useState(false);
+  const [scenarioError, setScenarioError] = useState<string | null>(null);
+
+  async function applyTestScenario(scenarioId: string) {
+    const scenario = scenarioById(scenarioId);
+    if (!scenario) return;
+    setScenarioBusy(true);
+    setScenarioError(null);
+    try {
+      // The pin goes at the centre of the city the page is showing; the area then comes from the same lookup a dropped pin uses.
+      const city = cities.find((c) => c.id === cityId) ?? cities.find((c) => c.isPopular) ?? cities[0];
+      if (!city) throw new Error("No city is available to place the pin in.");
+      const pin = { lat: city.lat, lng: city.lng };
+      const [files, suggestion] = await Promise.all([scenarioPhotos(), reverseGeocodeAction(pin.lat, pin.lng).catch(() => null)]);
+      if (!suggestion || !suggestion.resolvedLocality) throw new Error("Could not look up an area for the pin. Try another city.");
+
+      const price = scenarioPrice(scenario.category, scenario.transactionType, scenario.variant);
+      const copy = scenarioCopy(scenario, suggestion.resolvedLocality);
+      userStartedRef.current = true;
+      setOfferedDraft(null);
+      setDraftRestored(false);
+      setCategory(scenario.category);
+      setTransactionType(scenario.transactionType);
+      setPrice(String(price));
+      setPriceQualifier(scenarioQualifier(scenario.category, scenario.transactionType));
+      setPriceMode("total");
+      setTitle(copy.title);
+      setDescription(copy.description);
+      setAttributes(scenarioAttributes(scenario.category, scenario.transactionType, scenario.variant, price));
+      // Skipped, so Post ad publishes straight away and the success screen shows the Featured offer (no payment starts).
+      setSelectedBoostPlan(null);
+      setPhotos(files.map((file) => ({ file, previewUrl: URL.createObjectURL(file) })));
+      onPinChange(pin, suggestion);
+      setStep("review");
+    } catch (scenarioFailure) {
+      setScenarioError(scenarioFailure instanceof Error ? scenarioFailure.message : "Could not fill the scenario.");
+    } finally {
+      setScenarioBusy(false);
+    }
+  }
 
   function continueOfferedDraft() {
     if (!offeredDraft) return;
@@ -2222,6 +2267,10 @@ export function PostAdWizard({
 
       {isAdmin && step === "details" && (
         <AssistedSellerPanel value={assistedSeller} onChange={setAssistedSeller} />
+      )}
+
+      {isAdmin && (step === "category" || step === "details") && (
+        <AdminTestScenarios onApply={(id) => void applyTestScenario(id)} busy={scenarioBusy} error={scenarioError} />
       )}
 
       {step === "category" && (
