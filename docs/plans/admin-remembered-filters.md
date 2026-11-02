@@ -60,3 +60,15 @@ An already-polluted cookie stays until the admin presses Reset or applies a filt
   breaks Next's own background prefetches (the page never went network-idle).
 - Next strips both `_rsc` and the `RSC` header before middleware runs, so neither can tell a client
   navigation from a document load; `Sec-Fetch-Dest` can, but none of the above was worth using it for.
+
+## Bug: Messages opened pre-filtered with a listing's id (2 Nov 2026)
+
+Reported: opening Messages from the menu while on a listing's page pre-filled Listing ID; a Messages visit should show nothing pre-filled
+unless the admin set a filter there.
+
+**Cause:** the click-through links into Messages (the listing page's "Messages" link, the user page's, the Users table's and a person link inside
+the Messages table) carried a filter (`?listingId=` / `?userId=`) without `__skipRemember=1`, so each became the remembered Messages filter and was
+restored on the next bare visit from the menu. Same mechanism as the Listings owner link on 2026-10-05.
+
+**Fix:** those four links now carry `SKIP_REMEMBER_PARAM`. Filters typed into the Messages form and applied are still remembered. A cookie
+already polluted stays until Reset is pressed on Messages (or a filter is applied once).

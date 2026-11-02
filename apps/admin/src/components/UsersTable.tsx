@@ -11,6 +11,7 @@ import { mergeUsersAction, sendWelcomeAction } from "@/app/actions/users";
 import { formatDateTime } from "@/lib/formatDateTime";
 import { buildSuffixSortHref, suffixSortDirectionFor, type SearchParams } from "@/lib/searchParams";
 import { SortableHeader } from "./SortableHeader";
+import { SKIP_REMEMBER_PARAM } from "@/lib/rememberedFilters";
 
 const dash = <span style={{ color: "var(--muted)" }}>—</span>;
 
@@ -207,7 +208,7 @@ export function UsersTable({ users, searchParams }: { users: UserSummaryDto[]; s
                 <td style={{ ...tdStyle, textAlign: "right" }}>
                   {/* Everything this person sent or received, all time (empty from/to = no date limit). */}
                   <Link
-                    href={`/messages?userId=${encodeURIComponent(u.id)}&userLabel=${encodeURIComponent(u.name ?? u.phone ?? u.email ?? u.id)}&type=any&from=&to=`}
+                    href={`/messages?userId=${encodeURIComponent(u.id)}&userLabel=${encodeURIComponent(u.name ?? u.phone ?? u.email ?? u.id)}&type=any&from=&to=&${SKIP_REMEMBER_PARAM}=1`}
                     title="See this person's messages"
                     style={{ color: "var(--green)", fontWeight: 700 }}
                   >

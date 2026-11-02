@@ -24,6 +24,7 @@ import { formatDate, formatDateTime } from "@/lib/formatDateTime";
 
 import { FullPageLink } from "@/components/FullPageLink";
 import { CopyButton } from "@/components/CopyButton";
+import { SKIP_REMEMBER_PARAM } from "@/lib/rememberedFilters";
 /** Styling for each `ListingEngagementRowDto.action` value — gold for contact reveals since
  * that's the paid-feature action (same color `boostPromo`/gold-tier UI elsewhere in admin uses
  * for anything tied to a paid credit), green for a free like, muted for a plain view. */
@@ -461,7 +462,7 @@ export default async function ListingModerationPage({
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>
             Messages ({conversations.total}){" "}
             <Link
-              href={`/messages?listingId=${encodeURIComponent(id)}&type=any&from=&to=`}
+              href={`/messages?listingId=${encodeURIComponent(id)}&type=any&from=&to=&${SKIP_REMEMBER_PARAM}=1`}
               style={{ color: "var(--green)", fontSize: 12.5, fontWeight: 700, marginLeft: 8 }}
             >
               Open in Messages &rarr;

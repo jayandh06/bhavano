@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { AdminConversationRowDto, MessageDto } from "@bhavano/types";
 import { fetchAnyConversationMessagesAction } from "@/app/actions/admin";
 import { formatDateTime } from "@/lib/formatDateTime";
+import { SKIP_REMEMBER_PARAM } from "@/lib/rememberedFilters";
 
 const dash = <span style={{ color: "var(--muted)" }}>—</span>;
 
@@ -155,7 +156,7 @@ function PersonLink({
       )}
       <div>
         <Link
-          href={`/messages?userId=${encodeURIComponent(person.id)}&userLabel=${encodeURIComponent(personLabel(person))}${linkParams}`}
+          href={`/messages?userId=${encodeURIComponent(person.id)}&userLabel=${encodeURIComponent(personLabel(person))}${linkParams}&${SKIP_REMEMBER_PARAM}=1`}
           onClick={(e) => e.stopPropagation()}
           title="Everything this person sent or received"
           style={{ color: "var(--text)", fontWeight: 700 }}

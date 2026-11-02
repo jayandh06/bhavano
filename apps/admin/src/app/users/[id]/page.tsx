@@ -11,6 +11,7 @@ import { AgentStatusPanel } from "@/components/AgentStatusPanel";
 import { UserSavedSearchesPanel } from "@/components/UserSavedSearchesPanel";
 import { PurchasesPanel } from "@/components/PurchasesPanel";
 import { MessagesTable } from "@/components/MessagesTable";
+import { SKIP_REMEMBER_PARAM } from "@/lib/rememberedFilters";
 
 /** Conversations shown on this page; the Messages screen has the rest. */
 const MESSAGES_SHOWN = 25;
@@ -197,7 +198,7 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
           <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Messages ({conversations.total.toLocaleString()})</h2>
           {conversations.total > 0 && (
             <Link
-              href={`/messages?userId=${encodeURIComponent(id)}&userLabel=${encodeURIComponent(user.name ?? user.phone ?? user.email ?? "")}&type=any&from=&to=`}
+              href={`/messages?userId=${encodeURIComponent(id)}&userLabel=${encodeURIComponent(user.name ?? user.phone ?? user.email ?? "")}&type=any&from=&to=&${SKIP_REMEMBER_PARAM}=1`}
               style={{ fontSize: 12, color: "var(--green)", fontWeight: 700 }}
             >
               {conversations.total > conversations.items.length ? `See all ${conversations.total.toLocaleString()} in Messages →` : "Open in Messages →"}
