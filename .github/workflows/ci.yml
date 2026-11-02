@@ -68,10 +68,7 @@ jobs:
       - name: Unit tests (admin)
         run: pnpm --filter @bhavano/admin test
 
-      # Informational for now: these did not run on the machine they were last tried on (a broken local install), so a first red here may be
-      # the setup and not a real failure. Remove continue-on-error once it has been green.
       - name: Unit tests (mobile)
-        continue-on-error: true
         run: pnpm --filter @bhavano/mobile test
 
   e2e:
@@ -95,7 +92,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://bhavano:bhavano@localhost:5432/bhavano
       # The BFF: just enough to boot. No payments, messaging or storage keys, so those paths are not exercised.
-      PORT: "4000"
+      # (No PORT here: `next dev` reads PORT too, so a job-wide value would put the web app on the BFF's port. Each server gets its own below.)
       AUTH_JWT_SECRET: ci-only-bff-secret
       ALLOW_DEV_LOGIN: "true"
       # The web app. NEXTAUTH_URL must be plain http://localhost:3000 (not the local https domain) or logged-in tests run as a guest.
@@ -134,8 +131,8 @@ jobs:
 
       - name: Start the BFF and the web app
         run: |
-          (cd apps/bff && nohup npx nest start > "$RUNNER_TEMP/bff.log" 2>&1 &)
-          (cd apps/web && nohup npx next dev > "$RUNNER_TEMP/web.log" 2>&1 &)
+          (cd apps/bff && PORT=4000 nohup npx nest start > "$RUNNER_TEMP/bff.log" 2>&1 &)
+          (cd apps/web && PORT=3000 nohup npx next dev > "$RUNNER_TEMP/web.log" 2>&1 &)
           for i in $(seq 1 90); do
             bff=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/ || true)
             web=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ || true)
@@ -143,6 +140,16 @@ jobs:
             sleep 4
           done
           echo "servers did not start (bff=$bff web=$web)"; tail -40 "$RUNNER_TEMP/bff.log" "$RUNNER_TEMP/web.log"; exit 1
+
+      # The dev server compiles each page the first time it is requested, and on a fresh machine that takes long enough to time out the first
+      # tests that open it (seen in a clean-checkout run: 3 header/footer tests failed cold and passed warm). Visit every page the suite uses first.
+      - name: Warm up the web app
+        run: |
+          for path in / /post /favourites /messages /profile /my-listings /pune /mumbai/buy /rent-lease /coworking /bengaluru/buy/apartment; do
+            curl -s -o /dev/null --max-time 180 "http://localhost:3000$path" || true
+          done
+          href=$(curl -s --max-time 60 http://localhost:3000/bengaluru/buy/apartment | grep -o 'href="/bengaluru/[^"]*3-bhk-apartment-in-koramangala[^"]*"' | head -1 | cut -d'"' -f2 || true)
+          if [ -n "$href" ]; then curl -s -o /dev/null --max-time 180 "http://localhost:3000$href" || true; fi
 
       - name: Run the browser tests
         working-directory: apps/web

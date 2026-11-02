@@ -24,7 +24,8 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 15_000 },
   workers: 3,
-  retries: 1,
+  // CI gets one more: even with every page warmed, a cold shared dev server occasionally times a step out (one flake in a clean run).
+  retries: process.env.CI ? 2 : 1,
   reporter: "list",
   use: {
     baseURL: process.env.SMOKE_BASE_URL ?? "http://localhost:3000",

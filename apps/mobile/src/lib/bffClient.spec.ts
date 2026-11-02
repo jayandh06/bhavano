@@ -5,6 +5,8 @@
 jest.mock("./trackingConsent", () => ({ isTrackingAuthorized: () => null }));
 // Same for ./installReferrer (react-native, expo-application, AsyncStorage).
 jest.mock("./installReferrer", () => ({ installAcquisitionFields: () => Promise.resolve({}) }));
+// And expo-constants (an untransformed ES module), which savePostFeedback reads the app version from.
+jest.mock("expo-constants", () => ({ __esModule: true, default: { expoConfig: { version: "1.2.3" } } }));
 
 import {
   BffError,
@@ -15,6 +17,7 @@ import {
   friendlyErrorMessage,
   previewBoostPricing,
   redeemReferralBoost,
+  savePostFeedback,
 } from "./bffClient";
 
 function mockFetchOnce(body: unknown, ok = true, status = 200) {
@@ -182,5 +185,16 @@ describe('friendlyErrorMessage', () => {
 
   it('falls back for anything else', () => {
     expect(friendlyErrorMessage(new Error('boom'), 'fallback')).toBe('fallback');
+  });
+});
+
+describe("savePostFeedback", () => {
+  it("posts the answer with the platform and app version added", async () => {
+    const fetchMock = mockFetchOnce({ listingId: "l1", rating: 4, difficulties: [], suggestion: null, canContact: false });
+    await savePostFeedback("token", { listingId: "l1", rating: 4, source: "success_screen" });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain("/feedback/post");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ listingId: "l1", rating: 4, source: "success_screen", platform: "app", appVersion: "1.2.3" });
   });
 });

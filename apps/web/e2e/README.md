@@ -24,6 +24,13 @@ cd apps/web && npx playwright test
 
 A full run takes about a minute once the dev server is warm. The first hit of each page compiles it, so a cold run can be slower.
 
+## In CI
+
+`.github/workflows/ci.yml` runs this suite (job "Browser tests") on every push to master and every pull request, with a Postgres service,
+the two servers started as above, and a warm-up visit to each page first (a cold dev server compiles pages on demand and times out the first
+tests that open them). It runs with no `.env` files and only the variables listed in the workflow. A failed run uploads the Playwright
+report and both server logs as the `playwright-failures` artifact. See `docs/plans/ci-checks.md`.
+
 ## Things to know
 
 - The seeded demo user ("Seed Owner") owns every seeded listing. Public specs (homepage, browse filters, listing detail) therefore run as a
