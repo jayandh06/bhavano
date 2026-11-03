@@ -55,6 +55,8 @@ import { AdminGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
 import { AdminService } from './admin.service';
+import { GrantBoostDto } from './dto/grant-boost.dto';
+import { PaymentsService } from '../payments/payments.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
 import { ListListingPerformanceDto } from './dto/list-listing-performance.dto';
 import { CreateAssistedListingDto } from './dto/create-assisted-listing.dto';
@@ -149,6 +151,7 @@ export class AdminController {
     private readonly listingPhotos: ListingPhotosService,
     private readonly loginNudge: LoginNudgeService,
     private readonly referralsAdmin: ReferralsAdminService,
+    private readonly payments: PaymentsService,
   ) {}
 
   @Get('listings')
@@ -752,6 +755,15 @@ export class AdminController {
   @Patch('discount-codes/:id')
   setDiscountCodeActive(@Param('id') id: string, @Body() dto: SetDiscountCodeActiveDto): Promise<DiscountCodeDto> {
     return this.adminService.setDiscountCodeActive(id, dto.active);
+  }
+
+  /** Free Featured days for one live ad (the PG and coworking operator pilot). See PaymentsService.grantFreeBoost. */
+  @Post('listings/:id/grant-boost')
+  grantBoost(
+    @Param('id') id: string,
+    @Body() dto: GrantBoostDto,
+  ): Promise<{ paymentId: string; boostedUntil: string; listingExpiresAt: string }> {
+    return this.payments.grantFreeBoost(id, dto.days, dto.reason);
   }
 
   @Post('listings/:id/revoke-boost')

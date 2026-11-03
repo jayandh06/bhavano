@@ -16,6 +16,7 @@ import {
 } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { ModerationPanel } from "@/components/ModerationPanel";
+import { GrantFeaturedForm } from "@/components/GrantFeaturedForm";
 import { RotatablePhotoGrid } from "@/components/RotatablePhotoGrid";
 import { ConversationsTable } from "@/components/ConversationsTable";
 import { PurchasesPanel } from "@/components/PurchasesPanel";
@@ -320,6 +321,10 @@ export default async function ListingModerationPage({
           currentUserId={userId}
           ownerId={owner?.id}
         />
+
+        {listing.publishState === "live" && listing.status === "active" && (
+          <GrantFeaturedForm listingId={listing.id} boostedUntil={listing.boostedUntil ?? null} expiresAt={listing.expiresAt} />
+        )}
 
         <section style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, marginTop: 20, background: "var(--surface)" }}>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>

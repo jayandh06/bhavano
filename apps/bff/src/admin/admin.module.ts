@@ -16,6 +16,7 @@ import { SavedSearchesModule } from '../saved-searches/saved-searches.module';
 import { PlansModule } from '../plans/plans.module';
 import { PushModule } from '../push/push.module';
 import { ReferralsModule } from '../referrals/referrals.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ReferralsModule } from '../referrals/referrals.module';
     SavedSearchesModule,
     PushModule,
     ReferralsModule,
+    PaymentsModule,
   ],
   controllers: [AdminController],
   providers: [AdminService, BoostNudgeJob, BoostFollowupJob, FeaturedExpiryReminderJob, PostFeedbackRequestJob],

@@ -44,6 +44,7 @@ import {
   fetchAreas,
   flagListing,
   forcePublishListing,
+  grantBoost,
   revokeBoost,
   rotateListingPhoto,
   sendMessage,
@@ -464,6 +465,21 @@ export async function setCoverPhotoAction(listingId: string, photoNo: number): P
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to set cover photo" };
+  }
+}
+
+export async function grantFeaturedAction(
+  listingId: string,
+  days: 7 | 15 | 30,
+  reason: string,
+): Promise<{ success: true; boostedUntil: string; listingExpiresAt: string } | { success: false; error: string }> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const result = await grantBoost(accessToken, listingId, { days, reason });
+    revalidatePath(`/listings/${listingId}`);
+    return { success: true, boostedUntil: result.boostedUntil, listingExpiresAt: result.listingExpiresAt };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to grant Featured" };
   }
 }
 
