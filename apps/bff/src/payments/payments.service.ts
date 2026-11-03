@@ -78,6 +78,9 @@ export interface PurchaseContext {
   source?: PurchaseSource;
 }
 
+// Same literal as AdminService's and ListingsService's copies: the placeholder owner of bulk-imported ads.
+const BULK_IMPORT_OWNER_PHONE = '9000000002';
+
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
@@ -191,6 +194,49 @@ export class PaymentsService {
           `Ads conversion upload failed for payment ${payment.id}: ${error instanceof Error ? error.message : String(error)}`,
         );
       });
+  }
+
+  /** A free Featured period given by an admin (the PG and coworking operator pilot, docs/plans/pg-coworking-pilot-kit.md). Same rows a paid boost
+   * leaves (a paid-at-zero Payment, the ListingBoost, Instant Alerts) so it shows in the Payments screen and in every report, with `source`
+   * `admin_grant:<reason>` to tell it from a sale. It extends an existing Feature period rather than replacing it, like a renewal. Refuses an
+   * ad still owned by the Bulk Import account (nobody to alert, nobody to tell) and one that is not live. The result carries the ad's own
+   * expiry, because Instant Alerts and the benefit end there if the ad lapses first. */
+  async grantFreeBoost(
+    listingId: string,
+    boostDays: number,
+    reason: string,
+  ): Promise<{ paymentId: string; boostedUntil: string; listingExpiresAt: string }> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { id: true, ownerId: true, status: true, publishState: true, expiresAt: true, owner: { select: { phone: true } } },
+    });
+    if (!listing) throw new NotFoundException('Listing not found');
+    if (listing.owner.phone === BULK_IMPORT_OWNER_PHONE) {
+      throw new BadRequestException('This ad still belongs to the Bulk Import account. Grant Featured once the operator has claimed it.');
+    }
+    if (listing.status !== 'active' || listing.publishState !== 'live') {
+      throw new BadRequestException('Only a live ad can be made Featured.');
+    }
+
+    const payment = await this.prisma.payment.create({
+      data: {
+        userId: listing.ownerId,
+        razorpayOrderId: `admin_grant_${listingId}_${Date.now()}`,
+        amount: 0,
+        currency: 'INR',
+        purpose: 'listing_boost',
+        listingId,
+        boostDays,
+        boostIncludesInstantAlerts: true,
+        status: 'paid',
+        paidAt: new Date(),
+        source: `admin_grant:${reason}`,
+      },
+    });
+    const boostedUntil = await this.activateListingBoost(listingId, boostDays, payment.id);
+    await this.activateInstantAlerts(listingId, payment.id, boostedUntil);
+    this.logger.log(`Admin granted ${boostDays} free Featured day(s) to listing ${listingId} (${reason}), until ${boostedUntil.toISOString()}`);
+    return { paymentId: payment.id, boostedUntil: boostedUntil.toISOString(), listingExpiresAt: listing.expiresAt.toISOString() };
   }
 
   /** A renewal starts when the current Feature period ends, not now: renewing with 3 days left must not throw the 3 days away

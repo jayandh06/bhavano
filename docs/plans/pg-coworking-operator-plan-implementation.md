@@ -75,7 +75,7 @@ the plan sells visibility and tooling, so selling it before demand exists will f
 
 | Phase | What | Effort | Gate |
 |---|---|---|---|
-| 0, now, no code | **Pilot by hand** with 20 operators (Chennai/Adyar PGs, Bengaluru coworking): 30 days free Featured through a 100% admin discount code, a weekly report sent as an admin message, then ask. Meanwhile build demand (locality pages, ads, saved-search alerts) | 1 to 2 days of ops | 20+ enquiries a month in the segment, and at least 5 of the 20 say they would pay |
+| 0, now, one small tool | **Pilot by hand** with 20 operators (Chennai/Adyar PGs, Bengaluru coworking): 30 days free Featured through an admin **Grant free Featured** action (built 3 Nov 2026; a 100% discount code was the first idea but operators cannot type a code, only admins can), a weekly numbers message, then ask. Kit: [`pg-coworking-pilot-kit.md`](pg-coworking-pilot-kit.md). Meanwhile build demand (locality pages, ads, saved-search alerts) | 1 to 2 days of ops | 20+ enquiries a month in the segment, and at least 5 of the 20 say they would pay |
 | 1 | Operator plan: tier, units, sync job, never-expires, buying (web, Android), renewal reminders, trial on claim, admin screen, tests | about 8 to 10 days | Pilot gate passed |
 | 2 | Weekly report, vacancy badge and reminder, requirement leads, operator page, visit/tour request | about 8 to 10 days | 5+ paying at 499 or more within 6 weeks |
 | 3 | Auto-renew (UPI AutoPay), chain pricing, iPhone In-App Purchase, annual plan, pay-per-lead alternative, extension guarantee | later | Churn and demand known |

@@ -870,6 +870,15 @@ export function updateRateLimitSettings(accessToken: string, input: RateLimitSet
   return authedBffFetch(accessToken, "/admin/rate-limits", { method: "PATCH", body: JSON.stringify(input) });
 }
 
+/** Free Featured days for one live ad (BFF PaymentsService.grantFreeBoost). */
+export function grantBoost(
+  accessToken: string,
+  listingId: string,
+  body: { days: 7 | 15 | 30; reason: string },
+): Promise<{ paymentId: string; boostedUntil: string; listingExpiresAt: string }> {
+  return authedBffFetch(accessToken, `/admin/listings/${listingId}/grant-boost`, { method: "POST", body: JSON.stringify(body) });
+}
+
 export function revokeBoost(accessToken: string, listingId: string): Promise<{ success: true }> {
   return authedBffFetch(accessToken, `/admin/listings/${listingId}/revoke-boost`, { method: "POST" });
 }
