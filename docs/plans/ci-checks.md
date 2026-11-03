@@ -17,8 +17,7 @@ server logs. Details and how to run it locally: `apps/web/e2e/README.md`.
 ## How it was checked
 
 Both jobs were run step by step in a clean checkout of the commit (a git worktree with no `.env` files and no cached build), using the same
-commands and environment variables as the workflow. The workflow itself has not yet run on GitHub: the first real run is the last check.
-That clean run found three problems, all fixed before this was committed:
+commands and environment variables as the workflow. That clean run found three problems, all fixed before this was committed:
 - A **port clash**: `PORT=4000` set for the whole job was also read by `next dev`, which took the BFF's port. Each server now gets its own.
 - **Cold-start timeouts**: on a fresh dev server three header/footer tests timed out and passed warm. A warm-up step now visits the pages
   first; with it a cold run gave 23 passed and 1 flaky (retried), so CI allows 2 retries.
@@ -38,3 +37,12 @@ That clean run found three problems, all fixed before this was committed:
 
 Right now a red run is a notice, not a block. To stop merges and deploys on red: GitHub > Settings > Branches > a rule for `master` that
 requires the two checks. `scripts/deploy-local-to-ec2.ps1` builds on this machine and does not look at CI.
+
+## First runs on GitHub (3 Nov 2026)
+
+- **First run (`6ad07230`):** type checks and unit tests green; the browser tests failed. Four tests (the three header/footer city checks and the
+  repeat-visit post-ad check) timed out on a click: the seeded demo user has no email, so an "Add your email" prompt opens over the page on a
+  slower machine and blocks clicks. It had never shown up on the fast local machine.
+- **Fix (`61417ae3`):** one shared fixture (`apps/web/e2e/support/fixtures.ts`) dismisses that prompt in every spec. Second run: **both jobs
+  green**. The failure report (screenshots and server logs) uploaded by the first run is what made it quick to diagnose.
+
