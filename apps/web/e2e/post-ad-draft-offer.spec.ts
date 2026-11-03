@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./support/fixtures";
 import { DRAFT_TITLE, fieldInput, seedPostAdDraft } from "./support/postAd";
 
 /** A draft from an earlier visit is offered on the category step instead of being resumed
@@ -7,7 +7,6 @@ import { DRAFT_TITLE, fieldInput, seedPostAdDraft } from "./support/postAd";
 
 test.describe("post-ad draft offer", () => {
   test("a new visit offers the draft and continues it on request", async ({ page }) => {
-    await page.addLocatorHandler(page.getByRole("button", { name: "Not now" }), (button) => button.click());
     await seedPostAdDraft(page);
     await page.goto("/post");
 
@@ -23,7 +22,6 @@ test.describe("post-ad draft offer", () => {
   });
 
   test("starting a new ad discards the draft", async ({ page, context }) => {
-    await page.addLocatorHandler(page.getByRole("button", { name: "Not now" }), (button) => button.click());
     await seedPostAdDraft(page);
     await page.goto("/post");
     await page.getByRole("region", { name: "Unfinished ad" }).getByRole("button", { name: "Start a new ad" }).click();

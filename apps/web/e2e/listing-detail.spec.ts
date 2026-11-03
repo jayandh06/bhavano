@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./support/fixtures";
 
 const LISTING_TITLE = "3 BHK Apartment in Koramangala";
 

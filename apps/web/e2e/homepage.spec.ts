@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./support/fixtures";
 
 // Public page: run as a guest. The demo user owns every seeded listing, so a logged-in view hides the Contact buttons.
 test.use({ storageState: { cookies: [], origins: [] } });

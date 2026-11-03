@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./support/fixtures";
 import { selectCity } from "./support/selectCity";
 
 /** Regression test for the bug fixed today: the posting wizard's city `<select>` defaulted to

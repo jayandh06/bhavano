@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./support/fixtures";
 import { DRAFT_TITLE, PHOTOS, fieldInput, seedPostAdDraft } from "./support/postAd";
 
 /** The browser Back button on the post-ad preview returns to the form, not to the page before
@@ -11,8 +11,6 @@ import { DRAFT_TITLE, PHOTOS, fieldInput, seedPostAdDraft } from "./support/post
 
 test.describe("post-ad preview back button", () => {
   test("browser Back on the preview returns to the details step with the form intact", async ({ page }) => {
-    // The seeded demo user has no email, so the "Add your email" nudge can open over the form.
-    await page.addLocatorHandler(page.getByRole("button", { name: "Not now" }), (button) => button.click());
     await seedPostAdDraft(page, { resumeInThisTab: true });
 
     await page.goto("/");

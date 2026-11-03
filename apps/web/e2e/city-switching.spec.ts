@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./support/fixtures";
 import { selectCity } from "./support/selectCity";
 
 test.describe("city switching", () => {

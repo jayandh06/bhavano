@@ -1,4 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./support/fixtures";
+import type { Page } from "@playwright/test";
 import { DRAFT_TITLE, PHOTOS, fieldInput, seedPostAdDraft } from "./support/postAd";
 
 /** A post-ad draft restored after a reload still publishes, photo included. Photos are kept in
@@ -11,7 +12,6 @@ import { DRAFT_TITLE, PHOTOS, fieldInput, seedPostAdDraft } from "./support/post
 
 /** Opens the seeded draft, adds three photos, reloads, and checks everything came back. */
 async function restoreDraftWithPhotos(page: Page) {
-  await page.addLocatorHandler(page.getByRole("button", { name: "Not now" }), (button) => button.click());
   await seedPostAdDraft(page, { resumeInThisTab: true });
   await page.goto("/post");
   await expect(page.getByText("We restored the ad you were writing on this device")).toBeVisible();

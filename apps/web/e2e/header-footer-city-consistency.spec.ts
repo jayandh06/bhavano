@@ -1,4 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./support/fixtures";
+import type { Page } from "@playwright/test";
 import { selectCity } from "./support/selectCity";
 
 /** Regression test for the bug fixed today: `PageHeader` always hardcoded its "Showing ads

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./support/fixtures";
 
 // Bengaluru's seeded apartment listing (apps/bff/prisma/seed.ts): "3 BHK Apartment in
 // Koramangala", 3 bedrooms, semi-furnished, ₹85,00,000 onwards — used below as the one listing
