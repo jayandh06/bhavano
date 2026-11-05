@@ -87,6 +87,19 @@ describe('ListingSlotsService', () => {
       });
     });
 
+    it('the cap error carries live plan prices and never tells the owner to wait for an ad to expire', async () => {
+      const service = new ListingSlotsService(makePrisma(baseUser, 5));
+      await expect(service.assertCanPublish('u1')).rejects.toMatchObject({
+        response: expect.objectContaining({
+          message: expect.not.stringContaining('expire'),
+          offers: {
+            sellerSlotPack: { totalSlots: 10, monthlyPrice: 149 },
+            agentPro: { totalSlots: 20, monthlyPrice: 499 },
+          },
+        }),
+      });
+    });
+
     it('a sellerSlotPack user at their 10-slot cap is offered only the agentPro upsell', async () => {
       const user = { ...baseUser, sellerSlotPackUntil: future() };
       const service = new ListingSlotsService(makePrisma(user, 10));

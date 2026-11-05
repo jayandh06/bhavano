@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { fetchAreas, fetchProfile, fetchSeekerContactSettings } from "@/lib/bff";
+import { fetchAreas, fetchPlanPricing, fetchProfile, fetchSeekerContactSettings } from "@/lib/bff";
+import { listingSlotCapBody } from "@bhavano/types/listingSlots";
 import { isListingCategory, isTransactionType } from "@/lib/browseRoute";
 import { resolvePostEntry } from "@bhavano/types/postEntry";
 import { resolveDefaultCity } from "@/lib/defaultCity";
@@ -61,6 +62,15 @@ export default async function PostAdPage({
 
   const profile = loggedIn ? await fetchProfile(accessToken).catch(() => null) : null;
   const videoEntitlement = resolveVideoEntitlement(profile ?? { agentProUntil: null });
+  // Every slot already in use: say so on the first step instead of after the whole form is filled in. Plan prices are read
+  // only in that case, and a failed read just leaves the notice out (publish still refuses with the same details).
+  const slotNotice =
+    profile && profile.activeListingCount >= profile.listingSlotAllowance
+      ? await fetchPlanPricing().then(
+          ({ subscription }) => listingSlotCapBody(profile.activeListingCount, profile.listingSlotAllowance, subscription),
+          () => undefined,
+        )
+      : undefined;
 
   return (
     <div className="min-h-screen flex flex-col bg-bg text-text">
@@ -106,6 +116,7 @@ export default async function PostAdPage({
             sellerType={profile?.sellerType ?? null}
             isAdmin={isAdminAccessToken(accessToken)}
             entry={entry}
+            slotNotice={slotNotice}
             leadContactOn={(await fetchSeekerContactSettings()).enabled}
           />
         </div>

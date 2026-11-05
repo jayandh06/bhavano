@@ -11,7 +11,8 @@
 // "boost" is the Featured dialog opened from My listings (or a deep link), outside the post flow, so a purchase made
 // days after posting still leaves a trail in Page visits (docs/plans/admin-purchases-trail.md).
 // "upsell" is the "make your ad Featured" prompt (dialog on My listings, card on the owner's listing page): events shown / clicked / dismissed, with `surface`.
-export type PostActionScreen = "offer" | "live" | "boost" | "upsell";
+// "slotcap" is the "your slots are full" notice: events shown / clicked / check_again, with `surface` (category or review, plus _pack / _pro / _manage for a click).
+export type PostActionScreen = "offer" | "live" | "boost" | "upsell" | "slotcap";
 
 export function reportPostAction(screen: PostActionScreen, event: string, detail?: { days?: number; surface?: string }) {
   const days = (detail?.days != null ? `&days=${detail.days}` : "") + (detail?.surface ? `&surface=${encodeURIComponent(detail.surface)}` : "");

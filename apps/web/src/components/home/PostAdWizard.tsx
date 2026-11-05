@@ -408,7 +408,10 @@ export function PostAdWizard({
   isAdmin = false,
   entry = "direct",
   leadContactOn = false,
+  slotNotice,
 }: {
+  /** Set by the post page when the signed-in seller already has every slot in use: shown on the first step so they learn it before filling in the form. */
+  slotNotice?: ListingSlotCapErrorBody;
   cities: City[];
   defaultCityId?: string;
   /** Undefined for a logged-out visitor, who now gets the whole form — see `onSubmit`. */
@@ -2275,6 +2278,7 @@ export function PostAdWizard({
 
       {step === "category" && (
         <div className="flex flex-col gap-6">
+          {slotNotice && <ListingSlotCapPrompt slotCap={slotNotice} where="category" />}
           {offeredDraft && (
             <div
               role="region"
@@ -3030,7 +3034,7 @@ export function PostAdWizard({
 
           <div className="flex flex-col gap-3 mt-3">
           {slotCap ? (
-            <ListingSlotCapPrompt slotCap={slotCap} />
+            <ListingSlotCapPrompt slotCap={slotCap} where="review" onCheckAgain={() => setSlotCap(null)} />
           ) : error ? (
             <p className="text-[#b3413a] text-[13px]">{error}</p>
           ) : publishCheckoutError ? (
@@ -3075,7 +3079,7 @@ export function PostAdWizard({
             </button>
             <button
               onClick={handlePostAdClick}
-              disabled={pending || (!assistedMode && !alertChoice.ready)}
+              disabled={pending || !!slotCap || (!assistedMode && !alertChoice.ready)}
               className={`ml-auto ${primaryButtonClass}`}
             >
               {(pending ? postAdButtonProgressText(uploadProgress) : null) ?? (assistedMode ? "Save for seller" : reachLabelFor(category, transactionType))}

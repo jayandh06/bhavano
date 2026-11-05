@@ -137,6 +137,22 @@ export function trailEntry(path: string): { text: string; isError: boolean } {
     try {
       const params = new URL(path, "https://x.invalid").searchParams;
       const screenParam = params.get("screen");
+      if (screenParam === "slotcap") {
+        // "Your slots are full": shown on the first step or when publish was refused, then which way they went.
+        const event = params.get("event") ?? "unknown";
+        const surface = params.get("surface") ?? "";
+        const [where, what] = surface.split("_");
+        const place = where === "category" ? "before filling in the form" : "on Publish";
+        const label =
+          event === "shown"
+            ? `Slots full — notice shown (${place})`
+            : event === "clicked"
+              ? `Slots full — tapped ${what === "pack" ? "Seller pack" : what === "pro" ? "Agent Pro" : "Close an ad"} (${place})`
+              : event === "check_again"
+                ? "Slots full — tapped \"I closed one, try again\""
+                : `Slots full: ${event}`;
+        return { text: label, isError: event === "shown" && where === "review" };
+      }
       if (screenParam === "upsell" && params.get("surface") === "interest_contact") {
         // The owner's interested list (Admin -> Settings -> Seeker contact): unlocking a person's number, or the "Make it Featured" link beside it.
         const event = params.get("event") ?? "unknown";
