@@ -29,6 +29,7 @@ import { setListingStatusAction, updateListingAction } from "@/app/actions/admin
 import { fetchAreasForCityAction } from "@/app/actions/locations";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { SelectField } from "./SelectField";
+import { ChangeNote } from "./ChangeNote";
 
 const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   sell: "Sell",
@@ -322,9 +323,18 @@ function CategoryFieldInput({
 /** One field's label + input. A Yes/No field pairs its label with the toggle inline on the same
  * row (compact enough to share it); every other field keeps the label stacked above the input —
  * same layout rule as the web app's CategoryField. */
+/** The saved and edited value of one field as text (or a list of texts for a multi-select), for the green/red change note. */
+function fieldDisplay(field: FieldDef, value: string | string[] | undefined): string | string[] {
+  const labelOf = (v: string) => field.options?.find((o) => o.value === v)?.label ?? v;
+  if (field.type === "multi-select") return (Array.isArray(value) ? value : []).map(labelOf);
+  if (typeof value !== "string" || value === "") return isYesNoField(field) ? "No" : "";
+  return isYesNoField(field) ? (value === "yes" ? "Yes" : "No") : labelOf(value);
+}
+
 function CategoryField({
   field,
   value,
+  initialValue,
   onChange,
   unitValue,
   onUnitChange,
@@ -332,19 +342,27 @@ function CategoryField({
 }: {
   field: FieldDef;
   value: string | string[] | undefined;
+  /** The saved value, to show what the unsaved edit adds and removes. */
+  initialValue?: string | string[] | undefined;
   onChange: (value: string | string[]) => void;
   unitValue?: string;
   onUnitChange?: (unit: string) => void;
   note?: string;
 }) {
+  const change = (
+    <ChangeNote kind={field.type === "multi-select" ? "list" : "value"} before={fieldDisplay(field, initialValue)} after={fieldDisplay(field, value)} />
+  );
   if (isYesNoField(field)) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <label style={{ fontSize: 13, fontWeight: 700, color: "var(--text-soft)" }}>
-          {field.label}
-          {field.required && <span style={{ color: "var(--danger)" }}> *</span>}
-        </label>
-        <CategoryFieldInput field={field} value={value} onChange={onChange} />
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <label style={{ fontSize: 13, fontWeight: 700, color: "var(--text-soft)" }}>
+            {field.label}
+            {field.required && <span style={{ color: "var(--danger)" }}> *</span>}
+          </label>
+          <CategoryFieldInput field={field} value={value} onChange={onChange} />
+        </div>
+        {change}
       </div>
     );
   }
@@ -355,6 +373,7 @@ function CategoryField({
         {field.required && <span style={{ color: "var(--danger)" }}> *</span>}
       </label>
       <CategoryFieldInput field={field} value={value} onChange={onChange} unitValue={unitValue} onUnitChange={onUnitChange} />
+      {change}
       {note && <p style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 0" }}>{note}</p>}
     </div>
   );
@@ -415,12 +434,14 @@ function groupFieldsByChain(fields: FieldDef[]): FieldRun[] {
 function FieldRunBlock({
   run,
   attributes,
+  initialAttributes,
   onChange,
   onUnitChange,
   fieldNote,
 }: {
   run: FieldRun;
   attributes: Record<string, string | string[]>;
+  initialAttributes: Record<string, string | string[]>;
   onChange: (field: FieldDef, value: string | string[]) => void;
   onUnitChange: (field: FieldDef, unit: string) => void;
   fieldNote?: { key: string; text: string } | null;
@@ -434,7 +455,13 @@ function FieldRunBlock({
       {toggleFields.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
           {toggleFields.map((field) => (
-            <CategoryField key={field.key} field={field} value={attributes[field.key]} onChange={(value) => onChange(field, value)} />
+            <CategoryField
+              key={field.key}
+              field={field}
+              value={attributes[field.key]}
+              initialValue={initialAttributes[field.key]}
+              onChange={(value) => onChange(field, value)}
+            />
           ))}
         </div>
       )}
@@ -448,6 +475,7 @@ function FieldRunBlock({
               <CategoryField
                 field={field}
                 value={attributes[field.key]}
+                initialValue={initialAttributes[field.key]}
                 onChange={(value) => onChange(field, value)}
                 unitValue={unitOf(field)}
                 onUnitChange={(unit) => onUnitChange(field, unit)}
@@ -499,8 +527,14 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
   const [areaId, setAreaId] = useState(listing.areaId);
   const [useOtherArea, setUseOtherArea] = useState(false);
   const [areaName, setAreaName] = useState("");
-  const [latStr, setLatStr] = useState(listing.exactLat !== undefined ? String(listing.exactLat) : "");
-  const [lngStr, setLngStr] = useState(listing.exactLng !== undefined ? String(listing.exactLng) : "");
+  const initialLat = listing.exactLat !== undefined ? String(listing.exactLat) : "";
+  const initialLng = listing.exactLng !== undefined ? String(listing.exactLng) : "";
+  const [latStr, setLatStr] = useState(initialLat);
+  const [lngStr, setLngStr] = useState(initialLng);
+
+  const categoryLabel = (value: string) => POST_CATEGORIES.find((c) => c.value === value)?.label ?? value;
+  const priceChangeText = (value: string, mode: "total" | "perUnit") =>
+    value === "" || Number(value) === 0 ? "" : `₹${Number(value).toLocaleString("en-IN")}${mode === "perUnit" ? " per unit" : ""}`;
 
   // Refetches whenever `cityId` changes (including the initial fetch for the listing's current
   // city) — `all=true` returns every area in the city uncapped (searchAreas's own doc comment),
@@ -698,6 +732,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
               </option>
             ))}
           </SelectField>
+          <ChangeNote kind="value" before={categoryLabel(listing.category)} after={categoryLabel(category)} />
         </div>
         <div style={{ flex: 1, minWidth: 160, maxWidth: 220 }}>
           <label style={labelStyle}>Transaction</label>
@@ -708,6 +743,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
               </option>
             ))}
           </SelectField>
+          <ChangeNote kind="value" before={TRANSACTION_TYPE_LABELS[listing.transactionType as TransactionType] ?? ""} after={TRANSACTION_TYPE_LABELS[transactionType]} />
         </div>
         <div style={{ flex: 1, minWidth: 160, maxWidth: 220 }}>
           <label style={labelStyle}>Status</label>
@@ -718,6 +754,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
               </option>
             ))}
           </SelectField>
+          <ChangeNote kind="value" before={listing.status} after={status} />
         </div>
       </div>
 
@@ -731,6 +768,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
               </option>
             ))}
           </SelectField>
+          <ChangeNote kind="value" before={cities.find((c) => c.id === listing.cityId)?.name ?? ""} after={cities.find((c) => c.id === cityId)?.name ?? ""} />
         </div>
         <div style={{ flex: 1, minWidth: 180, maxWidth: 260 }}>
           <label style={labelStyle}>Area</label>
@@ -769,6 +807,11 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
               <option value={OTHER_AREA_VALUE}>Other (type a new area)…</option>
             </SelectField>
           )}
+          <ChangeNote
+            kind="value"
+            before={listing.area}
+            after={useOtherArea ? areaName.trim() : areaId === listing.areaId ? listing.area : (areas.find((a) => a.id === areaId)?.name ?? "")}
+          />
         </div>
       </div>
 
@@ -783,6 +826,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
             placeholder="e.g. 12.9716"
             style={inputStyle}
           />
+          <ChangeNote kind="value" before={initialLat} after={latStr} />
         </div>
         <div style={{ maxWidth: 160 }}>
           <label style={labelStyle}>Longitude</label>
@@ -794,6 +838,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
             placeholder="e.g. 77.5946"
             style={inputStyle}
           />
+          <ChangeNote kind="value" before={initialLng} after={lngStr} />
         </div>
         {latNum !== undefined && lngNum !== undefined && pinValid && (
           <a
@@ -839,6 +884,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
             {title.length}/{TITLE_MAX_LENGTH}
           </span>
         </div>
+        <ChangeNote kind="text" before={initialTitle} after={title} />
         {titleIssue && <p style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 0" }}>{titleIssue}</p>}
       </div>
 
@@ -850,6 +896,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
           rows={4}
           style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", maxWidth: 720 }}
         />
+        <ChangeNote kind="text" before={initialDescription} after={description} />
         {/* Only nagged about once touched — see descriptionChanged's own comment. */}
         {descriptionIssue && (
           <p style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 0" }}>{descriptionIssue}</p>
@@ -911,6 +958,11 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
                       onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
                       style={inputStyle}
                     />
+                    <ChangeNote
+                      kind="value"
+                      before={priceChangeText(initialPrice, initialPriceMode)}
+                      after={priceChangeText(price, priceMode)}
+                    />
                     {Number(price) >= 1_000 && (
                       <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
                         {formatInrWithWords(Number(price))}
@@ -932,6 +984,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
                         </option>
                       ))}
                     </SelectField>
+                    <ChangeNote kind="value" before={listing.priceQualifier} after={priceQualifier} />
                   </div>
                 </div>
               </div>
@@ -941,6 +994,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
                 key={run.fields[0].key}
                 run={run}
                 attributes={attributes}
+                initialAttributes={initialAttributes}
                 onChange={setFieldValue}
                 onUnitChange={setFieldUnit}
                 fieldNote={brokerageNote}
@@ -953,6 +1007,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
       <div style={{ maxWidth: 720 }}>
         <label style={labelStyle}>Specs (comma-separated)</label>
         <input value={specsValue} onChange={(e) => setSpecsValue(e.target.value)} style={inputStyle} />
+        <ChangeNote kind="list" before={listing.specs} after={specsValue.split(",").map((s) => s.trim()).filter(Boolean)} />
       </div>
 
       {error && <p style={{ color: "var(--danger)", fontSize: 13, margin: 0 }}>{error}</p>}

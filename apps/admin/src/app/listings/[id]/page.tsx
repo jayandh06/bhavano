@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/requireAdmin";
 import type { ListingEditLogEntryDto, ListingEngagementRowDto } from "@bhavano/types";
 import { formatInrWithWords, listingPriceText } from "@bhavano/types/priceWords";
+import { ChangeNote } from "@/components/ChangeNote";
 import {
   fetchListingById,
   fetchListingConversations,
@@ -86,6 +87,19 @@ function diffAttributeObjects(before: unknown, after: unknown): { key: string; b
   return diffs;
 }
 
+/** One logged change in green (added) and red (removed): a word diff for title/description, +/− chips for lists, old → new otherwise. */
+function HistoryChange({ field, before, after, show }: { field: string; before: unknown; after: unknown; show: (v: unknown) => string }) {
+  if (Array.isArray(before) || Array.isArray(after)) {
+    const toList = (v: unknown) => (Array.isArray(v) ? v.map(String) : []);
+    return <ChangeNote kind="list" before={toList(before)} after={toList(after)} />;
+  }
+  const isText = (field === "title" || field === "description") && (typeof before === "string" || before == null) && (typeof after === "string" || after == null);
+  if (isText) return <ChangeNote kind="text" before={(before as string | null) ?? ""} after={(after as string | null) ?? ""} />;
+  const b = before === null || before === undefined ? "" : show(before);
+  const a = after === null || after === undefined ? "" : show(after);
+  return <ChangeNote kind="value" before={b} after={a} />;
+}
+
 function EditHistoryEntry({ entry }: { entry: ListingEditLogEntryDto }) {
   const actorLabel =
     entry.actorType === "system"
@@ -112,7 +126,8 @@ function EditHistoryEntry({ entry }: { entry: ListingEditLogEntryDto }) {
                   <ul style={{ margin: "4px 0 0", padding: "0 0 0 14px", listStyle: "none" }}>
                     {attrDiffs.map((d) => (
                       <li key={d.key}>
-                        {d.key}: {formatChangeValue(d.before)} → {formatChangeValue(d.after)}
+                        {d.key}
+                        <HistoryChange field={d.key} before={d.before} after={d.after} show={formatChangeValue} />
                       </li>
                     ))}
                   </ul>
@@ -122,7 +137,8 @@ function EditHistoryEntry({ entry }: { entry: ListingEditLogEntryDto }) {
             const show = field === "price" ? formatPriceChangeValue : formatChangeValue;
             return (
               <li key={field} style={{ color: "var(--text-soft)" }}>
-                <strong>{field}</strong>: {show(change.before)} → {show(change.after)}
+                <strong>{field}</strong>
+                <HistoryChange field={field} before={change.before} after={change.after} show={show} />
               </li>
             );
           })}
