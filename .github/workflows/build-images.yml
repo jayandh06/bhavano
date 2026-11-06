@@ -1,0 +1,95 @@
+# Builds the three production images (bff, web, admin) for the app server's CPU (linux/arm64) on GitHub's own ARM runners and pushes them to
+# GitHub's container registry, tagged with the commit (sha-<8 chars>) and `latest`. Nothing here deploys: scripts/deploy-from-registry.ps1 pulls
+# a chosen tag onto the server. Replaces building the images on a Windows PC under emulation and copying them over as a tar file.
+# See docs/plans/registry-based-deploy.md for the setup (build variables, server login) and how to roll back.
+name: Build images
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "apps/bff/**"
+      - "apps/web/**"
+      - "apps/admin/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/build-images.yml"
+  workflow_dispatch:
+    inputs:
+      services:
+        description: "Comma-separated: bff, web, admin"
+        default: "bff,web,admin"
+        required: true
+
+concurrency:
+  group: build-images-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: ${{ matrix.service }}
+    # A native ARM runner: free for public repositories, and no emulation.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [bff, web, admin]
+    steps:
+      - name: Skip services that were not asked for
+        id: want
+        env:
+          EVENT: ${{ github.event_name }}
+          ASKED: ${{ inputs.services }}
+        run: |
+          if [ "$EVENT" = "push" ] || echo ",${ASKED// /}," | grep -q ",${{ matrix.service }},"; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.want.outputs.build == 'true'
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.want.outputs.build == 'true'
+
+      - uses: docker/login-action@v3
+        if: steps.want.outputs.build == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image tags
+        id: tags
+        if: steps.want.outputs.build == 'true'
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/bhavano-${{ matrix.service }}"
+          echo "list=${image}:sha-${GITHUB_SHA::8},${image}:latest" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@v6
+        if: steps.want.outputs.build == 'true'
+        with:
+          context: .
+          file: apps/${{ matrix.service }}/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.list }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          # The web image bakes these in at build time (they are visible in the browser anyway). Set them once as repository
+          # variables: scripts/set-github-build-vars.ps1 copies them from .env.prod.build.
+          build-args: |
+            NEXT_PUBLIC_BFF_URL=${{ vars.NEXT_PUBLIC_BFF_URL }}
+            NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
+            NEXT_PUBLIC_GTM_ID=${{ vars.NEXT_PUBLIC_GTM_ID }}
+            NEXT_PUBLIC_META_PIXEL_ID=${{ vars.NEXT_PUBLIC_META_PIXEL_ID }}
+            NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY=${{ vars.NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
