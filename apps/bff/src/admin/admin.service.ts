@@ -1169,11 +1169,12 @@ export class AdminService {
     return { items: items.filter((i) => !!i), total: groups.length, groupedScanCapped: capped };
   }
 
-  /** Accounts with at least one paid Payment, ever; narrowed to `among` when given. */
+  /** Accounts that have paid real money at least once, ever; narrowed to `among` when given. Paid rows of amount 0 (credits, referral
+   * rewards, 100%-off checkouts, admin grants) are free Featured, not a purchase, so they do not count. */
   private async usersWithPurchase(among?: string[]): Promise<Set<string>> {
     const rows = await this.prisma.payment.groupBy({
       by: ['userId'],
-      where: { status: 'paid', ...(among ? { userId: { in: among } } : {}) },
+      where: { status: 'paid', amount: { gt: 0 }, ...(among ? { userId: { in: among } } : {}) },
     });
     return new Set(rows.map((r) => r.userId));
   }
@@ -1853,7 +1854,7 @@ export class AdminService {
     }
 
     // Purchase filter: the same three questions as the row highlights (usersWithPurchase / usersWithActivePurchase).
-    const hasPaid = Prisma.sql`EXISTS (SELECT 1 FROM "Payment" pay WHERE pay."userId" = u."id" AND pay."status" = 'paid')`;
+    const hasPaid = Prisma.sql`EXISTS (SELECT 1 FROM "Payment" pay WHERE pay."userId" = u."id" AND pay."status" = 'paid' AND pay."amount" > 0)`;
     if (purchase === 'purchased') userConditions.push(hasPaid);
     else if (purchase === 'never') userConditions.push(Prisma.sql`NOT ${hasPaid}`);
     else if (purchase === 'active') {

@@ -10,7 +10,7 @@ valuable thing about it (order below); every applicable badge still shows. A leg
 | Highlight | Colour | Rule |
 |---|---|---|
 | Active purchase | strong green | any account that logged in during the session holds a paid product now: an unexpired `UserSubscription`, or a listing they own with `boostedUntil` or `instantAlertsUntil` in the future |
-| Purchased | light green | any account that logged in during the session has a `Payment` with status `paid`, ever |
+| Purchased | light green | any account that logged in during the session has a `Payment` with status `paid` and an amount above 0, ever (free Featured from credits, referrals, 100%-off checkouts and admin grants is paid-at-zero and does not count; it still shows as Active purchase while it runs) |
 | Featured | gold | a listing created in this session (`Listing.createSessionId`) has a `ListingBoost`. "Featured now" while `boostedUntil` is in the future, "Featured (ended)" after |
 | Ad posted | blue | a listing created in this session is live (`publishState` live, status active, not expired) = "Ad live"; or `pending_checkout` / `scheduled` = "Ad in pipeline". Sold, deactivated, expired and `awaiting_claim` listings are not marked |
 

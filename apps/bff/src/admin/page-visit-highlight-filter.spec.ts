@@ -47,7 +47,7 @@ describe('page visits highlight filter', () => {
   it('purchased: the paying accounts and the sessions they logged in during', async () => {
     const { prisma, where } = makeService({ paid: ['u1', 'u2'], logins: ['s5'] });
     expect(await where('purchased')).toEqual({ OR: [{ userId: { in: ['u1', 'u2'] } }, { sessionId: { in: ['s5'] } }] });
-    expect(prisma.payment.groupBy.mock.calls[0][0].where).toEqual({ status: 'paid' });
+    expect(prisma.payment.groupBy.mock.calls[0][0].where).toEqual({ status: 'paid', amount: { gt: 0 } });
   });
 
   it('active: unexpired subscriptions plus owners of a running boost or alerts window', async () => {

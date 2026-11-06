@@ -255,9 +255,9 @@ describe('AdminService.listUsers — purchase filter', () => {
     return queries[0].sql;
   }
 
-  it('has purchased: needs a paid payment', async () => {
+  it('has purchased: needs a paid payment above 0 (free grants and credits do not count)', async () => {
     const sql = await sqlFor('purchased');
-    expect(sql).toContain(`EXISTS (SELECT 1 FROM "Payment" pay WHERE pay."userId" = u."id" AND pay."status" = 'paid')`);
+    expect(sql).toContain(`EXISTS (SELECT 1 FROM "Payment" pay WHERE pay."userId" = u."id" AND pay."status" = 'paid' AND pay."amount" > 0)`);
     expect(sql).not.toContain('NOT EXISTS (SELECT 1 FROM "Payment"');
   });
 
