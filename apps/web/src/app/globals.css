@@ -223,3 +223,30 @@
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* Diwali greeting on the home page (components/home/DiwaliBanner.tsx). The flames move only for visitors who have not asked for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .diya-flame {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: diya-flicker 2.4s ease-in-out infinite;
+  }
+  .diya-flame-b {
+    animation-delay: -0.8s;
+  }
+  .diya-flame-c {
+    animation-delay: -1.5s;
+  }
+  .diwali-spark {
+    animation: diwali-twinkle 3s ease-in-out infinite;
+  }
+}
+@keyframes diya-flicker {
+  0%, 100% { transform: scale(1, 1) rotate(0deg); opacity: 1; }
+  30% { transform: scale(0.92, 1.08) rotate(-3deg); opacity: 0.92; }
+  60% { transform: scale(1.05, 0.95) rotate(2deg); opacity: 1; }
+}
+@keyframes diwali-twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.9; }
+}

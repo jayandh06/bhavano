@@ -16,6 +16,7 @@ export const POST_ENTRY_LABELS: Record<string, string> = {
   plans_page: "plans page",
   requirements_feed: "requirements feed",
   ad_landing_card: "ad landing card",
+  diwali_banner: "Diwali banner",
   post_another_ad: "Post another ad button",
   bottom_tab: "bottom tab",
 };

@@ -16,6 +16,8 @@ import {
 import { rankAreasForLinks } from "@/lib/areaRanking";
 import { AD_LANDING_INTENTS, resolveAdLandingIntent } from "@/lib/adLandingCard";
 import { AdLandingCard, LISTINGS_ANCHOR_ID } from "@/components/home/AdLandingCard";
+import { DiwaliBanner } from "@/components/home/DiwaliBanner";
+import { showDiwali } from "@/lib/festive";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
 import { Header } from "@/components/home/Header";
 import { segmentsForHomeCategory } from "@/lib/seoRoute";
@@ -317,6 +319,7 @@ export default async function HomePage({
         <p className="sm:hidden truncate text-[13px] text-text-soft mb-5">
           Buy, rent, sell & lease — free, no brokerage, message sellers directly.
         </p>
+        {showDiwali(new Date(), sp.festive) && <DiwaliBanner />}
         {adLanding && (
           <AdLandingCard intent={adLanding.intent} preview={adLanding.preview} freeToPost={freeToPost} />
         )}
