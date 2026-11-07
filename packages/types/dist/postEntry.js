@@ -19,6 +19,7 @@ exports.POST_ENTRY_SOURCES = [
     "ad_landing_card",
     "post_another_ad",
     "bottom_tab",
+    "diwali_banner",
 ];
 /** Default for a typed URL, a bookmark, browser back/forward, or any `?from=` value not in the
  * list above (including none at all). */

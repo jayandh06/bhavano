@@ -15,6 +15,7 @@ export const POST_ENTRY_SOURCES = [
   "ad_landing_card",
   "post_another_ad",
   "bottom_tab",
+  "diwali_banner",
 ] as const;
 
 export type PostEntrySource = (typeof POST_ENTRY_SOURCES)[number];
