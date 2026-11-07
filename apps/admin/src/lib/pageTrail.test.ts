@@ -170,6 +170,17 @@ describe("trailEntry — the Featured prompt", () => {
   });
 });
 
+describe("trailEntry — the slots-full notice", () => {
+  it("reads where it was shown and which way the owner went", () => {
+    expect(trailEntry("/post/action?screen=slotcap&event=shown&surface=category")).toEqual({ text: "Slots full — notice shown (before filling in the form)", isError: false });
+    expect(trailEntry("/post/action?screen=slotcap&event=shown&surface=review")).toEqual({ text: "Slots full — notice shown (on Publish)", isError: true });
+    expect(trailEntry("/post/action?screen=slotcap&event=clicked&surface=review_pack")).toEqual({ text: "Slots full — tapped Seller pack (on Publish)", isError: false });
+    expect(trailEntry("/post/action?screen=slotcap&event=clicked&surface=category_pro")).toEqual({ text: "Slots full — tapped Agent Pro (before filling in the form)", isError: false });
+    expect(trailEntry("/post/action?screen=slotcap&event=clicked&surface=review_manage")).toEqual({ text: "Slots full — tapped Close an ad (on Publish)", isError: false });
+    expect(trailEntry("/post/action?screen=slotcap&event=check_again&surface=review")).toEqual({ text: "Slots full — tapped \"I closed one, try again\"", isError: false });
+  });
+});
+
 describe("trailEntry — the interested list", () => {
   it("reads unlocking a number and the Featured link", () => {
     expect(trailEntry("/post/action?screen=upsell&event=unlock_tapped&surface=interest_contact")).toEqual({ text: "Interested list \u2014 tapped Unlock contact", isError: false });

@@ -424,3 +424,16 @@ Import `SellerJobsModule` from `AppModule`. `ListingSlotsModule` imported by `Li
 
 - Supersedes **seller posting limits** in `docs/plans/monetization-boosted-listings-premium-tiers.md` Phase 3 only; Phases 1–2 (boost, buyer premium) remain.
 - Channel fallback aligns with contact capture goals in `docs/plans/welcome-notification-and-profile-completion.md` (encourage email on profile for richer digests).
+
+---
+
+## Update 5 Nov 2026: the "slots full" notice (web post page)
+
+Found from a Page visits trail: an owner with 3 of 3 slots filled in the whole form, then tapped Publish six times and got the same error, with no sign of using the upgrade links.
+
+- **Told early.** `/post` knows the profile's `activeListingCount` and `listingSlotAllowance`; when they are equal it shows the notice on the Category step (`PostAdWizard` `slotNotice`), non-blocking (they may close an ad and still post).
+- **Upgrade is the main action.** `ListingSlotCapPrompt` leads with a green "Get N slots · ₹X/month" button, then Agent Pro, "Close an ad" (to My listings) and, on Publish only, "I closed one, try again". Publish is disabled while the refusal stands, so it can no longer be hammered.
+- **Numbers from settings.** `listingSlotCapBody()` (`packages/types/src/listingSlots.ts`) builds the notice for both the BFF error and the web page, with `offers` read from the admin Plans settings. The prompt had ₹149/10 slots and ₹499/20 slots written in.
+- **Wording.** No more "wait for an ad to expire": slots free only on explicit close (`explicit-close-not-auto-expire.md`).
+- **Trail.** Synthetic `/post/action?screen=slotcap&event=shown|clicked|check_again&surface=category|review[_pack|_pro|_manage]`, decoded in the admin `trailEntry()` as "Slots full — ...".
+- **Not done:** mobile has no equivalent early notice; it shows the server's message text only.

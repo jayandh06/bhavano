@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import {
   listingSlotAllowance,
+  listingSlotCapBody,
   type ListingSlotCapErrorBody,
   type ListingSlotEntitlementInput,
 } from '@bhavano/types/listingSlots';
@@ -63,7 +64,7 @@ export class ListingSlotsService {
     const allowance = listingSlotAllowance(user, settings);
     const activeCount = await this.countActiveListings(ownerId);
     if (activeCount < allowance) return;
-    throw new ForbiddenException(this.capErrorBody(activeCount, allowance, settings.sellerSlotPackTotalSlots));
+    throw new ForbiddenException(this.capErrorBody(activeCount, allowance, settings));
   }
 
   /** Same cap as `assertCanPublish`, but excludes the listing being renewed from its own count —
@@ -73,24 +74,14 @@ export class ListingSlotsService {
     const allowance = listingSlotAllowance(user, settings);
     const activeCount = await this.countActiveListings(ownerId, listingId);
     if (activeCount < allowance) return;
-    throw new ForbiddenException(this.capErrorBody(activeCount, allowance, settings.sellerSlotPackTotalSlots));
+    throw new ForbiddenException(this.capErrorBody(activeCount, allowance, settings));
   }
 
   private capErrorBody(
     activeCount: number,
     allowance: number,
-    sellerSlotPackTotalSlots: number,
+    settings: SubscriptionPlanSettings,
   ): ListingSlotCapErrorBody {
-    return {
-      code: 'LISTING_SLOT_CAP_REACHED',
-      message:
-        `You have ${activeCount} active listings and your plan allows ${allowance}. ` +
-        `Remove or wait for an ad to expire, or upgrade for more slots.`,
-      activeCount,
-      allowance,
-      // Below the seller slot pack's own ceiling: that upgrade alone would still help, so offer
-      // it alongside Agent/Broker Pro. At or above it, only Pro adds more room.
-      upsell: allowance < sellerSlotPackTotalSlots ? ['sellerSlotPack', 'agentPro'] : ['agentPro'],
-    };
+    return listingSlotCapBody(activeCount, allowance, settings);
   }
 }
