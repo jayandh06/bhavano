@@ -12,9 +12,15 @@ test.use({ storageState: { cookies: [], origins: [] } });
 test.describe("browse filters", () => {
   // Every filter dropdown only changes a draft; the filter section's own Apply searches once and its Reset clears them all (FilterSection.tsx).
   const apply = (page: import("@playwright/test").Page) => page.getByRole("button", { name: "Apply", exact: true });
+  // The filter panel is closed until the Filters button (before Sort) is pressed; the button shows "Filters (n)" once n filters are applied.
+  const filtersButton = (page: import("@playwright/test").Page) => page.getByRole("button", { name: /^Filters/ });
+  async function openFilters(page: import("@playwright/test").Page) {
+    await filtersButton(page).click();
+  }
 
   test("area filter narrows via ?areas= query param, on Apply", async ({ page }) => {
     await page.goto(BROWSE_PATH);
+    await openFilters(page);
     await expect(page.getByText(LISTING_TITLE).first()).toBeVisible();
     await expect(apply(page)).toBeDisabled(); // nothing changed yet
 
@@ -32,6 +38,7 @@ test.describe("browse filters", () => {
 
   test("area filter after Clear all: picks stay in one dropdown, the label counts them, at least one is needed, one search on Apply", async ({ page }) => {
     await page.goto(BROWSE_PATH);
+    await openFilters(page);
     await page.getByRole("button", { name: "All areas" }).click();
     // Every area is picked, so the button says "Clear all"; once some are not, it shows how many are.
     await page.getByRole("button", { name: "Clear all" }).click();
@@ -53,6 +60,7 @@ test.describe("browse filters", () => {
 
   test("closing a dropdown keeps the pending picks; Reset clears every filter", async ({ page }) => {
     await page.goto(BROWSE_PATH);
+    await openFilters(page);
     await page.getByRole("button", { name: "All areas" }).click();
     await page.getByLabel("Whitefield", { exact: true }).click();
     await page.keyboard.press("Escape");
@@ -72,6 +80,7 @@ test.describe("browse filters", () => {
 
   test("area, BHK and furnishing together change the URL once, on a single Apply", async ({ page }) => {
     await page.goto(BROWSE_PATH);
+    await openFilters(page);
 
     await page.getByRole("button", { name: "All areas" }).click();
     await page.getByLabel("Whitefield", { exact: true }).click();
@@ -91,6 +100,7 @@ test.describe("browse filters", () => {
 
   test("BHK filter collapses a single selection onto the clean facet path", async ({ page }) => {
     await page.goto(BROWSE_PATH);
+    await openFilters(page);
 
     await page.getByRole("button", { name: "All BHK" }).click();
     // Unchecking every bucket except "3 BHK" (the listing's own) leaves exactly one selected,
@@ -104,6 +114,7 @@ test.describe("browse filters", () => {
 
   test("price range filter narrows via ?minPrice=/?maxPrice=", async ({ page }) => {
     await page.goto(BROWSE_PATH);
+    await openFilters(page);
 
     await page.getByRole("button", { name: "Price" }).click();
     // The listing is ₹85L — the range ₹20L–₹2Cr should include it. The filter takes typed bounds ("20L", "2Cr").
@@ -118,6 +129,7 @@ test.describe("browse filters", () => {
 
   test("furnishing filter narrows via ?furnished=", async ({ page }) => {
     await page.goto(BROWSE_PATH);
+    await openFilters(page);
 
     await page.getByRole("button", { name: "Furnishing" }).click();
     await page.getByText("Semi-furnished", { exact: true }).click();
@@ -125,6 +137,23 @@ test.describe("browse filters", () => {
 
     await expect(page).toHaveURL(/[?&]furnished=semi/);
     await expect(page.getByText(LISTING_TITLE).first()).toBeVisible();
+  });
+
+  test("the filter panel is hidden until Filters is pressed, and the button counts applied filters", async ({ page }) => {
+    await page.goto(BROWSE_PATH);
+    await expect(page.getByRole("button", { name: "Apply", exact: true })).toHaveCount(0);
+    await expect(filtersButton(page)).toHaveText("Filters");
+
+    await openFilters(page);
+    await page.getByRole("button", { name: "Furnishing" }).click();
+    await page.getByText("Semi-furnished", { exact: true }).click();
+    await apply(page).click();
+    await expect(page).toHaveURL(/[?&]furnished=semi/);
+    await expect(filtersButton(page)).toHaveText("Filters (1)");
+
+    // Hiding the panel keeps the applied filters; Reset (in the panel) clears them and the count.
+    await page.getByRole("button", { name: "Reset", exact: true }).click();
+    await expect(filtersButton(page)).toHaveText("Filters");
   });
 
   test("sort by narrows/reorders via ?sort=", async ({ page }) => {

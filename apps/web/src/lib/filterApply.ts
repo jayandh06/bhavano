@@ -169,3 +169,17 @@ export function buildResetUrl(base: FilterBase): string {
     searchParams: params,
   });
 }
+
+/** How many filters the URL applies now, counted as the Filters button shows it ("Filters (3)"): one each for the areas, the asset type, the BHK buckets, the price range,
+ * amenities, each of furnishing / sharing / condition / service type, and owners only. A filter left at its default (every area, every BHK, any price) is not counted. */
+export function activeFilterCount(base: FilterBase): number {
+  const params = new URLSearchParams(base.search);
+  let n = 0;
+  if (base.areas.length > 1 && currentAreaIds(base).length !== base.areas.length) n++;
+  if (base.category && intentOffersAssets(base.intent)) n++;
+  if (hasAssetFilter(base.category, "bedrooms") && currentBhk(base).length !== BEDROOM_COUNTS.length) n++;
+  if (params.get("minPrice") || params.get("maxPrice")) n++;
+  for (const key of ["amenities", "furnished", "sharingType", "condition", "serviceType"]) if (params.get(key)) n++;
+  if (params.get("postedBy") === "owner") n++;
+  return n;
+}

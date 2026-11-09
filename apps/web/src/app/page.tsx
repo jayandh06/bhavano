@@ -23,7 +23,7 @@ import { Header } from "@/components/home/Header";
 import { segmentsForHomeCategory } from "@/lib/seoRoute";
 import { Icon } from "@/components/home/Icon";
 import { AreaFilter } from "@/components/home/AreaFilter";
-import { FilterSection } from "@/components/home/FilterSection";
+import { FilterPanel, FilterProvider, FiltersButton } from "@/components/home/FilterSection";
 import { AssetTypeFilter } from "@/components/home/TypeFilters";
 import { BhkFilter } from "@/components/home/BhkFilter";
 import { OwnersOnlyToggle } from "@/components/home/OwnersOnlyToggle";
@@ -325,27 +325,35 @@ export default async function HomePage({
           <AdLandingCard intent={adLanding.intent} preview={adLanding.preview} freeToPost={freeToPost} />
         )}
         {showFeaturedRail && <FeaturedRail items={featuredRailItems} />}
-        {/* The All tab mixes every category together, so the category filters don't mean one
-          * consistent thing across a PG, a plot and a sofa in the same grid — same reasoning as
-          * BrowseListingsView's own filter row. Area is the exception, and is offered on its own
-          * once a city is chosen. */}
-        {activeTab.value === "all" && resolvedCity && cityAreas.length > 1 && (
-          <FilterSection urlMode="query" cityName={resolvedCity.name} areas={cityAreas} intent={activeTab.value} category={homeAsset}>
-            <AreaFilter />
-          </FilterSection>
-        )}
-        {activeTab.value !== "all" && (
-          // Apply and Reset live on the section (FilterSection), not on any one filter: the dropdowns only change a draft, and one Apply searches once.
-          <FilterSection urlMode="query" cityName={resolvedCity?.name} areas={cityAreas} intent={activeTab.value} category={homeAsset}>
+        {/* One Filters button opens the filter panel under it; the dropdowns in the panel only edit a draft, and the panel's one Apply searches (see FilterSection).
+          * The All tab mixes every category together, so the category filters don't mean one consistent thing across a PG, a plot and a sofa in the same grid —
+          * same reasoning as BrowseListingsView. Area is the exception, and is offered on its own once a city is chosen. */}
+        <FilterProvider
+          urlMode="query"
+          cityName={resolvedCity?.name}
+          areas={cityAreas}
+          intent={activeTab.value}
+          category={homeAsset}
+          enabled={activeTab.value !== "all" || (!!resolvedCity && cityAreas.length > 1)}
+          defaultOpen={noAreaSelected}
+        >
+          <div className="mb-3 flex justify-end">
+            <FiltersButton />
+          </div>
+          <FilterPanel>
             {/* Area first when a city is chosen, same reasoning as the browse pages. City itself stays a top-level choice in the header, not a filter. */}
             {resolvedCity && <AreaFilter />}
-            {/* No transaction-type pill here — the tab row above it (CategoryTabs) already *is* that choice. */}
-            <AssetTypeFilter />
-            {/* 1 BHK … 5+ BHK, once the chosen asset actually has bedrooms per CATEGORY_FIELD_CONFIG. The homepage has no browse path, so it writes `?bedrooms=`. */}
-            {homeAsset && hasAssetFilter(homeAsset, "bedrooms") && <BhkFilter />}
-            {(activeTab.value === "buy" || activeTab.value === "rentLease") && <OwnersOnlyToggle active={postedBy === "owner"} />}
-          </FilterSection>
-        )}
+            {activeTab.value !== "all" && (
+              <>
+                {/* No transaction-type pill here — the tab row above it (CategoryTabs) already *is* that choice. */}
+                <AssetTypeFilter />
+                {/* 1 BHK … 5+ BHK, once the chosen asset actually has bedrooms per CATEGORY_FIELD_CONFIG. The homepage has no browse path, so it writes `?bedrooms=`. */}
+                {homeAsset && hasAssetFilter(homeAsset, "bedrooms") && <BhkFilter />}
+                {(activeTab.value === "buy" || activeTab.value === "rentLease") && <OwnersOnlyToggle active={postedBy === "owner"} />}
+              </>
+            )}
+          </FilterPanel>
+        </FilterProvider>
         {/* The homepage expresses every filter as a query param, so without this its searches
             were entirely invisible — a whole session logged one row reading `path: "/"`. */}
         {!noAreaSelected && (

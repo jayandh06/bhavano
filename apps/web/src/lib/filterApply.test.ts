@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Area } from "@bhavano/types";
-import { buildAppliedUrl, buildResetUrl, currentAreaIds, draftIssue, type FilterBase } from "./filterApply";
+import { activeFilterCount, buildAppliedUrl, buildResetUrl, currentAreaIds, draftIssue, type FilterBase } from "./filterApply";
 
 const area = (id: string, name: string) => ({ id, name }) as Area;
 const AREAS = [area("a1", "Koramangala"), area("a2", "Whitefield"), area("a3", "Indiranagar")];
@@ -80,5 +80,14 @@ describe("buildResetUrl", () => {
   it("clears every filter but keeps the city, the tab and the search text", () => {
     const base = browse({ search: "q=garden&areas=a1&bedrooms=2&minPrice=20000&furnished=semi&sort=price_asc&page=2" });
     expect(buildResetUrl(base)).toBe("/bengaluru/buy?q=garden&sort=price_asc");
+  });
+});
+
+describe("activeFilterCount", () => {
+  it("counts each narrowing once and ignores defaults", () => {
+    expect(activeFilterCount(browse({ segments: { transactionGroup: "buy" }, category: undefined }))).toBe(0);
+    // asset chosen (1) + one BHK bucket (1) + price (1) + furnishing (1) + owners only (1) + two of the three areas (1)
+    const base = browse({ segments: { transactionGroup: "buy", category: "apartment", facetValue: 3 }, search: "areas=a1%2Ca2&minPrice=20000&furnished=semi&postedBy=owner" });
+    expect(activeFilterCount(base)).toBe(6);
   });
 });
