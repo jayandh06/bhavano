@@ -17,6 +17,9 @@ import { Icon } from "./Icon";
 import { ShareButton } from "./ShareButton";
 import { ListingPrice } from "./PriceWithWords";
 
+/** How long each photo of a Featured card stays up while it cycles. It was 1.2 s, too quick to see what a photo shows; 2.5 s lets each one register. */
+const PHOTO_CYCLE_MS = 2500;
+
 export function ListingCard({
   item,
   /** For a horizontal rail (FeaturedRail) where every card sits in the same row and an uneven
@@ -77,7 +80,7 @@ export function ListingCard({
     if (hoverIntervalRef.current) return;
     hoverIntervalRef.current = setInterval(() => {
       setHoverPhotoIndex((i) => (i + 1) % item.photos.length);
-    }, 1200);
+    }, PHOTO_CYCLE_MS);
   }, [item.photos.length]);
 
   const stopCycle = useCallback(() => {

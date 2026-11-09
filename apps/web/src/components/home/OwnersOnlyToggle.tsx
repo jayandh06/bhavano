@@ -1,28 +1,17 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { buttonClass } from "./BrowseFilterBar";
+import { useFilterSection } from "./FilterSection";
 
-/** "Owners only" pill for the Buy / Rent & Lease filter rows — toggles `?postedBy=owner` on the
- * current page (a query-param filter, so the canonical stays the plain path). Resets `page`,
- * since the filtered result set has its own page count. */
+/** "Owners only" pill for the Buy / Rent & Lease filter rows — `?postedBy=owner`, a query-param filter, so the canonical stays the plain path. Like every filter it
+ * only changes the filter section's draft; Apply searches (and returns to page 1, since the filtered result set has its own page count). `active` is what the URL says now. */
 export function OwnersOnlyToggle({ active }: { active: boolean }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  function toggle() {
-    const params = new URLSearchParams(searchParams.toString());
-    if (active) params.delete("postedBy");
-    else params.set("postedBy", "owner");
-    params.delete("page");
-    const qs = params.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname);
-  }
+  const { draft, update } = useFilterSection();
+  const shown = draft.query && "postedBy" in draft.query ? draft.query.postedBy === "owner" : active;
 
   return (
-    <button className={buttonClass(active)} onClick={toggle} aria-pressed={active}>
-      {active ? "✓ " : ""}Owners only
+    <button className={buttonClass(shown)} onClick={() => update({ query: { ...draft.query, postedBy: shown ? undefined : "owner" } })} aria-pressed={shown}>
+      {shown ? "✓ " : ""}Owners only
     </button>
   );
 }

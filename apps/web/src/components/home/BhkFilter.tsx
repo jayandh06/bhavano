@@ -1,145 +1,65 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { ListingCategory } from "@bhavano/types";
-import { MAX_BEDROOMS, bedroomLabel, type ParsedSegments } from "@/lib/seoRoute";
-import { buildBrowsePath } from "@/lib/listingPath";
+import { bedroomLabel } from "@/lib/seoRoute";
+import { BEDROOM_COUNTS, currentBhk } from "@/lib/filterApply";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { useClampToViewport } from "@/lib/useClampToViewport";
 import { Icon } from "./Icon";
+import { useFilterSection } from "./FilterSection";
 
-const BEDROOM_COUNTS = Array.from({ length: MAX_BEDROOMS }, (_, i) => i + 1);
-
-/** Multi-select BHK filter for house/apartment browse pages — same shape as `AreaFilter` (every
- * bucket checked by default = no narrowing, navigates immediately on each toggle), but for
- * bedroom-count buckets instead of areas.
+/** Multi-select BHK filter for house/apartment/villa pages — same shape as `AreaFilter` (every bucket checked by default = no narrowing), for bedroom-count
+ * buckets instead of areas. Ticks only change the filter section's draft; the section's Apply searches (see FilterSection), and at least one bucket must stay picked.
  *
- * Picking exactly one bucket collapses onto the *same* clean canonical single-facet path
- * (`/{city}/{group}/{category}/{Nbhk}`) the mega-menu's own single-BHK links already produce —
- * this control is just a richer way to reach (or combine) those same buckets, not a second
- * parallel filter. Picking 2-4 buckets stays on the category-root path with `?bedrooms=1,3,5`
- * layered on top, mirroring how `AreaFilter` layers `?areas=` on top of its own canonical path.
- *
- * `urlMode` exists because two pages express the same choice in two grammars, and this control has
- * to speak both or one of them goes without a BHK filter (which is what happened: /buy/apartment
- * and the homepage with an apartment selected had none):
- *
- * - **`path`** — the browse pages, where a single bucket has a canonical URL of its own. `cityName`
- *   is optional here: without it the national form (`/buy/apartment/2bhk`) is built instead.
- * - **`query`** — the homepage, which has no browse path at all and expresses every filter as a
- *   query param. It writes `?bedrooms=` onto the current path, exactly as `BrowseFilterBar` does
- *   with price and furnishing.
- */
-export function BhkFilter({
-  cityName,
-  category,
-  currentSegments,
-  urlMode = "path",
-}: {
-  cityName?: string;
-  category: ListingCategory;
-  /** The path's parsed segments — supplies the transaction group the rebuilt path needs, and the
-   * single-BHK facet the selection may already be sitting on. Absent in `query` mode. */
-  currentSegments?: ParsedSegments;
-  urlMode?: "path" | "query";
-}) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+ * Picking exactly one bucket becomes the *same* clean canonical single-facet path (`/{city}/{group}/{category}/{Nbhk}`) the mega-menu's own single-BHK links
+ * already produce; several buckets stay on the category-root path with `?bedrooms=1,3,5`. On the homepage, which has no browse path, every choice is `?bedrooms=`.
+ * Both grammars are written by lib/filterApply.ts. */
+export function BhkFilter() {
+  const { base, draft, update } = useFilterSection();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
   const panelRef = useRef<HTMLDivElement>(null);
   useClampToViewport(panelRef, open);
 
-  const bedroomsParam = searchParams.get("bedrooms");
-
-  // Selection state is derived straight from the URL (query param, then path facet, else "all") —
-  // no local staging, same reasoning as `AreaFilter`.
-  const selected: Set<number> = bedroomsParam
-    ? new Set(bedroomsParam.split(",").map(Number).filter(Boolean))
-    : typeof currentSegments?.facetValue === "number"
-      ? new Set([currentSegments.facetValue])
-      : new Set(BEDROOM_COUNTS);
-
+  const selected = new Set(draft.bhk ?? currentBhk(base));
   const allSelected = selected.size === BEDROOM_COUNTS.length;
-  // "3 BHK" for three *selected buckets* was indistinguishable from "3 BHK" the bedroom count —
-  // picking 2 and 3 read as "2 BHK". A count of selections has to say that it is one.
-  const label = allSelected
-    ? "All BHK"
-    : selected.size === 1
-      ? `${bedroomLabel([...selected][0])} BHK`
-      : `${selected.size} selected`;
-
-  function navigate(nextSelected: Set<number>) {
-    // Unchecking every box would mean "match nothing" — instead of blocking the click, fall back
-    // to the first bucket (1 BHK), same as `AreaFilter`; "Select all" is one click away regardless.
-    if (nextSelected.size === 0) nextSelected = new Set([BEDROOM_COUNTS[0]]);
-    const nextAllSelected = nextSelected.size === BEDROOM_COUNTS.length;
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("bedrooms");
-    // A narrowing change always returns to the first page, same as every other filter.
-    params.delete("page");
-
-    if (urlMode === "query") {
-      // No path to rebuild: the homepage is one URL and every filter on it is a param. "All"
-      // clears the param rather than listing all five, so the default state stays the clean `/`.
-      if (!nextAllSelected) params.set("bedrooms", [...nextSelected].join(","));
-      const qs = params.toString();
-      router.push(qs ? `${pathname}?${qs}` : pathname);
-      return;
-    }
-
-    const transactionGroup = currentSegments?.transactionGroup;
-
-    if (nextAllSelected) {
-      const path = buildBrowsePath({ cityName, transactionGroup, category });
-      const qs = params.toString();
-      router.push(qs ? `${path}?${qs}` : path);
-      return;
-    }
-    if (nextSelected.size === 1) {
-      const onlyValue = [...nextSelected][0];
-      const path = buildBrowsePath({ cityName, transactionGroup, category, facetValue: onlyValue });
-      const qs = params.toString();
-      router.push(qs ? `${path}?${qs}` : path);
-      return;
-    }
-    const path = buildBrowsePath({ cityName, transactionGroup, category });
-    params.set("bedrooms", [...nextSelected].join(","));
-    router.push(`${path}?${params.toString()}`);
-  }
+  // "3 BHK" for three *selected buckets* was indistinguishable from "3 BHK" the bedroom count — picking 2 and 3 read as "2 BHK". A count of selections has to say that it is one.
+  const label = allSelected ? "All BHK" : selected.size === 0 ? "Pick a BHK" : selected.size === 1 ? `${bedroomLabel([...selected][0])} BHK` : `${selected.size} selected`;
 
   function toggle(n: number) {
     const next = new Set(selected);
     if (next.has(n)) next.delete(n);
     else next.add(n);
-    navigate(next);
+    update({ bhk: [...next].sort((a, b) => a - b) });
   }
 
   const active = open || !allSelected;
 
   return (
-    <div ref={containerRef} className="relative">
+    <div
+      ref={containerRef}
+      className="relative"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") setOpen(false);
+      }}
+    >
       <button
         onClick={() => setOpen((o) => !o)}
         className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-semibold cursor-pointer border ${
-          // See the matching comment in AreaFilter.tsx — the filter row is now a surface-alt
-          // strip, so pill tones shift accordingly.
           active ? "bg-green/10 border-green text-green" : "bg-surface border-border text-text-soft"
         }`}
       >
         <Icon name="bed" /> {label} <Icon name="chevronDown" className="text-muted" />
       </button>
       {open && (
-        // max-w-[calc(100vw-2rem)] — same fix as the other filter dropdowns (BrowseFilterBar/
-        // AreaFilter/TypeFilters); without it this can run off the right edge of a phone screen.
+        // max-w-[calc(100vw-2rem)] — same fix as the other filter dropdowns; without it this can run off the right edge of a phone screen.
         <div
           ref={panelRef}
-          className="absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[160px] max-w-[calc(100vw-2rem)]">
+          className="absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[160px] max-w-[calc(100vw-2rem)]"
+        >
           <button
-            onClick={() => navigate(new Set(BEDROOM_COUNTS))}
+            onClick={() => update({ bhk: [...BEDROOM_COUNTS] })}
             disabled={allSelected}
             className={`block w-full text-left bg-transparent border-0 border-b border-border mb-1.5 pb-2 text-green text-[13px] font-bold ${
               allSelected ? "cursor-default opacity-50" : "cursor-pointer"

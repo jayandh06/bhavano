@@ -11,8 +11,8 @@ import { ListingGrid } from "./ListingGrid";
 import { PickAnAreaNotice } from "./PickAnAreaNotice";
 import { SearchTracker } from "./SearchTracker";
 import { RequirementPrompt } from "./RequirementPrompt";
-import { Icon } from "./Icon";
 import { AreaFilter } from "./AreaFilter";
+import { FilterSection } from "./FilterSection";
 import { AssetTypeFilter } from "./TypeFilters";
 import { hasAssetFilter } from "@/lib/assetFilters";
 import { BhkFilter } from "./BhkFilter";
@@ -197,25 +197,29 @@ export async function BrowseListingsView({
           * an area from this tab at all (the area pages were reachable only after choosing a real
           * tab). So inside a city the All tab gets a strip with the Area filter alone. */}
         {activeIntent === "all" && cityName && cityAreas.length > 1 && (
-          <div className="flex gap-2.5 mb-3 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
-            <span className="flex items-center gap-1.5 self-center pl-0.5 text-[13px] font-semibold text-muted" aria-hidden>
-              <Icon name="filter" /> Filters
-            </span>
-            <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />
-          </div>
+          <FilterSection
+            urlMode="path"
+            cityName={cityName}
+            areas={cityAreas}
+            segments={currentSegments}
+            pathAreaName={pathAreaName}
+            intent={activeIntent}
+            category={filterCategory}
+          >
+            <AreaFilter />
+          </FilterSection>
         )}
         {activeIntent !== "all" && (
-          // Its own surface-alt panel rather than sitting directly on the page bg — this row is a
-          // distinct control surface (narrowing the results below), not page content, and the flat
-          // bg-on-bg treatment it used to have gave it no visual identity of its own.
-          <div className="flex gap-2.5 mb-3 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
-            {/* Says what the strip is. Without it the row reads as a line of unrelated buttons —
-              * and which control comes first changes with depth (area inside a city, transaction
-              * without one), so the label belongs to the row rather than to any one pill. */}
-            <span className="flex items-center gap-1.5 self-center pl-0.5 text-[13px] font-semibold text-muted" aria-hidden>
-              <Icon name="filter" /> Filters
-            </span>
-            <div className="flex gap-2.5 flex-wrap">
+          // Apply and Reset live on the section (FilterSection), not on any one filter: the dropdowns only change a draft, and one Apply searches once.
+          <FilterSection
+            urlMode="path"
+            cityName={cityName}
+            areas={cityAreas}
+            segments={currentSegments}
+            pathAreaName={pathAreaName}
+            intent={activeIntent}
+            category={filterCategory}
+          >
               {/* Area first, but only inside a city — it is the question everything else is asked
                 * *within*, and the one filter a visitor almost always sets before any other.
                 *
@@ -224,9 +228,7 @@ export async function BrowseListingsView({
                 * depth via `LocationPicker`. On a national page (`/`, `/buy`) there are no areas to
                 * pick, so this row simply starts at the transaction filter rather than repeating the
                 * header's city control a second time in a second style. */}
-              {cityName && (
-                <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />
-              )}
+              {cityName && <AreaFilter />}
               {/* Then the asset, at every depth a real tab resolves to (group-root pages included,
                 * e.g. /buy or /bengaluru/buy with no asset chosen yet). No transaction-type pill
                 * here — the tab row above (CategoryTabs) already *is* that choice (All/Buy/Rent &
@@ -237,20 +239,13 @@ export async function BrowseListingsView({
                 * asset has bedrooms, so those appear once an asset is chosen rather than guessing a
                 * scale that would be wrong for a ₹4,000 sofa and a ₹90L flat at once. See
                 * docs/plans/contextual-search-filters.md. */}
-              <AssetTypeFilter
-                cityName={cityName}
-                areaName={pathAreaName}
-                activeIntent={activeIntent}
-                activeAsset={currentSegments.category}
-              />
+              <AssetTypeFilter />
               {/* Config-driven, not `house || apartment`: CATEGORY_FIELD_CONFIG says villa has
                 * bedrooms too, so the BHK filter was simply missing there. See lib/assetFilters.ts. */}
               {/* `cityName` is no longer required: without one BhkFilter builds the national path
                 * (/buy/apartment/2bhk), so /buy/apartment is no longer the one apartment page in the
                 * site with no BHK filter. */}
-              {filterCategory && hasAssetFilter(filterCategory, "bedrooms") && (
-                <BhkFilter cityName={cityName} category={filterCategory} currentSegments={currentSegments} />
-              )}
+              {filterCategory && hasAssetFilter(filterCategory, "bedrooms") && <BhkFilter />}
               <BrowseFilterBar
                 category={filterCategory}
                 activeMinPrice={query.minPrice}
@@ -279,8 +274,7 @@ export async function BrowseListingsView({
                   bedroomOptions: query.bedrooms,
                 }}
               />
-            </div>
-          </div>
+          </FilterSection>
         )}
         {/* Count and sort share the line directly above the grid: the count reflects whatever
           * the filters above have narrowed it to, and sort is the one control that acts on the

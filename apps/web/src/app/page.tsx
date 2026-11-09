@@ -23,6 +23,7 @@ import { Header } from "@/components/home/Header";
 import { segmentsForHomeCategory } from "@/lib/seoRoute";
 import { Icon } from "@/components/home/Icon";
 import { AreaFilter } from "@/components/home/AreaFilter";
+import { FilterSection } from "@/components/home/FilterSection";
 import { AssetTypeFilter } from "@/components/home/TypeFilters";
 import { BhkFilter } from "@/components/home/BhkFilter";
 import { OwnersOnlyToggle } from "@/components/home/OwnersOnlyToggle";
@@ -329,40 +330,21 @@ export default async function HomePage({
           * BrowseListingsView's own filter row. Area is the exception, and is offered on its own
           * once a city is chosen. */}
         {activeTab.value === "all" && resolvedCity && cityAreas.length > 1 && (
-          <div className="mb-3 flex gap-2.5 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
-            <span className="flex items-center gap-1.5 self-center pl-0.5 text-[13px] font-semibold text-muted" aria-hidden>
-              <Icon name="filter" /> Filters
-            </span>
-            <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />
-          </div>
+          <FilterSection urlMode="query" cityName={resolvedCity.name} areas={cityAreas} intent={activeTab.value} category={homeAsset}>
+            <AreaFilter />
+          </FilterSection>
         )}
         {activeTab.value !== "all" && (
-          // Same surface-alt/border/rounded/padding treatment as BrowseListingsView's filter row
-          // (mb-3 there too) — this row used to be a bare, unstyled flex-wrap with no container
-          // at all, the one filter strip on the site with no visual identity of its own.
-          <div className="mb-3 flex gap-2.5 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
-            {/* Same leading label as the browse pages' filter strip — see BrowseListingsView. */}
-            <span className="flex items-center gap-1.5 self-center pl-0.5 text-[13px] font-semibold text-muted" aria-hidden>
-              <Icon name="filter" /> Filters
-            </span>
-            {/* Area first when a city is chosen, same reasoning as the browse pages. City itself
-              * stays a top-level choice in the header, not a filter — see BrowseListingsView. */}
-            {resolvedCity && <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />}
-            {/* No transaction-type pill here — the tab row above it (CategoryTabs) already *is*
-              * that choice (All/Buy/Rent & Lease/PG/Furniture/Interiors) with identical options and
-              * identical navigation, just in a second style. Same removal as BrowseListingsView's
-              * own filter row. */}
-            <AssetTypeFilter cityName={resolvedCity?.name} activeIntent={activeTab.value} activeAsset={homeAsset} />
-            {/* 1 BHK … 5+ BHK, once the chosen asset actually has bedrooms per
-              * CATEGORY_FIELD_CONFIG. `query` mode because the homepage has no browse path — it
-              * writes `?bedrooms=`, which this page has always accepted. */}
-            {homeAsset && hasAssetFilter(homeAsset, "bedrooms") && (
-              <BhkFilter category={homeAsset} urlMode="query" />
-            )}
-            {(activeTab.value === "buy" || activeTab.value === "rentLease") && (
-              <OwnersOnlyToggle active={postedBy === "owner"} />
-            )}
-          </div>
+          // Apply and Reset live on the section (FilterSection), not on any one filter: the dropdowns only change a draft, and one Apply searches once.
+          <FilterSection urlMode="query" cityName={resolvedCity?.name} areas={cityAreas} intent={activeTab.value} category={homeAsset}>
+            {/* Area first when a city is chosen, same reasoning as the browse pages. City itself stays a top-level choice in the header, not a filter. */}
+            {resolvedCity && <AreaFilter />}
+            {/* No transaction-type pill here — the tab row above it (CategoryTabs) already *is* that choice. */}
+            <AssetTypeFilter />
+            {/* 1 BHK … 5+ BHK, once the chosen asset actually has bedrooms per CATEGORY_FIELD_CONFIG. The homepage has no browse path, so it writes `?bedrooms=`. */}
+            {homeAsset && hasAssetFilter(homeAsset, "bedrooms") && <BhkFilter />}
+            {(activeTab.value === "buy" || activeTab.value === "rentLease") && <OwnersOnlyToggle active={postedBy === "owner"} />}
+          </FilterSection>
         )}
         {/* The homepage expresses every filter as a query param, so without this its searches
             were entirely invisible — a whole session logged one row reading `path: "/"`. */}
