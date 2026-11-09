@@ -137,3 +137,7 @@ logic; a manual click-through in a browser is the recommended final check before
 **Not yet done**: an actual browser click-through of the search help dialog (focus → chips → type →
 live preview → click-outside/Escape dismiss) and the `AreaFilter` checkbox interactions — worth a
 manual pass before considering this fully shipped, since neither can be exercised via `curl`.
+
+## Update 9 Nov 2026: the area dropdown applies when it closes
+
+`AreaFilter` used to navigate on every tick, which re-rendered the page and closed the dropdown after each one: after "Clear all", picking three areas meant reopening it three times and running three searches. Ticks, "Select all areas" and "Clear all" now only edit a local draft; the search runs once when the dropdown closes (a click outside it, or on its button) and only if the selection differs from the URL. The label and checkboxes show the draft while open. Covered by `e2e/browse-filters.spec.ts`. The BHK and other filter dropdowns still navigate per click.

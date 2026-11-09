@@ -18,8 +18,29 @@ test.describe("browse filters", () => {
     // Uncheck a different area than the listing's own (Koramangala) — leaves >1 area selected,
     // so this should produce `?areas=` rather than collapsing to a single-area clean path.
     await page.getByLabel("Whitefield", { exact: true }).click();
+    // Ticking only edits a draft: nothing is searched until the dropdown closes.
+    await expect(page).not.toHaveURL(/[?&]areas=/);
+    await page.getByRole("heading", { level: 1 }).click();
 
     await expect(page).toHaveURL(/[?&]areas=/);
+    await expect(page.getByText(LISTING_TITLE).first()).toBeVisible();
+  });
+
+  test("area filter after Clear all: several picks stay in one open dropdown and search once, when it is closed", async ({ page }) => {
+    await page.goto(BROWSE_PATH);
+    await page.getByRole("button", { name: "All areas" }).click();
+    await page.getByRole("button", { name: "Clear all" }).click();
+    await page.getByLabel("Koramangala", { exact: true }).click();
+    await page.getByLabel("Whitefield", { exact: true }).click();
+
+    // Still open, still on the same page, with both ticks shown.
+    await expect(page.getByLabel("Koramangala", { exact: true })).toBeChecked();
+    await expect(page.getByLabel("Whitefield", { exact: true })).toBeChecked();
+    await expect(page).not.toHaveURL(/[?&]areas=/);
+
+    await page.getByRole("heading", { level: 1 }).click();
+    await expect(page).toHaveURL(/[?&]areas=/);
+    await expect(page.getByRole("button", { name: "2 areas" })).toBeVisible();
     await expect(page.getByText(LISTING_TITLE).first()).toBeVisible();
   });
 
