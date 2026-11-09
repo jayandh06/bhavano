@@ -8,6 +8,7 @@ import { formatInrInWords, groupInr, perUnitTotalPrice } from "@bhavano/types/pr
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 import { ListingPrice } from "./PriceWithWords";
+import { PHOTO_CYCLE_MS } from "../../lib/photoCycle";
 
 /**
  * Mobile counterpart to the web wizard's ListingPreviewCard — same reasoning: the review step
@@ -77,7 +78,7 @@ export function ListingPreviewCard({
     }
     const interval = setInterval(() => {
       setPhotoIndex((i) => (i + 1) % photoUris.length);
-    }, 1200);
+    }, PHOTO_CYCLE_MS);
     return () => clearInterval(interval);
   }, [canCyclePhotos, photoUris.length]);
 

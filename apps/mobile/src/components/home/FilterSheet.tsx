@@ -211,6 +211,8 @@ export const FilterSheet = forwardRef<
   const selectedAreaIds = new Set(staged.areaIds);
   const allAreasSelected = staged.areaIds.length === allAreaIds.length && allAreaIds.length > 0;
   const noAreasSelected = staged.areaIds.length === 0;
+  // Same rule as web: at least one area must stay picked when the city has areas to pick from. "Clear" is only a quick way to start a new pick.
+  const blockedNoArea = cityAreas.length > 1 && noAreasSelected;
   const areaSummary = noAreasSelected
     ? "No areas selected"
     : allAreasSelected
@@ -323,7 +325,7 @@ export const FilterSheet = forwardRef<
                           opacity: noAreasSelected ? 0.4 : 1,
                         }}
                       >
-                        Clear all
+                        {allAreasSelected ? "Clear all" : `Clear (${staged.areaIds.length})`}
                       </Text>
                     </Pressable>
                   </View>
@@ -485,14 +487,15 @@ export const FilterSheet = forwardRef<
           </View>
         )}
 
+        {blockedNoArea && <Text style={{ color: colors.muted, fontSize: 12.5, marginBottom: 8 }}>Pick at least one area to search.</Text>}
         <View style={styles.footerRow}>
           <Pressable onPress={reset} style={[styles.resetButton, { borderColor: colors.border }]}>
             <Text style={{ color: colors.textSoft, fontWeight: "700", fontSize: 14 }}>Reset</Text>
           </Pressable>
           <Pressable
             onPress={apply}
-            disabled={!!priceError}
-            style={[styles.applyButton, { backgroundColor: colors.green, opacity: priceError ? 0.5 : 1 }]}
+            disabled={!!priceError || blockedNoArea}
+            style={[styles.applyButton, { backgroundColor: colors.green, opacity: priceError || blockedNoArea ? 0.5 : 1 }]}
           >
             <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Apply</Text>
           </Pressable>
