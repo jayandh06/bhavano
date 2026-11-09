@@ -12,6 +12,7 @@ import { getAnalyticsSessionId } from "../../lib/analyticsSession";
 import { useGuestSaveHeart } from "../../lib/useGuestSaveHeart";
 import { Icon } from "../Icon";
 import { ListingPrice } from "./PriceWithWords";
+import { PHOTO_CYCLE_MS } from "../../lib/photoCycle";
 
 export function ListingCard({
   item,
@@ -52,7 +53,7 @@ export function ListingCard({
     }
     const interval = setInterval(() => {
       setPhotoIndex((i) => (i + 1) % item.photos.length);
-    }, 1200);
+    }, PHOTO_CYCLE_MS);
     return () => clearInterval(interval);
   }, [canCyclePhotos, isVisible, item.photos.length]);
 
