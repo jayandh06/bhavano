@@ -13,10 +13,12 @@ import type { ParsedSegments } from "@/lib/seoRoute";
 import { Icon } from "./Icon";
 
 /** First filter on any results page — every area of the city checked by default (= no
- * narrowing); uncheck to restrict to specific localities. Navigates immediately on each toggle
- * (matching `BrowseFilterBar`'s click-to-navigate pattern) rather than staging a batch of
- * changes behind an "Apply" button — simpler, and area counts per city are small enough (a
- * couple dozen at most) that per-click navigation stays snappy.
+ * narrowing); uncheck to restrict to specific localities. Ticks, "Select all areas" and "Clear all"
+ * only change a draft while the dropdown is open; nothing is searched until Apply is pressed.
+ * Cancel, Escape, a click outside and the button itself all close it and drop the draft, so a stray
+ * tap can never run a search. It used to navigate on every tick, which re-rendered the page and
+ * closed the dropdown after each one, so picking three areas meant reopening it three times and
+ * running three searches.
  *
  * `?areas=` carries area **ids** (not slugs) — it's a pure filter, never canonical content (the
  * canonical tag always points back at the arealess path), so there's no SEO reason to prefer
@@ -38,11 +40,16 @@ export function AreaFilter({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
+  // The selection being edited while the dropdown is open; null when closed (the URL is the truth then).
+  const [draft, setDraft] = useState<Set<string> | null>(null);
   const [areaQuery, setAreaQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
-  useClickOutside(containerRef, () => setOpen(false));
   const panelRef = useRef<HTMLDivElement>(null);
   useClampToViewport(panelRef, open);
+
+  useClickOutside(containerRef, () => {
+    if (open) cancel();
+  });
 
   if (areas.length <= 1) return null;
 
@@ -55,13 +62,15 @@ export function AreaFilter({
 
   // Selection state is derived straight from the URL (path area, then `?areas=`, else "all") —
   // no local staging, so it can never drift out of sync with what's actually being shown.
-  const selected: Set<string> = pathAreaId
+  const urlSelected: Set<string> = pathAreaId
     ? new Set([pathAreaId])
     : areasParam === AREAS_NONE
       ? new Set()
       : areasParam
         ? new Set(areasParam.split(","))
         : new Set(areas.map((a) => a.id));
+  // What the checkboxes and the label show: the draft while editing, otherwise what the URL says.
+  const selected: Set<string> = open && draft ? draft : urlSelected;
 
   const allSelected = selected.size === areas.length;
   const noneSelected = selected.size === 0;
@@ -124,7 +133,32 @@ export function AreaFilter({
     const next = new Set(selected);
     if (next.has(id)) next.delete(id);
     else next.add(id);
-    navigate(next);
+    setDraft(next);
+  }
+
+  function openPanel() {
+    setDraft(new Set(urlSelected));
+    setOpen(true);
+  }
+
+  function close() {
+    setOpen(false);
+    setDraft(null);
+    setAreaQuery("");
+  }
+
+  /** Closes the dropdown without searching: the draft is dropped. */
+  function cancel() {
+    close();
+  }
+
+  const changed = !!draft && (draft.size !== urlSelected.size || [...draft].some((id) => !urlSelected.has(id)));
+
+  /** Searches once with the draft, then closes. */
+  function apply() {
+    const next = draft;
+    close();
+    if (next && changed) navigate(next);
   }
 
   // Prefix match, not "contains": typing "ko" should narrow to Koramangala and Kodihalli, not
@@ -139,9 +173,15 @@ export function AreaFilter({
   const active = open || !allSelected;
 
   return (
-    <div ref={containerRef} className="relative">
+    <div
+      ref={containerRef}
+      className="relative"
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && open) cancel();
+      }}
+    >
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (open ? cancel() : openPanel())}
         className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-semibold cursor-pointer border ${
           // Sits on the filter row's own surface-alt strip now, so "inactive" needs to be the
           // lighter surface tone (not bg, which would blend into the strip) to still read as a
@@ -178,7 +218,7 @@ export function AreaFilter({
               "these". */}
           <div className="mb-1.5 flex items-center justify-between gap-3 border-b border-border pb-2">
             <button
-              onClick={() => navigate(new Set(areas.map((a) => a.id)))}
+              onClick={() => setDraft(new Set(areas.map((a) => a.id)))}
               disabled={allSelected}
               className={`bg-transparent border-0 p-0 text-green text-[13px] font-bold ${
                 allSelected ? "cursor-default opacity-50" : "cursor-pointer"
@@ -187,7 +227,7 @@ export function AreaFilter({
               Select all areas
             </button>
             <button
-              onClick={() => navigate(new Set())}
+              onClick={() => setDraft(new Set())}
               disabled={noneSelected}
               className={`bg-transparent border-0 p-0 text-[13px] font-bold ${
                 noneSelected ? "cursor-default text-muted opacity-50" : "cursor-pointer text-muted"
@@ -210,6 +250,19 @@ export function AreaFilter({
               Showing {visibleAreas.length} of {areas.length} — clear the box to see all.
             </p>
           )}
+          {/* Pinned to the bottom of the scrolling list so it is always in view, however long the list. */}
+          <div className="sticky -bottom-2 -mx-2 -mb-2 mt-1 flex items-center justify-end gap-2 border-t border-border bg-surface px-2 py-2">
+            <button onClick={cancel} className="cursor-pointer rounded-lg border border-border bg-surface px-3 py-1.5 text-[13px] font-semibold text-text-soft">
+              Cancel
+            </button>
+            <button
+              onClick={apply}
+              disabled={!changed}
+              className={`rounded-lg border-0 bg-green px-3.5 py-1.5 text-[13px] font-bold text-on-green ${changed ? "cursor-pointer" : "cursor-default opacity-50"}`}
+            >
+              Apply{noneSelected ? " · no areas" : allSelected ? " · all areas" : ` · ${selected.size} ${selected.size === 1 ? "area" : "areas"}`}
+            </button>
+          </div>
         </div>
       )}
     </div>
