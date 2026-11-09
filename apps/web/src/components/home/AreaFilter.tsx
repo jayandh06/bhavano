@@ -1,171 +1,59 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import type { Area } from "@bhavano/types";
-import { slugify } from "@bhavano/types/slugify";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { useClampToViewport } from "@/lib/useClampToViewport";
-import { AREAS_NONE } from "@/lib/areaSelection";
-import { buildBrowsePath } from "@/lib/listingPath";
-import { buildHomeUrl } from "@/lib/homeUrl";
-import type { ParsedSegments } from "@/lib/seoRoute";
+import { currentAreaIds } from "@/lib/filterApply";
 import { Icon } from "./Icon";
+import { useFilterSection } from "./FilterSection";
 
-/** First filter on any results page — every area of the city checked by default (= no
- * narrowing); uncheck to restrict to specific localities. Ticks, "Select all areas" and "Clear all"
- * only change a draft while the dropdown is open; nothing is searched until Apply is pressed.
- * Cancel, Escape, a click outside and the button itself all close it and drop the draft, so a stray
- * tap can never run a search. It used to navigate on every tick, which re-rendered the page and
- * closed the dropdown after each one, so picking three areas meant reopening it three times and
- * running three searches.
+/** First filter on any results page — every area of the city checked by default (= no narrowing); uncheck to restrict to specific localities.
  *
- * `?areas=` carries area **ids** (not slugs) — it's a pure filter, never canonical content (the
- * canonical tag always points back at the arealess path), so there's no SEO reason to prefer
- * readable slugs there, and using ids means this never needs its own slug↔id resolution step —
- * the same id round-trips straight into the backend's `areaIds` filter. The single-area *path*
- * case is unrelated and still uses the area's name/slug, same as always. */
-export function AreaFilter({
-  cityName,
-  areas,
-  currentSegments,
-}: {
-  cityName: string;
-  areas: Area[];
-  /** Present on the `/{city}/...` browse pages, where a single selected area becomes a clean
-   * path (`buildBrowsePath`) — omitted on the homepage, which has no path-based area, so every
-   * selection there is `?areas=`. */
-  currentSegments?: ParsedSegments;
-}) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+ * Ticks, "Select all areas" and "Clear" only change the filter section's draft: nothing is searched until the section's **Apply** (and **Reset** clears every
+ * filter), so several filters, and several areas, change with one search. At least one area must stay picked: Apply stays off while none is, and the section says
+ * why. "Clear" empties the list so a new pick can start from nothing; its label shows how many are picked ("Clear (3)"), or "Clear all" when every area is.
+ *
+ * `?areas=` carries area **ids** (not slugs) — it's a pure filter, never canonical content (the canonical tag always points back at the arealess path), so there's
+ * no SEO reason to prefer readable slugs there, and ids round-trip straight into the backend's `areaIds` filter. The single-area *path* case is unrelated and still
+ * uses the area's name/slug (see lib/filterApply.ts, which writes the URL). */
+export function AreaFilter() {
+  const { base, draft, update } = useFilterSection();
+  const areas = base.areas;
   const [open, setOpen] = useState(false);
-  // The selection being edited while the dropdown is open; null when closed (the URL is the truth then).
-  const [draft, setDraft] = useState<Set<string> | null>(null);
   const [areaQuery, setAreaQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+  useClickOutside(containerRef, () => setOpen(false));
   const panelRef = useRef<HTMLDivElement>(null);
   useClampToViewport(panelRef, open);
 
-  useClickOutside(containerRef, () => {
-    if (open) cancel();
-  });
-
   if (areas.length <= 1) return null;
 
-  const areasParam = searchParams.get("areas");
-  // The single-area *path* only carries a slug (it's a URL segment) — resolve it back to the
-  // matching area's id so "selected" can be one consistent id-based set regardless of source.
-  const pathAreaId = currentSegments?.areaSlug
-    ? areas.find((a) => slugify(a.name) === currentSegments.areaSlug)?.id
-    : undefined;
-
-  // Selection state is derived straight from the URL (path area, then `?areas=`, else "all") —
-  // no local staging, so it can never drift out of sync with what's actually being shown.
-  const urlSelected: Set<string> = pathAreaId
-    ? new Set([pathAreaId])
-    : areasParam === AREAS_NONE
-      ? new Set()
-      : areasParam
-        ? new Set(areasParam.split(","))
-        : new Set(areas.map((a) => a.id));
-  // What the checkboxes and the label show: the draft while editing, otherwise what the URL says.
-  const selected: Set<string> = open && draft ? draft : urlSelected;
-
+  // What the checkboxes and the pill show: the draft if the visitor has changed it, else what the URL says.
+  const selected = new Set(draft.areas ?? currentAreaIds(base));
   const allSelected = selected.size === areas.length;
   const noneSelected = selected.size === 0;
   const label = noneSelected
     ? "Pick an area"
     : allSelected
-    ? "All areas"
-    : selected.size === 1
-      ? (areas.find((a) => selected.has(a.id))?.name ?? "1 area")
-      : `${selected.size} areas`;
+      ? "All areas"
+      : selected.size === 1
+        ? (areas.find((a) => selected.has(a.id))?.name ?? "1 area")
+        : `${selected.size} areas`;
 
-  function navigate(nextSelected: Set<string>) {
-    // Unchecking everything used to silently re-check the first area — a control that undoes
-    // what you just did, and shows a result set you didn't ask for. Zero is now a real state
-    // carried as `?areas=none`, and the page answers with "select at least one area to search".
-    const nextNoneSelected = nextSelected.size === 0;
-    const nextAllSelected = nextSelected.size === areas.length;
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("areas");
-
-    if (currentSegments) {
-      const { transactionGroup, category, facetValue } = currentSegments;
-      if (nextNoneSelected) {
-        // The arealess path plus the sentinel — never a single-area path, which would contradict
-        // "nothing selected".
-        const path = buildBrowsePath({ cityName, transactionGroup, category, facetValue });
-        params.set("areas", AREAS_NONE);
-        router.push(`${path}?${params.toString()}`);
-        return;
-      }
-      if (nextAllSelected) {
-        const path = buildBrowsePath({ cityName, transactionGroup, category, facetValue });
-        const qs = params.toString();
-        router.push(qs ? `${path}?${qs}` : path);
-        return;
-      }
-      if (nextSelected.size === 1) {
-        const onlyId = [...nextSelected][0];
-        const areaName = areas.find((a) => a.id === onlyId)?.name;
-        const path = buildBrowsePath({ cityName, transactionGroup, category, facetValue, areaName });
-        const qs = params.toString();
-        router.push(qs ? `${path}?${qs}` : path);
-        return;
-      }
-      const path = buildBrowsePath({ cityName, transactionGroup, category, facetValue });
-      params.set("areas", [...nextSelected].join(","));
-      router.push(`${path}?${params.toString()}`);
-      return;
-    }
-
-    // Homepage — always query-based, whatever the count.
-    router.push(
-      buildHomeUrl(searchParams, {
-        areas: nextNoneSelected ? AREAS_NONE : nextAllSelected ? undefined : [...nextSelected].join(","),
-      }),
-    );
+  function setSelection(next: Set<string>) {
+    update({ areas: [...next] });
   }
 
   function toggle(id: string) {
     const next = new Set(selected);
     if (next.has(id)) next.delete(id);
     else next.add(id);
-    setDraft(next);
+    setSelection(next);
   }
 
-  function openPanel() {
-    setDraft(new Set(urlSelected));
-    setOpen(true);
-  }
-
-  function close() {
-    setOpen(false);
-    setDraft(null);
-    setAreaQuery("");
-  }
-
-  /** Closes the dropdown without searching: the draft is dropped. */
-  function cancel() {
-    close();
-  }
-
-  const changed = !!draft && (draft.size !== urlSelected.size || [...draft].some((id) => !urlSelected.has(id)));
-
-  /** Searches once with the draft, then closes. */
-  function apply() {
-    const next = draft;
-    close();
-    if (next && changed) navigate(next);
-  }
-
-  // Prefix match, not "contains": typing "ko" should narrow to Koramangala and Kodihalli, not
-  // also surface every name with a "ko" buried in the middle — with a couple of hundred areas in
-  // the bigger cities, the front of the name is what someone is actually typing towards.
-  // Filtering starts at MIN_AREA_QUERY_LENGTH; below that the full list is shown, so clearing the
-  // box always returns everything.
+  // Prefix match, not "contains": typing "ko" should narrow to Koramangala and Kodihalli, not also surface every name with a "ko" buried in the middle — with a
+  // couple of hundred areas in the bigger cities, the front of the name is what someone is actually typing towards. Filtering starts at MIN_AREA_QUERY_LENGTH;
+  // below that the full list is shown, so clearing the box always returns everything.
   const trimmedQuery = areaQuery.trim().toLowerCase();
   const filtering = trimmedQuery.length >= MIN_AREA_QUERY_LENGTH;
   const visibleAreas = filtering ? areas.filter((area) => area.name.toLowerCase().startsWith(trimmedQuery)) : areas;
@@ -177,31 +65,26 @@ export function AreaFilter({
       ref={containerRef}
       className="relative"
       onKeyDown={(e) => {
-        if (e.key === "Escape" && open) cancel();
+        if (e.key === "Escape") setOpen(false);
       }}
     >
       <button
-        onClick={() => (open ? cancel() : openPanel())}
+        onClick={() => setOpen((o) => !o)}
         className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-semibold cursor-pointer border ${
-          // Sits on the filter row's own surface-alt strip now, so "inactive" needs to be the
-          // lighter surface tone (not bg, which would blend into the strip) to still read as a
-          // distinct pill; "active" moves to a green tint rather than surface-alt for the same
-          // reason — surface-alt no longer means "selected" once the whole row is that color.
+          // Sits on the filter row's own surface-alt strip, so "inactive" is the lighter surface tone and "active" a green tint.
           active ? "bg-green/10 border-green text-green" : "bg-surface border-border text-text-soft"
         }`}
       >
         <Icon name="pin" /> {label} <Icon name="chevronDown" className="text-muted" />
       </button>
-      {/* max-w-[calc(100vw-2rem)] (same idiom as BrowseFilterBar/TypeFilters/BhkFilter's own
-        * dropdowns, and MegaMenu.tsx) — without it, `left-0` anchoring to the trigger's own left
-        * edge plus an unconstrained width let this run off the right edge of a phone screen
-        * whenever the trigger itself wasn't flush against the viewport's left edge. */}
+      {/* max-w-[calc(100vw-2rem)] (same idiom as the other filter dropdowns and MegaMenu.tsx) — without it, `left-0` anchoring to the trigger's own left edge plus
+        * an unconstrained width let this run off the right edge of a phone screen. */}
       {open && (
         <div
           ref={panelRef}
-          className="absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[240px] max-w-[calc(100vw-2rem)] max-h-[360px] overflow-y-auto">
-          {/* Only worth a search box once the list is long enough to be worth searching —
-              below that it is one more thing between the visitor and the checkboxes. */}
+          className="absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[240px] max-w-[calc(100vw-2rem)] max-h-[360px] overflow-y-auto"
+        >
+          {/* Only worth a search box once the list is long enough to be worth searching — below that it is one more thing between the visitor and the checkboxes. */}
           {areas.length >= AREA_SEARCH_THRESHOLD && (
             <input
               value={areaQuery}
@@ -211,31 +94,25 @@ export function AreaFilter({
               className="w-full box-border mb-2 rounded-lg border border-border bg-surface px-2.5 py-2 text-[13px] text-text outline-none"
             />
           )}
-          {/* Both directions, side by side. "Select all areas" existed on its own, which left
-              the empty state reachable only by unchecking every box one at a time — absurd in a
-              city with a hundred areas. Both act on every area in the city, not just the ones
-              the search box is currently showing, which is why they say "areas" rather than
-              "these". */}
+          {/* Both directions, side by side. Both act on every area in the city, not just the ones the search box is currently showing, which is why they say "areas"
+            * rather than "these". The count on Clear tells the visitor how many are picked without counting ticks. */}
           <div className="mb-1.5 flex items-center justify-between gap-3 border-b border-border pb-2">
             <button
-              onClick={() => setDraft(new Set(areas.map((a) => a.id)))}
+              onClick={() => setSelection(new Set(areas.map((a) => a.id)))}
               disabled={allSelected}
-              className={`bg-transparent border-0 p-0 text-green text-[13px] font-bold ${
-                allSelected ? "cursor-default opacity-50" : "cursor-pointer"
-              }`}
+              className={`bg-transparent border-0 p-0 text-green text-[13px] font-bold ${allSelected ? "cursor-default opacity-50" : "cursor-pointer"}`}
             >
               Select all areas
             </button>
             <button
-              onClick={() => setDraft(new Set())}
+              onClick={() => setSelection(new Set())}
               disabled={noneSelected}
-              className={`bg-transparent border-0 p-0 text-[13px] font-bold ${
-                noneSelected ? "cursor-default text-muted opacity-50" : "cursor-pointer text-muted"
-              }`}
+              className={`bg-transparent border-0 p-0 text-[13px] font-bold ${noneSelected ? "cursor-default text-muted opacity-50" : "cursor-pointer text-muted"}`}
             >
-              Clear all
+              {allSelected ? "Clear all" : `Clear (${selected.size})`}
             </button>
           </div>
+          {noneSelected && <p className="m-0 mb-1 px-1 text-[12px] text-muted">Pick at least one area, then press Apply.</p>}
           {filtering && visibleAreas.length === 0 && (
             <p className="m-0 px-1 py-2 text-[12.5px] text-muted">No area starts with “{areaQuery.trim()}”.</p>
           )}
@@ -250,27 +127,13 @@ export function AreaFilter({
               Showing {visibleAreas.length} of {areas.length} — clear the box to see all.
             </p>
           )}
-          {/* Pinned to the bottom of the scrolling list so it is always in view, however long the list. */}
-          <div className="sticky -bottom-2 -mx-2 -mb-2 mt-1 flex items-center justify-end gap-2 border-t border-border bg-surface px-2 py-2">
-            <button onClick={cancel} className="cursor-pointer rounded-lg border border-border bg-surface px-3 py-1.5 text-[13px] font-semibold text-text-soft">
-              Cancel
-            </button>
-            <button
-              onClick={apply}
-              disabled={!changed}
-              className={`rounded-lg border-0 bg-green px-3.5 py-1.5 text-[13px] font-bold text-on-green ${changed ? "cursor-pointer" : "cursor-default opacity-50"}`}
-            >
-              Apply{noneSelected ? " · no areas" : allSelected ? " · all areas" : ` · ${selected.size} ${selected.size === 1 ? "area" : "areas"}`}
-            </button>
-          </div>
         </div>
       )}
     </div>
   );
 }
 
-/** Filtering starts here, matching the threshold used by the admin dashboard's searchable
- * selects and UserPicker, so every type-ahead in the product behaves the same. */
+/** Filtering starts here, matching the threshold used by the admin dashboard's searchable selects and UserPicker, so every type-ahead in the product behaves the same. */
 const MIN_AREA_QUERY_LENGTH = 2;
 
 /** Below this many areas the list is scannable and a search box is just clutter. */

@@ -1,95 +1,68 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import type { ListingCategory } from "@bhavano/types";
-import type { HomeTabValue } from "@/lib/homeCategories";
-import { buildFilterUrl } from "@/lib/filterUrl";
-import { assetsForIntent, intentOffersAssets } from "@/lib/assetFilters";
-// From seoRoute, not browseRoute: the latter re-exports these but also pulls in lib/bff,
-// which imports next/headers — a client component cannot reach that module graph.
-import { CATEGORY_LABELS, segmentsForHomeCategory } from "@/lib/seoRoute";
+import { assetsForIntent } from "@/lib/assetFilters";
+// From seoRoute, not browseRoute: the latter re-exports these but also pulls in lib/bff, which imports next/headers — a client component cannot reach that module graph.
+import { CATEGORY_LABELS } from "@/lib/seoRoute";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { useClampToViewport } from "@/lib/useClampToViewport";
 import { buttonClass } from "./BrowseFilterBar";
 import { Icon } from "./Icon";
-
-/** Where a given (intent, asset) pair lives. The intent supplies the base segments — which for
- * PG/Furniture/Interiors already carry the category — and a chosen asset overrides that category
- * only where the intent actually offers a choice. */
-function urlForSelection(params: {
-  intent: HomeTabValue;
-  asset: ListingCategory | undefined;
-  cityName?: string;
-  areaName?: string;
-  searchParams: URLSearchParams;
-}): string {
-  const { intent, asset, cityName, areaName, searchParams } = params;
-  const base = segmentsForHomeCategory(intent);
-  return buildFilterUrl({
-    cityName,
-    areaName,
-    group: base.transactionGroup,
-    asset: intentOffersAssets(intent) ? asset : base.category,
-    searchParams,
-  });
-}
+import { useFilterSection } from "./FilterSection";
 
 /**
  * The asset type under the chosen intent.
  *
- * Renders nothing when the intent has no assets to choose between — PG, Furniture and Interiors
- * *are* the asset, so a dropdown there would either be empty or, as it was before this, offer
- * houses and apartments the page cannot show.
+ * Renders nothing when the intent has no assets to choose between — PG, Furniture and Interiors *are* the asset, so a dropdown there would either be empty or, as it
+ * was before this, offer houses and apartments the page cannot show. The pick only changes the filter section's draft; Apply writes the new path (lib/filterApply.ts).
  *
- * "All types" stays a real, valid, listing-showing state: `/bengaluru` and `/bengaluru/buy` are
- * indexable landing pages Googlebot cannot click its way out of, and at current inventory the
- * mixed grid is often the only non-empty view in a city. See
- * docs/plans/contextual-search-filters.md.
+ * "All types" stays a real, valid, listing-showing state: `/bengaluru` and `/bengaluru/buy` are indexable landing pages Googlebot cannot click its way out of, and at
+ * current inventory the mixed grid is often the only non-empty view in a city. See docs/plans/contextual-search-filters.md.
  */
-export function AssetTypeFilter({
-  cityName,
-  areaName,
-  activeIntent,
-  activeAsset,
-}: {
-  cityName?: string;
-  areaName?: string;
-  activeIntent: HomeTabValue;
-  activeAsset?: ListingCategory;
-}) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+export function AssetTypeFilter() {
+  const { base, draft, update } = useFilterSection();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
   const panelRef = useRef<HTMLDivElement>(null);
   useClampToViewport(panelRef, open);
 
-  const options = assetsForIntent(activeIntent);
+  const options = assetsForIntent(base.intent);
   if (options.length === 0) return null;
 
-  const label = activeAsset ? (CATEGORY_LABELS[activeAsset] ?? "All types") : "All types";
-
-  function select(asset: ListingCategory | undefined) {
-    setOpen(false);
-    router.push(urlForSelection({ intent: activeIntent, asset, cityName, areaName, searchParams }));
-  }
+  const asset = draft.asset ? draft.asset.asset : base.category;
+  const label = asset ? (CATEGORY_LABELS[asset] ?? "All types") : "All types";
 
   return (
-    <div ref={containerRef} className="relative">
-      <button onClick={() => setOpen((o) => !o)} className={buttonClass(open || activeAsset !== undefined)}>
+    <div
+      ref={containerRef}
+      className="relative"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") setOpen(false);
+      }}
+    >
+      <button onClick={() => setOpen((o) => !o)} className={buttonClass(open || asset !== undefined)}>
         <Icon name="building" /> {label} <Icon name="chevronDown" className="text-muted" />
       </button>
       {open && (
         <div ref={panelRef} className={`${dropdownClass} max-h-[320px] overflow-y-auto`}>
-          <Option label="All types" active={activeAsset === undefined} onClick={() => select(undefined)} />
+          <Option
+            label="All types"
+            active={asset === undefined}
+            onClick={() => {
+              update({ asset: { asset: undefined } });
+              setOpen(false);
+            }}
+          />
           {options.map((category) => (
             <Option
               key={category}
               label={CATEGORY_LABELS[category]}
-              active={activeAsset === category}
-              onClick={() => select(category)}
+              active={asset === category}
+              onClick={() => {
+                update({ asset: { asset: category } });
+                setOpen(false);
+              }}
             />
           ))}
         </div>
@@ -102,18 +75,14 @@ function Option({ label, active, onClick }: { label: string; active: boolean; on
   return (
     <button
       onClick={onClick}
-      className={`block w-full text-left bg-transparent border-0 cursor-pointer rounded-md px-2.5 py-2 text-[13px] ${
-        active ? "text-green font-bold" : "text-text"
-      }`}
+      className={`block w-full text-left bg-transparent border-0 cursor-pointer rounded-md px-2.5 py-2 text-[13px] ${active ? "text-green font-bold" : "text-text"}`}
     >
       {label}
     </button>
   );
 }
 
-// max-w-[calc(100vw-2rem)] — same fix as BrowseFilterBar's own dropdownClass, see its comment:
-// without a cap, `left-0` anchoring plus an unconstrained shrink-to-fit width let this run off
-// the right edge of a phone screen whenever the trigger wasn't flush against the viewport's own
-// left edge.
+// max-w-[calc(100vw-2rem)] — same fix as BrowseFilterBar's own dropdownClass, see its comment: without a cap, `left-0` anchoring plus an unconstrained shrink-to-fit width let
+// this run off the right edge of a phone screen whenever the trigger wasn't flush against the viewport's own left edge.
 const dropdownClass =
   "absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[200px] max-w-[calc(100vw-2rem)]";
