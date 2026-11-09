@@ -337,7 +337,7 @@ export default async function HomePage({
           enabled={activeTab.value !== "all" || (!!resolvedCity && cityAreas.length > 1)}
           defaultOpen={noAreaSelected}
         >
-          <div className="mb-3 flex justify-end">
+          <div className="mb-3 flex justify-start">
             <FiltersButton />
           </div>
           <FilterPanel>

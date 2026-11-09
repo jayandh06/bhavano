@@ -207,17 +207,18 @@ export async function BrowseListingsView({
           // With no area picked the panel is the only way forward, so it starts open.
           defaultOpen={noAreaSelected}
         >
-          {/* Count and the Filters / Sort controls share the line directly above the grid: the count reflects whatever the filters have narrowed it to, and sort is
-            * the one control that acts on the results rather than defining them. */}
+          {/* Filters, the count and Sort share the line directly above the grid: the count reflects whatever the filters have narrowed it to, and sort is the one control that
+            * acts on the results rather than defining them. */}
           {!noAreaSelected && (
             <div className="flex items-center justify-between gap-3 mb-3">
-              <span className="text-[13px] text-muted">
-                {listingsPage.total} {listingsPage.total === 1 ? "listing" : "listings"}
-              </span>
-              <div className="flex items-center gap-2">
+              {/* Filters and the count on the left, Sort alone on the right: the panel opens under the Filters button, and filtering (which listings) is a different job from sorting (what order). */}
+              <div className="flex items-center gap-3">
                 <FiltersButton />
-                <SortDropdown activeSort={query.sort} />
+                <span className="text-[13px] text-muted">
+                  {listingsPage.total} {listingsPage.total === 1 ? "listing" : "listings"}
+                </span>
               </div>
+              <SortDropdown activeSort={query.sort} />
             </div>
           )}
           <FilterPanel>
