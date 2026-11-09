@@ -19,6 +19,7 @@ interface FilterSectionValue {
   /** Whether the filter panel is showing (the Filters button toggles it). */
   open: boolean;
   toggle: () => void;
+  close: () => void;
   /** How many filters the URL applies right now, for the button's "Filters (3)". */
   count: number;
   /** False when this page has nothing to filter (the All tab with no city), so neither the button nor the panel render. */
@@ -84,6 +85,7 @@ export function FilterProvider({
     clearDraft: () => setState({ urlKey, draft: {} }),
     open,
     toggle: () => setOpen((o) => !o),
+    close: () => setOpen(false),
     count: activeFilterCount(base),
     enabled,
   };
@@ -113,7 +115,7 @@ export function FiltersButton() {
 /** The panel that opens under the Filters button: the filter dropdowns (children) and one **Apply** and one **Reset** for all of them. Renders nothing while closed. */
 export function FilterPanel({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { base, draft, clearDraft, open, enabled } = useFilterSection();
+  const { base, draft, clearDraft, open, close, enabled } = useFilterSection();
   if (!enabled || !open) return null;
 
   const currentUrl = buildAppliedUrl(base, {});
@@ -126,12 +128,16 @@ export function FilterPanel({ children }: { children: ReactNode }) {
 
   function apply() {
     if (!dirty || issue) return;
+    // The panel closes with the search, so the results are in view; the button's count says what is applied. (A path change remounts the page anyway, which would
+    // close it only sometimes.)
     clearDraft();
+    close();
     router.push(appliedUrl);
   }
 
   function reset() {
     clearDraft();
+    close();
     if (resetUrl !== currentUrl) router.push(resetUrl);
   }
 

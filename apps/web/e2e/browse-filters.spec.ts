@@ -72,9 +72,15 @@ test.describe("browse filters", () => {
 
     await apply(page).click();
     await expect(page).toHaveURL(/[?&]areas=/);
+    // Apply closes the panel; the button's count says something is applied.
+    await expect(filtersButton(page)).toHaveText("Filters (1)");
+    await expect(apply(page)).toHaveCount(0);
 
+    await openFilters(page);
     await page.getByRole("button", { name: "Reset", exact: true }).click();
     await expect(page).not.toHaveURL(/[?&]areas=/);
+    await expect(filtersButton(page)).toHaveText("Filters");
+    await openFilters(page);
     await expect(page.getByRole("button", { name: "All areas" })).toBeVisible();
   });
 
@@ -151,7 +157,9 @@ test.describe("browse filters", () => {
     await expect(page).toHaveURL(/[?&]furnished=semi/);
     await expect(filtersButton(page)).toHaveText("Filters (1)");
 
-    // Hiding the panel keeps the applied filters; Reset (in the panel) clears them and the count.
+    // Apply closed the panel; the applied filters stay. Reset (in the panel) clears them and the count.
+    await expect(apply(page)).toHaveCount(0);
+    await openFilters(page);
     await page.getByRole("button", { name: "Reset", exact: true }).click();
     await expect(filtersButton(page)).toHaveText("Filters");
   });
