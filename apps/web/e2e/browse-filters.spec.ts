@@ -54,6 +54,9 @@ test.describe("browse filters", () => {
 
     await apply(page).click();
     await expect(page).toHaveURL(/[?&]areas=/);
+    // Apply closed the panel: the button counts the apartment type (already chosen on this page) and the areas.
+    await expect(filtersButton(page)).toHaveText("Filters (2)");
+    await openFilters(page);
     await expect(page.getByRole("button", { name: "2 areas" })).toBeVisible();
     await expect(page.getByText(LISTING_TITLE).first()).toBeVisible();
   });
@@ -73,7 +76,7 @@ test.describe("browse filters", () => {
     await apply(page).click();
     await expect(page).toHaveURL(/[?&]areas=/);
     // Apply closes the panel; the button's count says something is applied.
-    await expect(filtersButton(page)).toHaveText("Filters (1)");
+    await expect(filtersButton(page)).toHaveText("Filters (2)");
     await expect(apply(page)).toHaveCount(0);
 
     await openFilters(page);
@@ -148,16 +151,17 @@ test.describe("browse filters", () => {
   test("the filter panel is hidden until Filters is pressed, and the button counts applied filters", async ({ page }) => {
     await page.goto(BROWSE_PATH);
     await expect(page.getByRole("button", { name: "Apply", exact: true })).toHaveCount(0);
-    await expect(filtersButton(page)).toHaveText("Filters");
+    // The page already has an asset type (apartment) chosen, and that counts as one filter.
+    await expect(filtersButton(page)).toHaveText("Filters (1)");
 
     await openFilters(page);
     await page.getByRole("button", { name: "Furnishing" }).click();
     await page.getByText("Semi-furnished", { exact: true }).click();
     await apply(page).click();
     await expect(page).toHaveURL(/[?&]furnished=semi/);
-    await expect(filtersButton(page)).toHaveText("Filters (1)");
+    await expect(filtersButton(page)).toHaveText("Filters (2)");
 
-    // Apply closed the panel; the applied filters stay. Reset (in the panel) clears them and the count.
+    // Apply closed the panel; the applied filters stay. Reset (in the panel) clears them, the apartment type too, and the count.
     await expect(apply(page)).toHaveCount(0);
     await openFilters(page);
     await page.getByRole("button", { name: "Reset", exact: true }).click();
