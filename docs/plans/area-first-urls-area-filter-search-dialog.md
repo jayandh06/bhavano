@@ -138,6 +138,6 @@ logic; a manual click-through in a browser is the recommended final check before
 live preview → click-outside/Escape dismiss) and the `AreaFilter` checkbox interactions — worth a
 manual pass before considering this fully shipped, since neither can be exercised via `curl`.
 
-## Update 9 Nov 2026: the area dropdown applies when it closes
+## Update 9 Nov 2026: the area dropdown has Apply and Cancel
 
-`AreaFilter` used to navigate on every tick, which re-rendered the page and closed the dropdown after each one: after "Clear all", picking three areas meant reopening it three times and running three searches. Ticks, "Select all areas" and "Clear all" now only edit a local draft; the search runs once when the dropdown closes (a click outside it, or on its button) and only if the selection differs from the URL. The label and checkboxes show the draft while open. Covered by `e2e/browse-filters.spec.ts`. The BHK and other filter dropdowns still navigate per click.
+`AreaFilter` used to navigate on every tick, which re-rendered the page and closed the dropdown after each one: after "Clear all", picking three areas meant reopening it three times and running three searches. Ticks, "Select all areas" and "Clear all" now only edit a local draft. **Apply** (pinned to the bottom of the scrolling list, showing the count, disabled until something changed) runs the one search. **Cancel**, Escape, a click outside and the trigger button all close the dropdown and drop the draft, so a stray tap never searches; reopening shows the applied selection. Chosen over applying on outside click because a click away should neither run a search nor silently keep a draft. Covered by `e2e/browse-filters.spec.ts`. The BHK and other filter dropdowns still navigate per click.
