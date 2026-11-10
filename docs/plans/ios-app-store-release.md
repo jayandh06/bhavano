@@ -333,3 +333,25 @@ the app agree with the metadata. Later sections were renumbered.
 
 **Also check while there:** the in-app purchase products are attached to this version and "Ready to Submit" (see the 2026-10-31 notes), and
 the login setting is still "Allowed for everyone" for the reviewer's Apple ID (to be put back after approval).
+
+## 2026-11-10: build 1.2.0 (22) rejected again, 3.1.1 only (iPad Air 11-inch M3)
+
+Apple: "the app accesses digital content purchased outside the app, such as subscriptions, but that content isn't available to purchase using
+In-App Purchase." Same binary as the 2026-10-31 rejection, so no code has changed between the two reviews.
+
+**Code audit (2026-11-10): no iOS path sells or links out for a plan.** `app/plans.tsx` opens `IosSubscribeSheet` on iOS for all three tiers
+(Bhavano Plus 1/6/12 months, Seller slot pack, Agent/Broker Pro), with the App Store price, auto-renewal notice, Terms/Privacy links and Restore
+Purchases; `SubscribeModal` (Razorpay) mounts on Android only. Boosts and contact credits use IAP sheets too. The only things iOS cannot buy are
+the listing publish fee and multi-unit Agent Pro, and neither is offered or linked.
+
+**So the likely cause is App Store Connect, not the binary:** if a product is not "Ready to Submit" and attached to the version, or is missing a
+price or localisation, `fetchProducts` returns nothing and the sheet shows "Unavailable" with a disabled button. A reviewer then sees plans that
+cannot be bought in the app. Check every id in `packages/types/src/appleProducts.ts` (`plus.1m/6m/12m`, `sellerslots.1m`, `agentpro.1m`, the six
+`boost.*` ids, `credits.pack`) and the subscription group's localisation and review screenshot. Also check the Paid Applications Agreement is Active.
+
+**Reply to send in App Store Connect:**
+> The app sells all of its subscriptions through In-App Purchase on iOS: Bhavano Plus (1, 6 and 12 months), Seller Slot Pack and Agent/Broker Pro
+> (1 month), plus consumable Featured-ad boosts and contact-reveal credits. To see them: open the menu > Plans & upgrades > "Choose ..." on any
+> plan, which opens the StoreKit purchase sheet with Restore Purchases. The iOS app has no link to, or price for, any outside payment. Plans
+> bought on our website or Android app are usable on the same account, which guideline 3.1.3(b) allows because they are also purchasable in the
+> app. Please confirm the subscriptions are attached to this submission; we can resubmit with a new build if needed.
