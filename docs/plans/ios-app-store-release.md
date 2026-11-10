@@ -355,3 +355,11 @@ cannot be bought in the app. Check every id in `packages/types/src/appleProducts
 > plan, which opens the StoreKit purchase sheet with Restore Purchases. The iOS app has no link to, or price for, any outside payment. Plans
 > bought on our website or Android app are usable on the same account, which guideline 3.1.3(b) allows because they are also purchasable in the
 > app. Please confirm the subscriptions are attached to this submission; we can resubmit with a new build if needed.
+
+**Resolved 2026-11-10 (App Store Connect, no code change):** the cause was configuration. All five subscriptions and their group were
+"Developer Rejected" and the seven consumables did not exist, so StoreKit returned no products to the reviewer. Fixed by creating the
+consumables (`boost.property|other.7d/15d/30d`, `credits.pack`), cancelling the rejected submission (so 1.2.0 became editable), adding 1.2.0 to a
+draft submission together with the 7 in-app purchases, the 5 subscriptions and the **Bhavano Plus subscription group** (Apple refuses to submit
+a subscription without its group), and submitting. Apple accepted 14 items for review (same build 1.2.0 (22)). Lessons: a rejected version
+cannot take new in-app purchases until its submission is cancelled, and a subscription group has to be added from its own page's
+"Add for Review" menu.
