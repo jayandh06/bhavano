@@ -728,6 +728,8 @@ export interface PostFunnelQuery {
   entry?: PostEntrySource;
   platform?: "web" | "app";
   loggedIn?: "yes" | "no";
+  /** Where the visit's IP geolocates: `other` is every non-India session, including ones with no geolocation. */
+  country?: "india" | "other";
 }
 
 export function fetchPostFunnel(accessToken: string, query: PostFunnelQuery = {}): Promise<PostFunnelDto> {

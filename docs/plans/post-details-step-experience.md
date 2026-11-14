@@ -111,6 +111,8 @@ Baseline first (Phase 0). Do not promise a number until we have it.
 
 ## 6. Decisions
 1. **Decided: keep all sections open** and add required-left guidance, jump-to-first-problem and per-field validation instead of collapsing.
+   **Being revisited (2026-11-14):** see [`post-ad-simpler-form.md`](post-ad-simpler-form.md), which proposes essentials first with the optional
+   fields collapsed, photos and video in one block, behind a flag. Not decided yet.
 2. Open: is it acceptable to ask for photos earlier in the step (Phase 2, item 8), or should the order stay as it is?
 3. Open: mobile as three screens (recommended) or one scrolling screen with the sticky progress bar only?
 4. Open: plan the paste-your-ad idea (Phase 4) in detail now, or leave it for later?

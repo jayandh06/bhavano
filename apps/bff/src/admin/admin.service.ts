@@ -172,6 +172,23 @@ function postFunnelStepForPath(path: string): string | null {
   return null;
 }
 
+interface PostFunnelVisitInfo {
+  isApp: boolean;
+  isIndia: boolean;
+}
+
+/** Whether a session's visit passes the funnel's platform and country filters. `country: 'other'` is every
+ * session that is not India, including ones with no geolocation or no `Visit` row. */
+function visitMatches(
+  visit: PostFunnelVisitInfo | undefined,
+  platform: PostFunnelQueryDto['platform'],
+  country: PostFunnelQueryDto['country'],
+): boolean {
+  if (platform && (platform === 'app') !== (visit?.isApp ?? false)) return false;
+  if (country && (country === 'india') !== (visit?.isIndia ?? false)) return false;
+  return true;
+}
+
 /** `YYYY-MM-DD` for the IST calendar day a UTC instant falls on — a fixed +05:30 shift rather
  * than `Intl`/a timezone library, since IST has no DST to account for. Used by
  * `getNotificationDailySummary` to bucket `ListingNotificationLog`/`UserNotificationLog` rows by
@@ -1342,7 +1359,7 @@ export class AdminService {
    * where sessions that left stopped. Built from the `/post/field` events the wizards write
    * (docs/plans/post-details-step-experience.md, Phase 0). `platform` and the date range work as in getPostFunnel. */
   async getPostDetailsBlockers(query: PostFunnelQueryDto): Promise<PostDetailsBlockersDto> {
-    const { from, to, platform } = query;
+    const { from, to, platform, country } = query;
     const range = from || to ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } } : {};
     const [events, detailsViews, previewViews] = await Promise.all([
       this.prisma.pageView.findMany({
@@ -1362,14 +1379,10 @@ export class AdminService {
     ]);
 
     let keep: (sessionId: string) => boolean = () => true;
-    if (platform) {
+    if (platform || country) {
       const ids = [...new Set([...events, ...detailsViews, ...previewViews].map((r) => r.sessionId))];
-      const visits = await this.prisma.visit.findMany({
-        where: { sessionId: { in: ids } },
-        select: { sessionId: true, deviceType: true },
-      });
-      const isApp = new Map(visits.map((v) => [v.sessionId, v.deviceType === 'mobile_app']));
-      keep = (sessionId) => (platform === 'app') === (isApp.get(sessionId) ?? false);
+      const visits = await this.visitInfoBySessionId(ids);
+      keep = (sessionId) => visitMatches(visits.get(sessionId), platform, country);
     }
 
     const previewSessionIds = new Set(previewViews.filter((r) => keep(r.sessionId)).map((r) => r.sessionId));
@@ -1385,8 +1398,20 @@ export class AdminService {
     };
   }
 
+  /** What the post-funnel filters need to know about each session's visit: whether it was the native app and
+   * whether its IP geolocates to India. A session with no `Visit` row counts as neither the app nor India. */
+  private async visitInfoBySessionId(sessionIds: string[]): Promise<Map<string, PostFunnelVisitInfo>> {
+    const visits = await this.prisma.visit.findMany({
+      where: { sessionId: { in: sessionIds } },
+      select: { sessionId: true, deviceType: true, ipCountry: true },
+    });
+    return new Map(
+      visits.map((v) => [v.sessionId, { isApp: v.deviceType === 'mobile_app', isIndia: v.ipCountry === 'India' }]),
+    );
+  }
+
   async getPostFunnel(query: PostFunnelQueryDto): Promise<PostFunnelDto> {
-    const { from, to, entry, platform, loggedIn } = query;
+    const { from, to, entry, platform, loggedIn, country } = query;
 
     const pageViews = await this.prisma.pageView.findMany({
       where: {
@@ -1404,16 +1429,7 @@ export class AdminService {
     // Only fetched when actually needed — every other filter is answerable from `pageViews`
     // alone. "mobile_app" is Visit.deviceType's own value for the native app (see that column's
     // doc comment) — there's no separate boolean for it.
-    const isAppBySessionId = platform
-      ? new Map(
-          (
-            await this.prisma.visit.findMany({
-              where: { sessionId: { in: sessionIds } },
-              select: { sessionId: true, deviceType: true },
-            })
-          ).map((v) => [v.sessionId, v.deviceType === 'mobile_app']),
-        )
-      : null;
+    const visitBySessionId = platform || country ? await this.visitInfoBySessionId(sessionIds) : null;
 
     interface SessionInfo {
       steps: Set<string>;
@@ -1441,10 +1457,7 @@ export class AdminService {
     const matchesFilters = (sessionId: string, info: SessionInfo): boolean => {
       if (entry && info.entry !== entry) return false;
       if (loggedIn && info.loggedIn !== (loggedIn === 'yes')) return false;
-      if (platform) {
-        const isApp = isAppBySessionId?.get(sessionId) ?? false;
-        if ((platform === 'app') !== isApp) return false;
-      }
+      if (visitBySessionId && !visitMatches(visitBySessionId.get(sessionId), platform, country)) return false;
       return true;
     };
 

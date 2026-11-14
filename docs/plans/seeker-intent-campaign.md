@@ -250,3 +250,12 @@ Coverage is unchanged. Add or remove a seeker negative **once, in the list** (Ad
 the list exists. The campaigns' negative brand list is a separate exclusion and was not touched. Rollback: `python ads_seeker_negative_list.py --rollback` puts the individual negatives back
 on both campaigns and deletes the list. The owner-side campaigns still have individual negatives (23 competitor phrases plus "nobroker" on 9 campaigns); a second shared list for them is an option.
 
+
+### Both seeker campaigns paused, 2026-11-10
+`Metro-Seeker Intent` (24297610212) and `Other-Metro-Seeker Intent` (24392228394) were set to PAUSED (status read back from the account). Nothing else changed: budgets, bidding, the shared
+negative list and the poster campaigns are untouched.
+**Why:** 31 Oct to 9 Nov the two spent about Rs 1,421 (Rs 992 + Rs 429) for 684 clicks and 3 conversions (1 + 2), roughly Rs 475 per conversion against Rs 101-107 for the Rent Out, Sell and
+Lease campaigns. The keywords that took the money were generic "rent in <city>" terms ("rental homes in chennai" Rs 221, 101 clicks, 0 conversions); 94% of spend was mobile. The cheap
+clicks do not turn into "Save a search" conversions, which is the goal the pilot was built to optimise for.
+**To resume:** re-enable both campaigns in the Ads UI. Before doing so, rethink the conversion goal (it is too rare for Smart Bidding to learn from) and the generic city keywords.
+**Check after about a week:** re-run the 10-day report on the poster campaigns alone and look at Boost purchase volume before touching the Rs 100 target CPA or the Rs 25 CPC ceiling.

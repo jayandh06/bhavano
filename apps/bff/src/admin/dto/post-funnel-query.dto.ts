@@ -7,6 +7,12 @@ export type PostFunnelPlatform = (typeof PLATFORM_VALUES)[number];
 const LOGGED_IN_VALUES = ['yes', 'no'] as const;
 export type PostFunnelLoggedIn = (typeof LOGGED_IN_VALUES)[number];
 
+/** `india` keeps sessions whose IP geolocates to India; `other` is the complement (every other country,
+ * and sessions with no geolocation), so the two always add up to "all". See docs/plans/post-ad-simpler-form.md
+ * section 2c for why: much of `/post`'s non-Indian traffic never chooses a category. */
+const COUNTRY_VALUES = ['india', 'other'] as const;
+export type PostFunnelCountry = (typeof COUNTRY_VALUES)[number];
+
 /** `from`/`to` arrive as full ISO strings with an offset already applied by the admin page, same
  * convention as ListPageVisitsDto. */
 export class PostFunnelQueryDto {
@@ -33,4 +39,9 @@ export class PostFunnelQueryDto {
   @IsOptional()
   @IsIn(LOGGED_IN_VALUES)
   loggedIn?: PostFunnelLoggedIn;
+
+  /** Where the visit's IP geolocates (`Visit.ipCountry`). Omit for every country combined. */
+  @IsOptional()
+  @IsIn(COUNTRY_VALUES)
+  country?: PostFunnelCountry;
 }

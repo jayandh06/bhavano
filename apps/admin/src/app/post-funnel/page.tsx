@@ -16,6 +16,14 @@ const PLATFORM_OPTIONS: { value: PostFunnelQuery["platform"] | "any"; label: str
   { value: "app", label: "Mobile app" },
 ];
 
+// Much of `/post`'s traffic from outside India never chooses a category, which makes the top of the funnel
+// misleading; see docs/plans/post-ad-simpler-form.md section 2c.
+const COUNTRY_OPTIONS: { value: PostFunnelQuery["country"] | "any"; label: string }[] = [
+  { value: "any", label: "Any country" },
+  { value: "india", label: "India" },
+  { value: "other", label: "Outside India (or unknown)" },
+];
+
 const LOGGED_IN_OPTIONS: { value: PostFunnelQuery["loggedIn"] | "any"; label: string }[] = [
   { value: "any", label: "Logged in or not" },
   { value: "yes", label: "Logged in at that step" },
@@ -40,6 +48,8 @@ export default async function PostFunnelPage({ searchParams }: { searchParams: P
   const platform = rawPlatform && rawPlatform !== "any" ? (rawPlatform as PostFunnelQuery["platform"]) : undefined;
   const rawLoggedIn = str(sp.loggedIn);
   const loggedIn = rawLoggedIn && rawLoggedIn !== "any" ? (rawLoggedIn as PostFunnelQuery["loggedIn"]) : undefined;
+  const rawCountry = str(sp.country);
+  const country = rawCountry && rawCountry !== "any" ? (rawCountry as PostFunnelQuery["country"]) : undefined;
 
   const [result, details] = await Promise.all([
     fetchPostFunnel(accessToken, {
@@ -48,9 +58,10 @@ export default async function PostFunnelPage({ searchParams }: { searchParams: P
       entry,
       platform,
       loggedIn,
+      country,
     }),
-    // The field-level view of Details. Only the date range and platform apply to it.
-    fetchPostDetailsBlockers(accessToken, { from: istDayStart(from), to: istDayEnd(to), platform }).catch(() => null),
+    // The field-level view of Details. Only the date range, platform and country apply to it.
+    fetchPostDetailsBlockers(accessToken, { from: istDayStart(from), to: istDayEnd(to), platform, country }).catch(() => null),
   ]);
 
   const topOfFunnel = result.steps[0]?.sessions ?? 0;
@@ -97,6 +108,16 @@ export default async function PostFunnelPage({ searchParams }: { searchParams: P
             <Field label="Platform">
               <SelectField name="platform" defaultValue={platform ?? "any"} style={selectStyle}>
                 {PLATFORM_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectField>
+            </Field>
+
+            <Field label="Country">
+              <SelectField name="country" defaultValue={country ?? "any"} style={selectStyle}>
+                {COUNTRY_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
