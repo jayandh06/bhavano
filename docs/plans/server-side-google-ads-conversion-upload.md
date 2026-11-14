@@ -244,3 +244,16 @@ itself had any test coverage before this.
    "Post ad success (offline)" are showing conversions, and the old `WEBPAGE` actions have gone
    quiet (proof the GTM pause actually took effect, not just the upload path working in
    parallel).
+
+## Phase 2 value is deliberately ignored by Google Ads (decision 2026-11-10)
+The `value`/`currency` that `runPostLiveSideEffects` uploads with "Post ad success" (`post-ad-value.ts`, Rs 190-2,339 by category/transaction type) never shows up in Google Ads, and that is
+**intentional, not a bug to fix.** The Post ad success action (id `7750575968`) has `always_use_default_value = true` with a default of Rs 0, so Google discards the uploaded value;
+Boost purchase (`7781548730`) has it off, which is why only real purchases carry value. Checked 2026-11-10: Post ad success value was Rs 0 on every day from 2026-10-10 to 2026-11-09.
+
+**Why we are not switching it on:** the figure is a modelled expected revenue per poster, not money received. Counting it would (a) credit revenue to posts that never feature or pay,
+(b) double count with Boost purchase, whose real payments the estimate was built from, and (c) inflate conversion value and return on spend in the Ads UI (30 days of posts at about
+Rs 1,400 each against about Rs 3,100 of real purchase value). Bidding is Target CPA on conversion count, so the value would not improve any bid; it would only distort reporting.
+
+**Keep:** only real purchases (Boost, Contact reveal credits, Subscription) carry value. **Revisit** only when purchases reach about 30 a month, for value-based bidding as in
+`target-roas-value-carrying-campaigns.md`, and then with real purchase value rather than this estimate. If the upload is ever confusing, the simplest cleanup is to stop sending `value`
+for Post ad success in `listings.service.ts`; nothing in the account changed as part of this decision.
