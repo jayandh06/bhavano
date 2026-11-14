@@ -188,6 +188,14 @@ The map is where the most people stop (116 sessions, median 63s). Proposals, che
   done in one tap.
 - **Search box first** ("type the locality or building"), pin drops itself, then "Is this the right spot?" Confirm / Adjust.
 - Plain words on why a pin is needed ("so buyers can find the area"), shown once, not as an error.
+- **A different place from where the seller is stands (added 2026-11-14).** Today's web picker already has a search box, click-to-place,
+  a draggable pin and "Use my current location" (`LocationMapPicker.tsx`); none of that goes away. "Use my current location" is a shortcut
+  for a seller at the property, never the only path, and the pin is always editable afterwards. Most owners list from home, so the
+  **search box is the first and biggest control**, with the current-location button beside it, not above it.
+  After any pin drop show "Is this the right spot? Confirm / Adjust". If the pin is far from the city chosen earlier, ask "Is this the
+  right place?" so nobody posts an ad at their sofa by accident.
+- **To check before building:** the app's own map component (only the web picker was read), and that search suggestions work for smaller
+  localities (the search is restricted to supported areas).
 - Measure it with a new `location_set` event and time-to-pin, so we see whether the stop is the map being hard or being unfamiliar.
 Needs a look at the actual map screen on a phone before choosing; see decision 2 in section 8.
 
