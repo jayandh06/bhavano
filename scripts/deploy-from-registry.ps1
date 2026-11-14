@@ -83,7 +83,11 @@ if (-not $Tag) {
     $runId = $null
     for ($i = 0; $i -lt 30 -and -not $runId; $i++) {
       Start-Sleep -Seconds 4
-      $runId = gh run list --workflow build-images.yml --commit $sha --event workflow_dispatch --json databaseId,createdAt --jq "map(select(.createdAt >= `"$($started.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))`")) | .[0].databaseId"
+      # Filtered here, not in a jq expression: Windows PowerShell 5.1 drops the double quotes inside a native-command argument, so the
+      # timestamp reached jq unquoted ("invalid token") and this loop never found the run. A little clock skew is allowed.
+      $runs = (gh run list --workflow build-images.yml --commit $sha --event workflow_dispatch --json databaseId,createdAt | Out-String | ConvertFrom-Json)
+      $since = $started.ToUniversalTime().AddSeconds(-30)
+      $runId = @($runs | Where-Object { ([datetime]$_.createdAt).ToUniversalTime() -ge $since } | Select-Object -First 1).databaseId
     }
     if (-not $runId) { throw "The build run did not appear; check the Actions tab." }
     gh run watch $runId --exit-status

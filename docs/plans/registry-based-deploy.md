@@ -1,7 +1,11 @@
 # Registry-based deploy: GitHub builds the images, the server pulls them
 
-Status: written 6 Nov 2026, **not yet used for a real deploy**. The old script (`scripts/deploy-local-to-ec2.ps1`) stays as the working path until the first
-deploy with the new one succeeds; then it can be retired.
+Status: written 6 Nov 2026. **Used for real deploys since 9 Nov** (web) and 14 Nov (bff and admin, `sha-0e65d4c2`, built from a branch, not master). The old script
+(`scripts/deploy-local-to-ec2.ps1`) can be retired.
+
+**Fixed 14 Nov 2026:** when the commit had no build yet and the script started one itself, it never found the run it had just started (the jq expression lost its
+quotes under Windows PowerShell 5.1: "invalid token"). The run lookup is now filtered in PowerShell. Before the fix, the workaround was to watch the run with
+`gh run watch <id>` and rerun the script, which then finds the finished build.
 
 ## Why
 
