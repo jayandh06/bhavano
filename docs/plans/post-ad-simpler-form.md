@@ -247,7 +247,12 @@ product change**, so it is not part of this plan's default scope. Listed as an o
 Rough size: steps 1 to 2 are about two to three days of work, step 3 about two days, step 5 about three to four days plus a build.
 
 ## 7b. Built: slice 1 (2026-11-14), web only, behind a rollout percentage
-Steps 1 of section 7 for the web: the **redesigned form is "v2"**, the current one "v1". Not on master until its PR merges; not yet seen in a browser.
+Steps 1 of section 7 for the web: the **redesigned form is "v2"**, the current one "v1". **Deployed 2026-11-14 at 0%** (images `sha-54f08114`, PR #12) and
+checked in production: `/post?form=v2&category=apartment&transactionType=rent` shows the new location row and the "Show your property" card; the same
+page without `?form` is still the original form; the admin funnel's Form version filter picked up the v2 session. A session keeps the **first** form
+it recorded, so previewing v1 and v2 in the same browser session counts as v2.
+**Turning on a percentage needs the PR merged first:** the server's `docker-compose.prod.yml` comes from master (the deploy script runs `git pull` on the
+host), and until it carries `POST_FORM_V2_PERCENT` the container never sees the variable (it reads as 0).
 
 - **Who gets v2.** `POST_FORM_V2_PERCENT` (server env on the `web` container, 0 to 100, default 0; wired in `docker-compose.prod.yml` and
   `.env.production.example`). It is read when `/post` is requested, so changing it needs `docker compose up -d web`, not a rebuild. Each browser has a
