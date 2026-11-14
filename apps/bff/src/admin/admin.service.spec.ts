@@ -1152,8 +1152,52 @@ describe('AdminService.getPostFunnel', () => {
     expect(category?.sessions).toBe(1);
     expect(prisma.visit.findMany).toHaveBeenCalledWith({
       where: { sessionId: { in: ['s1', 's2'] } },
-      select: { sessionId: true, deviceType: true },
+      select: { sessionId: true, deviceType: true, ipCountry: true },
     });
+  });
+
+  it('filters by country: india keeps India, other keeps everything else including unknown and no Visit row', async () => {
+    const pageViews = [
+      pageView('s1', '/post/category?from=header_desktop&loggedIn=0'),
+      pageView('s2', '/post/category?from=header_desktop&loggedIn=0'),
+      pageView('s3', '/post/category?from=header_desktop&loggedIn=0'),
+      pageView('s4', '/post/category?from=header_desktop&loggedIn=0'),
+    ];
+    const visits = [
+      { sessionId: 's1', deviceType: 'desktop', ipCountry: 'India' },
+      { sessionId: 's2', deviceType: 'desktop', ipCountry: 'Singapore' },
+      { sessionId: 's3', deviceType: 'desktop', ipCountry: null },
+      // s4 has no Visit row at all.
+    ];
+    const categorySessions = async (country: 'india' | 'other') => {
+      const { service } = makeService({
+        pageView: { findMany: jest.fn().mockResolvedValue(pageViews) },
+        visit: { findMany: jest.fn().mockResolvedValue(visits) },
+      });
+      const result = await service.getPostFunnel({ country });
+      return result.steps.find((s) => s.path === '/post/category')?.sessions;
+    };
+    expect(await categorySessions('india')).toBe(1);
+    expect(await categorySessions('other')).toBe(3);
+  });
+
+  it('combines the country and platform filters', async () => {
+    const { service } = makeService({
+      pageView: {
+        findMany: jest.fn().mockResolvedValue([
+          pageView('s1', '/post/category?from=header_desktop&loggedIn=0'),
+          pageView('s2', '/post/category?from=header_desktop&loggedIn=0'),
+        ]),
+      },
+      visit: {
+        findMany: jest.fn().mockResolvedValue([
+          { sessionId: 's1', deviceType: 'mobile_app', ipCountry: 'India' },
+          { sessionId: 's2', deviceType: 'desktop', ipCountry: 'India' },
+        ]),
+      },
+    });
+    const result = await service.getPostFunnel({ country: 'india', platform: 'app' });
+    expect(result.steps.find((s) => s.path === '/post/category')?.sessions).toBe(1);
   });
 });
 
