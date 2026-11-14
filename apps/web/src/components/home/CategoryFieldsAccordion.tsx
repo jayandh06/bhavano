@@ -682,6 +682,9 @@ export function CategoryFieldsAccordion({
   sectionExtras,
   fieldNote,
   feedback,
+  fieldFilter,
+  hideCompleteness,
+  sectionLabelSuffix,
 }: {
   category: ListingCategory;
   transactionType: TransactionType;
@@ -699,9 +702,16 @@ export function CategoryFieldsAccordion({
   fieldNote?: { key: string; text: string } | null;
   /** Messages, highlight and blur callback for the Details step. Omitted by the edit form. */
   feedback?: FieldFeedback;
+  /** Show only the fields this keeps. The step-by-step form (v3) uses it to show the required fields on their own, then one optional
+   * section at a time (docs/plans/post-ad-simpler-form.md). Omitted everywhere else, which shows every visible field. */
+  fieldFilter?: (field: FieldDef) => boolean;
+  /** Leave out the "Listing N% complete" meter, for when only part of the form is shown. */
+  hideCompleteness?: boolean;
+  /** Added after each section heading, e.g. " (optional)". */
+  sectionLabelSuffix?: string;
 }) {
-  const visibleFields = CATEGORY_FIELD_CONFIG[category].filter((field) =>
-    fieldIsVisible(field, transactionType, attributes),
+  const visibleFields = CATEGORY_FIELD_CONFIG[category].filter(
+    (field) => fieldIsVisible(field, transactionType, attributes) && (!fieldFilter || fieldFilter(field)),
   );
   const completeness = listingCompleteness(category, transactionType, attributes);
   const fieldSections = groupFieldsBySection(visibleFields);
@@ -746,7 +756,7 @@ export function CategoryFieldsAccordion({
     // col-span-full one (multi-select/text — see FieldRunBlock below), which then filled the
     // entire page width for something like "Preferred tenant type"'s checkbox dropdown.
     <div className="flex flex-col gap-3 max-w-[820px]">
-      {completeness.total > 0 && <CompletenessMeter completeness={completeness} />}
+      {completeness.total > 0 && !hideCompleteness && <CompletenessMeter completeness={completeness} />}
       {sections.map(({ section, label, fields }) => (
         <details
           key={section}
@@ -755,6 +765,7 @@ export function CategoryFieldsAccordion({
         >
           <summary className="font-bold text-[13px] text-text cursor-pointer px-4 py-3">
             {label}
+            {sectionLabelSuffix ?? ""}
             {(() => {
               if (!feedback?.issues) return null;
               const left = issueCountForFields(feedback.issues, fields.map((f) => f.key), section === "pricing");
