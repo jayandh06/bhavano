@@ -266,6 +266,9 @@ Steps 1 of section 7 for the web: the **redesigned form is "v2"**, the current o
   / Redesigned) that applies to the funnel and to "Inside the Details step"; sessions from before the split match neither. Compare v1 and v2
   with the **Country: India** filter on. Volume is low (about 120 Indian sessions a week reach Details), so expect weeks, not days, before
   the difference is clear.
+- **Switched on at 50% on 2026-11-14 (about 10:00 IST).** `POST_FORM_V2_PERCENT=50` in the server `.env` (the previous file is kept as `.env.bak-before-form-v2`), web recreated
+  with `docker compose up -d --no-build web`. Checked in production with two keys either side of the split: bucket 12 gets v2, bucket 50 gets v1. **Compare v1 and v2
+  only from this moment on**, with the Country: India filter; earlier sessions have no form version.
 - **To switch on:** set `POST_FORM_V2_PERCENT=50` in the server's `.env`, then `docker compose up -d web`. To switch off, set 0 and do the same.
 
 ## 8. Decisions needed
