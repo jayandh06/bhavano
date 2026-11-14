@@ -34,7 +34,7 @@ SIZES = {"6.9in-1320x2868": (1320, 2868), "6.7in-1290x2796": (1290, 2796), "6.5i
 CAPTIONS = {
     "home": "Find homes, PGs and spaces near you",
     "search": "Search by city, area and budget",
-    "listing": "Photos, details and owner contact",
+    "listing": "Clear photos and full details",
     "messages": "Message owners directly",
     "post": "Post your ad in minutes",
     "alerts": "Get alerts when something new matches",
