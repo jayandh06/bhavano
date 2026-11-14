@@ -2667,6 +2667,17 @@ model LoginNudgeSetting {
 }
 
 /**
+ * Singleton settings row (id "singleton") for the redesigned post-ad Details form: v2Percent is the share of visitors (0 to 100) who
+ * get it. Set in Admin -> Settings -> Post ad form; admins always see the new form regardless. 0 = nobody. Replaces the
+ * POST_FORM_V2_PERCENT environment variable. See docs/plans/post-ad-simpler-form.md.
+ */
+model PostFormSetting {
+  id        String   @id
+  v2Percent Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+/**
  * One search a real visitor ran, with what they asked for and how many results they got.
  * Nothing recorded this before. `PageView` stores only (sessionId, path, createdAt) and the
  * middleware deliberately drops the query string, so every filter lived in a query param and was

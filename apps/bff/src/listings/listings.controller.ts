@@ -32,6 +32,7 @@ import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import { ListingsService } from './listings.service';
 import { ListingPhotosService } from './listing-photos.service';
 import { LoginNudgeService } from './login-nudge.service';
+import { PostFormService, type PostFormSettingsDto } from './post-form.service';
 import { parseTrackingAuthorized } from '../ads/tracking-authorized';
 import { ListListingsDto } from './dto/list-listings.dto';
 import { CreateListingDto } from './dto/create-listing.dto';
@@ -48,6 +49,7 @@ export class ListingsController {
     private readonly listingPhotos: ListingPhotosService,
     private readonly contactRevealService: ContactRevealService,
     private readonly loginNudge: LoginNudgeService,
+    private readonly postForm: PostFormService,
   ) {}
 
   @Get()
@@ -83,6 +85,12 @@ export class ListingsController {
   @Get('login-nudge-settings')
   loginNudgeSettings(): Promise<PublicLoginNudgeDto> {
     return this.loginNudge.getPublic();
+  }
+
+  // Public, before ":id": the post page reads the share of visitors who get the redesigned Details form.
+  @Get('post-form-settings')
+  postFormSettings(): Promise<PostFormSettingsDto> {
+    return this.postForm.getSettings();
   }
 
   @Get(':id')

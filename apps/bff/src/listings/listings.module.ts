@@ -6,6 +6,7 @@ import { ListingsService } from './listings.service';
 import { ListingPhotosService } from './listing-photos.service';
 import { AssistedListingExpiryJob } from './assisted-listing-expiry.job';
 import { LoginNudgeService } from './login-nudge.service';
+import { PostFormService } from './post-form.service';
 import { ModerationModule } from '../moderation/moderation.module';
 import { RateLimitModule } from '../rate-limit/rate-limit.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -30,7 +31,7 @@ import { PostedConfirmationController } from './posted-confirmation.controller';
 @Module({
   imports: [ModerationModule, RateLimitModule, NotificationsModule, SavedSearchesModule, LocationsModule, StorageModule, ListingSlotsModule, AdsModule, ContactRevealModule, PlansModule, PushModule, AnalyticsModule, ReferralsModule, OwnerAlertsModule],
   controllers: [ListingsController, PostedConfirmationController, FeaturedUpsellController, SeekerContactController],
-  providers: [ListingsService, ListingPhotosService, AssistedListingExpiryJob, LoginNudgeService, QuickResponderService, PostedConfirmationService, PostedConfirmationJob, ScheduledPublishJob],
-  exports: [ListingsService, ListingPhotosService, LoginNudgeService],
+  providers: [ListingsService, ListingPhotosService, AssistedListingExpiryJob, LoginNudgeService, PostFormService, QuickResponderService, PostedConfirmationService, PostedConfirmationJob, ScheduledPublishJob],
+  exports: [ListingsService, ListingPhotosService, LoginNudgeService, PostFormService],
 })
 export class ListingsModule {}

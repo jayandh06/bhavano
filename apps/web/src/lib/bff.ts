@@ -454,6 +454,16 @@ export function fetchLoginNudgeSettings(): Promise<PublicLoginNudgeDto> {
   return bffFetch<PublicLoginNudgeDto>("/listings/login-nudge-settings", { next: { revalidate: 60 } });
 }
 
+/** Share of visitors (0 to 100) who get the redesigned post-ad Details form, set in admin under Settings > Post ad form. Cached briefly, so a
+ * change lands within about 30 seconds. If the BFF cannot be reached the answer is 0 (nobody), never a guess that switches the new form on. */
+export async function fetchPostFormSettings(): Promise<{ v2Percent: number }> {
+  try {
+    return await bffFetch<{ v2Percent: number }>("/listings/post-form-settings", { next: { revalidate: 30 } });
+  } catch {
+    return { v2Percent: 0 };
+  }
+}
+
 /** Public — current boost/subscription pricing, admin-editable (see
  * docs/plans/admin-manage-plans-pricing.md). Read live everywhere a price is shown (the boost
  * picker, the Bhavano Plus subscribe button, the plan comparison table) rather than the bundled

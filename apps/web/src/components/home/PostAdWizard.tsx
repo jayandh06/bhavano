@@ -85,7 +85,13 @@ import {
 import { startBoostCheckout } from "@/lib/boostCheckout";
 import { useAuthGate } from "./AuthGateProvider";
 import { CategoryFieldsAccordion, type FieldFeedback } from "@/components/home/CategoryFieldsAccordion";
-import { getPostFormViewerKey, resolvePostFormVariant, type PostFormVariant } from "@/lib/postFormVariant";
+import {
+  getPostFormViewerKey,
+  postFormTrackLabel,
+  resolvePostFormVariant,
+  type PostFormTrackLabel,
+  type PostFormVariant,
+} from "@/lib/postFormVariant";
 import { ListingSlotCapPrompt } from "@/components/home/ListingSlotCapPrompt";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
 import { pushDataLayerEvent, toE164IN } from "@/lib/gtm";
@@ -330,7 +336,7 @@ const STEP_SYNTHETIC_PATH: Record<Step, string | null> = {
   success: null,
 };
 
-function StepTracker({ step, entry, loggedIn, form }: { step: Step; entry: string; loggedIn: boolean; form: PostFormVariant }) {
+function StepTracker({ step, entry, loggedIn, form }: { step: Step; entry: string; loggedIn: boolean; form: PostFormTrackLabel }) {
   useEffect(() => {
     window.scrollTo(0, 0);
     pushDataLayerEvent("post_step_view", { step, entry, loggedIn, form });
@@ -449,10 +455,11 @@ export function PostAdWizard({
   // Which Details form this visitor sees (docs/plans/post-ad-simpler-form.md). Decided once, from a stable per-browser bucket, in
   // the initializer so the very first funnel event already carries it. On the server there is no storage, so it is "v1" there;
   // that is safe because the first steps look the same in both versions and the Details step only renders after a click.
+  // Admins always get the redesigned form; their sessions are labelled `admin` in the funnel so they never count towards v1 vs v2.
   const [formVariant] = useState<PostFormVariant>(() =>
     typeof window === "undefined"
       ? "v1"
-      : resolvePostFormVariant({ override: formOverride, percent: formV2Percent, viewerKey: getPostFormViewerKey() }),
+      : resolvePostFormVariant({ isAdmin, override: formOverride, percent: formV2Percent, viewerKey: getPostFormViewerKey() }),
   );
   const [step, setStep] = useState<Step>("category");
   const [postedAs, setPostedAs] = useState<SellerType | null>(null);
@@ -2370,7 +2377,7 @@ export function PostAdWizard({
 
   return (
     <div>
-      <StepTracker step={step} entry={entry} loggedIn={loggedIn} form={formVariant} />
+      <StepTracker step={step} entry={entry} loggedIn={loggedIn} form={postFormTrackLabel(formVariant, isAdmin)} />
       {draftRestored && step !== "success" && step !== "offer" && (
         // Deliberately loud: someone who tapped "Post ad" and landed mid-form, possibly in a
         // category they did not choose today, has to understand why before they publish into it.

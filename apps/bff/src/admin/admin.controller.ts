@@ -114,6 +114,8 @@ import { RotatePhotoDto } from '../listings/dto/rotate-photo.dto';
 import { ListingPhotosService } from '../listings/listing-photos.service';
 import { LoginNudgeService } from '../listings/login-nudge.service';
 import { UpdateLoginNudgeSettingsDto } from './dto/update-login-nudge-settings.dto';
+import { PostFormService, type PostFormSettingsDto } from '../listings/post-form.service';
+import { UpdatePostFormSettingsDto } from './dto/update-post-form-settings.dto';
 import {
   ApplyDeliveryReportDto,
   CreateOutreachCampaignDto,
@@ -150,6 +152,7 @@ export class AdminController {
     private readonly outreachCampaignJob: OutreachCampaignJob,
     private readonly listingPhotos: ListingPhotosService,
     private readonly loginNudge: LoginNudgeService,
+    private readonly postForm: PostFormService,
     private readonly referralsAdmin: ReferralsAdminService,
     private readonly payments: PaymentsService,
   ) {}
@@ -700,6 +703,16 @@ export class AdminController {
   @Patch('login-nudge-settings')
   updateLoginNudgeSettings(@Body() dto: UpdateLoginNudgeSettingsDto): Promise<LoginNudgeSettingsDto> {
     return this.loginNudge.updateSettings(dto);
+  }
+
+  @Get('post-form-settings')
+  getPostFormSettings(): Promise<PostFormSettingsDto> {
+    return this.postForm.getSettings();
+  }
+
+  @Patch('post-form-settings')
+  updatePostFormSettings(@Body() dto: UpdatePostFormSettingsDto): Promise<PostFormSettingsDto> {
+    return this.postForm.updateSettings(dto);
   }
 
   @Get('boost-pricing')
