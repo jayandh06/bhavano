@@ -172,6 +172,15 @@ function postFunnelStepForPath(path: string): string | null {
   return null;
 }
 
+/** The `form=` value (`v1` or `v2`) on a `/post/...` step path, or null when it has none (recorded before the split). */
+function formFromPath(path: string): string | null {
+  try {
+    return new URL(path, 'https://x.invalid').searchParams.get('form');
+  } catch {
+    return null;
+  }
+}
+
 interface PostFunnelVisitInfo {
   isApp: boolean;
   isIndia: boolean;
@@ -1359,7 +1368,7 @@ export class AdminService {
    * where sessions that left stopped. Built from the `/post/field` events the wizards write
    * (docs/plans/post-details-step-experience.md, Phase 0). `platform` and the date range work as in getPostFunnel. */
   async getPostDetailsBlockers(query: PostFunnelQueryDto): Promise<PostDetailsBlockersDto> {
-    const { from, to, platform, country } = query;
+    const { from, to, platform, country, variant } = query;
     const range = from || to ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } } : {};
     const [events, detailsViews, previewViews] = await Promise.all([
       this.prisma.pageView.findMany({
@@ -1368,7 +1377,8 @@ export class AdminService {
       }),
       this.prisma.pageView.findMany({
         where: { path: { startsWith: '/post/details' }, ...range },
-        select: { sessionId: true },
+        // The path carries `form=v1|v2` (which Details form the session saw), used by the `variant` filter.
+        select: { sessionId: true, path: true },
         distinct: ['sessionId'],
       }),
       this.prisma.pageView.findMany({
@@ -1383,6 +1393,12 @@ export class AdminService {
       const ids = [...new Set([...events, ...detailsViews, ...previewViews].map((r) => r.sessionId))];
       const visits = await this.visitInfoBySessionId(ids);
       keep = (sessionId) => visitMatches(visits.get(sessionId), platform, country);
+    }
+    if (variant) {
+      // A session's form is read from its Details step; sessions with no `form=` (recorded before the split) never match.
+      const formBySession = new Map(detailsViews.map((r) => [r.sessionId, formFromPath(r.path)]));
+      const keepOther = keep;
+      keep = (sessionId) => keepOther(sessionId) && formBySession.get(sessionId) === variant;
     }
 
     const previewSessionIds = new Set(previewViews.filter((r) => keep(r.sessionId)).map((r) => r.sessionId));
@@ -1411,7 +1427,7 @@ export class AdminService {
   }
 
   async getPostFunnel(query: PostFunnelQueryDto): Promise<PostFunnelDto> {
-    const { from, to, entry, platform, loggedIn, country } = query;
+    const { from, to, entry, platform, loggedIn, country, variant } = query;
 
     const pageViews = await this.prisma.pageView.findMany({
       where: {
@@ -1435,6 +1451,8 @@ export class AdminService {
       steps: Set<string>;
       entry?: string;
       loggedIn?: boolean;
+      /** Which Details form the session was given (`v1` or `v2`), from the first step event that carries `form=`. */
+      form?: string;
     }
     const bySessionId = new Map<string, SessionInfo>();
     for (const pv of pageViews) {
@@ -1448,6 +1466,8 @@ export class AdminService {
         if (fromParam && info.entry === undefined) info.entry = fromParam;
         const loggedInParam = params.get('loggedIn');
         if (loggedInParam !== null && info.loggedIn === undefined) info.loggedIn = loggedInParam === '1';
+        const formParam = params.get('form');
+        if (formParam && info.form === undefined) info.form = formParam;
       } catch {
         // Malformed path — the step itself is still counted, just without entry/loggedIn info.
       }
@@ -1457,6 +1477,7 @@ export class AdminService {
     const matchesFilters = (sessionId: string, info: SessionInfo): boolean => {
       if (entry && info.entry !== entry) return false;
       if (loggedIn && info.loggedIn !== (loggedIn === 'yes')) return false;
+      if (variant && info.form !== variant) return false;
       if (visitBySessionId && !visitMatches(visitBySessionId.get(sessionId), platform, country)) return false;
       return true;
     };

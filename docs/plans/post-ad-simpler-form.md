@@ -246,6 +246,28 @@ product change**, so it is not part of this plan's default scope. Listed as an o
 
 Rough size: steps 1 to 2 are about two to three days of work, step 3 about two days, step 5 about three to four days plus a build.
 
+## 7b. Built: slice 1 (2026-11-14), web only, behind a rollout percentage
+Steps 1 of section 7 for the web: the **redesigned form is "v2"**, the current one "v1". Not on master until its PR merges; not yet seen in a browser.
+
+- **Who gets v2.** `POST_FORM_V2_PERCENT` (server env on the `web` container, 0 to 100, default 0; wired in `docker-compose.prod.yml` and
+  `.env.production.example`). It is read when `/post` is requested, so changing it needs `docker compose up -d web`, not a rebuild. Each browser has a
+  stable bucket (`bhavano.postFormKey` in localStorage, hashed with the existing `rolloutBucket`), so a visitor keeps the same form. A typo or
+  a missing value means 0 (nobody). **`/post?form=v2` or `?form=v1` forces a version**, whatever the percentage, so v2 can be checked in
+  production while it is at 0%. Code: `apps/web/src/lib/postFormVariant.ts` (+ tests).
+- **What v2 changes on the Details step:**
+  - **Location (4.8):** heading "Where is the property?"; the search box and **Use my current location** sit side by side, search first;
+    the hint says "Not at the property? Search for its address, or tap the map...". Behaviour is unchanged (`LocationMapPicker` `variant="v2"`).
+  - **Photos and video (4.2):** one "Show your property" card holding the photo uploader and the video uploader together, straight after the
+    location, instead of the video sitting after the whole category form. The same two blocks (now `renderPhotosBlock` / `renderVideoBlock`)
+    are used by both versions, so upload, limits, retry and the Featured callout are untouched.
+- **Not in slice 1:** essentials-first with the optional fields collapsed (4.1), the prefilled title and "write it for me" as the main
+  action (4.3), the "Is this the right spot?" confirmation and the far-from-city warning, the app and mobile web.
+- **Measuring it.** Every funnel step event now carries `form=v1|v2`. Admin Post-ad funnel has a **Form version** filter (Both / Original
+  / Redesigned) that applies to the funnel and to "Inside the Details step"; sessions from before the split match neither. Compare v1 and v2
+  with the **Country: India** filter on. Volume is low (about 120 Indian sessions a week reach Details), so expect weeks, not days, before
+  the difference is clear.
+- **To switch on:** set `POST_FORM_V2_PERCENT=50` in the server's `.env`, then `docker compose up -d web`. To switch off, set 0 and do the same.
+
 ## 8. Decisions needed
 1. **Confirm reversing "keep all sections open"** for optional fields (recommended, on the evidence in section 2 once refreshed).
 2. **Keep Location first, or put Photos first?** Recommended: keep Location first (it is the mandatory gate and sets city and area), but make

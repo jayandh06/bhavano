@@ -255,6 +255,10 @@ services:
       # docs/plans/google-maps-location-picker.md). HTTP-referrer restricted, safe for the
       # browser — never reuse GOOGLE_MAPS_SERVER_KEY (bff, above) here.
       NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY}
+      # Share of visitors (0 to 100) who get the redesigned post-ad Details form (docs/plans/post-ad-simpler-form.md). Read by the
+      # server at request time, so changing it in .env needs `docker compose up -d web`, not a rebuild. 0 = nobody; `?form=v2` on
+      # /post still previews it.
+      POST_FORM_V2_PERCENT: ${POST_FORM_V2_PERCENT:-0}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       # Required behind a reverse proxy (Caddy) — otherwise NextAuth v5 rejects every
