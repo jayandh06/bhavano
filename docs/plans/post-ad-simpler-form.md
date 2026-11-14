@@ -247,13 +247,14 @@ product change**, so it is not part of this plan's default scope. Listed as an o
 Rough size: steps 1 to 2 are about two to three days of work, step 3 about two days, step 5 about three to four days plus a build.
 
 ## 7b. Built: slice 1 (2026-11-14), web only, behind a rollout percentage
-Steps 1 of section 7 for the web: the **redesigned form is "v2"**, the current one "v1". Not on master until its PR merges; not yet seen in a browser.
+Steps 1 of section 7 for the web: the **redesigned form is "v2"**, the current one "v1". Deployed and checked in production on 2026-11-14.
 
-- **Who gets v2.** `POST_FORM_V2_PERCENT` (server env on the `web` container, 0 to 100, default 0; wired in `docker-compose.prod.yml` and
-  `.env.production.example`). It is read when `/post` is requested, so changing it needs `docker compose up -d web`, not a rebuild. Each browser has a
-  stable bucket (`bhavano.postFormKey` in localStorage, hashed with the existing `rolloutBucket`), so a visitor keeps the same form. A typo or
-  a missing value means 0 (nobody). **`/post?form=v2` or `?form=v1` forces a version**, whatever the percentage, so v2 can be checked in
-  production while it is at 0%. Code: `apps/web/src/lib/postFormVariant.ts` (+ tests).
+- **Who gets v2.** The share of visitors (0 to 100) is a setting in **Admin > Settings > Post ad form** (table `PostFormSetting`, singleton row; it first
+  lived in a `POST_FORM_V2_PERCENT` environment variable, which was removed). The web `/post` page reads it from the BFF (`GET /listings/post-form-settings`,
+  cached about 30 seconds), so a change needs no restart and no deploy. Each browser has a stable bucket (`bhavano.postFormKey` in localStorage, hashed with the
+  existing `rolloutBucket`), so a visitor keeps the same form. A missing setting or an unreachable BFF means 0 (nobody). **`/post?form=v2` or `?form=v1` forces
+  a version** for testing. **Admin accounts always get v2** (the override is ignored for them), and their sessions are recorded as `form=admin`, so staff testing
+  never counts towards the v1 / v2 comparison. Code: `apps/web/src/lib/postFormVariant.ts`, `apps/bff/src/listings/post-form.service.ts` (+ tests).
 - **What v2 changes on the Details step:**
   - **Location (4.8):** heading "Where is the property?"; the search box and **Use my current location** sit side by side, search first;
     the hint says "Not at the property? Search for its address, or tap the map...". Behaviour is unchanged (`LocationMapPicker` `variant="v2"`).
@@ -269,7 +270,9 @@ Steps 1 of section 7 for the web: the **redesigned form is "v2"**, the current o
 - **Switched on at 50% on 2026-11-14 (about 10:00 IST).** `POST_FORM_V2_PERCENT=50` in the server `.env` (the previous file is kept as `.env.bak-before-form-v2`), web recreated
   with `docker compose up -d --no-build web`. Checked in production with two keys either side of the split: bucket 12 gets v2, bucket 50 gets v1. **Compare v1 and v2
   only from this moment on**, with the Country: India filter; earlier sessions have no form version.
-- **To switch on:** set `POST_FORM_V2_PERCENT=50` in the server's `.env`, then `docker compose up -d web`. To switch off, set 0 and do the same.
+- **Moved to the admin screen (2026-11-14).** The migration `20261114090000_post_form_setting` creates the table and inserts the live value (50), so the share did not
+  change when the setting moved out of `.env`. To change it: Admin > Settings > Post ad form, type a percentage or pick 0, 10, 25, 50 or 100, Save; visitors see it
+  within about 30 seconds. Switch off with 0. The old `POST_FORM_V2_PERCENT` line can be deleted from the server `.env` (nothing reads it now).
 
 ## 8. Decisions needed
 1. **Confirm reversing "keep all sections open"** for optional fields (recommended, on the evidence in section 2 once refreshed).

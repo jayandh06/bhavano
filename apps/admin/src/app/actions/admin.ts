@@ -59,6 +59,7 @@ import {
   deleteUserSavedSearch,
   updateContactRevealSettings,
   updateLoginNudgeSettings,
+  updatePostFormSettings,
   updateAppVersionSettings,
   updateRequirement,
   updatePostedConfirmationSettings,
@@ -375,6 +376,17 @@ export async function updateAppVersionSettingsAction(input: AppVersionSettingsDt
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update app version settings" };
+  }
+}
+
+export async function updatePostFormSettingsAction(input: { v2Percent: number }): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updatePostFormSettings(accessToken, input);
+    revalidatePath("/settings/post-form");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update the post ad form setting" };
   }
 }
 

@@ -1110,6 +1110,19 @@ export function updateLoginNudgeSettings(
   return authedBffFetch(accessToken, "/admin/login-nudge-settings", { method: "PATCH", body: JSON.stringify(input) });
 }
 
+/** Share of visitors (0 to 100) who get the redesigned post-ad Details form. See docs/plans/post-ad-simpler-form.md. */
+export interface PostFormSettings {
+  v2Percent: number;
+}
+
+export function fetchPostFormSettings(accessToken: string): Promise<PostFormSettings> {
+  return authedBffFetch(accessToken, "/admin/post-form-settings", { cache: "no-store" });
+}
+
+export function updatePostFormSettings(accessToken: string, input: PostFormSettings): Promise<PostFormSettings> {
+  return authedBffFetch(accessToken, "/admin/post-form-settings", { method: "PATCH", body: JSON.stringify(input) });
+}
+
 export function fetchBoostPricingSettings(accessToken: string): Promise<BoostPriceSettings> {
   return authedBffFetch(accessToken, "/admin/boost-pricing", { cache: "no-store" });
 }

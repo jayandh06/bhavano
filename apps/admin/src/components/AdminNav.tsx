@@ -64,6 +64,7 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string }[] }[] 
       { href: "/settings/featured-upsell", label: "Featured prompt" },
       { href: "/settings/seeker-contact", label: "Seeker contact" },
       { href: "/settings/login-nudge", label: "Login prompt" },
+      { href: "/settings/post-form", label: "Post ad form" },
       { href: "/settings/app-version", label: "App update" },
     ],
   },

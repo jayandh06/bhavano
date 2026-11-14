@@ -5,28 +5,40 @@ import { rolloutBucket } from "@bhavano/types/loginNudge";
  * into every funnel event as `form=`). */
 export type PostFormVariant = "v1" | "v2";
 
+/** What the funnel records as `form=` for a session. Admins are always shown v2, but their sessions are labelled `admin` so staff testing
+ * never counts towards the v1 / v2 comparison. */
+export type PostFormTrackLabel = PostFormVariant | "admin";
+
 export function parsePostFormVariant(value: unknown): PostFormVariant | null {
   return value === "v1" || value === "v2" ? value : null;
 }
 
-/** The rollout percentage from the server's `POST_FORM_V2_PERCENT` setting: a whole number from 0 to 100, and 0 (nobody) for
- * anything missing or unparseable, so a typo can never switch the new form on for everyone. */
-export function parseRolloutPercent(raw: string | undefined): number {
-  if (raw === undefined || !/^\s*\d{1,3}\s*$/.test(raw)) return 0;
-  return Math.min(100, Number(raw));
+/** The rollout share from the admin setting: a whole number from 0 to 100, and 0 (nobody) for anything else, so a bad value can never
+ * switch the new form on for everyone. */
+export function normalizeRolloutPercent(value: unknown): number {
+  if (typeof value !== "number" || !Number.isInteger(value)) return 0;
+  return Math.min(100, Math.max(0, value));
 }
 
-/** `override` (the `?form=` query param, for testing) wins; otherwise the visitor's stable bucket decides, so the same
- * browser keeps the same form across visits. Without a viewer key there is no bucket, so only 100% includes them. */
+/** Admins always get the redesigned form (so the team uses what visitors are being shown). Otherwise `override` (the `?form=` query
+ * param, for testing) wins; otherwise the visitor's stable bucket decides, so the same browser keeps the same form across visits.
+ * Without a viewer key there is no bucket, so only 100% includes them. */
 export function resolvePostFormVariant(input: {
+  isAdmin?: boolean;
   override: PostFormVariant | null;
   percent: number;
   viewerKey: string;
 }): PostFormVariant {
+  if (input.isAdmin) return "v2";
   if (input.override) return input.override;
   if (input.percent >= 100) return "v2";
   if (input.percent <= 0 || !input.viewerKey) return "v1";
   return rolloutBucket(input.viewerKey) < input.percent ? "v2" : "v1";
+}
+
+/** The `form=` value to record for a session: `admin` for admins, otherwise the version they were shown. */
+export function postFormTrackLabel(variant: PostFormVariant, isAdmin: boolean): PostFormTrackLabel {
+  return isAdmin ? "admin" : variant;
 }
 
 const POST_FORM_KEY = "bhavano.postFormKey";

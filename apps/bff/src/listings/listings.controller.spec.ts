@@ -4,6 +4,7 @@ import type { R2StorageService } from '../storage/r2-storage.service';
 import type { ListingPhotosService } from './listing-photos.service';
 import type { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import type { LoginNudgeService } from './login-nudge.service';
+import type { PostFormService } from './post-form.service';
 
 describe('ListingsController.recordView', () => {
   const recordView = jest.fn().mockResolvedValue({ viewCount: 8 });
@@ -14,6 +15,7 @@ describe('ListingsController.recordView', () => {
     {} as ListingPhotosService,
     {} as ContactRevealService,
     {} as LoginNudgeService,
+    {} as PostFormService,
   );
 
   beforeEach(() => jest.clearAllMocks());

@@ -1,23 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { rolloutBucket } from "@bhavano/types/loginNudge";
-import { parsePostFormVariant, parseRolloutPercent, resolvePostFormVariant } from "./postFormVariant";
+import { normalizeRolloutPercent, parsePostFormVariant, postFormTrackLabel, resolvePostFormVariant } from "./postFormVariant";
 
-describe("parseRolloutPercent", () => {
-  it("reads whole numbers from 0 to 100", () => {
-    expect(parseRolloutPercent("0")).toBe(0);
-    expect(parseRolloutPercent("25")).toBe(25);
-    expect(parseRolloutPercent(" 50 ")).toBe(50);
-    expect(parseRolloutPercent("100")).toBe(100);
+describe("normalizeRolloutPercent", () => {
+  it("keeps whole numbers from 0 to 100", () => {
+    for (const n of [0, 1, 25, 50, 100]) expect(normalizeRolloutPercent(n)).toBe(n);
   });
 
-  it("caps anything above 100", () => {
-    expect(parseRolloutPercent("250")).toBe(100);
+  it("caps and floors out-of-range numbers", () => {
+    expect(normalizeRolloutPercent(250)).toBe(100);
+    expect(normalizeRolloutPercent(-5)).toBe(0);
   });
 
-  it("treats missing or malformed values as nobody, so a typo cannot switch the new form on for everyone", () => {
-    for (const bad of [undefined, "", "abc", "-5", "12.5", "50%", "1000"]) {
-      expect(parseRolloutPercent(bad), String(bad)).toBe(0);
-    }
+  it("treats anything that is not a whole number as nobody, so a bad value cannot switch the new form on for everyone", () => {
+    for (const bad of [undefined, null, "", "50", NaN, 12.5, Infinity, {}, [50]]) expect(normalizeRolloutPercent(bad)).toBe(0);
   });
 });
 
@@ -30,7 +26,13 @@ describe("parsePostFormVariant", () => {
 });
 
 describe("resolvePostFormVariant", () => {
-  it("lets an explicit override win over the rollout", () => {
+  it("always gives an admin the redesigned form, whatever the percentage or an override", () => {
+    expect(resolvePostFormVariant({ isAdmin: true, override: null, percent: 0, viewerKey: "x" })).toBe("v2");
+    expect(resolvePostFormVariant({ isAdmin: true, override: "v1", percent: 0, viewerKey: "x" })).toBe("v2");
+    expect(resolvePostFormVariant({ isAdmin: true, override: null, percent: 0, viewerKey: "" })).toBe("v2");
+  });
+
+  it("lets an explicit override win over the rollout for everyone else", () => {
     expect(resolvePostFormVariant({ override: "v2", percent: 0, viewerKey: "x" })).toBe("v2");
     expect(resolvePostFormVariant({ override: "v1", percent: 100, viewerKey: "x" })).toBe("v1");
   });
@@ -61,5 +63,13 @@ describe("resolvePostFormVariant", () => {
     }
     expect(v2).toBeGreaterThan(800);
     expect(v2).toBeLessThan(1200);
+  });
+});
+
+describe("postFormTrackLabel", () => {
+  it("labels admin sessions `admin` so they never count towards the v1 / v2 comparison", () => {
+    expect(postFormTrackLabel("v2", true)).toBe("admin");
+    expect(postFormTrackLabel("v2", false)).toBe("v2");
+    expect(postFormTrackLabel("v1", false)).toBe("v1");
   });
 });
