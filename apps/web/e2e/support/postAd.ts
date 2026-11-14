@@ -31,9 +31,17 @@ interface CityRow {
  * keeps whatever the wizard has saved since. */
 export async function seedPostAdDraft(
   page: Page,
-  options: { scenarioId?: string; cityName?: string; title?: string; resumeInThisTab?: boolean } = {},
+  options: {
+    scenarioId?: string;
+    cityName?: string;
+    title?: string;
+    resumeInThisTab?: boolean;
+    /** `copy` leaves the title and description empty; `details` leaves everything except the category, the pin and the city empty (price,
+     * attributes, title, description), for a test that fills the form in stage by stage. */
+    blank?: "copy" | "details";
+  } = {},
 ) {
-  const { scenarioId = "storage-rent-standard", cityName = "Bengaluru", title = DRAFT_TITLE, resumeInThisTab = false } = options;
+  const { scenarioId = "storage-rent-standard", cityName = "Bengaluru", title = DRAFT_TITLE, resumeInThisTab = false, blank } = options;
   const cities = (await (await fetch(`${BFF_URL}/locations/cities`)).json()) as CityRow[];
   const city = cities.find((c) => c.name === cityName);
   if (!city) throw new Error(`City ${cityName} is not in the seed data`);
@@ -46,17 +54,17 @@ export async function seedPostAdDraft(
     step: "details",
     category: scenario.category,
     transactionType: scenario.transactionType,
-    price: String(price),
+    price: blank === "details" ? "" : String(price),
     priceQualifier: scenarioQualifier(scenario.category, scenario.transactionType),
     priceMode: "total",
-    title,
+    title: blank ? "" : title,
     cityId: city.id,
     city,
     areaQuery: "Indiranagar",
     areaId: null,
     pin: { lat: city.lat, lng: city.lng },
-    description: copy.description,
-    attributes: scenarioAttributes(scenario.category, scenario.transactionType, scenario.variant, price),
+    description: blank ? "" : copy.description,
+    attributes: blank === "details" ? {} : scenarioAttributes(scenario.category, scenario.transactionType, scenario.variant, price),
     selectedBoostPlan: null,
   };
 

@@ -18,18 +18,28 @@ describe("normalizeRolloutPercent", () => {
 });
 
 describe("parsePostFormVariant", () => {
-  it("accepts only v1 and v2", () => {
+  it("accepts only v1, v2 and v3", () => {
     expect(parsePostFormVariant("v1")).toBe("v1");
     expect(parsePostFormVariant("v2")).toBe("v2");
-    for (const bad of [undefined, null, "", "V2", "new", ["v2"], 2]) expect(parsePostFormVariant(bad)).toBeNull();
+    expect(parsePostFormVariant("v3")).toBe("v3");
+    for (const bad of [undefined, null, "", "V2", "v4", "new", ["v2"], 2]) expect(parsePostFormVariant(bad)).toBeNull();
   });
 });
 
 describe("resolvePostFormVariant", () => {
-  it("always gives an admin the redesigned form, whatever the percentage or an override", () => {
-    expect(resolvePostFormVariant({ isAdmin: true, override: null, percent: 0, viewerKey: "x" })).toBe("v2");
-    expect(resolvePostFormVariant({ isAdmin: true, override: "v1", percent: 0, viewerKey: "x" })).toBe("v2");
-    expect(resolvePostFormVariant({ isAdmin: true, override: null, percent: 0, viewerKey: "" })).toBe("v2");
+  it("always gives an admin the newest form, v3, whatever the percentage or an override", () => {
+    expect(resolvePostFormVariant({ isAdmin: true, override: null, percent: 0, viewerKey: "x" })).toBe("v3");
+    expect(resolvePostFormVariant({ isAdmin: true, override: "v1", percent: 0, viewerKey: "x" })).toBe("v3");
+    expect(resolvePostFormVariant({ isAdmin: true, override: "v2", percent: 100, viewerKey: "" })).toBe("v3");
+  });
+
+  it("never assigns v3 through the rollout percentage: only an admin or ?form=v3 gets it", () => {
+    for (const percent of [0, 1, 50, 99, 100]) {
+      for (let i = 0; i < 200; i++) {
+        expect(resolvePostFormVariant({ override: null, percent, viewerKey: `visitor-${i}` }), `${percent}% visitor ${i}`).not.toBe("v3");
+      }
+    }
+    expect(resolvePostFormVariant({ override: "v3", percent: 0, viewerKey: "x" })).toBe("v3");
   });
 
   it("lets an explicit override win over the rollout for everyone else", () => {
@@ -68,7 +78,8 @@ describe("resolvePostFormVariant", () => {
 
 describe("postFormTrackLabel", () => {
   it("labels admin sessions `admin` so they never count towards the v1 / v2 comparison", () => {
-    expect(postFormTrackLabel("v2", true)).toBe("admin");
+    expect(postFormTrackLabel("v3", true)).toBe("admin");
+    expect(postFormTrackLabel("v3", false)).toBe("v3");
     expect(postFormTrackLabel("v2", false)).toBe("v2");
     expect(postFormTrackLabel("v1", false)).toBe("v1");
   });

@@ -20,6 +20,8 @@ import {
   brokerageFeeNote,
   CATEGORY_FIELD_CONFIG,
   defaultAttributesFor,
+  fieldIsVisible,
+  groupFieldsBySection,
   listingCompleteness,
   pruneHiddenAttributes,
 } from "@bhavano/types/categoryFields";
@@ -92,6 +94,13 @@ import {
   type PostFormTrackLabel,
   type PostFormVariant,
 } from "@/lib/postFormVariant";
+import {
+  autoRevealedSections,
+  isSectionAnswered,
+  revealSectionLabel,
+  sortIssuesByReveal,
+  type RevealSectionId,
+} from "@/lib/postReveal";
 import { ListingSlotCapPrompt } from "@/components/home/ListingSlotCapPrompt";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
 import { pushDataLayerEvent, toE164IN } from "@/lib/gtm";
@@ -461,6 +470,9 @@ export function PostAdWizard({
       ? "v1"
       : resolvePostFormVariant({ isAdmin, override: formOverride, percent: formV2Percent, viewerKey: getPostFormViewerKey() }),
   );
+  // v2 and v3 share the redesigned layout; v3 also shows the details step by step, each section appearing once the one above is done.
+  const progressive = formVariant === "v3";
+  const redesigned = formVariant !== "v1";
   const [step, setStep] = useState<Step>("category");
   const [postedAs, setPostedAs] = useState<SellerType | null>(null);
   const [sellerTypeMissing, setSellerTypeMissing] = useState(false);
@@ -891,6 +903,7 @@ export function PostAdWizard({
     setPin(null);
     setDescription("");
     setAttributes({});
+    setRevealed(new Set());
     setSelectedBoostPlan(null);
     setPinLookupNote(null);
     setError(null);
@@ -1694,7 +1707,7 @@ export function PostAdWizard({
   // Everything still wrong on this step, in form order (shared with the mobile wizard and tested in
   // packages/types). The first entry is what the one-line "To preview" message used to show; the rest feed the
   // "N left" chip, the jump-to-first-problem on Preview, and the message under each field.
-  const issues = postDetailsIssues({
+  const rawIssues = postDetailsIssues({
     hasPin: !!pin,
     pinLookingUp,
     hasCity: !!cityId,
@@ -1719,6 +1732,42 @@ export function PostAdWizard({
     description,
     descriptionMin: DESCRIPTION_MIN_LENGTH,
   });
+  // The step-by-step form lists problems in the order its sections appear, so the first problem (the chip, the Preview button, the jump)
+  // is always in a section that is already showing. The other forms keep the order the problems were found in.
+  const issues = progressive ? sortIssuesByReveal(rawIssues) : rawIssues;
+
+  // Step-by-step form (v3): which sections are showing. The required blocks wait for the problems above them; the optional sections then
+  // come one at a time, each after the previous one has an answer. A section that has appeared stays (`revealed`), so changing an earlier
+  // answer never makes the page jump or hides something the seller is typing into.
+  const optionalSections =
+    progressive && category && transactionType
+      ? groupFieldsBySection(
+          CATEGORY_FIELD_CONFIG[category].filter((field) => !field.required && fieldIsVisible(field, transactionType, attributes)),
+        )
+      : [];
+  const optionalLabels = Object.fromEntries(optionalSections.map((s) => [s.section, s.label]));
+  const autoShown = progressive
+    ? autoRevealedSections(
+        issues,
+        optionalSections.map((s) => s.section),
+        (id) => {
+          const section = optionalSections.find((s) => s.section === id);
+          return !!section && isSectionAnswered(section.fields.map((f) => f.key), attributes);
+        },
+      )
+    : null;
+  const [revealed, setRevealed] = useState<ReadonlySet<string>>(new Set());
+  const [revealAnnouncement, setRevealAnnouncement] = useState("");
+  if (autoShown) {
+    // Adjusting state while rendering, guarded so it settles after one pass: remember what has appeared, and tell screen readers.
+    const fresh = [...autoShown].filter((id) => !revealed.has(id));
+    if (fresh.length > 0) {
+      setRevealed(new Set([...revealed, ...fresh]));
+      setRevealAnnouncement(`New section: ${revealSectionLabel(fresh[fresh.length - 1], optionalLabels)}`);
+    }
+  }
+  const shown = (id: RevealSectionId) => !progressive || (autoShown?.has(id) ?? false) || revealed.has(id);
+
   // The AI copy helper writes the title and description, so only the other problems stop it.
   const firstOtherIssue = issues.find((issue) => issue.group === "other") ?? null;
   const otherFieldsIssue: { text: string; missing: boolean } | null = firstOtherIssue
@@ -1863,6 +1912,13 @@ export function PostAdWizard({
     }
   }
   /** Preview with things left does not do nothing: it takes the seller to the first problem. */
+  /** Scrolls to a problem's field. In the step-by-step form a later section may not be showing yet, so fall back to the first problem,
+   * which is always in a section that is. */
+  function jumpTo(target: string) {
+    if (scrollToTarget(target)) return;
+    const first = issues[0];
+    if (first) scrollToTarget(first.target);
+  }
   function onPreviewTap() {
     if (issues.length === 0) {
       leftViaPreviewRef.current = true;
@@ -1872,14 +1928,14 @@ export function PostAdWizard({
     const first = issues[0];
     setAttemptedPreview(true);
     flashTarget(first.target);
-    scrollToTarget(first.target);
+    jumpTo(first.target);
     reportPostFieldEvent("preview_blocked", { field: first.target, category, left: issues.length });
   }
   function onChipTap() {
     const first = issues[0];
     if (!first) return;
     flashTarget(first.target);
-    scrollToTarget(first.target);
+    jumpTo(first.target);
     reportPostFieldEvent("chip_tapped", { field: first.target, category, left: issues.length });
   }
 
@@ -2544,6 +2600,11 @@ export function PostAdWizard({
       {step === "details" && category && transactionType && (
         <div className="xl:grid xl:grid-cols-[minmax(0,820px)_340px] xl:gap-10 xl:items-start">
         <div className="flex flex-col gap-4 min-w-0" onFocusCapture={onDetailsFocus} onKeyDown={onDetailsKeyDown}>
+          {progressive && (
+            <p className="sr-only" role="status" aria-live="polite">
+              {revealAnnouncement}
+            </p>
+          )}
           {issues.length > 0 && (
             <div className="sticky top-[68px] z-30 max-w-[720px]">
               <button
@@ -2572,7 +2633,7 @@ export function PostAdWizard({
                         onClick={() => {
                           setChecklistOpen(false);
                           flashTarget(issue.target);
-                          scrollToTarget(issue.target);
+                          jumpTo(issue.target);
                         }}
                         className="w-full text-left bg-transparent border-0 p-0 text-[14px] text-text cursor-pointer"
                       >
@@ -2614,9 +2675,9 @@ export function PostAdWizard({
             </p>
           )}
           <div id="post-field-location" className={`max-w-[720px] ${ringFor("location")}`}>
-            <RequiredLabel text={formVariant === "v2" ? "Where is the property?" : "Pin your exact location"} />
+            <RequiredLabel text={redesigned ? "Where is the property?" : "Pin your exact location"} />
             <p className="text-xs text-muted mt-0 mb-2">
-              {formVariant === "v2"
+              {redesigned
                 ? "Search for its address, or use your current location if you are there now. City and area are set from the pin, and buyers see the map on your ad."
                 : "Search an address or drag the pin to the property. City and area are set from the pin, and buyers see the map on your ad."}
             </p>
@@ -2684,8 +2745,8 @@ export function PostAdWizard({
             </div>
           )}
 
-          {formVariant === "v2" ? (
-            <div className="max-w-[720px] rounded-xl border border-border bg-surface-alt/40 p-4 flex flex-col gap-4">
+          {!shown("media") ? null : redesigned ? (
+            <div className={`max-w-[720px] rounded-xl border border-border bg-surface-alt/40 p-4 flex flex-col gap-4 ${progressive ? "post-reveal" : ""}`}>
               <div>
                 <div className="font-lora font-bold text-[16px] text-text">Show your property</div>
                 <p className="m-0 mt-0.5 text-xs text-muted">Clear photos bring the most enquiries. A short video is optional.</p>
@@ -2701,9 +2762,10 @@ export function PostAdWizard({
             * which the seller is about to fill in — asking again produced "3bhk", "3 BHK" and
             * "3 Beds" as three spellings of the same number. See deriveCardSpecs. */}
 
-          <div className="border-t border-border pt-4">
+          {shown("essentials") && (
+          <div className={`border-t border-border pt-4 ${progressive ? "post-reveal" : ""}`}>
             <div className="text-[13px] font-bold text-text mb-3">
-              {POST_CATEGORIES.find((c) => c.value === category)?.label} details
+              {progressive ? "The essentials" : `${POST_CATEGORIES.find((c) => c.value === category)?.label} details`}
             </div>
             <CategoryFieldsAccordion
               category={category}
@@ -2712,6 +2774,8 @@ export function PostAdWizard({
               onAttributesChange={setAttributes}
               fieldNote={brokerageNote}
               feedback={fieldFeedback}
+              fieldFilter={progressive ? (field) => field.required === true : undefined}
+              hideCompleteness={progressive}
               sectionExtras={{
                 pricing: (
                   <div id="post-field-price" className={`flex flex-col gap-3 ${ringFor("price")}`} onBlur={() => markTouched("price")}>
@@ -2780,9 +2844,12 @@ export function PostAdWizard({
               }}
             />
           </div>
+          )}
 
-          {formVariant === "v1" && renderVideoBlock()}
+          {!redesigned && renderVideoBlock()}
 
+          {shown("copy") && (
+          <div className={`flex flex-col gap-4 ${progressive ? "post-reveal" : ""}`}>
           {/* Was a small gold pill above the fields it fills, easy to scan straight past (users
             * kept missing it and writing the title/description by hand). Promoted to the same
             * loud gold-callout treatment the "restored draft" banner above uses, with its own
@@ -2918,6 +2985,33 @@ export function PostAdWizard({
               </span>
             </div>
           )}
+          </div>
+          )}
+
+          {/* Step-by-step form (v3): the optional sections, one at a time. Each appears once the one before has an answer; none of
+            * them stops Preview. */}
+          {progressive &&
+            optionalSections.map((section, index) =>
+              shown(`opt:${section.section}`) ? (
+                <div key={section.section} className="post-reveal flex flex-col gap-2">
+                  {index === 0 && (
+                    <p className="m-0 max-w-[720px] text-[13px] text-text-soft">
+                      <span className="font-bold text-text">More details (optional).</span> Ads with more details get found more often. You can
+                      preview your ad at any time.
+                    </p>
+                  )}
+                  <CategoryFieldsAccordion
+                    category={category}
+                    transactionType={transactionType}
+                    attributes={attributes}
+                    onAttributesChange={setAttributes}
+                    fieldFilter={(field) => !field.required && (field.section ?? "other") === section.section}
+                    hideCompleteness
+                    sectionLabelSuffix=" (optional)"
+                  />
+                </div>
+              ) : null,
+            )}
 
           <div className="flex gap-2.5 max-w-[720px]">
             <button
@@ -2977,7 +3071,7 @@ export function PostAdWizard({
                       type="button"
                       onClick={() => {
                         flashTarget(issue.target);
-                        scrollToTarget(issue.target);
+                        jumpTo(issue.target);
                       }}
                       className="w-full text-left bg-transparent border-0 p-0 text-[13px] text-text-soft hover:text-green cursor-pointer"
                     >

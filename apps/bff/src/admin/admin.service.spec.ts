@@ -1187,17 +1187,21 @@ describe('AdminService.getPostFunnel', () => {
       pageView('s1', '/post/details?from=header_desktop&loggedIn=0&form=v2'),
       pageView('s2', '/post/category?from=header_desktop&loggedIn=0&form=v1'),
       pageView('s2', '/post/details?from=header_desktop&loggedIn=0&form=v1'),
-      // From before the form version was recorded: counted with no filter, but in neither version.
+      // From before the form version was recorded: counted with no filter, but in no version.
       pageView('s3', '/post/category?from=header_desktop&loggedIn=0'),
+      // The step-by-step form, and an admin session (labelled `admin`, so it is in none of the three).
+      pageView('s4', '/post/category?from=header_desktop&loggedIn=0&form=v3'),
+      pageView('s5', '/post/category?from=header_desktop&loggedIn=1&form=admin'),
     ];
-    const count = async (variant?: 'v1' | 'v2') => {
+    const count = async (variant?: 'v1' | 'v2' | 'v3') => {
       const { service } = makeService({ pageView: { findMany: jest.fn().mockResolvedValue(pageViews) } });
       const result = await service.getPostFunnel({ variant });
       return result.steps.find((s) => s.path === '/post/category')?.sessions;
     };
-    expect(await count()).toBe(3);
+    expect(await count()).toBe(5);
     expect(await count('v2')).toBe(1);
     expect(await count('v1')).toBe(1);
+    expect(await count('v3')).toBe(1);
   });
 
   it('combines the country and platform filters', async () => {

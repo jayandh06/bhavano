@@ -13,9 +13,9 @@ export type PostFunnelLoggedIn = (typeof LOGGED_IN_VALUES)[number];
 const COUNTRY_VALUES = ['india', 'other'] as const;
 export type PostFunnelCountry = (typeof COUNTRY_VALUES)[number];
 
-/** Which Details form the visitor was given: the original (`v1`) or the redesign (`v2`), as written into every funnel step as `form=`.
+/** Which Details form the visitor was given: the original (`v1`), the redesign (`v2`) or the step-by-step page (`v3`), as written into every funnel step as `form=`.
  * Sessions from before that was recorded have neither, so a variant filter leaves them out. See docs/plans/post-ad-simpler-form.md. */
-const VARIANT_VALUES = ['v1', 'v2'] as const;
+const VARIANT_VALUES = ['v1', 'v2', 'v3'] as const;
 export type PostFunnelVariant = (typeof VARIANT_VALUES)[number];
 
 /** `from`/`to` arrive as full ISO strings with an offset already applied by the admin page, same

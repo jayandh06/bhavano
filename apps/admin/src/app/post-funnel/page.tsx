@@ -24,12 +24,13 @@ const COUNTRY_OPTIONS: { value: PostFunnelQuery["country"] | "any"; label: strin
   { value: "other", label: "Outside India (or unknown)" },
 ];
 
-// Which Details form the session saw. The redesign (v2) is rolled out by percentage, so comparing the two is the point of the split;
-// sessions from before it was recorded are in neither. See docs/plans/post-ad-simpler-form.md.
+// Which Details form the session saw. The redesign (v2) is rolled out by percentage; the step-by-step page (v3) is only shown to admins and by
+// ?form=v3 for now. Sessions from before it was recorded are in none. See docs/plans/post-ad-simpler-form.md.
 const VARIANT_OPTIONS: { value: PostFunnelQuery["variant"] | "any"; label: string }[] = [
   { value: "any", label: "Both forms" },
   { value: "v1", label: "Original form (v1)" },
   { value: "v2", label: "Redesigned form (v2)" },
+  { value: "v3", label: "Step-by-step form (v3)" },
 ];
 
 const LOGGED_IN_OPTIONS: { value: PostFunnelQuery["loggedIn"] | "any"; label: string }[] = [

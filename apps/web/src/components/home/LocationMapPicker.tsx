@@ -23,8 +23,9 @@ export function LocationMapPicker({
   variant = "v1",
 }: {
   /** `v2` is the redesigned Details form (docs/plans/post-ad-simpler-form.md, 4.8): search and "Use my current location" side by side,
-   * search first, since most owners list from home and are not at the property. Behaviour is identical; only the layout and wording differ. */
-  variant?: "v1" | "v2";
+   * search first, since most owners list from home and are not at the property. Behaviour is identical; only the layout and wording differ.
+   * `v3` (the step-by-step form) uses the same layout as `v2`. */
+  variant?: "v1" | "v2" | "v3";
   defaultCenter: { lat: number; lng: number };
   /** A pin already placed (a restored draft). The map opens on it and does not auto-locate. */
   initialPin?: { lat: number; lng: number } | null;
@@ -159,7 +160,7 @@ export function LocationMapPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (variant === "v2") {
+  if (variant !== "v1") {
     return (
       <div>
         {/* Search is the main control (most owners are not at the property); "current location" is a shortcut beside it, never the only path. */}

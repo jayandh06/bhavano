@@ -224,6 +224,14 @@
   display: none;
 }
 
+/* A section of the step-by-step post-ad form (docs/plans/post-ad-simpler-form.md) fading in as the one above it is completed. No motion for
+   visitors who have asked for less. */
+@media (prefers-reduced-motion: no-preference) {
+  .post-reveal {
+    animation: fadein 0.35s ease-out both;
+  }
+}
+
 /* Diwali greeting on the home page (components/home/DiwaliBanner.tsx). The flames move only for visitors who have not asked for less motion. */
 @media (prefers-reduced-motion: no-preference) {
   .diya-flame {
