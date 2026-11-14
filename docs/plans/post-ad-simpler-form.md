@@ -253,7 +253,7 @@ Steps 1 of section 7 for the web: the **redesigned form is "v2"**, the current o
   lived in a `POST_FORM_V2_PERCENT` environment variable, which was removed). The web `/post` page reads it from the BFF (`GET /listings/post-form-settings`,
   cached about 30 seconds), so a change needs no restart and no deploy. Each browser has a stable bucket (`bhavano.postFormKey` in localStorage, hashed with the
   existing `rolloutBucket`), so a visitor keeps the same form. A missing setting or an unreachable BFF means 0 (nobody). **`/post?form=v2` or `?form=v1` forces
-  a version** for testing. **Admin accounts always get v2** (the override is ignored for them), and their sessions are recorded as `form=admin`, so staff testing
+  a version** for testing. **Admin accounts get the newest version by default** (v3 since the step-by-step form; see 7c) and can pick any version, and their sessions are recorded as `form=admin`, so staff testing
   never counts towards the v1 / v2 comparison. Code: `apps/web/src/lib/postFormVariant.ts`, `apps/bff/src/listings/post-form.service.ts` (+ tests).
 - **What v2 changes on the Details step:**
   - **Location (4.8):** heading "Where is the property?"; the search box and **Use my current location** sit side by side, search first;
@@ -289,7 +289,9 @@ plus the progressive reveal. **Not in the rollout percentage:** only admin accou
   complete while the seller is still typing (the first digit of a size is already a valid value). The existing "N left / Next: ..." chip is the guide.
 - **The first problem is always visible.** Problems are listed in the order the sections appear (photos before the essentials, which is not the order they are found in),
   so the chip, the Preview button and "See all" never point at a section that is not showing yet; a hidden target falls back to the first problem.
-- **Admins get v3 always** (the override is ignored for them) and their funnel events are recorded as `form=admin`. The admin funnel's Form version filter has a v3 option.
+- **Admins get v3 by default and can choose the version.** An admin on `/post` sees an "Admin: form version" box (Original, Redesigned, Step by step) that adds `?form=` and reloads
+  (the draft is kept); `?form=` works for admins too. Their funnel events are recorded as `form=admin` whichever version they look at, so looking around never counts towards the
+  comparison. The admin funnel's Form version filter has a v3 option.
 - **Mobile browser:** the same component and layout. Checked at 390 px wide: one column, no sideways scrolling, each section fading in (not for visitors who have asked for
   reduced motion). A screen reader hears "New section: ..." when one appears. Screenshots of each stage were reviewed.
 - **Tests:** unit tests for the reveal rules (including: for every combination of problems the first one is in a section that is showing) and the variant rules; a browser

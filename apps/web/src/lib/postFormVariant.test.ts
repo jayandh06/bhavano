@@ -27,10 +27,17 @@ describe("parsePostFormVariant", () => {
 });
 
 describe("resolvePostFormVariant", () => {
-  it("always gives an admin the newest form, v3, whatever the percentage or an override", () => {
+  it("gives an admin the newest form, v3, by default, whatever the percentage", () => {
     expect(resolvePostFormVariant({ isAdmin: true, override: null, percent: 0, viewerKey: "x" })).toBe("v3");
-    expect(resolvePostFormVariant({ isAdmin: true, override: "v1", percent: 0, viewerKey: "x" })).toBe("v3");
-    expect(resolvePostFormVariant({ isAdmin: true, override: "v2", percent: 100, viewerKey: "" })).toBe("v3");
+    expect(resolvePostFormVariant({ isAdmin: true, override: null, percent: 100, viewerKey: "" })).toBe("v3");
+    expect(resolvePostFormVariant({ isAdmin: true, override: null, percent: 50, viewerKey: "visitor-1" })).toBe("v3");
+  });
+
+  it("lets an admin choose any version, so they can look at the others", () => {
+    for (const version of ["v1", "v2", "v3"] as const) {
+      expect(resolvePostFormVariant({ isAdmin: true, override: version, percent: 0, viewerKey: "x" })).toBe(version);
+      expect(resolvePostFormVariant({ isAdmin: true, override: version, percent: 100, viewerKey: "" })).toBe(version);
+    }
   });
 
   it("never assigns v3 through the rollout percentage: only an admin or ?form=v3 gets it", () => {

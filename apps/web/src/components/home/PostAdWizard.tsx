@@ -41,6 +41,7 @@ import { listingPriceIssue } from "@bhavano/types/priceBounds";
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
 import { reverseGeocodeAction } from "@/app/actions/locations";
 import { AdminTestScenarios } from "./AdminTestScenarios";
+import { AdminFormVersionSwitch } from "./AdminFormVersionSwitch";
 import { scenarioAttributes, scenarioById, scenarioCopy, scenarioPhotos, scenarioPrice, scenarioQualifier } from "@/lib/postAdScenarios";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
@@ -465,11 +466,14 @@ export function PostAdWizard({
   // the initializer so the very first funnel event already carries it. On the server there is no storage, so it is "v1" there;
   // that is safe because the first steps look the same in both versions and the Details step only renders after a click.
   // Admins always get the redesigned form; their sessions are labelled `admin` in the funnel so they never count towards v1 vs v2.
-  const [formVariant] = useState<PostFormVariant>(() =>
-    typeof window === "undefined"
+  const [formVariant] = useState<PostFormVariant>(() => {
+    // An admin's version needs no browser storage, so it is the same on the server and in the browser. That matters: the admin's version
+    // switch is drawn on the first render, and a different value in the browser would leave the server's highlighted button in place.
+    if (isAdmin) return resolvePostFormVariant({ isAdmin, override: formOverride, percent: formV2Percent, viewerKey: "" });
+    return typeof window === "undefined"
       ? "v1"
-      : resolvePostFormVariant({ isAdmin, override: formOverride, percent: formV2Percent, viewerKey: getPostFormViewerKey() }),
-  );
+      : resolvePostFormVariant({ isAdmin, override: formOverride, percent: formV2Percent, viewerKey: getPostFormViewerKey() });
+  });
   // v2 and v3 share the redesigned layout; v3 also shows the details step by step, each section appearing once the one above is done.
   const progressive = formVariant === "v3";
   const redesigned = formVariant !== "v1";
@@ -2497,6 +2501,8 @@ export function PostAdWizard({
           })}
         </div>
       )}
+
+      {isAdmin && (step === "category" || step === "details") && <AdminFormVersionSwitch current={formVariant} />}
 
       {isAdmin && step === "details" && (
         <AssistedSellerPanel value={assistedSeller} onChange={setAssistedSeller} />

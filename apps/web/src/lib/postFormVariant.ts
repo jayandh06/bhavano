@@ -21,17 +21,17 @@ export function normalizeRolloutPercent(value: unknown): number {
   return Math.min(100, Math.max(0, value));
 }
 
-/** Admins always get the newest form, `v3` (so the team uses the latest design). Otherwise `override` (the `?form=` query
- * param, for testing) wins; otherwise the visitor's stable bucket decides, so the same browser keeps the same form across visits.
- * Without a viewer key there is no bucket, so only 100% includes them. */
+/** Admins get the newest form, `v3`, by default (so the team uses the latest design), and can pick any version with `override` (the `?form=`
+ * query param; the post page has a switch for it). For everyone else `override` wins too, for testing; otherwise the visitor's stable bucket
+ * decides, so the same browser keeps the same form across visits. Without a viewer key there is no bucket, so only 100% includes them. */
 export function resolvePostFormVariant(input: {
   isAdmin?: boolean;
   override: PostFormVariant | null;
   percent: number;
   viewerKey: string;
 }): PostFormVariant {
-  if (input.isAdmin) return "v3";
   if (input.override) return input.override;
+  if (input.isAdmin) return "v3";
   if (input.percent >= 100) return "v2";
   if (input.percent <= 0 || !input.viewerKey) return "v1";
   return rolloutBucket(input.viewerKey) < input.percent ? "v2" : "v1";
