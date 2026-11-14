@@ -100,7 +100,10 @@ stopping people at Preview.
 - **Built (2026-11-14): country filter on admin Post-ad funnel.** A "Country" dropdown (Any / India / Outside India or unknown) now applies to the
   funnel and to "Inside the Details step". It reads `Visit.ipCountry === 'India'`; "Outside India" is the complement, so the two always add up to
   all sessions (including sessions with no geolocation or no `Visit` row). Query param `country=india|other` on `/admin/post-funnel` and
-  `/admin/post-funnel/details`, `/post-funnel?country=india` in admin. Tested in `admin.service.spec.ts`. Use **India** for every post-ad
+  `/admin/post-funnel/details`, `/post-funnel?country=india` in admin. Tested in `admin.service.spec.ts`. **Deployed 2026-11-14**
+  (images built by GitHub Actions, `sha-0e65d4c2`) and checked live for 5 to 11 Nov: **India 179 arrived, 166 chose a category (93%), 120
+  reached Details, 64 Preview (53%), 43 published; outside India 522 arrived and 3 chose a category.** Real arrivals almost all pick a
+  category, so the first screen is not the problem; the form's own numbers above stand. Use **India** for every post-ad
   experiment from now on; the all-countries top row is not comparable week to week.
 - The **Details-onward numbers (51% Details to Preview, the blockers, the exits) are not distorted** by this: those sessions touched fields, which
   automated visitors do not.
