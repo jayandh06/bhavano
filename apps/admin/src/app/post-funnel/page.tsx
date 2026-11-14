@@ -24,6 +24,14 @@ const COUNTRY_OPTIONS: { value: PostFunnelQuery["country"] | "any"; label: strin
   { value: "other", label: "Outside India (or unknown)" },
 ];
 
+// Which Details form the session saw. The redesign (v2) is rolled out by percentage, so comparing the two is the point of the split;
+// sessions from before it was recorded are in neither. See docs/plans/post-ad-simpler-form.md.
+const VARIANT_OPTIONS: { value: PostFunnelQuery["variant"] | "any"; label: string }[] = [
+  { value: "any", label: "Both forms" },
+  { value: "v1", label: "Original form (v1)" },
+  { value: "v2", label: "Redesigned form (v2)" },
+];
+
 const LOGGED_IN_OPTIONS: { value: PostFunnelQuery["loggedIn"] | "any"; label: string }[] = [
   { value: "any", label: "Logged in or not" },
   { value: "yes", label: "Logged in at that step" },
@@ -50,6 +58,8 @@ export default async function PostFunnelPage({ searchParams }: { searchParams: P
   const loggedIn = rawLoggedIn && rawLoggedIn !== "any" ? (rawLoggedIn as PostFunnelQuery["loggedIn"]) : undefined;
   const rawCountry = str(sp.country);
   const country = rawCountry && rawCountry !== "any" ? (rawCountry as PostFunnelQuery["country"]) : undefined;
+  const rawVariant = str(sp.variant);
+  const variant = rawVariant && rawVariant !== "any" ? (rawVariant as PostFunnelQuery["variant"]) : undefined;
 
   const [result, details] = await Promise.all([
     fetchPostFunnel(accessToken, {
@@ -59,9 +69,10 @@ export default async function PostFunnelPage({ searchParams }: { searchParams: P
       platform,
       loggedIn,
       country,
+      variant,
     }),
-    // The field-level view of Details. Only the date range, platform and country apply to it.
-    fetchPostDetailsBlockers(accessToken, { from: istDayStart(from), to: istDayEnd(to), platform, country }).catch(() => null),
+    // The field-level view of Details. Only the date range, platform, country and form version apply to it.
+    fetchPostDetailsBlockers(accessToken, { from: istDayStart(from), to: istDayEnd(to), platform, country, variant }).catch(() => null),
   ]);
 
   const topOfFunnel = result.steps[0]?.sessions ?? 0;
@@ -118,6 +129,16 @@ export default async function PostFunnelPage({ searchParams }: { searchParams: P
             <Field label="Country">
               <SelectField name="country" defaultValue={country ?? "any"} style={selectStyle}>
                 {COUNTRY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectField>
+            </Field>
+
+            <Field label="Form version">
+              <SelectField name="variant" defaultValue={variant ?? "any"} style={selectStyle}>
+                {VARIANT_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>

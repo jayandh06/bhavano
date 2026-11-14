@@ -85,6 +85,7 @@ import {
 import { startBoostCheckout } from "@/lib/boostCheckout";
 import { useAuthGate } from "./AuthGateProvider";
 import { CategoryFieldsAccordion, type FieldFeedback } from "@/components/home/CategoryFieldsAccordion";
+import { getPostFormViewerKey, resolvePostFormVariant, type PostFormVariant } from "@/lib/postFormVariant";
 import { ListingSlotCapPrompt } from "@/components/home/ListingSlotCapPrompt";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
 import { pushDataLayerEvent, toE164IN } from "@/lib/gtm";
@@ -329,10 +330,10 @@ const STEP_SYNTHETIC_PATH: Record<Step, string | null> = {
   success: null,
 };
 
-function StepTracker({ step, entry, loggedIn }: { step: Step; entry: string; loggedIn: boolean }) {
+function StepTracker({ step, entry, loggedIn, form }: { step: Step; entry: string; loggedIn: boolean; form: PostFormVariant }) {
   useEffect(() => {
     window.scrollTo(0, 0);
-    pushDataLayerEvent("post_step_view", { step, entry, loggedIn });
+    pushDataLayerEvent("post_step_view", { step, entry, loggedIn, form });
 
     const path = STEP_SYNTHETIC_PATH[step];
     if (!path) return;
@@ -342,7 +343,8 @@ function StepTracker({ step, entry, loggedIn }: { step: Step; entry: string; log
     void fetch("/api/analytics/pageview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: `${path}?from=${encodeURIComponent(entry)}&loggedIn=${loggedIn ? 1 : 0}` }),
+      // `form` is which Details form the visitor was given (v1 or v2), so the admin funnel can compare the two.
+      body: JSON.stringify({ path: `${path}?from=${encodeURIComponent(entry)}&loggedIn=${loggedIn ? 1 : 0}&form=${form}` }),
       keepalive: true,
     }).catch(() => {
       // Offline or navigated away mid-flight — same stance as SoftNavPageViews.
@@ -407,9 +409,15 @@ export function PostAdWizard({
   sellerType: profileSellerType,
   isAdmin = false,
   entry = "direct",
+  formOverride = null,
+  formV2Percent = 0,
   leadContactOn = false,
   slotNotice,
 }: {
+  /** `?form=v1|v2` on the post page: forces a version of the Details form, for testing. */
+  formOverride?: PostFormVariant | null;
+  /** Share of visitors (0 to 100) who get the redesigned Details form. See `postFormVariant.ts`. */
+  formV2Percent?: number;
   /** Set by the post page when the signed-in seller already has every slot in use: shown on the first step so they learn it before filling in the form. */
   slotNotice?: ListingSlotCapErrorBody;
   cities: City[];
@@ -438,6 +446,14 @@ export function PostAdWizard({
 }) {
   const { requireLogin, requireVerifiedPhone } = useAuthGate();
   const [listingId] = useState(() => crypto.randomUUID());
+  // Which Details form this visitor sees (docs/plans/post-ad-simpler-form.md). Decided once, from a stable per-browser bucket, in
+  // the initializer so the very first funnel event already carries it. On the server there is no storage, so it is "v1" there;
+  // that is safe because the first steps look the same in both versions and the Details step only renders after a click.
+  const [formVariant] = useState<PostFormVariant>(() =>
+    typeof window === "undefined"
+      ? "v1"
+      : resolvePostFormVariant({ override: formOverride, percent: formV2Percent, viewerKey: getPostFormViewerKey() }),
+  );
   const [step, setStep] = useState<Step>("category");
   const [postedAs, setPostedAs] = useState<SellerType | null>(null);
   const [sellerTypeMissing, setSellerTypeMissing] = useState(false);
@@ -1353,6 +1369,157 @@ export function PostAdWizard({
     });
   }
 
+  /** The photo uploader and thumbnails. A function (not inline) because the redesigned form shows it inside one "Show your property" card
+   * together with the video block, while the original form shows it on its own. */
+  function renderPhotosBlock() {
+    return (
+      <div id="post-field-photos" className={`max-w-[720px] ${ringFor("photos")}`} ref={photoSectionRef}>
+        <RequiredLabel
+          text={`Photos (${MIN_PHOTOS}-${MAX_PHOTOS})`}
+          done={photos.length >= MIN_PHOTOS}
+          pill={`Required: at least ${MIN_PHOTOS} (${photos.length} added)`}
+        />
+        {photos.length < MAX_PHOTOS && (
+          // A styled label wrapping a hidden input rather than a bare <input type="file">.
+          // The native control renders as a small grey "Choose files" button that is easy to
+          // scroll past — on the one step where skipping it costs the listing most, since an
+          // ad with no photo is the one nobody opens.
+          <UploadZone
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onFiles={(files) => void onPhotosSelected(files)}
+            icon="camera"
+            label={preparingPhotos ? "Preparing photos…" : photos.length > 0 ? "Add more photos" : "Add photos"}
+            hint={`JPG, PNG or WebP · up to ${PHOTO_SIZE_LABEL} each · ${MAX_PHOTOS - photos.length} more allowed`}
+          />
+        )}
+        {/* An extra, not a restriction: 3-6 photos and a video stay free (docs/plans/featured-ad-benefits-and-media-limits.md). */}
+        {!assistedMode && (
+          <div className="mt-2 rounded-lg border border-[color:var(--gold)]/50 bg-[color:var(--gold)]/10 px-3 py-2 text-xs text-text">
+            <span className="font-bold text-[color:var(--gold)]">&#10024; Make it Featured to show more</span>
+            <span className="block mt-0.5">
+              {photos.length >= MAX_PHOTOS ? `You’ve added ${MAX_PHOTOS} photos. ` : ""}
+              Featured ads can have up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos of up to 3 minutes each. You can upgrade right after you post.
+            </span>
+          </div>
+        )}
+        {duplicatePhotoNos.length > 0 && (
+          <p className="text-xs text-[#b3413a] font-bold mt-1.5 mb-0">
+            {duplicatePhotoNos.length === 1 ? "The photo outlined in red" : "The photos outlined in red"} appear{duplicatePhotoNos.length === 1 ? "s" : ""} to
+            already be in use on another listing — remove {duplicatePhotoNos.length === 1 ? "it" : "them"} or replace with a different photo.
+          </p>
+        )}
+        {photos.length > 0 && (
+          <div className="flex flex-wrap gap-2.5 mt-2.5">
+            {photos.map((photo, i) => (
+              <div key={photo.previewUrl} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photo.previewUrl}
+                  alt={`Photo ${i + 1}`}
+                  className={`h-[100px] w-[100px] object-cover rounded-lg ${
+                    duplicatePhotoNos.includes(i + 1) ? "ring-2 ring-[#b3413a] ring-offset-2" : ""
+                  }`}
+                />
+                {/* Top-left, same placement/style EditListingPhotos uses for the same job
+                  * post-creation — index 0 is the cover by construction (see
+                  * onSetCoverPhoto), no separate field to check. */}
+                {i === 0 ? (
+                  <span className="absolute top-1 left-1 bg-green text-on-green text-[10px] font-bold px-1.5 py-0.5 rounded">
+                    Cover
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onSetCoverPhoto(i)}
+                    title="Make this the cover photo"
+                    className="absolute top-1 left-1 bg-black/55 text-white text-[10px] font-bold px-1.5 py-0.5 rounded border-0 cursor-pointer"
+                  >
+                    ☆ Cover
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onRemovePhoto(i)}
+                  className="absolute -top-1.5 -right-1.5 w-[22px] h-[22px] rounded-full border-0 bg-surface text-[#b3413a] font-bold cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* The "only added the first N" note is only true while the list is still full; the moment a
+          * photo is removed it is stale, so it is hidden as well as cleared. */}
+        {photoNotice && (photoNotice.kind === "file" || photos.length >= MAX_PHOTOS) && (
+          <p className="text-[#b3413a] text-[13px] mt-2">{photoNotice.text}</p>
+        )}
+        {fieldMessage("photos")}
+        {error && (
+          <p className="text-[#b3413a] text-[13px] mt-2">{error}</p>
+        )}
+      </div>
+    );
+  }
+
+  /** The video uploader and thumbnails. Placed after the category fields in the original form, straight after the photos in the redesign. */
+  function renderVideoBlock() {
+    return (
+      <div className="max-w-[720px]">
+        <label className={labelClass}>
+          Video (optional, up to {videoEntitlement.maxVideos})
+        </label>
+        <p className="text-xs text-muted mt-0.5 mb-1.5">
+          Up to {videoEntitlement.maxDurationSec}s each.
+          {videoEntitlement.canUpgradeByBoosting && (
+            <>
+              {" "}
+              <span className="font-bold text-[color:var(--gold)]">
+                &#10024; Featured ads can add up to 5 videos, up to 3 minutes each.
+              </span>
+            </>
+          )}
+        </p>
+        {assistedMode && (
+          <p className="text-xs text-muted mt-0 mb-1.5">
+            Not saved when posting for someone else. The seller can add videos after publishing.
+          </p>
+        )}
+        {!assistedMode && videos.length < videoEntitlement.maxVideos && (
+          <UploadZone
+            accept="video/mp4,video/quicktime,video/webm,video/3gpp,video/x-matroska"
+            onFiles={(files) => void onVideosSelected(files)}
+            icon="video"
+            label={preparingVideos ? "Preparing video…" : videos.length > 0 ? "Add another video" : "Add a video"}
+            hint={`MP4 or MOV · up to ${VIDEO_SIZE_LABEL} and ${videoEntitlement.maxDurationSec}s each`}
+          />
+        )}
+        {videos.length > 0 && (
+          <div className="flex flex-wrap gap-2.5 mt-2.5">
+            {videos.map((video, i) => (
+              <div key={video.previewUrl} className="relative">
+                <video
+                  src={video.previewUrl}
+                  className="h-[100px] w-[100px] object-cover rounded-lg bg-black"
+                  muted
+                />
+                <button
+                  type="button"
+                  onClick={() => onRemoveVideo(i)}
+                  className="absolute -top-1.5 -right-1.5 w-[22px] h-[22px] rounded-full border-0 bg-surface text-[#b3413a] font-bold cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {videoError && (
+          <p className="text-[#b3413a] text-[13px] mt-2">{videoError}</p>
+        )}
+      </div>
+    );
+  }
+
   async function onVideosSelected(files: FileList | null) {
     if (!files || files.length === 0) return;
     setVideoError(null);
@@ -2203,7 +2370,7 @@ export function PostAdWizard({
 
   return (
     <div>
-      <StepTracker step={step} entry={entry} loggedIn={loggedIn} />
+      <StepTracker step={step} entry={entry} loggedIn={loggedIn} form={formVariant} />
       {draftRestored && step !== "success" && step !== "offer" && (
         // Deliberately loud: someone who tapped "Post ad" and landed mid-form, possibly in a
         // category they did not choose today, has to understand why before they publish into it.
@@ -2440,12 +2607,14 @@ export function PostAdWizard({
             </p>
           )}
           <div id="post-field-location" className={`max-w-[720px] ${ringFor("location")}`}>
-            <RequiredLabel text="Pin your exact location" />
+            <RequiredLabel text={formVariant === "v2" ? "Where is the property?" : "Pin your exact location"} />
             <p className="text-xs text-muted mt-0 mb-2">
-              Search an address or drag the pin to the property. City and area are set from the pin, and buyers see
-              the map on your ad.
+              {formVariant === "v2"
+                ? "Search for its address, or use your current location if you are there now. City and area are set from the pin, and buyers see the map on your ad."
+                : "Search an address or drag the pin to the property. City and area are set from the pin, and buyers see the map on your ad."}
             </p>
             <LocationMapPicker
+              variant={formVariant}
               defaultCenter={
                 cities.find((c) => c.id === cityId) ??
                 cities[0] ?? { lat: 20.5937, lng: 78.9629 }
@@ -2508,91 +2677,18 @@ export function PostAdWizard({
             </div>
           )}
 
-          <div id="post-field-photos" className={`max-w-[720px] ${ringFor("photos")}`} ref={photoSectionRef}>
-            <RequiredLabel
-              text={`Photos (${MIN_PHOTOS}-${MAX_PHOTOS})`}
-              done={photos.length >= MIN_PHOTOS}
-              pill={`Required: at least ${MIN_PHOTOS} (${photos.length} added)`}
-            />
-            {photos.length < MAX_PHOTOS && (
-              // A styled label wrapping a hidden input rather than a bare <input type="file">.
-              // The native control renders as a small grey "Choose files" button that is easy to
-              // scroll past — on the one step where skipping it costs the listing most, since an
-              // ad with no photo is the one nobody opens.
-              <UploadZone
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                onFiles={(files) => void onPhotosSelected(files)}
-                icon="camera"
-                label={preparingPhotos ? "Preparing photos…" : photos.length > 0 ? "Add more photos" : "Add photos"}
-                hint={`JPG, PNG or WebP · up to ${PHOTO_SIZE_LABEL} each · ${MAX_PHOTOS - photos.length} more allowed`}
-              />
-            )}
-            {/* An extra, not a restriction: 3-6 photos and a video stay free (docs/plans/featured-ad-benefits-and-media-limits.md). */}
-            {!assistedMode && (
-              <div className="mt-2 rounded-lg border border-[color:var(--gold)]/50 bg-[color:var(--gold)]/10 px-3 py-2 text-xs text-text">
-                <span className="font-bold text-[color:var(--gold)]">&#10024; Make it Featured to show more</span>
-                <span className="block mt-0.5">
-                  {photos.length >= MAX_PHOTOS ? `You’ve added ${MAX_PHOTOS} photos. ` : ""}
-                  Featured ads can have up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos of up to 3 minutes each. You can upgrade right after you post.
-                </span>
+          {formVariant === "v2" ? (
+            <div className="max-w-[720px] rounded-xl border border-border bg-surface-alt/40 p-4 flex flex-col gap-4">
+              <div>
+                <div className="font-lora font-bold text-[16px] text-text">Show your property</div>
+                <p className="m-0 mt-0.5 text-xs text-muted">Clear photos bring the most enquiries. A short video is optional.</p>
               </div>
-            )}
-            {duplicatePhotoNos.length > 0 && (
-              <p className="text-xs text-[#b3413a] font-bold mt-1.5 mb-0">
-                {duplicatePhotoNos.length === 1 ? "The photo outlined in red" : "The photos outlined in red"} appear{duplicatePhotoNos.length === 1 ? "s" : ""} to
-                already be in use on another listing — remove {duplicatePhotoNos.length === 1 ? "it" : "them"} or replace with a different photo.
-              </p>
-            )}
-            {photos.length > 0 && (
-              <div className="flex flex-wrap gap-2.5 mt-2.5">
-                {photos.map((photo, i) => (
-                  <div key={photo.previewUrl} className="relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={photo.previewUrl}
-                      alt={`Photo ${i + 1}`}
-                      className={`h-[100px] w-[100px] object-cover rounded-lg ${
-                        duplicatePhotoNos.includes(i + 1) ? "ring-2 ring-[#b3413a] ring-offset-2" : ""
-                      }`}
-                    />
-                    {/* Top-left, same placement/style EditListingPhotos uses for the same job
-                      * post-creation — index 0 is the cover by construction (see
-                      * onSetCoverPhoto), no separate field to check. */}
-                    {i === 0 ? (
-                      <span className="absolute top-1 left-1 bg-green text-on-green text-[10px] font-bold px-1.5 py-0.5 rounded">
-                        Cover
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => onSetCoverPhoto(i)}
-                        title="Make this the cover photo"
-                        className="absolute top-1 left-1 bg-black/55 text-white text-[10px] font-bold px-1.5 py-0.5 rounded border-0 cursor-pointer"
-                      >
-                        ☆ Cover
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => onRemovePhoto(i)}
-                      className="absolute -top-1.5 -right-1.5 w-[22px] h-[22px] rounded-full border-0 bg-surface text-[#b3413a] font-bold cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {/* The "only added the first N" note is only true while the list is still full; the moment a
-              * photo is removed it is stale, so it is hidden as well as cleared. */}
-            {photoNotice && (photoNotice.kind === "file" || photos.length >= MAX_PHOTOS) && (
-              <p className="text-[#b3413a] text-[13px] mt-2">{photoNotice.text}</p>
-            )}
-            {fieldMessage("photos")}
-            {error && (
-              <p className="text-[#b3413a] text-[13px] mt-2">{error}</p>
-            )}
-          </div>
+              {renderPhotosBlock()}
+              {renderVideoBlock()}
+            </div>
+          ) : (
+            renderPhotosBlock()
+          )}
 
           {/* No "specs" box. The card's chips are derived from the category fields right below,
             * which the seller is about to fill in — asking again produced "3bhk", "3 BHK" and
@@ -2678,59 +2774,7 @@ export function PostAdWizard({
             />
           </div>
 
-          <div className="max-w-[720px]">
-            <label className={labelClass}>
-              Video (optional, up to {videoEntitlement.maxVideos})
-            </label>
-            <p className="text-xs text-muted mt-0.5 mb-1.5">
-              Up to {videoEntitlement.maxDurationSec}s each.
-              {videoEntitlement.canUpgradeByBoosting && (
-                <>
-                  {" "}
-                  <span className="font-bold text-[color:var(--gold)]">
-                    &#10024; Featured ads can add up to 5 videos, up to 3 minutes each.
-                  </span>
-                </>
-              )}
-            </p>
-            {assistedMode && (
-              <p className="text-xs text-muted mt-0 mb-1.5">
-                Not saved when posting for someone else. The seller can add videos after publishing.
-              </p>
-            )}
-            {!assistedMode && videos.length < videoEntitlement.maxVideos && (
-              <UploadZone
-                accept="video/mp4,video/quicktime,video/webm,video/3gpp,video/x-matroska"
-                onFiles={(files) => void onVideosSelected(files)}
-                icon="video"
-                label={preparingVideos ? "Preparing video…" : videos.length > 0 ? "Add another video" : "Add a video"}
-                hint={`MP4 or MOV · up to ${VIDEO_SIZE_LABEL} and ${videoEntitlement.maxDurationSec}s each`}
-              />
-            )}
-            {videos.length > 0 && (
-              <div className="flex flex-wrap gap-2.5 mt-2.5">
-                {videos.map((video, i) => (
-                  <div key={video.previewUrl} className="relative">
-                    <video
-                      src={video.previewUrl}
-                      className="h-[100px] w-[100px] object-cover rounded-lg bg-black"
-                      muted
-                    />
-                    <button
-                      type="button"
-                      onClick={() => onRemoveVideo(i)}
-                      className="absolute -top-1.5 -right-1.5 w-[22px] h-[22px] rounded-full border-0 bg-surface text-[#b3413a] font-bold cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {videoError && (
-              <p className="text-[#b3413a] text-[13px] mt-2">{videoError}</p>
-            )}
-          </div>
+          {formVariant === "v1" && renderVideoBlock()}
 
           {/* Was a small gold pill above the fields it fills, easy to scan straight past (users
             * kept missing it and writing the title/description by hand). Promoted to the same

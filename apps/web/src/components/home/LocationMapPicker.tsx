@@ -20,7 +20,11 @@ export function LocationMapPicker({
   defaultCenter,
   initialPin,
   onPinChange,
+  variant = "v1",
 }: {
+  /** `v2` is the redesigned Details form (docs/plans/post-ad-simpler-form.md, 4.8): search and "Use my current location" side by side,
+   * search first, since most owners list from home and are not at the property. Behaviour is identical; only the layout and wording differ. */
+  variant?: "v1" | "v2";
   defaultCenter: { lat: number; lng: number };
   /** A pin already placed (a restored draft). The map opens on it and does not auto-locate. */
   initialPin?: { lat: number; lng: number } | null;
@@ -154,6 +158,37 @@ export function LocationMapPicker({
     // re-create the whole map instance and lose whatever pin the user already placed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (variant === "v2") {
+    return (
+      <div>
+        {/* Search is the main control (most owners are not at the property); "current location" is a shortcut beside it, never the only path. */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            ref={searchInputRef}
+            placeholder="Search the property's address or landmark…"
+            autoComplete="off"
+            className={`${fieldClass} sm:flex-1`}
+          />
+          <button
+            type="button"
+            onClick={locate}
+            disabled={locating}
+            className="shrink-0 bg-transparent border-[1.5px] border-green text-green rounded-[9px] px-3.5 py-2.5 text-[13px] font-bold cursor-pointer disabled:opacity-60"
+          >
+            {locating ? "Locating…" : <><Icon name="pin" /> Use my current location</>}
+          </button>
+        </div>
+        <div ref={mapDivRef} className="w-full h-[260px] rounded-[10px] mt-2 bg-surface-alt" />
+        <p className="text-xs text-muted mt-1.5 m-0">
+          Not at the property? Search for its address, or tap the map to place the pin. You can drag it to fine-tune.
+        </p>
+        {resolving && <p className="text-xs text-muted mt-1.5 m-0">Looking up this location…</p>}
+        {locateError && <p className="text-xs text-[#b3413a] mt-1.5 m-0">{locateError}</p>}
+        {error && <p className="text-xs text-[#b3413a] mt-1.5 m-0">{error}</p>}
+      </div>
+    );
+  }
 
   return (
     <div>

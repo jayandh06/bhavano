@@ -1181,6 +1181,25 @@ describe('AdminService.getPostFunnel', () => {
     expect(await categorySessions('other')).toBe(3);
   });
 
+  it('filters by Details form version, read from `form=` on the step events, and leaves out sessions that never recorded one', async () => {
+    const pageViews = [
+      pageView('s1', '/post/category?from=header_desktop&loggedIn=0&form=v2'),
+      pageView('s1', '/post/details?from=header_desktop&loggedIn=0&form=v2'),
+      pageView('s2', '/post/category?from=header_desktop&loggedIn=0&form=v1'),
+      pageView('s2', '/post/details?from=header_desktop&loggedIn=0&form=v1'),
+      // From before the form version was recorded: counted with no filter, but in neither version.
+      pageView('s3', '/post/category?from=header_desktop&loggedIn=0'),
+    ];
+    const count = async (variant?: 'v1' | 'v2') => {
+      const { service } = makeService({ pageView: { findMany: jest.fn().mockResolvedValue(pageViews) } });
+      const result = await service.getPostFunnel({ variant });
+      return result.steps.find((s) => s.path === '/post/category')?.sessions;
+    };
+    expect(await count()).toBe(3);
+    expect(await count('v2')).toBe(1);
+    expect(await count('v1')).toBe(1);
+  });
+
   it('combines the country and platform filters', async () => {
     const { service } = makeService({
       pageView: {
@@ -1198,6 +1217,49 @@ describe('AdminService.getPostFunnel', () => {
     });
     const result = await service.getPostFunnel({ country: 'india', platform: 'app' });
     expect(result.steps.find((s) => s.path === '/post/category')?.sessions).toBe(1);
+  });
+});
+
+describe('AdminService.getPostDetailsBlockers', () => {
+  // The three reads (field events, Details views, Preview views) are told apart by the path they ask for.
+  function makeWithViews(details: { sessionId: string; path: string }[], previews: { sessionId: string }[]) {
+    return makeService({
+      pageView: {
+        findMany: jest.fn().mockImplementation(({ where }: { where: { path: { startsWith: string } } }) => {
+          const prefix = where.path.startsWith;
+          if (prefix === '/post/details') return Promise.resolve(details);
+          if (prefix === '/post/preview') return Promise.resolve(previews);
+          return Promise.resolve([]);
+        }),
+      },
+    });
+  }
+
+  it('counts every session at Details and Preview with no filter', async () => {
+    const { service } = makeWithViews(
+      [
+        { sessionId: 's1', path: '/post/details?from=direct&loggedIn=0&form=v2' },
+        { sessionId: 's2', path: '/post/details?from=direct&loggedIn=0&form=v1' },
+        { sessionId: 's3', path: '/post/details?from=direct&loggedIn=0' },
+      ],
+      [{ sessionId: 's1' }, { sessionId: 's2' }],
+    );
+    const result = await service.getPostDetailsBlockers({});
+    expect(result.sessionsAtDetails).toBe(3);
+    expect(result.sessionsAtPreview).toBe(2);
+  });
+
+  it('filters by Details form version, leaving out sessions that never recorded one', async () => {
+    const details = [
+      { sessionId: 's1', path: '/post/details?from=direct&loggedIn=0&form=v2' },
+      { sessionId: 's2', path: '/post/details?from=direct&loggedIn=0&form=v1' },
+      { sessionId: 's3', path: '/post/details?from=direct&loggedIn=0' },
+    ];
+    const previews = [{ sessionId: 's1' }, { sessionId: 's2' }, { sessionId: 's3' }];
+    const v2 = await makeWithViews(details, previews).service.getPostDetailsBlockers({ variant: 'v2' });
+    expect([v2.sessionsAtDetails, v2.sessionsAtPreview]).toEqual([1, 1]);
+    const v1 = await makeWithViews(details, previews).service.getPostDetailsBlockers({ variant: 'v1' });
+    expect([v1.sessionsAtDetails, v1.sessionsAtPreview]).toEqual([1, 1]);
   });
 });
 

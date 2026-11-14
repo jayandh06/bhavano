@@ -4,6 +4,7 @@ import { fetchAreas, fetchPlanPricing, fetchProfile, fetchSeekerContactSettings 
 import { listingSlotCapBody } from "@bhavano/types/listingSlots";
 import { isListingCategory, isTransactionType } from "@/lib/browseRoute";
 import { resolvePostEntry } from "@bhavano/types/postEntry";
+import { parsePostFormVariant, parseRolloutPercent } from "@/lib/postFormVariant";
 import { resolveDefaultCity } from "@/lib/defaultCity";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { isAccessTokenValid, isAdminAccessToken } from "@/lib/session";
@@ -29,6 +30,11 @@ export default async function PostAdPage({
   // docs/plans/post-ad-funnel-step-tracking-and-entry-attribution.md. Falls back to "direct" for
   // a typed URL, bookmark, back/forward, or an unrecognised value.
   const entry = resolvePostEntry(sp.from);
+  // The redesigned Details form (docs/plans/post-ad-simpler-form.md) is rolled out by percentage. The server setting is
+  // read here, at request time, so changing it needs a restart of the web container, not a rebuild. `?form=v1|v2` forces a
+  // version for testing.
+  const formOverride = parsePostFormVariant(sp.form);
+  const formV2Percent = parseRolloutPercent(process.env.POST_FORM_V2_PERCENT);
   // `resolvePageCityContext`'s `allCities` is fetched with `all=true` — not just the popular
   // subset — so a previously-selected tier-2 city is still a real option in the wizard's
   // dropdown, not just a dangling id with no matching entry.
@@ -116,6 +122,8 @@ export default async function PostAdPage({
             sellerType={profile?.sellerType ?? null}
             isAdmin={isAdminAccessToken(accessToken)}
             entry={entry}
+            formOverride={formOverride}
+            formV2Percent={formV2Percent}
             slotNotice={slotNotice}
             leadContactOn={(await fetchSeekerContactSettings()).enabled}
           />

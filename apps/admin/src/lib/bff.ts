@@ -730,6 +730,8 @@ export interface PostFunnelQuery {
   loggedIn?: "yes" | "no";
   /** Where the visit's IP geolocates: `other` is every non-India session, including ones with no geolocation. */
   country?: "india" | "other";
+  /** Which Details form the session saw: the original (`v1`) or the redesign (`v2`). Sessions from before it was recorded match neither. */
+  variant?: "v1" | "v2";
 }
 
 export function fetchPostFunnel(accessToken: string, query: PostFunnelQuery = {}): Promise<PostFunnelDto> {
