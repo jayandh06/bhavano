@@ -40,12 +40,14 @@ import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCatego
 import { reverseGeocodeAction } from "@/app/actions/locations";
 import { AdminTestScenarios } from "./AdminTestScenarios";
 import { AdminFormVersionSwitch } from "./AdminFormVersionSwitch";
+import { PostExitPrompt } from "./PostExitPrompt";
 import { scenarioAttributes, scenarioById, scenarioCopy, scenarioPhotos, scenarioPrice, scenarioQualifier } from "@/lib/postAdScenarios";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import type { VideoEntitlement } from "@bhavano/types/videoLimits";
 import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { MAX_PHOTOS, MAX_PHOTO_BYTES, MIN_PHOTOS, PHOTO_LIMITS } from "@bhavano/types/photoLimits";
+import { POST_FOR_ME_PATH } from "@bhavano/types/support";
 import { audienceFor, reachLabelFor } from "@bhavano/types/audience";
 import { reportPostAction } from "@/lib/postActionTrail";
 import { reportPostFieldEvent } from "@/lib/postFieldTrail";
@@ -2950,6 +2952,23 @@ export function PostAdWizard({
               {issues.length > 1 ? ` (and ${issues.length - 1} more)` : ""}
             </p>
           )}
+          {/* The hand-off for someone who gives up on the form: the Contact form, which takes photos, and staff post it with
+            * admin-assisted posting (docs/plans/recover-sellers-who-leave-without-posting.md, 2b). Not for staff posting on
+            * someone's behalf already. */}
+          {!isAdmin && (
+            <p className="m-0 max-w-[720px] text-right text-[12.5px] text-muted">
+              Stuck?{" "}
+              <Link
+                href={POST_FOR_ME_PATH}
+                target="_blank"
+                onClick={() => pushDataLayerEvent("post_for_me_clicked", { placement: "details" })}
+                className="text-green font-bold"
+              >
+                Let us post it for you
+              </Link>
+            </p>
+          )}
+          <PostExitPrompt enabled={!isAdmin && issues.length > 0} minPhotos={MIN_PHOTOS} />
         </div>
         <aside
           aria-label="Live preview and checklist"
