@@ -250,3 +250,9 @@
   0%, 100% { opacity: 0.25; }
   50% { opacity: 0.9; }
 }
+
+/* The "Finish your ad" prompt (UnfinishedAdPrompt) sits where the profile-completion pill does; while it shows it sets this on <html>,
+ * so the two never stack on top of each other. */
+html[data-unfinished-ad] .profile-completion-banner {
+  display: none;
+}

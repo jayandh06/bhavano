@@ -6,7 +6,7 @@
  * topic or a size cap can't drift between the client-side check and the server that enforces
  * it. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MIN_DWELL_MS = exports.HONEYPOT_FIELD = exports.ACCEPTED_ATTACHMENT_MIME_TYPES = exports.MAX_ATTACHMENTS_TOTAL_BYTES = exports.MAX_ATTACHMENT_BYTES = exports.MAX_ATTACHMENTS = exports.MESSAGE_MAX_LENGTH = exports.MESSAGE_MIN_LENGTH = exports.TOPICS_WITH_PAYMENT_ID = exports.TOPICS_WITH_LISTING_URL = exports.CONTACT_TOPIC_LABELS = exports.CONTACT_TOPICS = void 0;
+exports.MIN_DWELL_MS = exports.HONEYPOT_FIELD = exports.ACCEPTED_ATTACHMENT_MIME_TYPES = exports.MAX_ATTACHMENTS_TOTAL_BYTES = exports.MAX_ATTACHMENT_BYTES = exports.MAX_ATTACHMENTS = exports.MESSAGE_MAX_LENGTH = exports.MESSAGE_MIN_LENGTH = exports.TOPICS_WITH_PAYMENT_ID = exports.TOPICS_WITH_LISTING_URL = exports.POST_FOR_ME_MESSAGE = exports.POST_FOR_ME_PATH = exports.CONTACT_TOPIC_LABELS = exports.CONTACT_TOPICS = void 0;
 exports.CONTACT_TOPICS = [
     "posting",
     "posting_feedback",
@@ -34,6 +34,11 @@ exports.CONTACT_TOPIC_LABELS = {
     website: "Website bug or something looks wrong",
     other: "Something else",
 };
+/** "Stuck? Let us post it for you": the Contact form with the posting topic chosen and the message started, so a seller who gives up
+ * on the form can hand the ad to support instead (staff post it with admin-assisted posting). Photos go as attachments. See
+ * docs/plans/recover-sellers-who-leave-without-posting.md, item 2b. */
+exports.POST_FOR_ME_PATH = "/contact?topic=posting&help=post-for-me";
+exports.POST_FOR_ME_MESSAGE = "Please help me post my ad on Bhavano. What I want to list (type, sell or rent, city and area, price): ";
 /** Topics where a link to the listing in question is the single most useful thing support can
  * be given — the form reveals the field only for these. */
 exports.TOPICS_WITH_LISTING_URL = new Set([

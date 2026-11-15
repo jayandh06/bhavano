@@ -10,6 +10,7 @@ import { GuestSavesToast } from "@/components/home/GuestSavesToast";
 import { BuyCreditsProvider } from "@/components/home/BuyCreditsProvider";
 import { BoostProvider } from "@/components/home/BoostProvider";
 import { ProfileCompletionBanner } from "@/components/home/ProfileCompletionBanner";
+import { UnfinishedAdPrompt } from "@/components/home/UnfinishedAdPrompt";
 import { ProfileCompletionDialog } from "@/components/home/ProfileCompletionDialog";
 import { JsConfirmation } from "@/components/home/JsConfirmation";
 import { LayoutShiftReporter } from "@/components/home/LayoutShiftReporter";
@@ -160,6 +161,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 </Suspense>
                 <SignupConversionTracker />
                 <ProfileCompletionBanner />
+                <UnfinishedAdPrompt />
                 <ProfileCompletionDialog />
                 <GuestSavesToast />
                 <OpenInAppStrip />

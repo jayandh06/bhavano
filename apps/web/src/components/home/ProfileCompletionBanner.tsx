@@ -54,7 +54,8 @@ export function ProfileCompletionBanner() {
   if (missing.length === 0) return null;
 
   return (
-    <div className="fixed left-1/2 -translate-x-1/2 bottom-[calc(1rem+var(--app-strip-h,0px))] z-40 max-w-[92vw] bg-surface border border-border rounded-full shadow-[0_6px_24px_rgba(0,0,0,0.14)] text-[13px] text-text-soft pl-4 pr-2 py-2 flex items-center gap-2.5">
+    // `profile-completion-banner` lets the "Finish your ad" prompt hide this while it shows (same spot); see globals.css.
+    <div className="profile-completion-banner fixed left-1/2 -translate-x-1/2 bottom-[calc(1rem+var(--app-strip-h,0px))] z-40 max-w-[92vw] bg-surface border border-border rounded-full shadow-[0_6px_24px_rgba(0,0,0,0.14)] text-[13px] text-text-soft pl-4 pr-2 py-2 flex items-center gap-2.5">
       <span className="truncate">
         Add your {missing.join(" and ")} to your profile.{" "}
         <Link href="/profile" className="text-green font-bold whitespace-nowrap">

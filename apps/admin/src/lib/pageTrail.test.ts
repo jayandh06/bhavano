@@ -239,3 +239,25 @@ describe("trailEntry: /post/field events", () => {
     expect(trailEntryHref("/post/field?event=first_touch")).toBeNull();
   });
 });
+
+describe("trailEntry: the post form's exit question and the Finish your ad prompt", () => {
+  it("reads the exit question's events", () => {
+    expect(trailEntry("/post/exit-reason?event=shown&trigger=idle").text).toBe("Exit question shown (a minute idle)");
+    expect(trailEntry("/post/exit-reason?event=shown&trigger=leave").text).toBe("Exit question shown (heading to leave)");
+    expect(trailEntry("/post/exit-reason?event=answered&reason=location").text).toBe("Exit question — the location / map");
+    expect(trailEntry("/post/exit-reason?event=answered&reason=photos").text).toBe("Exit question — photos");
+    expect(trailEntry("/post/exit-reason?event=dismissed").text).toBe("Exit question — closed without answering");
+    expect(trailEntry("/post/exit-reason?event=post_for_me").text).toBe("Exit question — tapped Let us post it for you");
+  });
+
+  it("reads the Finish your ad prompt's events", () => {
+    expect(trailEntry("/post/finish-prompt?event=shown").text).toBe('"Finish your ad" prompt — shown');
+    expect(trailEntry("/post/finish-prompt?event=clicked").text).toBe('"Finish your ad" prompt — tapped Finish it');
+    expect(trailEntry("/post/finish-prompt?event=dismissed").text).toBe('"Finish your ad" prompt — hidden');
+  });
+
+  it("gives neither a link, since they aren't real pages", () => {
+    expect(trailEntryHref("/post/exit-reason?event=shown&trigger=idle")).toBeNull();
+    expect(trailEntryHref("/post/finish-prompt?event=shown")).toBeNull();
+  });
+});

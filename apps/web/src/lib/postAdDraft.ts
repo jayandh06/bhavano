@@ -102,6 +102,21 @@ export function releaseDraftFromThisTab(): void {
   }
 }
 
+/** Just enough of the saved draft to say what it is ("Apartment for rent"), read synchronously from localStorage without touching the
+ * photos in IndexedDB. Null when there is none or it has expired. For the site-wide "Finish your ad" prompt; /post itself uses
+ * loadPostAdDraft. */
+export function peekPostAdDraft(): { savedAt: number; category: ListingCategory; transactionType: TransactionType | null } | null {
+  try {
+    const raw = localStorage.getItem(FIELDS_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as { savedAt: number; draft: PostAdDraft };
+    if (!saved?.draft?.category || !Number.isFinite(saved.savedAt) || Date.now() - saved.savedAt > MAX_AGE_MS) return null;
+    return { savedAt: saved.savedAt, category: saved.draft.category, transactionType: saved.draft.transactionType };
+  } catch {
+    return null;
+  }
+}
+
 export async function loadPostAdDraft(): Promise<{
   draft: PostAdDraft;
   savedAt: number;

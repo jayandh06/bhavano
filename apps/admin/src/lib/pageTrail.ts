@@ -91,10 +91,23 @@ const WIZARD_STEP_LABELS: Record<string, string> = {
  * either the dismissible card ("web_prompt") or Google One Tap ("one_tap"), the only way to see
  * whether an anonymous visitor who was pinged to log in actually did.
  *
+ * `/post/exit-reason?event=shown|answered|dismissed|post_for_me&trigger=…&reason=…` is the post form's exit question and
+ * `/post/finish-prompt?event=shown|clicked|dismissed` the site-wide "Finish your ad" prompt (PostExitPrompt.tsx and
+ * UnfinishedAdPrompt.tsx in web, docs/plans/recover-sellers-who-leave-without-posting.md).
+ *
  * `/get-app?event=click|dismiss&placement=…&to=…` is web's get-the-app controls (reportGetAppEvent,
  * docs/plans/drive-users-to-android-app.md); `/app-install?source=…&medium=…&campaign=…` is the
  * mobile app's first launch after a fresh install, carrying the Play install referrer
  * (recordInstallReferrerOnce). */
+/** The web post form's exit question answers (PostExitPrompt.tsx). */
+const EXIT_REASON_LABELS: Record<string, string> = {
+  location: "the location / map",
+  photos: "photos",
+  fields: "too many questions",
+  browsing: "just looking",
+  other: "something else",
+};
+
 export function trailEntry(path: string): { text: string; isError: boolean } {
   if (path.startsWith("/get-app")) return { text: getAppLabel(path), isError: false };
   if (path.startsWith("/app-install")) return { text: appInstallLabel(path), isError: false };
@@ -207,6 +220,36 @@ export function trailEntry(path: string): { text: string; isError: boolean } {
       return { text: path, isError: false };
     }
   }
+  if (path.startsWith("/post/exit-reason")) {
+    try {
+      const params = new URL(path, "https://x.invalid").searchParams;
+      const event = params.get("event") ?? "unknown";
+      const trigger = params.get("trigger");
+      const reason = params.get("reason") ?? "";
+      const text =
+        event === "shown"
+          ? `Exit question shown (${trigger === "idle" ? "a minute idle" : "heading to leave"})`
+          : event === "answered"
+            ? `Exit question \u2014 ${EXIT_REASON_LABELS[reason] ?? reason}`
+            : event === "dismissed"
+              ? "Exit question \u2014 closed without answering"
+              : event === "post_for_me"
+                ? "Exit question \u2014 tapped Let us post it for you"
+                : `Exit question: ${event}`;
+      return { text, isError: false };
+    } catch {
+      return { text: path, isError: false };
+    }
+  }
+  if (path.startsWith("/post/finish-prompt")) {
+    try {
+      const event = new URL(path, "https://x.invalid").searchParams.get("event") ?? "unknown";
+      const what = event === "shown" ? "shown" : event === "clicked" ? "tapped Finish it" : event === "dismissed" ? "hidden" : event;
+      return { text: `"Finish your ad" prompt \u2014 ${what}`, isError: false };
+    } catch {
+      return { text: path, isError: false };
+    }
+  }
   if (!path.startsWith("/post/error")) return { text: path, isError: false };
   try {
     const params = new URL(path, "https://x.invalid").searchParams;
@@ -276,6 +319,8 @@ const SITE_URL = "https://www.bhavano.com";
 
 const EVENT_MARKER_PREFIXES = [
   "/login-nudge",
+  "/post/exit-reason",
+  "/post/finish-prompt",
   "/post/action",
   "/post/field",
   "/post/boost-recovery",
