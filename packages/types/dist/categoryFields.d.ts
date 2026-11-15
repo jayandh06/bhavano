@@ -109,6 +109,31 @@ export declare function groupFieldsBySection<F extends {
     label: string;
     fields: F[];
 }[];
+/** A labelled sub-group of fields inside one section of the post and edit forms. A key that a category doesn't have, or that is
+ * hidden right now, is simply skipped, so one list serves every category that shares the section. */
+export interface FieldGroupDef {
+    id: string;
+    label: string;
+    keys: string[];
+}
+/** Sub-groups for the long sections, in display order. A `dependsOn` chain (a toggle and the amount it reveals) must stay inside
+ * one group, so the follow-up field always sits next to the question that opened it. Sections not listed here, and any field a
+ * section's list doesn't name, are handled by `groupSectionFields`: no field is ever dropped. See docs/plans/post-ad-simpler-form.md. */
+export declare const SECTION_FIELD_GROUPS: Partial<Record<FieldSection, FieldGroupDef[]>>;
+/** One sub-group of a section's fields as the forms draw it. `label` is null when the section has a single group, since a
+ * heading that repeats the section's own heading adds nothing. */
+export interface SectionFieldGroup<F> {
+    id: string;
+    label: string | null;
+    fields: F[];
+}
+/** Splits one section's already-visible fields into `SECTION_FIELD_GROUPS`' sub-groups, in that list's order; empty groups are
+ * dropped. Inside a group, fields follow the group's own key order (each list puts a question before its follow-up). A field the
+ * list doesn't name goes into a trailing "More details" group, in category order, so a field added later can't vanish from the
+ * form. When only one group is left it is returned unlabelled. */
+export declare function groupSectionFields<F extends {
+    key: string;
+}>(section: FieldSection | "other", fields: F[]): SectionFieldGroup<F>[];
 /** Strips any attribute whose field is no longer visible (its `dependsOn` condition broke,
  * possibly several links back in a chain) — run after every attribute/transaction-type change
  * so a hidden field's stale value can't linger and reappear if a descendant field depends on

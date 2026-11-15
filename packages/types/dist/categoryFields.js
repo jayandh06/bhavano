@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AMENITY_KEYS = exports.CATEGORY_FIELD_CONFIG = exports.BROKERAGE_FEE_PERCENT = exports.BROKERAGE_FEE_FIXED = exports.SECTION_ORDER = exports.SECTION_LABELS = void 0;
+exports.AMENITY_KEYS = exports.CATEGORY_FIELD_CONFIG = exports.BROKERAGE_FEE_PERCENT = exports.BROKERAGE_FEE_FIXED = exports.SECTION_FIELD_GROUPS = exports.SECTION_ORDER = exports.SECTION_LABELS = void 0;
 exports.fieldIsVisible = fieldIsVisible;
 exports.formatFieldValue = formatFieldValue;
 exports.formatFieldLabel = formatFieldLabel;
 exports.groupFieldsBySection = groupFieldsBySection;
+exports.groupSectionFields = groupSectionFields;
 exports.pruneHiddenAttributes = pruneHiddenAttributes;
 exports.numberFieldIssue = numberFieldIssue;
 exports.listingAttributesIssue = listingAttributesIssue;
@@ -113,6 +114,107 @@ function groupFieldsBySection(fields) {
         label: section === "other" ? "Other details" : exports.SECTION_LABELS[section],
         fields: buckets.get(section),
     }));
+}
+/** Sub-groups for the long sections, in display order. A `dependsOn` chain (a toggle and the amount it reveals) must stay inside
+ * one group, so the follow-up field always sits next to the question that opened it. Sections not listed here, and any field a
+ * section's list doesn't name, are handled by `groupSectionFields`: no field is ever dropped. See docs/plans/post-ad-simpler-form.md. */
+exports.SECTION_FIELD_GROUPS = {
+    pricing: [
+        {
+            id: "fees",
+            label: "Fees & deposit",
+            keys: [
+                "priceNegotiable",
+                "securityDeposit",
+                "maintenanceFeeApplicable",
+                "monthlyMaintenanceFee",
+                "rentEscalationPercent",
+                "dayPassPrice",
+                "singleSharingRent",
+                "doubleSharingRent",
+                "tripleSharingRent",
+                "dormitorySharingRent",
+            ],
+        },
+        {
+            id: "postedBy",
+            label: "Posted by & brokerage",
+            keys: ["fromBroker", "brokerageFeeApplicable", "brokerageFeeType", "brokerageFee", "brokerageCommissionPercent"],
+        },
+    ],
+    basics: [
+        { id: "rooms", label: "Rooms", keys: ["bedrooms", "bathrooms", "balconyCount"] },
+        { id: "size", label: "Size & floor", keys: ["carpetAreaSqft", "plotAreaSqft", "floor", "totalFloors", "entranceFacing"] },
+        { id: "parking", label: "Parking", keys: ["openParkingCount", "closedParkingCount"] },
+        { id: "furnishing", label: "Furnishing & utilities", keys: ["furnished", "waterSource", "gasPipeline"] },
+        { id: "society", label: "Society & outdoor space", keys: ["societyName", "gatedCommunity", "privateGarden", "privateTerrace"] },
+        { id: "availability", label: "Availability", keys: ["availableFrom", "lockInPeriod", "possessionStatus", "propertyAge"] },
+        { id: "legal", label: "Ownership & legal", keys: ["ownership", "loanAvailable", "reraRegistered", "reraNumber"] },
+    ],
+    roomDetails: [
+        { id: "rooms", label: "Rooms & occupants", keys: ["sharingType", "gender", "roomsAvailable"] },
+        { id: "food", label: "Food", keys: ["meals", "foodType", "mealTimings"] },
+        { id: "rules", label: "House rules & availability", keys: ["gateTimings", "visitorsAllowed", "noticePeriod", "availableFrom"] },
+        { id: "contact", label: "Website", keys: ["website"] },
+    ],
+    workspaceDetails: [
+        { id: "seats", label: "Seats", keys: ["seatType", "totalSeats", "hotDeskCount", "dedicatedDeskCount", "privateCabinCount"] },
+        { id: "timings", label: "Timings & availability", keys: ["accessHours", "operatingDays", "availableFrom"] },
+        { id: "more", label: "Amenities & website", keys: ["amenities", "website"] },
+    ],
+    spaceDetails: [
+        { id: "space", label: "Space", keys: ["sqft", "sizeSqft", "purpose", "storageType", "floor", "furnished", "ceilingHeightFt"] },
+        {
+            id: "facilities",
+            label: "Facilities & access",
+            keys: [
+                "washroomCount",
+                "carParkingCount",
+                "workstationCapacity",
+                "powerLoadKw",
+                "lift",
+                "pantry",
+                "fireNoc",
+                "accessHours",
+                "vehicleAccess",
+                "loadingDock",
+                "securityGuard",
+                "climateControlled",
+            ],
+        },
+        { id: "availability", label: "Availability", keys: ["availableFrom", "lockInPeriod", "possessionStatus", "propertyAge"] },
+        { id: "legal", label: "Ownership & legal", keys: ["ownership", "reraRegistered", "reraNumber"] },
+        { id: "contact", label: "Website", keys: ["website"] },
+    ],
+    plotDetails: [
+        { id: "plot", label: "Plot", keys: ["plotAreaSqft", "plotDimensions", "facing", "plotType", "roadWidthFt", "cornerPlot"] },
+        { id: "approvals", label: "Boundary & approvals", keys: ["boundaryWall", "gatedLayout", "approvedBy", "titleDocuments"] },
+        { id: "legal", label: "Ownership & legal", keys: ["ownership", "reraRegistered", "reraNumber"] },
+    ],
+};
+/** Splits one section's already-visible fields into `SECTION_FIELD_GROUPS`' sub-groups, in that list's order; empty groups are
+ * dropped. Inside a group, fields follow the group's own key order (each list puts a question before its follow-up). A field the
+ * list doesn't name goes into a trailing "More details" group, in category order, so a field added later can't vanish from the
+ * form. When only one group is left it is returned unlabelled. */
+function groupSectionFields(section, fields) {
+    const defs = section === "other" ? undefined : exports.SECTION_FIELD_GROUPS[section];
+    if (!defs)
+        return fields.length > 0 ? [{ id: "all", label: null, fields }] : [];
+    const groupOf = new Map();
+    for (const def of defs)
+        for (const key of def.keys)
+            if (!groupOf.has(key))
+                groupOf.set(key, def.id);
+    const groups = defs.map((def) => ({ id: def.id, label: def.label, fields: [] }));
+    const more = { id: "more-details", label: "More details", fields: [] };
+    for (const field of fields) {
+        const id = groupOf.get(field.key);
+        const target = id ? groups.find((group) => group.id === id) : undefined;
+        (target ?? more).fields.push(field);
+    }
+    defs.forEach((def, i) => groups[i].fields.sort((a, b) => def.keys.indexOf(a.key) - def.keys.indexOf(b.key)));
+    const result = [...groups, more].filter((group) => group.fields.length > 0);
+    return result.length === 1 ? [{ ...result[0], label: null }] : result;
 }
 /** Strips any attribute whose field is no longer visible (its `dependsOn` condition broke,
  * possibly several links back in a chain) — run after every attribute/transaction-type change
