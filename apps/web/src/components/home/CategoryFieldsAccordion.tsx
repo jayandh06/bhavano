@@ -5,6 +5,7 @@ import {
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
   groupFieldsBySection,
+  groupSectionFields,
   listingCompleteness,
   pruneHiddenAttributes,
   SECTION_LABELS,
@@ -183,6 +184,17 @@ function PostedByButtons({ value, onChange }: { value: string | string[] | undef
   );
 }
 
+/** Three or four short choices read faster as buttons you can see than as a dropdown you have to open. */
+function isChoiceButtons(field: FieldDef): boolean {
+  return (
+    field.type === "select" &&
+    !!field.options &&
+    field.options.length >= 3 &&
+    field.options.length <= 4 &&
+    field.options.every((o) => o.label.length <= 14)
+  );
+}
+
 /** Renders one field's input control — the same switch every category-field form in the app
  * needs (toggle / multi-select / select / number / text), factored out so it isn't copy-pasted
  * per consumer of `CATEGORY_FIELD_CONFIG`. */
@@ -229,9 +241,8 @@ function CategoryFieldInput({
     );
   }
 
-  // Three or four short choices read faster as buttons you can see than as a dropdown you have to open.
   // A field that is not required can be cleared by tapping the chosen one again.
-  if (field.type === "select" && field.options && field.options.length >= 3 && field.options.length <= 4 && field.options.every((o) => o.label.length <= 14)) {
+  if (isChoiceButtons(field) && field.options) {
     return (
       <div role="radiogroup" aria-label={field.label} className="flex flex-wrap gap-1.5">
         {field.options.map((opt) => {
@@ -256,13 +267,9 @@ function CategoryFieldInput({
   }
 
   if (field.type === "select") {
-    const shortOptions = (field.options ?? []).every((opt) => opt.label.length <= 9);
+    // Full cell width even for short options, so a dropdown lines up with the boxes beside and below it.
     return (
-      <SelectField
-        value={typeof value === "string" ? value : ""}
-        onChange={(e) => onChange(e.target.value)}
-        narrow={shortOptions}
-      >
+      <SelectField value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)}>
         <option value="" disabled>
           Select…
         </option>
@@ -291,7 +298,7 @@ function CategoryFieldInput({
         value={typeof value === "string" ? value : ""}
         onChange={(e) => onChange(sanitizeDecimal(e.target.value))}
         placeholder={field.placeholder}
-        className={fieldClass.replace("w-full", "w-28")}
+        className={fieldClass}
       />
     );
   }
@@ -310,7 +317,7 @@ function CategoryFieldInput({
     // Stacked up/down rather than −/+ on either side — the same shape as the spinner a browser
     // would draw, but visible on every device and in the app's own colours.
     return (
-      <div className="inline-flex items-stretch border border-border rounded-[9px] bg-surface overflow-hidden">
+      <div className="flex w-full items-stretch border border-border rounded-[9px] bg-surface overflow-hidden">
         <input
           type="number"
           inputMode="numeric"
@@ -320,7 +327,7 @@ function CategoryFieldInput({
           onChange={(e) => onChange(clampDigits(sanitizeWholeNumber(e.target.value), field.maxDigits))}
           onBlur={() => raiseToMin(value, min, onChange)}
           aria-label={field.label}
-          className="w-14 px-2 py-3 text-base sm:text-sm text-center bg-transparent text-text outline-none border-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="min-w-0 flex-1 px-2 py-3 text-base sm:text-sm text-center bg-transparent text-text outline-none border-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
         <div className="flex flex-col border-l border-border">
           <button
@@ -346,15 +353,7 @@ function CategoryFieldInput({
     );
   }
 
-  // A 2-digit count doesn't need a full-width box to type into — stretching it the same as a
-  // 6-digit price/area field just leaves a wide empty input with a couple of characters in it.
-  // Keyed on <= 2 rather than "has a limit at all", so capping carpet area or a fee at 5 digits
-  // does not also shrink its box to a width those digits cannot fit.
-  const className =
-    field.type === "number" && field.maxDigits !== undefined && field.maxDigits <= 2
-      ? fieldClass.replace("w-full", "w-20")
-      : fieldClass;
-
+  // Every box fills its grid cell, whatever its digit limit, so the fields in a group line up on both edges.
   return (
     <input
       type={field.type === "number" ? "number" : "text"}
@@ -370,7 +369,7 @@ function CategoryFieldInput({
       }
       onBlur={field.type === "number" ? () => raiseToMin(value, field.min ?? 0, onChange) : undefined}
       placeholder={field.placeholder}
-      className={className}
+      className={fieldClass}
     />
   );
 }
@@ -422,9 +421,6 @@ function groupFieldsByChain(fields: FieldDef[]): FieldRun[] {
   return runs;
 }
 
-/** Renders one run from `groupFieldsByChain` — same toggle-grid / other-grid split as before,
- * just scoped to the run's own fields instead of the whole section, so a chain's toggle(s) and
- * trailing amount field stay adjacent while still getting the same compact grid treatment. */
 /** What the Details step wants shown on the fields: a message under a field, a ring on the one it just scrolled
  * to, and a callback when focus leaves a field (so the wizard can start showing that field's problem). Keyed by
  * the field's attribute key. */
@@ -471,9 +467,11 @@ function FieldFrame({
   );
 }
 
+/** Renders one run from `groupFieldsByChain`: its Yes/No switches in one grid, then its other fields in another. Both grids use the
+ * same column count everywhere (two on a phone, three from `sm` up), so the fields of every group line up with the group above and
+ * below instead of each section picking its own layout. */
 function FieldRunBlock({
   run,
-  section,
   attributes,
   onChange,
   onUnitChange,
@@ -481,28 +479,20 @@ function FieldRunBlock({
   feedback,
 }: {
   run: FieldRun;
-  section: FieldSection | "other";
   attributes: Record<string, string | string[]>;
   onChange: (field: FieldDef, value: string | string[]) => void;
   onUnitChange: (field: FieldDef, unit: string) => void;
   fieldNote?: { key: string; text: string } | null;
   feedback?: FieldFeedback;
 }) {
-  const toggleFields = run.fields.filter(isYesNoField);
-  const otherFields = run.fields.filter((field) => !isYesNoField(field));
-  // Plot details is short enough — Area, its Unit, Dimensions, Facing — to fill an entire row
-  // itself at a fixed 25% each once there's room for four short fields side by side. A phone-
-  // width browser doesn't have that room (a fixed 4-up there crushed each cell down to a sliver),
-  // so it stays 2-up until the sm: breakpoint, then jumps straight to 4 — no 3-column step, unlike
-  // the general grid below, since a run of exactly four fields has no even way to split across 3.
-  const otherFieldsGridClass =
-    section === "plotDetails"
-      ? "grid grid-cols-2 sm:grid-cols-4 gap-x-2 gap-y-4"
-      : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-4";
+  // A chain keeps its order (the question, then what it opens), so its switches stay in the one grid with its other fields; a run of
+  // unrelated fields puts its switches together first, which reads as a tidy checklist.
+  const toggleFields = run.kind === "chain" ? [] : run.fields.filter(isYesNoField);
+  const otherFields = run.kind === "chain" ? run.fields : run.fields.filter((field) => !isYesNoField(field));
   return (
     <div className="flex flex-col gap-3">
       {toggleFields.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-3">
           {toggleFields.map((field) => (
             <FieldFrame key={field.key} fieldKey={field.key} feedback={feedback}>
               <CategoryField
@@ -515,7 +505,7 @@ function FieldRunBlock({
         </div>
       )}
       {otherFields.length > 0 && (
-        <div className={otherFieldsGridClass}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-4 items-start">
           {otherFields.map((field) => {
             // The unit dropdown (Plot/Commercial's Area field only) gets its own adjacent grid
             // cell — see AreaUnitField — instead of being paired inline inside this one.
@@ -526,9 +516,16 @@ function FieldRunBlock({
                   fieldKey={field.key}
                   feedback={feedback}
                   className={
-                    field.type === "multi-select" || field.key === "fromBroker" || (field.type === "text" && !field.compact)
-                      ? "col-span-full"
-                      : undefined
+                    isYesNoField(field)
+                      ? // A switch in a chain gets a row of its own (a third wide from sm up, so it sits next to its label), and the
+                        // field it opens starts the row below it.
+                        "col-span-full sm:max-w-[calc(33.333%-0.5rem)]"
+                      : field.type === "multi-select" || field.key === "fromBroker" || (field.type === "text" && !field.compact)
+                        ? "col-span-full"
+                        : isChoiceButtons(field)
+                          ? // Three or four buttons wrap in one column, on a phone and on a desktop alike.
+                            "col-span-2"
+                          : undefined
                   }
                 >
                   <CategoryField
@@ -682,9 +679,6 @@ export function CategoryFieldsAccordion({
   sectionExtras,
   fieldNote,
   feedback,
-  fieldFilter,
-  hideCompleteness,
-  sectionLabelSuffix,
 }: {
   category: ListingCategory;
   transactionType: TransactionType;
@@ -702,16 +696,9 @@ export function CategoryFieldsAccordion({
   fieldNote?: { key: string; text: string } | null;
   /** Messages, highlight and blur callback for the Details step. Omitted by the edit form. */
   feedback?: FieldFeedback;
-  /** Show only the fields this keeps. The step-by-step form (v3) uses it to show the required fields on their own, then one optional
-   * section at a time (docs/plans/post-ad-simpler-form.md). Omitted everywhere else, which shows every visible field. */
-  fieldFilter?: (field: FieldDef) => boolean;
-  /** Leave out the "Listing N% complete" meter, for when only part of the form is shown. */
-  hideCompleteness?: boolean;
-  /** Added after each section heading, e.g. " (optional)". */
-  sectionLabelSuffix?: string;
 }) {
   const visibleFields = CATEGORY_FIELD_CONFIG[category].filter(
-    (field) => fieldIsVisible(field, transactionType, attributes) && (!fieldFilter || fieldFilter(field)),
+    (field) => fieldIsVisible(field, transactionType, attributes),
   );
   const completeness = listingCompleteness(category, transactionType, attributes);
   const fieldSections = groupFieldsBySection(visibleFields);
@@ -756,7 +743,7 @@ export function CategoryFieldsAccordion({
     // col-span-full one (multi-select/text — see FieldRunBlock below), which then filled the
     // entire page width for something like "Preferred tenant type"'s checkbox dropdown.
     <div className="flex flex-col gap-3 max-w-[820px]">
-      {completeness.total > 0 && !hideCompleteness && <CompletenessMeter completeness={completeness} />}
+      {completeness.total > 0 && <CompletenessMeter completeness={completeness} />}
       {sections.map(({ section, label, fields }) => (
         <details
           key={section}
@@ -765,7 +752,6 @@ export function CategoryFieldsAccordion({
         >
           <summary className="font-bold text-[13px] text-text cursor-pointer px-4 py-3">
             {label}
-            {sectionLabelSuffix ?? ""}
             {(() => {
               if (!feedback?.issues) return null;
               const left = issueCountForFields(feedback.issues, fields.map((f) => f.key), section === "pricing");
@@ -778,21 +764,31 @@ export function CategoryFieldsAccordion({
           </summary>
           {(() => {
             const extra = section !== "other" ? sectionExtras?.[section] : undefined;
-            const runs = groupFieldsByChain(fields);
             return (
               <div className="flex flex-col gap-4 px-4 pb-4">
                 {extra}
-                {runs.map((run) => (
-                  <FieldRunBlock
-                    key={run.fields[0].key}
-                    run={run}
-                    section={section}
-                    attributes={attributes}
-                    onChange={setFieldValue}
-                    onUnitChange={setFieldUnit}
-                    fieldNote={fieldNote}
-                    feedback={feedback}
-                  />
+                {groupSectionFields(section, fields).map((group, i) => (
+                  <div
+                    key={group.id}
+                    role={group.label ? "group" : undefined}
+                    aria-label={group.label ?? undefined}
+                    className={`flex flex-col gap-3 ${group.label && (i > 0 || extra) ? "border-t border-border pt-4" : ""}`}
+                  >
+                    {group.label && (
+                      <div className="text-[11.5px] font-bold uppercase tracking-[0.05em] text-muted">{group.label}</div>
+                    )}
+                    {groupFieldsByChain(group.fields).map((run) => (
+                      <FieldRunBlock
+                        key={run.fields[0].key}
+                        run={run}
+                        attributes={attributes}
+                        onChange={setFieldValue}
+                        onUnitChange={setFieldUnit}
+                        fieldNote={fieldNote}
+                        feedback={feedback}
+                      />
+                    ))}
+                  </div>
                 ))}
               </div>
             );

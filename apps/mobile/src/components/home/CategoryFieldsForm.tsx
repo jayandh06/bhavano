@@ -5,6 +5,7 @@ import {
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
   groupFieldsBySection,
+  groupSectionFields,
   listingCompleteness,
   SECTION_LABELS,
   SECTION_ORDER,
@@ -157,7 +158,7 @@ export function CategoryFieldsForm({
 
     const cells: ReactNode[] = [
       <View key={field.key} style={styles.attrCell}>
-        <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={2}>
+        <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={1}>
           {field.key === "fromBroker" ? POSTED_BY_FORM_LABEL : field.label}
           {field.required ? " *" : ""}
         </Text>
@@ -257,7 +258,7 @@ export function CategoryFieldsForm({
       };
       cells.push(
         <View key={`${field.key}-unit`} style={styles.attrCell}>
-          <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={2}>
+          <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={1}>
             Unit
           </Text>
           <Pressable
@@ -295,7 +296,12 @@ export function CategoryFieldsForm({
             {label}
           </Text>
           {section !== "other" && sectionExtras?.[section]}
-          {fields.length > 0 && <View style={styles.attrGrid}>{fields.flatMap(renderFieldCells)}</View>}
+          {groupSectionFields(section, fields).map((group, i) => (
+            <View key={group.id} style={group.label && i > 0 ? [styles.attrGroup, { borderTopColor: colors.border }] : undefined}>
+              {group.label && <Text style={[styles.attrGroupHeading, { color: colors.muted }]}>{group.label}</Text>}
+              <View style={styles.attrGrid}>{group.fields.flatMap(renderFieldCells)}</View>
+            </View>
+          ))}
         </View>
       ))}
 
@@ -370,8 +376,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     overflow: "hidden",
   },
-  attrGrid: { flexDirection: "row", flexWrap: "wrap", columnGap: 12 },
-  attrCell: { width: "47%", flexGrow: 1 },
+  // Two equal columns; a lone last field keeps its half width so the fields of a group line up. Same as PostAdWizard.
+  attrGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
+  attrCell: { width: "48%" },
+  attrGroup: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 16 },
+  attrGroupHeading: { fontSize: 11.5, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 12 },
   label: { fontSize: 13, fontWeight: "700", marginTop: 14, marginBottom: 6 },
   counter: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 9, overflow: "hidden" },
   counterButton: { paddingVertical: 9, paddingHorizontal: 16, alignItems: "center", justifyContent: "center" },
@@ -385,7 +394,6 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    marginBottom: 8,
   },
   input: { borderWidth: 1, borderRadius: 9, paddingVertical: 12, paddingHorizontal: 14, fontSize: 14, minHeight: 44 },
   optionSheet: { paddingHorizontal: 20, paddingBottom: 24 },
