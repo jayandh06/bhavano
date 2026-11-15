@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LEGAL_ENTITY, entityAddressLines } from "@bhavano/types/legalEntity";
-import { CONTACT_TOPICS, type ContactTopic } from "@bhavano/types/support";
+import { CONTACT_TOPICS, POST_FOR_ME_MESSAGE, type ContactTopic } from "@bhavano/types/support";
 import { auth } from "@/auth";
 import { fetchProfile } from "@/lib/bff";
 import { isAccessTokenValid } from "@/lib/session";
@@ -20,7 +20,8 @@ export default async function ContactPage({
   // Reached from the post-ad success screen's "Feedback" link (?topic=posting_feedback&
   // listingUrl=...) as well as directly/logged out — both params are optional and validated
   // below rather than trusted as-is, same as claim/[id]/page.tsx's `via`.
-  searchParams: Promise<{ topic?: string; listingUrl?: string }>;
+  // `help=post-for-me` is the post-ad form's "Let us post it for you" link (POST_FOR_ME_PATH): the message box starts written.
+  searchParams: Promise<{ topic?: string; listingUrl?: string; help?: string }>;
 }) {
   const addressLines = entityAddressLines();
   const [sp, session] = await Promise.all([searchParams, auth()]);
@@ -28,6 +29,7 @@ export default async function ContactPage({
     ? (sp.topic as ContactTopic)
     : undefined;
   const defaultListingUrl = sp.listingUrl?.trim() || undefined;
+  const defaultMessage = sp.help === "post-for-me" ? POST_FOR_ME_MESSAGE : undefined;
 
   // Phone isn't on the NextAuth session itself (see auth.ts — only id/name/email are), so it's
   // a separate profile fetch. Best-effort: a failure here shouldn't block loading the page, it
@@ -79,6 +81,7 @@ export default async function ContactPage({
           defaultPhone={profile?.phone ?? undefined}
           defaultTopic={defaultTopic}
           defaultListingUrl={defaultListingUrl}
+          defaultMessage={defaultMessage}
         />
       </PageSection>
 

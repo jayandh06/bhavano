@@ -7,6 +7,11 @@
 export declare const CONTACT_TOPICS: readonly ["posting", "posting_feedback", "subscription", "account", "listing_report", "user_report", "website", "other"];
 export type ContactTopic = (typeof CONTACT_TOPICS)[number];
 export declare const CONTACT_TOPIC_LABELS: Record<ContactTopic, string>;
+/** "Stuck? Let us post it for you": the Contact form with the posting topic chosen and the message started, so a seller who gives up
+ * on the form can hand the ad to support instead (staff post it with admin-assisted posting). Photos go as attachments. See
+ * docs/plans/recover-sellers-who-leave-without-posting.md, item 2b. */
+export declare const POST_FOR_ME_PATH = "/contact?topic=posting&help=post-for-me";
+export declare const POST_FOR_ME_MESSAGE = "Please help me post my ad on Bhavano. What I want to list (type, sell or rent, city and area, price): ";
 /** Topics where a link to the listing in question is the single most useful thing support can
  * be given — the form reveals the field only for these. */
 export declare const TOPICS_WITH_LISTING_URL: ReadonlySet<ContactTopic>;

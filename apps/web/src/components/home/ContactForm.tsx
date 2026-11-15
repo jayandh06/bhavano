@@ -34,6 +34,7 @@ export function ContactForm({
   defaultPhone,
   defaultTopic,
   defaultListingUrl,
+  defaultMessage,
 }: {
   defaultName?: string;
   defaultEmail?: string;
@@ -42,6 +43,8 @@ export function ContactForm({
    * "posting_feedback" already chosen, via /contact?topic=. */
   defaultTopic?: ContactTopic;
   defaultListingUrl?: string;
+  /** Starts the message box written — the post-ad form's "Let us post it for you" link (POST_FOR_ME_PATH). */
+  defaultMessage?: string;
 }) {
   const [topic, setTopic] = useState<ContactTopic>(defaultTopic ?? "posting");
   const [name, setName] = useState(defaultName ?? "");
@@ -49,7 +52,7 @@ export function ContactForm({
   const [phone, setPhone] = useState(defaultPhone ?? "");
   const [listingUrl, setListingUrl] = useState(defaultListingUrl ?? "");
   const [paymentId, setPaymentId] = useState("");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(defaultMessage ?? "");
   const [files, setFiles] = useState<File[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
