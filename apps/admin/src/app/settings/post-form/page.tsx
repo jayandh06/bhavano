@@ -15,11 +15,11 @@ export default async function PostFormSettingsPage() {
         </FullPageLink>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>Post ad form</h1>
         <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 24px", maxWidth: 760 }}>
-          The redesigned Details step of the post-ad form puts the location search and the photos and video together near the top. It is shown to
-          the share of visitors set here; everyone else keeps the original form. Each visitor stays in the same group. Admin accounts always
-          see the newest version by default, a step-by-step page where each section appears once the one above is done, and can switch to any
-          version with the &ldquo;Admin: form version&rdquo; box on the post-ad page. Their sessions are kept out of the comparison. Anyone can
-          preview a version by adding <code>?form=v1</code>, <code>?form=v2</code> or <code>?form=v3</code> to the post-ad address.
+          The redesigned Details step of the post-ad form puts the location search and the photos and video together near the top, and groups
+          each section&rsquo;s fields under short headings. It is shown to the share of visitors set here; everyone else keeps the original form.
+          Each visitor stays in the same group. Admin accounts see the redesigned form by default and can switch with the &ldquo;Admin: form
+          version&rdquo; box on the post-ad page. Their sessions are kept out of the comparison. Anyone can preview a version by adding{" "}
+          <code>?form=v1</code> or <code>?form=v2</code> to the post-ad address.
         </p>
         <PostFormSettingsForm initial={settings} />
       </div>

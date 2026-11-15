@@ -35,6 +35,7 @@ import {
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
   groupFieldsBySection,
+  groupSectionFields,
   listingCompleteness,
   pruneHiddenAttributes,
   SECTION_LABELS,
@@ -1075,7 +1076,8 @@ export function PostAdWizard({
         collapsable={false}
         style={field.key === "fromBroker" ? styles.attrCellFull : styles.attrCell}
       >
-        <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={2}>
+        {/* One line, like the website: a label wrapping to two lines pushed its control below the one beside it. */}
+        <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={1}>
           {field.key === "fromBroker" ? POSTED_BY_FORM_LABEL : field.label}
           {field.required && <RequiredMark />}
         </Text>
@@ -1162,7 +1164,7 @@ export function PostAdWizard({
               setOpenField(field);
               optionSheetRef.current?.present();
             }}
-            style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
+            style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surface, marginBottom: 0 }]}
           >
             <Text
               style={{ color: summaryLabel ? colors.text : colors.muted, fontSize: 13.5, flex: 1 }}
@@ -1212,7 +1214,7 @@ export function PostAdWizard({
       };
       cells.push(
         <View key={`${field.key}-unit`} style={styles.attrCell}>
-          <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={2}>
+          <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={1}>
             Unit
           </Text>
           <Pressable
@@ -1220,7 +1222,7 @@ export function PostAdWizard({
               setOpenField(unitField);
               optionSheetRef.current?.present();
             }}
-            style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
+            style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surface, marginBottom: 0 }]}
           >
             <Text style={{ color: colors.text, fontSize: 13.5, flex: 1 }} numberOfLines={1}>
               {AREA_UNIT_LABELS[currentUnit]}
@@ -2461,8 +2463,14 @@ export function PostAdWizard({
               </View>
             )}
             {/* Two per row: these are mostly one-word labels over a small control, so a full-width
-                row wasted most of its width and made the section three screens long. */}
-            {fields.length > 0 && <View style={styles.attrGrid}>{fields.flatMap(renderFieldCells)}</View>}
+                row wasted most of its width and made the section three screens long. Long sections are split into the
+                shared sub-groups (Rooms, Size & floor, ...), the same ones the website shows. */}
+            {groupSectionFields(section, fields).map((group, i) => (
+              <View key={group.id} style={group.label && i > 0 ? [styles.attrGroup, { borderTopColor: colors.border }] : undefined}>
+                {group.label && <Text style={[styles.attrGroupHeading, { color: colors.muted }]}>{group.label}</Text>}
+                <View style={styles.attrGrid}>{group.fields.flatMap(renderFieldCells)}</View>
+              </View>
+            ))}
             </View>
             ))}
           </View>
@@ -3280,8 +3288,12 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   fieldError: { color: "#c0554b", fontSize: 12, marginTop: 4 },
-  attrGrid: { flexDirection: "row", flexWrap: "wrap", columnGap: 12 },
-  attrCell: { width: "47%", flexGrow: 1 },
+  // Two equal columns. A lone last field keeps its half width instead of stretching across the row, so every field in a group
+  // lines up with the one above it.
+  attrGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
+  attrCell: { width: "48%" },
+  attrGroup: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 16 },
+  attrGroupHeading: { fontSize: 11.5, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 12 },
   // "Posted by" (fromBroker) alone gets the full row — same reasoning as the website's own
   // `col-span-full` for it. Squeezed into the usual 47% cell, "Broker / Agent" (POSTED_BY_FORM_
   // OPTIONS' swapped-in label, 15 chars) truncated: isSegmented's <=12-char check only ever saw

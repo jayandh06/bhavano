@@ -1,6 +1,6 @@
 # Plan: a shorter, calmer post-ad form (essentials first, the rest optional)
 
-Status: proposal (2026-11-14), nothing built. Revisits one decision in
+Status: v2 built and live (see 7b and 7d); the step-by-step v3 (7c) was built on 2026-11-14 and **removed on 2026-11-15**. Revisits one decision in
 [`post-details-step-experience.md`](post-details-step-experience.md) (section 6, "keep every section open"). Builds on its Phase 0 to 3
 work (required-left chip, section badges, checklist, live preview rail, three mobile screens), on
 [`post-ad-draft-autosave.md`](post-ad-draft-autosave.md), [`ai-listing-copy-assist.md`](ai-listing-copy-assist.md) and
@@ -253,7 +253,7 @@ Steps 1 of section 7 for the web: the **redesigned form is "v2"**, the current o
   lived in a `POST_FORM_V2_PERCENT` environment variable, which was removed). The web `/post` page reads it from the BFF (`GET /listings/post-form-settings`,
   cached about 30 seconds), so a change needs no restart and no deploy. Each browser has a stable bucket (`bhavano.postFormKey` in localStorage, hashed with the
   existing `rolloutBucket`), so a visitor keeps the same form. A missing setting or an unreachable BFF means 0 (nobody). **`/post?form=v2` or `?form=v1` forces
-  a version** for testing. **Admin accounts get the newest version by default** (v3 since the step-by-step form; see 7c) and can pick any version, and their sessions are recorded as `form=admin`, so staff testing
+  a version** for testing. **Admin accounts get the newest version by default** (v2; it was v3 while that existed, see 7c) and can pick any version, and their sessions are recorded as `form=admin`, so staff testing
   never counts towards the v1 / v2 comparison. Code: `apps/web/src/lib/postFormVariant.ts`, `apps/bff/src/listings/post-form.service.ts` (+ tests).
 - **What v2 changes on the Details step:**
   - **Location (4.8):** heading "Where is the property?"; the search box and **Use my current location** sit side by side, search first;
@@ -274,7 +274,12 @@ Steps 1 of section 7 for the web: the **redesigned form is "v2"**, the current o
   change when the setting moved out of `.env`. To change it: Admin > Settings > Post ad form, type a percentage or pick 0, 10, 25, 50 or 100, Save; visitors see it
   within about 30 seconds. Switch off with 0. The old `POST_FORM_V2_PERCENT` line can be deleted from the server `.env` (nothing reads it now).
 
-## 7c. Built: the step-by-step form, "v3" (2026-11-14), web including mobile browser
+## 7c. Built, then removed: the step-by-step form, "v3" (2026-11-14, removed 2026-11-15)
+**Removed on 2026-11-15** on the owner's decision, in favour of improving v2 instead (7d). The variant, the reveal rules
+(`postReveal.ts` and its tests), the `post-reveal` animation, its browser spec, the admin "Step by step" button, the admin funnel's v3
+filter and the BFF's `variant=v3` value are gone; admins now get v2 by default. An old `/post?form=v3` link is ignored and gets the normal
+form. The description below is kept as a record of what was tried.
+
 One page, no Next or Skip buttons: each section appears below the last **once the one above it is complete**. It is v2 (location row and the photos-and-video card)
 plus the progressive reveal. **Not in the rollout percentage:** only admin accounts get it, and anyone can preview it with `/post?form=v3`.
 
@@ -301,6 +306,36 @@ plus the progressive reveal. **Not in the rollout percentage:** only admin accou
   that may not apply, and the app. Choosing what to ask first from the real fill rates of the optional fields still needs those numbers.
 - **Test-suite note:** a fresh database now starts the v2 share at 50 (the migration carries the live value), so a browser test that does not name a version can get v1 or
   v2 at random. The existing suite passed, but new tests should pin a version with `?form=`.
+
+## 7d. Built: fields grouped and aligned inside each section (2026-11-15), web, mobile browser and app
+v2's Details step (and the web and app edit forms, which share the field grid) now split the long sections into labelled sub-groups,
+and lay the fields out on one grid so they line up.
+
+- **The groups** come from one list in `packages/types/src/categoryFields.ts` (`SECTION_FIELD_GROUPS`, applied by `groupSectionFields`),
+  so the website and the app group the same way:
+  - Pricing & fees: Fees & deposit; Posted by & brokerage.
+  - Property details (house, apartment, villa): Rooms; Size & floor; Parking; Furnishing & utilities; Society & outdoor space; Availability;
+    Ownership & legal.
+  - Room details (PG): Rooms & occupants; Food; House rules & availability; Website.
+  - Workspace details (coworking): Seats; Timings & availability; Amenities & website.
+  - Space details (commercial, storage): Space; Facilities & access; Availability; Ownership & legal; Website.
+  - Plot details: Plot; Boundary & approvals; Ownership & legal.
+  - Short sections (tenant preferences, furnishing counts, amenities) stay one block with no sub-heading, and a section left with only one
+    group shows no sub-heading either.
+- **Nothing can go missing.** A field the list doesn't name lands in a trailing "More details" group. Tests
+  (`apps/web/src/lib/sectionFieldGroups.test.ts`) check, for every category and transaction type, that each field appears exactly once,
+  that no follow-up field (a fee amount, a RERA number) is separated from the question that opens it or placed before it, and that
+  "More details" is empty today. A new field should be added to the right group.
+- **Alignment, website:** every group uses the same grid, two columns on a phone and three from `sm` up (it used to vary by section, up to
+  four). Counters, short number boxes and dropdowns fill their cell instead of shrinking to their content, so left and right edges line
+  up. Three or four choice buttons take two columns so they don't wrap. A question and its follow-up now stay in order: "Posted by", then
+  "Has brokerage fee", then the fee (the switch used to be drawn above "Posted by").
+- **Alignment, app:** two equal columns; a lone last field keeps its half width instead of stretching across the row; labels are one line
+  (like the website) so a long label no longer pushes its control below the one beside it; dropdowns lost a stray bottom margin.
+- **Checked:** web screenshots of apartment (sale and rent), PG, commercial and plot at 1280 px and 390 px (no sideways scrolling), and the
+  whole browser suite against a local stack. The app was type-checked and its unit tests pass, but was **not** looked at on a device; it
+  ships with the next app build.
+- **Not changed:** which fields exist or are required, the order of sections, and v1.
 
 ## 8. Decisions needed
 1. **Confirm reversing "keep all sections open"** for optional fields (recommended, on the evidence in section 2 once refreshed).

@@ -2,16 +2,16 @@ import { rolloutBucket } from "@bhavano/types/loginNudge";
 
 /** Which version of the post-ad Details form a visitor sees. `v1` is the long-standing form; `v2` is the redesign in
  * docs/plans/post-ad-simpler-form.md, rolled out gradually so the admin funnel can compare the two (the variant is written
- * into every funnel event as `form=`); `v3` is v2 with the details shown step by step on one page (sections appear as the one above
- * is completed). v3 is shown to admins and by `?form=v3`; the rollout percentage never assigns it. */
-export type PostFormVariant = "v1" | "v2" | "v3";
+ * into every funnel event as `form=`). A step-by-step `v3` existed briefly and was removed on 2026-11-15; an old `?form=v3` link
+ * is ignored and gets the normal form. */
+export type PostFormVariant = "v1" | "v2";
 
-/** What the funnel records as `form=` for a session. Admins are always shown v3, but their sessions are labelled `admin` so staff testing
- * never counts towards the v1 / v2 / v3 comparison. */
+/** What the funnel records as `form=` for a session. Admins see v2 by default, but their sessions are labelled `admin` so staff testing
+ * never counts towards the v1 / v2 comparison. */
 export type PostFormTrackLabel = PostFormVariant | "admin";
 
 export function parsePostFormVariant(value: unknown): PostFormVariant | null {
-  return value === "v1" || value === "v2" || value === "v3" ? value : null;
+  return value === "v1" || value === "v2" ? value : null;
 }
 
 /** The rollout share from the admin setting: a whole number from 0 to 100, and 0 (nobody) for anything else, so a bad value can never
@@ -21,7 +21,7 @@ export function normalizeRolloutPercent(value: unknown): number {
   return Math.min(100, Math.max(0, value));
 }
 
-/** Admins get the newest form, `v3`, by default (so the team uses the latest design), and can pick any version with `override` (the `?form=`
+/** Admins get the newest form, `v2`, by default (so the team uses the latest design), and can pick any version with `override` (the `?form=`
  * query param; the post page has a switch for it). For everyone else `override` wins too, for testing; otherwise the visitor's stable bucket
  * decides, so the same browser keeps the same form across visits. Without a viewer key there is no bucket, so only 100% includes them. */
 export function resolvePostFormVariant(input: {
@@ -31,7 +31,7 @@ export function resolvePostFormVariant(input: {
   viewerKey: string;
 }): PostFormVariant {
   if (input.override) return input.override;
-  if (input.isAdmin) return "v3";
+  if (input.isAdmin) return "v2";
   if (input.percent >= 100) return "v2";
   if (input.percent <= 0 || !input.viewerKey) return "v1";
   return rolloutBucket(input.viewerKey) < input.percent ? "v2" : "v1";
