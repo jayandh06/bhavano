@@ -91,6 +91,13 @@ const KNOWN_ROUTES = new Set([
   "/blog/property-registration-process-india",
   "/blog/buying-property-in-india-as-an-nri",
   "/blog/tds-on-rent-and-property-purchase-india",
+  // homeJourneyGuides.ts
+  "/blog/how-to-photograph-your-property-for-a-listing",
+  "/blog/how-to-set-the-right-rent-for-your-property",
+  "/blog/rented-flat-move-in-checklist",
+  "/blog/new-flat-possession-snagging-checklist",
+  "/blog/home-loan-process-and-documents-india",
+  "/blog/property-mutation-after-buying-india",
 ]);
 
 function textsOf(block: BlogBlock): string[] {

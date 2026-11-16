@@ -146,3 +146,23 @@ percentages: those change and would go stale (the blog's no-figures rule is kept
 - **Not done:** a state-wise stamp duty table and current LTV and tax figures (would need a sourced, dated data set and
   a test exemption); tables as a block type (the renderer has none, so lists carry the structure); matching Google Ads
   landing-page keywords (a separate change to the ad groups).
+
+## Seventh batch (2026-11-16): around the deal
+Six posts on the steps before and after a deal that no earlier post covered, in `packages/types/src/homeJourneyGuides.ts`
+(appended to `POSTS`). Same rules: answer first, question headings, no prices, rents, rates or percentages, no invented author.
+
+| Post | For | Links to |
+|---|---|---|
+| `how-to-photograph-your-property-for-a-listing` | owners: shot list, light, phone handling, per category | `/post`, `/contact` (help posting), listing-writing, bad-ad and selling guides |
+| `how-to-set-the-right-rent-for-your-property` | owners: compare, adjust, what is included, reading the response | rent listings, area, maintenance, deposit, yield, tenants posts |
+| `rented-flat-move-in-checklist` | tenants: documents, room-by-room check, inventory and meter readings | agreement, deposit, viewing checklist, rent listings |
+| `new-flat-possession-snagging-checklist` | buyers from a builder: inspection kit, rooms, common areas, documents at possession | OC/CC, RERA, maintenance, construction-stage posts |
+| `home-loan-process-and-documents-india` | buyers: stages, salaried and self-employed documents, delays, extra costs | eligibility, EMI and down payment tools; title, stamp duty, registration posts |
+| `property-mutation-after-buying-india` | buyers and heirs: mutation vs registration, local names, documents, process | registration, khata, title, documents posts |
+
+- The photo post was prompted by the post-ad funnel: photos are the most common blocker at Preview
+  (`recover-sellers-who-leave-without-posting.md`), so it is a page worth linking from the form later.
+- **Review before promoting:** the home loan and mutation posts are financial and legal topics written from general
+  knowledge and hedged; the snagging post's RERA defect-liability paragraph deliberately gives no period.
+- Covers: explicit motifs in `blogCovers.ts`. Added to `llms.txt` and `KNOWN_ROUTES`; `packages/types` rebuilt so the
+  app bundle gets them with the next release. The sitemap picks them up automatically.
