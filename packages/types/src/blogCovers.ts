@@ -325,6 +325,7 @@ const MOTIF_BY_SLUG: Record<string, CoverMotif> = {
   "new-flat-possession-snagging-checklist": "magnifier",
   "home-loan-process-and-documents-india": "calculator",
   "property-mutation-after-buying-india": "approvals",
+  "villa-and-house-handover-checklist": "house",
 };
 
 /** For an article that has no entry above (a new one): a sensible scene from words in its slug. */
