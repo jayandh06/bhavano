@@ -98,6 +98,8 @@ const KNOWN_ROUTES = new Set([
   "/blog/new-flat-possession-snagging-checklist",
   "/blog/home-loan-process-and-documents-india",
   "/blog/property-mutation-after-buying-india",
+  "/blog/villa-and-house-handover-checklist",
+  "/blog/villa-or-apartment-which-to-choose",
 ]);
 
 function textsOf(block: BlogBlock): string[] {

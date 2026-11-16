@@ -160,6 +160,9 @@ Six posts on the steps before and after a deal that no earlier post covered, in 
 | `home-loan-process-and-documents-india` | buyers: stages, salaried and self-employed documents, delays, extra costs | eligibility, EMI and down payment tools; title, stamp duty, registration posts |
 | `property-mutation-after-buying-india` | buyers and heirs: mutation vs registration, local names, documents, process | registration, khata, title, documents posts |
 
+- **Added the same day:** `villa-and-house-handover-checklist`, the villa and independent house handover (new or resale): roof and
+  terrace, water sources and tanks, drainage and septic, boundary and exterior, gated-community checks, a resale section (agreed
+  fittings, final meter readings, dues cleared, keys), documents and after-handover steps. The new-flat snagging post links to it.
 - The photo post was prompted by the post-ad funnel: photos are the most common blocker at Preview
   (`recover-sellers-who-leave-without-posting.md`), so it is a page worth linking from the form later.
 - **Review before promoting:** the home loan and mutation posts are financial and legal topics written from general
