@@ -13,6 +13,7 @@
 
 import { ANSWER_GUIDES } from "./answerGuides";
 import { BUILDER_GUIDES } from "./builderGuides";
+import { HOME_JOURNEY_GUIDES } from "./homeJourneyGuides";
 
 export type BlogBlock =
   | { type: "p"; text: string }
@@ -2376,6 +2377,8 @@ export const POSTS: BlogPost[] = [
   ...BUILDER_GUIDES,
   // Answer-first guides for questions put to AI assistants (docs/plans/ai-visibility-backlinks-and-articles.md).
   ...ANSWER_GUIDES,
+  // Photos and rent for owners, move-in and possession checks, the home loan process and mutation (homeJourneyGuides.ts).
+  ...HOME_JOURNEY_GUIDES,
 ];
 
 export function getPost(slug: string): BlogPost | undefined {

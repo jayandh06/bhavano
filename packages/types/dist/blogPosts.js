@@ -19,6 +19,7 @@ exports.bylineFor = bylineFor;
 exports.parseInline = parseInline;
 const answerGuides_1 = require("./answerGuides");
 const builderGuides_1 = require("./builderGuides");
+const homeJourneyGuides_1 = require("./homeJourneyGuides");
 exports.DEFAULT_BYLINE = "Bhavano Editorial Team";
 exports.POSTS = [
     {
@@ -2310,6 +2311,8 @@ exports.POSTS = [
     ...builderGuides_1.BUILDER_GUIDES,
     // Answer-first guides for questions put to AI assistants (docs/plans/ai-visibility-backlinks-and-articles.md).
     ...answerGuides_1.ANSWER_GUIDES,
+    // Photos and rent for owners, move-in and possession checks, the home loan process and mutation (homeJourneyGuides.ts).
+    ...homeJourneyGuides_1.HOME_JOURNEY_GUIDES,
 ];
 function getPost(slug) {
     return exports.POSTS.find((p) => p.slug === slug);

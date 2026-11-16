@@ -319,6 +319,12 @@ const MOTIF_BY_SLUG: Record<string, CoverMotif> = {
   "how-to-calculate-rental-yield": "chart",
   "stamp-duty-and-registration-charges-explained": "calculator",
   "capital-gains-tax-on-property-explained": "chart",
+  "how-to-photograph-your-property-for-a-listing": "phone",
+  "how-to-set-the-right-rent-for-your-property": "chart",
+  "rented-flat-move-in-checklist": "key",
+  "new-flat-possession-snagging-checklist": "magnifier",
+  "home-loan-process-and-documents-india": "calculator",
+  "property-mutation-after-buying-india": "approvals",
 };
 
 /** For an article that has no entry above (a new one): a sensible scene from words in its slug. */
