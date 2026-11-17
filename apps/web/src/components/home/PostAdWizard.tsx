@@ -20,6 +20,7 @@ import {
   brokerageFeeNote,
   CATEGORY_FIELD_CONFIG,
   defaultAttributesFor,
+  fieldIsVisible,
   listingCompleteness,
   pruneHiddenAttributes,
 } from "@bhavano/types/categoryFields";
@@ -95,6 +96,7 @@ import {
   type PostFormTrackLabel,
   type PostFormVariant,
 } from "@/lib/postFormVariant";
+import { issueForTarget, requiredAttributeStates, requiredState } from "@/lib/requiredFieldState";
 import { ListingSlotCapPrompt } from "@/components/home/ListingSlotCapPrompt";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
 import { pushDataLayerEvent, toE164IN } from "@/lib/gtm";
@@ -1386,7 +1388,7 @@ export function PostAdWizard({
    * together with the video block, while the original form shows it on its own. */
   function renderPhotosBlock() {
     return (
-      <div id="post-field-photos" className={`max-w-[720px] ${ringFor("photos")}`} ref={photoSectionRef}>
+      <div id="post-field-photos" data-req={stateOf("photos")} className={`max-w-[720px] ${ringFor("photos")}`} ref={photoSectionRef}>
         <RequiredLabel
           text={`Photos (${MIN_PHOTOS}-${MAX_PHOTOS})`}
           done={photos.length >= MIN_PHOTOS}
@@ -1795,10 +1797,20 @@ export function PostAdWizard({
       </p>
     ) : null;
   }
+  // Redesigned form only: how each required field is drawn (a soft red border while empty, solid red once its problem is on screen, green once
+  // filled). The same list that drives the "N left" chip says which fields are unfilled. See requiredFieldState.ts.
+  const showRequiredBorders = formVariant === "v2";
+  const requiredKeys =
+    showRequiredBorders && category && transactionType
+      ? CATEGORY_FIELD_CONFIG[category].filter((f) => f.required && fieldIsVisible(f, transactionType, attributes)).map((f) => f.key)
+      : [];
+  const attributeStates = showRequiredBorders ? requiredAttributeStates(requiredKeys, issues, shownMessages) : undefined;
+  const stateOf = (target: string) => (showRequiredBorders ? requiredState(issueForTarget(issues, target), target in shownMessages) : undefined);
   const fieldFeedback: FieldFeedback = {
     errors: attributeErrors,
     highlightKey: highlightTarget ? attributeKeyForTarget(highlightTarget) : null,
     issues,
+    states: attributeStates,
     onBlurField: (key) => {
       markTouched(`attr:${key}`);
       if (key === "fromBroker") markTouched("posted_by");
@@ -2630,6 +2642,7 @@ export function PostAdWizard({
             </p>
             <LocationMapPicker
               variant={formVariant}
+              requiredState={stateOf("location")}
               defaultCenter={
                 cities.find((c) => c.id === cityId) ??
                 cities[0] ?? { lat: 20.5937, lng: 78.9629 }
@@ -2742,7 +2755,7 @@ export function PostAdWizard({
                       </div>
                     )}
                     <div className="flex gap-3">
-                      <div className="flex-1">
+                      <div className="flex-1" data-req={stateOf("price")}>
                         <RequiredLabel text={priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹)` : "Price (₹)"} />
                         <input
                           type="number"
@@ -2843,7 +2856,7 @@ export function PostAdWizard({
             )}
           </div>
 
-          <div id="post-field-title" className={ringFor("title")} onBlur={() => markTouched("title")}>
+          <div id="post-field-title" data-req={stateOf("title")} className={ringFor("title")} onBlur={() => markTouched("title")}>
             <label className={labelClass}>
               Title <RequiredPill done={!issues.some((i) => i.target === "title")} text={`Required: at least ${TITLE_MIN_LENGTH} characters`} />
             </label>
@@ -2868,7 +2881,7 @@ export function PostAdWizard({
             {fieldMessage("title")}
           </div>
 
-          <div id="post-field-description" className={ringFor("description")} onBlur={() => markTouched("description")}>
+          <div id="post-field-description" data-req={stateOf("description")} className={ringFor("description")} onBlur={() => markTouched("description")}>
             <label className={labelClass}>
               Description <RequiredPill done={!issues.some((i) => i.target === "description")} text={`Required: at least ${DESCRIPTION_MIN_LENGTH} characters`} />
             </label>

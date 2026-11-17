@@ -16,6 +16,7 @@ import { issueCountForFields, type DetailsIssue } from "@bhavano/types/postDetai
 import { POSTED_BY_FORM_LABEL, POSTED_BY_FORM_OPTIONS } from "@bhavano/types/sellerType";
 import { AREA_UNIT_LABELS, type AreaUnit } from "@bhavano/types/areaUnit";
 import { fieldClass, labelClass } from "@/lib/formStyles";
+import type { RequiredState } from "@/lib/requiredFieldState";
 import { SelectField } from "./SelectField";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { Icon, isIconName } from "./Icon";
@@ -317,7 +318,7 @@ function CategoryFieldInput({
     // Stacked up/down rather than −/+ on either side — the same shape as the spinner a browser
     // would draw, but visible on every device and in the app's own colours.
     return (
-      <div className="flex w-full items-stretch border border-border rounded-[9px] bg-surface overflow-hidden">
+      <div data-req-frame className="flex w-full items-stretch border border-border rounded-[9px] bg-surface overflow-hidden">
         <input
           type="number"
           inputMode="numeric"
@@ -430,6 +431,9 @@ export interface FieldFeedback {
   onBlurField: (key: string) => void;
   /** Everything still wrong on the step, so each section header can say how many of its fields are left. */
   issues?: DetailsIssue[];
+  /** How each required field is drawn, keyed by field key: a soft red border while empty, solid red when it has a problem on screen, green
+   * once it is filled (see `requiredFieldState.ts`). Only given on the redesigned form; without it fields keep their plain border. */
+  states?: Record<string, RequiredState>;
 }
 
 /** Gives one field an address for "scroll to it" (`post-field-attr:<key>`), reports when focus leaves it, and
@@ -450,6 +454,7 @@ function FieldFrame({
   return (
     <div
       id={`post-field-attr:${fieldKey}`}
+      data-req={feedback?.states?.[fieldKey]}
       className={[className, highlighted ? "rounded-[10px] ring-2 ring-[#b3413a] ring-offset-2 ring-offset-surface" : ""]
         .filter(Boolean)
         .join(" ")}
