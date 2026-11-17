@@ -733,4 +733,165 @@ export const AREA_OVERVIEW_DRAFTS: Record<string, AreaOverviewContent> = {
       },
     ],
   },
+  "bengaluru/arekere-mico-layout-2nd-stage": {
+    about: [
+      "Arekere MICO Layout is a residential neighbourhood in south Bengaluru, off Bannerghatta Road and close to BTM Layout and Jayanagar. The 2nd Stage is one of the layout's stages, with a mix of independent houses and low-rise apartment buildings.",
+      "It suits families and working professionals who want a settled residential area with schools, hospitals and shops along Bannerghatta Road close by.",
+    ],
+    gettingAround: [
+      "Bannerghatta Road is the main route in and out, and it connects to the Outer Ring Road and the offices around it. Traffic on Bannerghatta Road is heavy at peak hours, so check your commute at the time you would actually travel.",
+    ],
+    faqs: [
+      {
+        question: "Where is Arekere MICO Layout 2nd Stage?",
+        answer: "It is in south Bengaluru, off Bannerghatta Road, near BTM Layout and Jayanagar. Check the exact address on the map in each listing.",
+      },
+      {
+        question: "What kinds of property can I find in Arekere MICO Layout 2nd Stage on Bhavano?",
+        answer: "Where listings are available, you can browse apartments, houses and PG rooms. Use the filters on this page to narrow by type, BHK and budget.",
+      },
+      {
+        question: "How do I check a listing in Arekere MICO Layout 2nd Stage is genuine?",
+        answer: "See the place in person before you pay anything, meet the person who will sign the agreement, and get the terms in writing. Bhavano checks listings before they go live but does not inspect properties.",
+      },
+    ],
+  },
+  "bengaluru/carmelaram": {
+    about: [
+      "Carmelaram is a locality in south-east Bengaluru, on Sarjapur Road near Kasavanahalli and the Outer Ring Road. It has a railway station of the same name and has grown quickly, with many new apartment communities alongside older houses.",
+      "It is popular with people who work in Bellandur, Sarjapur Road and the Outer Ring Road offices and want to live close to them.",
+    ],
+    gettingAround: [
+      "Sarjapur Road and the Outer Ring Road are the main routes, and the Carmelaram railway station offers another way to travel. Peak-hour traffic on Sarjapur Road is heavy, so test your commute at the time you would actually travel.",
+    ],
+    faqs: [
+      {
+        question: "Where is Carmelaram?",
+        answer: "It is in south-east Bengaluru, on Sarjapur Road near Kasavanahalli and Bellandur. Check the exact address on the map in each listing.",
+      },
+      {
+        question: "What kinds of property can I find in Carmelaram on Bhavano?",
+        answer: "Where listings are available, you can browse apartments, houses and PG rooms. Use the filters on this page to narrow by type, BHK and budget.",
+      },
+      {
+        question: "How do I check a listing in Carmelaram is genuine?",
+        answer: "See the place in person before you pay anything, meet the person who will sign the agreement, and get the terms in writing. Bhavano checks listings before they go live but does not inspect properties.",
+      },
+    ],
+  },
+  "bengaluru/vidyaranyapura": {
+    about: [
+      "Vidyaranyapura is a residential locality in north Bengaluru, near Yelahanka and Jalahalli and off Ballari Road. It is an established area of independent houses and apartment buildings with everyday shops and schools close by.",
+      "It is a common choice for families and for people working in north Bengaluru and around the airport road.",
+    ],
+    gettingAround: [
+      "Ballari Road and the roads towards Yelahanka and Jalahalli connect the area to the rest of the city. Traffic can be heavy at peak hours, so check your commute at the time you would actually travel.",
+    ],
+    faqs: [
+      {
+        question: "Where is Vidyaranyapura?",
+        answer: "It is in north Bengaluru, near Yelahanka and Jalahalli. Check the exact address on the map in each listing.",
+      },
+      {
+        question: "What kinds of property can I find in Vidyaranyapura on Bhavano?",
+        answer: "Where listings are available, you can browse apartments, houses and PG rooms. Use the filters on this page to narrow by type, BHK and budget.",
+      },
+      {
+        question: "How do I check a listing in Vidyaranyapura is genuine?",
+        answer: "See the place in person before you pay anything, meet the person who will sign the agreement, and get the terms in writing. Bhavano checks listings before they go live but does not inspect properties.",
+      },
+    ],
+  },
+  "hyderabad/gautami-enclave-kondapur": {
+    about: [
+      "Gautami Enclave is a residential colony in Kondapur, west Hyderabad, close to HITEC City and Gachibowli. Kondapur is one of the city's main IT-corridor neighbourhoods, with a large number of apartment buildings.",
+      "Its main draw is a short commute to the technology offices nearby, so it is popular with IT professionals as well as families who want an established neighbourhood.",
+    ],
+    gettingAround: [
+      "Kondapur is linked to HITEC City, Gachibowli and the Outer Ring Road by main roads. Peak-hour traffic on the IT corridor is heavy, so check your commute at the time you would actually travel.",
+    ],
+    faqs: [
+      {
+        question: "Where is Gautami Enclave?",
+        answer: "It is in Kondapur, west Hyderabad, near HITEC City and Gachibowli. Check the exact address on the map in each listing.",
+      },
+      {
+        question: "What kinds of property can I find in Gautami Enclave, Kondapur on Bhavano?",
+        answer: "Where listings are available, you can browse apartments, houses and PG rooms. Use the filters on this page to narrow by type, BHK and budget.",
+      },
+      {
+        question: "How do I check a listing in Gautami Enclave, Kondapur is genuine?",
+        answer: "See the place in person before you pay anything, meet the person who will sign the agreement, and get the terms in writing. Bhavano checks listings before they go live but does not inspect properties.",
+      },
+    ],
+  },
+  "hyderabad/alkapur-township": {
+    about: [
+      "Alkapur Township is a residential area in west Hyderabad, near Puppalaguda and Manikonda and close to the Outer Ring Road. It is made up mainly of gated communities and apartment buildings.",
+      "It suits people working in Gachibowli, the Financial District and nearby offices who want more space than the central parts of the IT corridor usually offer.",
+    ],
+    gettingAround: [
+      "The Outer Ring Road and the roads through Manikonda and Puppalaguda connect the area to the Financial District and Gachibowli. Check your commute at the time you would actually travel.",
+    ],
+    faqs: [
+      {
+        question: "Where is Alkapur Township?",
+        answer: "It is in west Hyderabad, near Puppalaguda and Manikonda, close to the Outer Ring Road. Check the exact address on the map in each listing.",
+      },
+      {
+        question: "What kinds of property can I find in Alkapur Township on Bhavano?",
+        answer: "Where listings are available, you can browse apartments, houses and PG rooms. Use the filters on this page to narrow by type, BHK and budget.",
+      },
+      {
+        question: "How do I check a listing in Alkapur Township is genuine?",
+        answer: "See the place in person before you pay anything, meet the person who will sign the agreement, and get the terms in writing. Bhavano checks listings before they go live but does not inspect properties.",
+      },
+    ],
+  },
+  "kanpur/civil-lines": {
+    about: [
+      "Civil Lines is a long-established central neighbourhood of Kanpur, laid out in the colonial era and still home to government offices, schools, hospitals and some of the city's older bungalows and apartment buildings.",
+      "It suits people who want a central address with broad roads and city services nearby, and who work in the main commercial and administrative parts of Kanpur.",
+    ],
+    gettingAround: [
+      "The area is well connected by road to the rest of central Kanpur, and auto-rickshaws and city buses run through it. Check parking and your commute before you decide.",
+    ],
+    faqs: [
+      {
+        question: "Where is Civil Lines in Kanpur?",
+        answer: "It is in central Kanpur, near the Mall Road area. Check the exact address on the map in each listing.",
+      },
+      {
+        question: "What kinds of property can I find in Civil Lines on Bhavano?",
+        answer: "Where listings are available, you can browse apartments, houses and PG rooms. Use the filters on this page to narrow by type, BHK and budget.",
+      },
+      {
+        question: "How do I check a listing in Civil Lines is genuine?",
+        answer: "See the place in person before you pay anything, meet the person who will sign the agreement, and get the terms in writing. Bhavano checks listings before they go live but does not inspect properties.",
+      },
+    ],
+  },
+  "kolkata/kalindi-housing-estate": {
+    about: [
+      "Kalindi Housing Estate is a residential neighbourhood in north Kolkata, near Lake Town and Bangur Avenue. It is a planned housing estate of apartment buildings, with shops and services close by.",
+      "It suits families and people who work in north Kolkata or near the airport and want a quieter, planned neighbourhood rather than the older, more crowded parts of the city.",
+    ],
+    gettingAround: [
+      "The VIP Road and the roads towards Lake Town and Bangur connect the area to the rest of Kolkata, and the metro and city buses serve the wider neighbourhood. Check your commute at the time you would actually travel.",
+    ],
+    faqs: [
+      {
+        question: "Where is Kalindi Housing Estate?",
+        answer: "It is in north Kolkata, near Lake Town and Bangur Avenue. Check the exact address on the map in each listing.",
+      },
+      {
+        question: "What kinds of property can I find in Kalindi Housing Estate on Bhavano?",
+        answer: "Where listings are available, you can browse apartments, houses and PG rooms. Use the filters on this page to narrow by type, BHK and budget.",
+      },
+      {
+        question: "How do I check a listing in Kalindi Housing Estate is genuine?",
+        answer: "See the place in person before you pay anything, meet the person who will sign the agreement, and get the terms in writing. Bhavano checks listings before they go live but does not inspect properties.",
+      },
+    ],
+  },
 };

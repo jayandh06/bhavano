@@ -122,3 +122,9 @@ than `MIN_INDEXABLE_AREA_LISTINGS` listings are `noindex`, while facet pages wit
 indexable. Keywords such as `white wings zenon` landing on `/surat` are society or project names
 with no area page, so no routing change fixes them.
 Apex redirect checked: `https://bhavano.com/...` returns 301 to `www`; the apex URLs in Semrush are stale.
+Second batch (same day), all unreviewed drafts that pass the validator: `bengaluru/arekere-mico-layout-2nd-stage`,
+`bengaluru/carmelaram`, `bengaluru/vidyaranyapura`, `hyderabad/gautami-enclave-kondapur`,
+`hyderabad/alkapur-township`, `kanpur/civil-lines`, `kolkata/kalindi-housing-estate`. The seed skips a key whose
+slug matches no area, so a mismatched name is reported, not created. Still undrafted for lack of confident knowledge:
+`seethappa-layout`, `chinnappa-layout`, `bogampatti`, `sentharapatti`, `narendra-nagar-colony`, `cheran-nagar`,
+`dhul-siras`, `isro-colony`, `samatha-nagar`, `daheli-sujanpur`, `aditi-apartments`.
