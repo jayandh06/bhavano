@@ -20,6 +20,7 @@ exports.parseInline = parseInline;
 const answerGuides_1 = require("./answerGuides");
 const builderGuides_1 = require("./builderGuides");
 const homeJourneyGuides_1 = require("./homeJourneyGuides");
+const landRecordGuides_1 = require("./landRecordGuides");
 exports.DEFAULT_BYLINE = "Bhavano Editorial Team";
 exports.POSTS = [
     {
@@ -2313,6 +2314,8 @@ exports.POSTS = [
     ...answerGuides_1.ANSWER_GUIDES,
     // Photos and rent for owners, move-in and possession checks, the home loan process and mutation (homeJourneyGuides.ts).
     ...homeJourneyGuides_1.HOME_JOURNEY_GUIDES,
+    // Land records: Karnataka RTC, MP Bhulekh, bhu naksha (landRecordGuides.ts).
+    ...landRecordGuides_1.LAND_RECORD_GUIDES,
 ];
 function getPost(slug) {
     return exports.POSTS.find((p) => p.slug === slug);
