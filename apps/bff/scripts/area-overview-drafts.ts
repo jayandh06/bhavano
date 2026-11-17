@@ -577,4 +577,160 @@ export const AREA_OVERVIEW_DRAFTS: Record<string, AreaOverviewContent> = {
       },
     ],
   },
+  "bengaluru/rbi-layout": {
+    about: [
+      "RBI Layout is a residential neighbourhood in south Bengaluru, usually described as part of JP Nagar 7th Phase. It lies off Kanakapura Road and is mostly made up of independent houses and low-rise apartment buildings.",
+      "It suits families and working professionals who want a quieter residential setting while staying connected to JP Nagar, Jayanagar and Bannerghatta Road for shopping, schools and everyday services.",
+    ],
+    gettingAround: [
+      "Kanakapura Road and the Outer Ring Road are the main routes out of the area, and the metro line along Kanakapura Road serves the wider neighbourhood. Check the walking distance to the nearest station and your commute at the time you would actually travel.",
+    ],
+    faqs: [
+      {
+        question: "Is RBI Layout the same as JP Nagar?",
+        answer:
+          "RBI Layout is part of the JP Nagar 7th Phase neighbourhood, so listings may carry either name. Check the exact address in the listing rather than relying on the name alone.",
+      },
+      {
+        question: "What kinds of property can I find in RBI Layout on Bhavano?",
+        answer:
+          "Where listings are available, you can browse apartments, houses and PG rooms. Use the filters on this page to narrow by type, BHK and budget.",
+      },
+      {
+        question: "How do I check a listing in RBI Layout is genuine?",
+        answer:
+          "See the place in person before you pay anything, meet the person who will sign the agreement, and get the terms in writing. Bhavano checks listings before they go live but does not inspect properties.",
+      },
+    ],
+  },
+  "bengaluru/thirumalashettyhally": {
+    about: [
+      "Thirumalashettyhally is a locality in east Bengaluru on the Hoskote side of the city, close to the Whitefield and KR Puram belt. It has grown as residential layouts and apartment projects have spread out along the Whitefield to Hoskote corridor.",
+      "People who live here commonly work in Whitefield, KR Puram or the offices along the Outer Ring Road. Plots, independent houses and apartments are all part of the local mix.",
+    ],
+    gettingAround: [
+      "The Hoskote road and the roads towards Whitefield and KR Puram connect the area to the rest of east Bengaluru. Traffic can be heavy at peak hours, so test your commute at the time you would actually travel.",
+    ],
+    faqs: [
+      {
+        question: "Where is Thirumalashettyhally?",
+        answer:
+          "It is in east Bengaluru, towards Hoskote, near the Whitefield and KR Puram side of the city. Check the exact address on the map in each listing.",
+      },
+      {
+        question: "What kinds of property can I find in Thirumalashettyhally on Bhavano?",
+        answer:
+          "Where listings are available, you can browse apartments, houses, villas and plots. Use the filters on this page to narrow by type, BHK and budget.",
+      },
+      {
+        question: "What should I check before buying a plot here?",
+        answer:
+          "Check the ownership documents and the approvals for the layout, and have a lawyer read them before you pay. This is general information, not legal advice.",
+      },
+    ],
+  },
+  "bengaluru/kalasipalya": {
+    about: [
+      "Kalasipalya is an older, central neighbourhood of Bengaluru, next to the KR Market area and close to the main bus and railway hubs. It is a busy commercial and residential area rather than a planned layout.",
+      "Homes here are mostly older houses and smaller apartment buildings. Its main appeal is being close to the city centre and to public transport.",
+    ],
+    gettingAround: [
+      "The area is well served by city buses, and the metro and railway stations nearby make it easy to reach other parts of Bengaluru without a car. The streets are narrow and crowded, so check parking before you decide.",
+    ],
+    faqs: [
+      {
+        question: "Where is Kalasipalya in Bengaluru?",
+        answer:
+          "It is in central Bengaluru, close to KR Market and the Kempegowda bus station area. Check the exact address on the map in each listing.",
+      },
+      {
+        question: "What kinds of property can I find in Kalasipalya on Bhavano?",
+        answer:
+          "Where listings are available, you can browse apartments, houses and PG rooms. Use the filters on this page to narrow by type, BHK and budget.",
+      },
+      {
+        question: "How do I check a listing in Kalasipalya is genuine?",
+        answer:
+          "See the place in person before you pay anything, meet the person who will sign the agreement, and get the terms in writing. Bhavano checks listings before they go live but does not inspect properties.",
+      },
+    ],
+  },
+  "hyderabad/telecom-nagar": {
+    about: [
+      "Telecom Nagar is a residential colony in the Gachibowli area of west Hyderabad, close to the Financial District and the IT offices around Gachibowli. It is mostly independent houses and apartment buildings.",
+      "Because it is so close to the technology corridor, it is popular with IT professionals who want a short commute, as well as with families who prefer an established neighbourhood to a new township.",
+    ],
+    gettingAround: [
+      "The Outer Ring Road and the roads towards Gachibowli and the Financial District are the main routes. Peak-hour traffic on the Gachibowli stretch is heavy, so check your commute at the time you would actually travel.",
+    ],
+    faqs: [
+      {
+        question: "Where is Telecom Nagar?",
+        answer:
+          "It is in the Gachibowli area of west Hyderabad, near the Financial District. Check the exact address on the map in each listing.",
+      },
+      {
+        question: "What kinds of property can I find in Telecom Nagar on Bhavano?",
+        answer:
+          "Where listings are available, you can browse apartments, houses and PG rooms. Use the filters on this page to narrow by type, BHK and budget.",
+      },
+      {
+        question: "How do I check a listing in Telecom Nagar is genuine?",
+        answer:
+          "See the place in person before you pay anything, meet the person who will sign the agreement, and get the terms in writing. Bhavano checks listings before they go live but does not inspect properties.",
+      },
+    ],
+  },
+  "pune/bund-garden-road": {
+    about: [
+      "Bund Garden Road is a central Pune road that runs along the Mula-Mutha river near the Koregaon Park and Camp areas. It is known for offices, hotels, restaurants and well-established residential buildings.",
+      "Living here puts you close to the city's business district and to the railway station. It suits professionals who want a central address and are happy to trade space for convenience.",
+    ],
+    gettingAround: [
+      "The road links the Camp area, Koregaon Park and the railway station, and Pune's metro and city buses serve the central belt. Traffic around the bridges and the station area gets heavy at peak hours, so check your commute at the time you would actually travel.",
+    ],
+    faqs: [
+      {
+        question: "Where is Bund Garden Road in Pune?",
+        answer:
+          "It is in central Pune, along the river, between the Camp area and Koregaon Park. Check the exact address on the map in each listing.",
+      },
+      {
+        question: "What kinds of property can I find on Bund Garden Road on Bhavano?",
+        answer:
+          "Where listings are available, you can browse apartments, offices and commercial space, and rooms to rent. Use the filters on this page to narrow by type and budget.",
+      },
+      {
+        question: "How do I check a listing here is genuine?",
+        answer:
+          "See the place in person before you pay anything, meet the person who will sign the agreement, and get the terms in writing. Bhavano checks listings before they go live but does not inspect properties.",
+      },
+    ],
+  },
+  "ahmedabad/ghatlodiya": {
+    about: [
+      "Ghatlodiya is a residential neighbourhood in north-west Ahmedabad, between Naranpura, Ranip and Chandlodiya. It is a well-established area with a mix of apartment buildings, society-style housing and independent houses.",
+      "It is popular with families who want everyday shops, schools and transport nearby, and with people who work in the Sola, Gota and Naranpura belt.",
+    ],
+    gettingAround: [
+      "The area is connected to the rest of Ahmedabad by city buses and the BRTS corridor, and to the SG Highway side of the city by road. Check your commute at the time you would actually travel.",
+    ],
+    faqs: [
+      {
+        question: "Where is Ghatlodiya in Ahmedabad?",
+        answer:
+          "It is in north-west Ahmedabad, near Naranpura, Ranip and Chandlodiya. Check the exact address on the map in each listing.",
+      },
+      {
+        question: "What kinds of property can I find in Ghatlodiya on Bhavano?",
+        answer:
+          "Where listings are available, you can browse apartments, houses and PG rooms. Use the filters on this page to narrow by type, BHK and budget.",
+      },
+      {
+        question: "How do I check a listing in Ghatlodiya is genuine?",
+        answer:
+          "See the place in person before you pay anything, meet the person who will sign the agreement, and get the terms in writing. Bhavano checks listings before they go live but does not inspect properties.",
+      },
+    ],
+  },
 };
