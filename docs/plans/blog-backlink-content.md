@@ -169,3 +169,18 @@ Six posts on the steps before and after a deal that no earlier post covered, in 
   knowledge and hedged; the snagging post's RERA defect-liability paragraph deliberately gives no period.
 - Covers: explicit motifs in `blogCovers.ts`. Added to `llms.txt` and `KNOWN_ROUTES`; `packages/types` rebuilt so the
   app bundle gets them with the next release. The sitemap picks them up automatically.
+
+## Land record guides (2026-11-17)
+Three guides in `packages/types/src/landRecordGuides.ts`, aimed at the land-record searches 99acres ranks for
+and Bhavano does not (see `semrush-snapshot-2026-11.md`): `karnataka-bhoomi-rtc-pahani-explained`
+(rtc online, Bhoomi), `mp-bhulekh-khasra-khatauni-explained` (mpbhulekh, mp bhulekh) and
+`bhu-naksha-land-map-explained` (bhu naksha, state-agnostic). Each links to the plot listings, area converter,
+title-check, mutation and plot-checklist posts. `ppp haryana` was left out: it is the Parivar Pehchan Patra
+family ID, not a land record.
+Written to the blog rules (no fees, prices or percentages; no invented author; legal note on top). Portals
+rename menus and move pages, so only each portal's home address is named and no fee or deep link is quoted.
+Sources were public third-party descriptions of the portals (web search returned no official pages), so
+**someone who has used each portal and a lawyer should read them before they are promoted.** Expect low
+conversion to listings; the searchers want the government site, so this is reach and links, not leads.
+Next possible guides, only if these get impressions: Uttar Pradesh (bhulekh up), Jharkhand (jharbhoomi),
+Chhattisgarh (cg bhuiyan), Gujarat (digital 7/12, anyror).

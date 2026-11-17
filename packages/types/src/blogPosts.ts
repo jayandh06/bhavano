@@ -14,6 +14,7 @@
 import { ANSWER_GUIDES } from "./answerGuides";
 import { BUILDER_GUIDES } from "./builderGuides";
 import { HOME_JOURNEY_GUIDES } from "./homeJourneyGuides";
+import { LAND_RECORD_GUIDES } from "./landRecordGuides";
 
 export type BlogBlock =
   | { type: "p"; text: string }
@@ -2379,6 +2380,8 @@ export const POSTS: BlogPost[] = [
   ...ANSWER_GUIDES,
   // Photos and rent for owners, move-in and possession checks, the home loan process and mutation (homeJourneyGuides.ts).
   ...HOME_JOURNEY_GUIDES,
+  // Land records: Karnataka RTC, MP Bhulekh, bhu naksha (landRecordGuides.ts).
+  ...LAND_RECORD_GUIDES,
 ];
 
 export function getPost(slug: string): BlogPost | undefined {
