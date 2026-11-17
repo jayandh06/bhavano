@@ -48,6 +48,7 @@ export function UploadZone({
         setDragging(false);
         onFiles(e.dataTransfer.files);
       }}
+      data-upload-zone
       className={`flex flex-col items-center justify-center gap-1.5 w-full border-[1.5px] border-dashed rounded-xl px-4 py-6 cursor-pointer text-center transition-colors ${
         dragging ? "border-green bg-green/10" : "border-green bg-surface-alt"
       }`}

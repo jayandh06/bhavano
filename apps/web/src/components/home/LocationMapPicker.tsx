@@ -5,6 +5,7 @@ import type { ReverseGeocodeResultDto } from "@bhavano/types";
 import { loadGoogleMaps } from "@/lib/googleMaps";
 import { reverseGeocodeAction } from "@/app/actions/locations";
 import { Icon } from "./Icon";
+import type { RequiredState } from "@/lib/requiredFieldState";
 
 // Matches lib/formStyles.ts — text-base on mobile so iOS does not zoom on focus.
 const fieldClass =
@@ -21,10 +22,13 @@ export function LocationMapPicker({
   initialPin,
   onPinChange,
   variant = "v1",
+  requiredState,
 }: {
   /** `v2` is the redesigned Details form (docs/plans/post-ad-simpler-form.md, 4.8): search and "Use my current location" side by side,
    * search first, since most owners list from home and are not at the property. Behaviour is identical; only the layout and wording differ. */
   variant?: "v1" | "v2";
+  /** How the map frame is drawn on the redesigned form: soft red until the pin is set, green once it is (see `requiredFieldState.ts`). */
+  requiredState?: RequiredState;
   defaultCenter: { lat: number; lng: number };
   /** A pin already placed (a restored draft). The map opens on it and does not auto-locate. */
   initialPin?: { lat: number; lng: number } | null;
@@ -179,7 +183,11 @@ export function LocationMapPicker({
             {locating ? "Locating…" : <><Icon name="pin" /> Use my current location</>}
           </button>
         </div>
-        <div ref={mapDivRef} className="w-full h-[260px] rounded-[10px] mt-2 bg-surface-alt" />
+        <div
+          ref={mapDivRef}
+          data-req-self={requiredState}
+          className="w-full h-[260px] rounded-[10px] mt-2 bg-surface-alt border-[1.5px] border-transparent"
+        />
         <p className="text-xs text-muted mt-1.5 m-0">
           Not at the property? Search for its address, or tap the map to place the pin. You can drag it to fine-tune.
         </p>

@@ -224,6 +224,36 @@
   display: none;
 }
 
+/* Required fields on the redesigned post-ad form (docs/plans/post-ad-simpler-form.md). The wizard puts data-req="empty|error|ok" on a field's wrapper
+ * (src/lib/requiredFieldState.ts) and the controls inside take the colour: a soft red border while the field is empty, solid red once its problem is
+ * showing, green once it is filled. A frame that draws its own border (the map, the counter, the photo drop zone) is marked data-req-self,
+ * data-req-frame or data-upload-zone. Optional fields carry no attribute, so they stay neutral. Colour is never the only signal: the asterisk, the
+ * "Required" pill and the messages stay. */
+:root {
+  --req-empty: rgb(179 65 58 / 0.55);
+  --req-error: #b3413a;
+}
+:root[data-theme="dark"] {
+  --req-empty: rgb(224 122 112 / 0.6);
+  --req-error: #e07a70;
+}
+[data-req] :is(input:not([type="checkbox"], [type="radio"], [type="file"]), select, textarea, [data-req-frame]),
+[data-req-self] {
+  transition: border-color 0.15s ease;
+}
+[data-req="empty"] :is(input:not([type="checkbox"], [type="radio"], [type="file"]), select, textarea, [data-req-frame], [data-upload-zone], [role="radio"][aria-checked="false"], button[aria-pressed="false"]),
+[data-req-self="empty"] {
+  border-color: var(--req-empty);
+}
+[data-req="error"] :is(input:not([type="checkbox"], [type="radio"], [type="file"]), select, textarea, [data-req-frame], [data-upload-zone], [role="radio"][aria-checked="false"], button[aria-pressed="false"]),
+[data-req-self="error"] {
+  border-color: var(--req-error);
+}
+[data-req="ok"] :is(input:not([type="checkbox"], [type="radio"], [type="file"]), select, textarea, [data-req-frame]),
+[data-req-self="ok"] {
+  border-color: var(--green);
+}
+
 /* Diwali greeting on the home page (components/home/DiwaliBanner.tsx). The flames move only for visitors who have not asked for less motion. */
 @media (prefers-reduced-motion: no-preference) {
   .diya-flame {

@@ -337,6 +337,29 @@ and lay the fields out on one grid so they line up.
   ships with the next app build.
 - **Not changed:** which fields exist or are required, the order of sections, and v1.
 
+## 7e. Built: required-field borders on v2 (2026-11-17), web and mobile browser
+The idea: a seller should see at a glance which fields they must fill. On the redesigned form (v2) every **required** field now carries a state, drawn as its border:
+
+| State | When | Border |
+|---|---|---|
+| `empty` | required and not filled yet, from the moment the form opens | **soft red** (translucent) |
+| `error` | the field has a problem on screen: it was visited and left empty, Preview was tapped, or the value has to change | **solid red**, with its message |
+| `ok` | filled and valid | **green** |
+
+Optional fields carry no state and stay neutral, so the difference stands out. Colour is never the only signal: the asterisk, the "Required" pills, the "N left" badges and the messages are unchanged, and the states are on the
+control frames only (not the label).
+
+- **Where it applies:** every required category field (text and number boxes, dropdowns, the counter with its up and down arrows, Posted by, the choice buttons such as Furnishing), and the location map frame, the
+  photo drop zone, the price box, the title and the description. Dark mode has its own, lighter reds.
+- **How:** the wizard already has the list of what is still missing (it drives the "N left" chip). `requiredFieldState.ts` turns that list into a state per field; the wizard writes it as `data-req` (on a field's
+  wrapper), and `globals.css` turns the attribute into a border colour. Frames that draw their own border are marked `data-req-self`, `data-req-frame` or `data-upload-zone`. v1 gets no attributes, so it is unchanged.
+- **Not done:** the mobile app (it needs the same states in `CategoryFieldsForm`, with its own release), and a gentler option that colours a section only after the seller first touches it.
+- **Measuring it:** this changed v2 in place, so v2 numbers from 2026-11-17 are not comparable with v2 before it. Compare **Preview-blocked taps per session** and **Details to Preview** for v2 before and after (admin
+  Post-ad funnel, Country: India), and read the new exit question for "I did not know what was required".
+- **Checked:** unit tests for the state rules; a browser spec (`apps/web/e2e/post-ad-required-borders.spec.ts`) that starts from a seeded draft with only a category and a pin and checks each state **and its colour**
+  (reddish and translucent when empty, greenish when filled, opaque red on an error, neutral for optional), that a blocked Preview tap turns every missing field solid red, phone width with no sideways scroll, and that v1
+  carries none of it. The whole browser suite passes against a local stack. Screenshots of the blank and half-filled form were reviewed.
+
 ## 8. Decisions needed
 1. **Confirm reversing "keep all sections open"** for optional fields (recommended, on the evidence in section 2 once refreshed).
 2. **Keep Location first, or put Photos first?** Recommended: keep Location first (it is the mandatory gate and sets city and area), but make
