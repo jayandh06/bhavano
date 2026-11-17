@@ -107,3 +107,24 @@ not running, so the SQL has only been type-checked; unit tests cover the minimum
   figure shows its listing count; a line shows the date and that these are asking prices. Hidden when
   neither figure exists. Independent of whether an overview is published. No JSON-LD on purpose.
 - **Not done:** price trend over time (needs stored snapshots), city-level figures, other categories.
+
+## Update (2026-11-17): drafts for localities already ranking on page 2
+Semrush (India DB, see `semrush-snapshot-2026-11.md`) showed these localities ranking at positions
+11–26 with large search volume, so they are the cheapest pages to push onto page 1 with an overview.
+Six drafts were added to `apps/bff/scripts/area-overview-drafts.ts` (all pass the shared validator,
+all unreviewed): `bengaluru/rbi-layout`, `bengaluru/thirumalashettyhally`, `bengaluru/kalasipalya`,
+`hyderabad/telecom-nagar`, `pune/bund-garden-road`, `ahmedabad/ghatlodiya`. Nothing is public until
+re-run seed, review and publish in the admin app (rollout steps above).
+Not drafted, because the author could not describe them with confidence: `iti-layout`,
+`naya-bans-village`, `karolan-ka-barh`. They need someone who knows the locality.
+Cause found for `anugondanahalli` / `bhuiyadih` ranking on facet pages: plain area pages with fewer
+than `MIN_INDEXABLE_AREA_LISTINGS` listings are `noindex`, while facet pages with one listing stay
+indexable. Keywords such as `white wings zenon` landing on `/surat` are society or project names
+with no area page, so no routing change fixes them.
+Apex redirect checked: `https://bhavano.com/...` returns 301 to `www`; the apex URLs in Semrush are stale.
+Second batch (same day), all unreviewed drafts that pass the validator: `bengaluru/arekere-mico-layout-2nd-stage`,
+`bengaluru/carmelaram`, `bengaluru/vidyaranyapura`, `hyderabad/gautami-enclave-kondapur`,
+`hyderabad/alkapur-township`, `kanpur/civil-lines`, `kolkata/kalindi-housing-estate`. The seed skips a key whose
+slug matches no area, so a mismatched name is reported, not created. Still undrafted for lack of confident knowledge:
+`seethappa-layout`, `chinnappa-layout`, `bogampatti`, `sentharapatti`, `narendra-nagar-colony`, `cheran-nagar`,
+`dhul-siras`, `isro-colony`, `samatha-nagar`, `daheli-sujanpur`, `aditi-apartments`.
