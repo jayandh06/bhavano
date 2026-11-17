@@ -100,6 +100,10 @@ const KNOWN_ROUTES = new Set([
   "/blog/property-mutation-after-buying-india",
   "/blog/villa-and-house-handover-checklist",
   "/blog/villa-or-apartment-which-to-choose",
+  // landRecordGuides.ts
+  "/blog/karnataka-bhoomi-rtc-pahani-explained",
+  "/blog/mp-bhulekh-khasra-khatauni-explained",
+  "/blog/bhu-naksha-land-map-explained",
 ]);
 
 function textsOf(block: BlogBlock): string[] {
