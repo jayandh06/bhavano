@@ -28,13 +28,14 @@ GROUPS = {
     "Ad Group 1.1": ["Sell My House By Owner", "Sell Your House Online", "List Your House For Sale", "Sell House, No Broker"],
     "Ad Group 1.2": ["Sell My Flat Online", "Sell My Apartment Online", "Sell Flat, No Broker"],
     "Ad Group 1.3": ["Sell Independent House", "Sell My Villa Online"],
-    "Ad Group 1.4": ["Sell Your Plot By Owner", "Sell Your Land Online", "List Plot For Sale", "Sell Land, No Broker"],
+    "Ad Group 1.4": ["Sell My Plot By Owner", "Sell My Land Online", "Sell Land, No Broker"],
     "Ad Group 1.5": ["Sell My Shop Online", "Sell My Office Space"],
 }
 # Slogan headlines no searcher typed; swapped out (in this order, only as many as needed) when an ad is already at 15.
 FILLER = ["Bhavano.com", "Villa Sale Made Simple", "Commercial Sale Simplified", "Sell Property, Save Time", "Zero Commission Listing",
           "Post Ad, Get Genuine Leads", "India's Trusted", "Trusted Flat Listing Site", "Zero Commission Flat Sale",
-          "Owners Post Here Today", "Get Genuine Leads Fast", "No Platform Commission"]
+          "Owners Post Here Today", "Get Genuine Leads Fast", "No Platform Commission",
+          "Plot Sale Made Simple", "Post Ad, Get Real Buyers", "Plot Sellers Start Here"]
 
 
 def main():
