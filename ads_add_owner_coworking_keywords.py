@@ -1,6 +1,8 @@
-"""Adds owner-phrased COWORKING and COMMERCIAL (office / shop) keywords, generic and city-named, to "Ad Group 2.6 - Rent Out Coworking" and
+"""Adds owner-phrased COWORKING and COMMERCIAL (office / shop) keywords, generic and city-named, to "Ad Group 2.6 - Rent Out Coworking",
 "Ad Group 2.4 - Rent Out Commercial" in Metro-Rent Out Property (Owners), plus generic ones in Other-Metro-Rent Out 2.4.
 
+PG: "rent my pg in bangalore" showed no ad either. Ad Group 2.2 had "list my pg" / "post pg ad" / "post pg for rent" (all serving) but nothing worded
+"rent my pg", "rent out my pg" or "lease my pg"; its city phrases were only "list my pg in X" / "post pg ad in X".
 Commercial: "rent my office space" showed no ad either. Group 2.4 had only city-named phrases ("rent out my office in bangalore", all Rarely served)
 and one generic "list commercial space for rent"; nothing for "rent my office (space)", "rent my shop", "lease my office".
 
@@ -30,6 +32,10 @@ CAMPAIGNS = {
 }
 
 GROUPS = {
+    "Ad Group 2.2": (
+        ["rent my pg", "rent out my pg", "lease my pg", "rent my pg rooms", "rent out my pg rooms", "put my pg on rent",
+         "give my pg on rent", "list my pg for rent", "find tenants for my pg"],
+        ["rent my pg in {c}", "rent out my pg in {c}", "list my pg for rent in {c}"]),
     "Ad Group 2.6": (
         ["rent my coworking space", "rent out coworking space", "lease my coworking space", "lease out coworking space",
          "list my coworking space for rent", "put my coworking space on rent", "rent out my coworking desks"],
