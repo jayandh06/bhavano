@@ -1,4 +1,7 @@
-import { Body, Controller, ForbiddenException, Logger, Param, Post } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Headers, HttpCode, Logger, Param, Post, Query, Req } from '@nestjs/common';
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -18,6 +21,41 @@ import { PrismaService } from '../prisma/prisma.service';
  * `requestId` here is exactly the `request_id` Msg91Provider.sendAdPostedConfirmation's send
  * response returns and stores as providerMessageId.
  */
+/** One delivery report from Meta's WhatsApp webhook (`entry[].changes[].value.statuses[]`). */
+export interface MetaStatus {
+  messageId: string;
+  status: string;
+  errorCode: number | null;
+  errorTitle: string | null;
+}
+
+/** Pulls every status out of a Meta webhook body. Anything that is not a status (an inbound message, a
+ * template-quality change) yields nothing here; the raw body is still stored by the caller. */
+export function extractMetaStatuses(body: unknown): MetaStatus[] {
+  const out: MetaStatus[] = [];
+  const entries = (body as { entry?: unknown })?.entry;
+  if (!Array.isArray(entries)) return out;
+  for (const entry of entries) {
+    const changes = (entry as { changes?: unknown })?.changes;
+    if (!Array.isArray(changes)) continue;
+    for (const change of changes) {
+      const statuses = (change as { value?: { statuses?: unknown } })?.value?.statuses;
+      if (!Array.isArray(statuses)) continue;
+      for (const s of statuses as Array<Record<string, unknown>>) {
+        if (typeof s.id !== 'string' || typeof s.status !== 'string') continue;
+        const err = Array.isArray(s.errors) ? (s.errors[0] as Record<string, unknown> | undefined) : undefined;
+        out.push({
+          messageId: s.id,
+          status: s.status.toLowerCase(),
+          errorCode: typeof err?.code === 'number' ? err.code : null,
+          errorTitle: typeof err?.title === 'string' ? err.title : null,
+        });
+      }
+    }
+  }
+  return out;
+}
+
 @Controller('webhooks')
 export class WhatsappWebhookController {
   private readonly logger = new Logger(WhatsappWebhookController.name);
@@ -74,5 +112,63 @@ export class WhatsappWebhookController {
     const messageId = typeof b.requestId === 'string' && b.requestId.length > 0 ? b.requestId : null;
     const status = typeof b.eventName === 'string' ? b.eventName.toLowerCase() : null;
     return { messageId, status };
+  }
+
+  /**
+   * Meta's webhook subscription handshake (WhatsApp > Configuration > Callback URL): Meta calls this once
+   * with a challenge and our verify token, and expects the challenge echoed back. Only for
+   * WHATSAPP_TRANSPORT=meta; see docs/plans/whatsapp-direct-meta-transport.md.
+   */
+  @Get('whatsapp-meta')
+  verifyMeta(
+    @Query('hub.mode') mode?: string,
+    @Query('hub.verify_token') token?: string,
+    @Query('hub.challenge') challenge?: string,
+  ): string {
+    const expected = this.config.get<string>('WHATSAPP_WEBHOOK_VERIFY_TOKEN');
+    if (!expected || mode !== 'subscribe' || token !== expected || !challenge) {
+      throw new ForbiddenException();
+    }
+    return challenge;
+  }
+
+  /**
+   * Meta's delivery/read/failed reports for messages sent directly through the Cloud API. Public, but
+   * signed: Meta sends `X-Hub-Signature-256: sha256=<hmac of the raw body with the app secret>`, checked
+   * here against WHATSAPP_APP_SECRET (unset = reject everything). Statuses are matched to
+   * ListingNotificationLog by message id exactly like the MSG91 webhook does, and a failed status is
+   * logged with Meta's error code, which is the thing that was missing during the 2026-11-17 outage.
+   */
+  @Post('whatsapp-meta')
+  @HttpCode(200)
+  async handleMetaStatus(
+    @Req() req: RawBodyRequest<Request>,
+    @Headers('x-hub-signature-256') signature: string | undefined,
+    @Body() body: unknown,
+  ): Promise<{ received: true }> {
+    const secret = this.config.get<string>('WHATSAPP_APP_SECRET');
+    if (!secret || !signature || !this.validSignature(secret, req.rawBody ?? Buffer.from(''), signature)) {
+      throw new ForbiddenException();
+    }
+
+    await this.prisma.whatsappWebhookEvent.create({ data: { rawBody: (body ?? {}) as Prisma.InputJsonValue } });
+
+    for (const s of extractMetaStatuses(body)) {
+      if (s.status === 'failed') {
+        this.logger.warn(`WhatsApp (Meta) message ${s.messageId} failed: ${s.errorCode ?? '?'} ${s.errorTitle ?? ''}`.trim());
+      }
+      await this.prisma.listingNotificationLog.updateMany({
+        where: { providerMessageId: s.messageId },
+        data: { deliveryStatus: s.status, deliveryStatusAt: new Date() },
+      });
+    }
+    return { received: true };
+  }
+
+  private validSignature(secret: string, rawBody: Buffer, header: string): boolean {
+    const expected = `sha256=${createHmac('sha256', secret).update(rawBody).digest('hex')}`;
+    const a = Buffer.from(expected);
+    const b = Buffer.from(header);
+    return a.length === b.length && timingSafeEqual(a, b);
   }
 }

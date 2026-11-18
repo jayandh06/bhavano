@@ -41,6 +41,72 @@ export class WhatsappProvider {
   }
 
   /**
+   * Sends an approved template with ready-made Meta `components`, and says what Meta answered.
+   *
+   * The lower-level sibling of `sendTemplate`, used by Msg91Provider's WHATSAPP_TRANSPORT=meta mode
+   * (see docs/plans/whatsapp-direct-meta-transport.md): it needs the real outcome and the message id
+   * (`wamid...`, the value Meta's delivery webhook reports back), not just a boolean. Never throws.
+   */
+  async sendTemplateComponents(
+    phone: string,
+    templateName: string,
+    components: unknown[],
+  ): Promise<{ ok: boolean; status: number; responseText: string; messageId: string | null }> {
+    const token = this.config.get<string>('WHATSAPP_ACCESS_TOKEN');
+    const phoneNumberId = this.config.get<string>('WHATSAPP_PHONE_NUMBER_ID');
+    if (!token || !phoneNumberId) {
+      return { ok: false, status: 503, responseText: '{"error":"WhatsApp not configured"}', messageId: null };
+    }
+    const version = this.config.get<string>('WHATSAPP_API_VERSION')?.trim() || DEFAULT_API_VERSION;
+    const language = this.config.get<string>('WHATSAPP_TEMPLATE_LANGUAGE') || DEFAULT_TEMPLATE_LANGUAGE;
+    const to = phone.startsWith('91') && phone.length > 10 ? phone : `91${phone}`;
+    const url = `https://graph.facebook.com/${version}/${phoneNumberId}/messages`;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to,
+          type: 'template',
+          template: {
+            name: templateName,
+            language: { code: language },
+            ...(components.length > 0 ? { components } : {}),
+          },
+        }),
+      });
+      const responseText = await res.text();
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'whatsapp-meta',
+        method: 'sendTemplateComponents',
+        url,
+        request: { templateName, to: maskPhone(to), componentCount: components.length },
+        status: res.status,
+        responseText,
+        ok: res.ok,
+      });
+      let messageId: string | null = null;
+      try {
+        const id = (JSON.parse(responseText) as { messages?: Array<{ id?: string }> }).messages?.[0]?.id;
+        messageId = typeof id === 'string' && id.length > 0 ? id : null;
+      } catch {
+        /* a non-JSON body just means no id */
+      }
+      if (!res.ok) {
+        this.logger.error(`WhatsApp send failed (${res.status}) for "${templateName}": ${responseText}`);
+      }
+      return { ok: res.ok, status: res.status, responseText, messageId };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`WhatsApp send threw for "${templateName}": ${message}`);
+      return { ok: false, status: 502, responseText: JSON.stringify({ error: message }), messageId: null };
+    }
+  }
+
+  /**
    * Sends an approved template to a WhatsApp user.
    *
    * A template, not free text, because this is business-initiated. WhatsApp only permits free-form

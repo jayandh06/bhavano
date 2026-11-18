@@ -54,3 +54,35 @@ describe('WhatsappProvider.sendTemplate', () => {
     );
   });
 });
+
+describe('WhatsappProvider.sendTemplateComponents', () => {
+  it('posts the ready-made components and returns the Meta message id', async () => {
+    const fetchMock = mockFetch();
+    const provider = makeProvider();
+    const components = [{ type: 'body', parameters: [{ type: 'text', text: '123456' }] }];
+
+    const result = await provider.sendTemplateComponents('919876543210', 'whatsapp_otp', components);
+
+    expect(result).toMatchObject({ ok: true, status: 200, messageId: 'wamid.test' });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.to).toBe('919876543210');
+    expect(body.template).toEqual({ name: 'whatsapp_otp', language: { code: 'en' }, components });
+  });
+
+  it('adds the 91 prefix to a bare number and omits components when there are none', async () => {
+    const fetchMock = mockFetch();
+    await makeProvider().sendTemplateComponents('9876543210', 'hello_world', []);
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.to).toBe('919876543210');
+    expect(body.template.components).toBeUndefined();
+  });
+
+  it('reports not configured without calling Meta, and reports Meta errors without throwing', async () => {
+    const fetchMock = mockFetch();
+    await expect(makeProvider({ WHATSAPP_ACCESS_TOKEN: '' }).sendTemplateComponents('9876543210', 't', [])).resolves.toMatchObject({ ok: false, status: 503 });
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 400, text: async () => '{"error":{"code":10}}' }) as unknown as typeof fetch;
+    await expect(makeProvider().sendTemplateComponents('9876543210', 't', [])).resolves.toMatchObject({ ok: false, status: 400, messageId: null });
+  });
+});
