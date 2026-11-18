@@ -83,3 +83,25 @@ Owner", "Lease Out Your Warehouse", "Rent Out Your Villa" and so on), swapping o
 so each ad stays at 15; the old ads are paused, not removed. **Not done: the four enabled Generic Post Ad Intent ads (Metro and Other-Metro).**
 Creating a new ad failed with "limit on the number of allowed resources": those two ad groups are at Google's ad limit because of paused ads
 from earlier rewrites. Room needs one or more old paused ads removed, which the pause-never-remove rule forbids, so it is a decision for the owner.
+
+## Sell keywords, generic and city-named (2026-11-18)
+Trigger: "sell my house btm layout bangalore" showed no Bhavano ad while "rent my apartment in btm layout bangalore" did. Ad Group 1.1 only had
+"sell my house online" (phrase match keeps word order, so no "online" means a weak match), and the 2026-10-22 city-named batch covered Rent Out only.
+Live check: Metro-Sell search impression share 17% over 14 days, ~83% lost to rank and ~0% to budget, so the fix is relevance, not budget.
+
+`ads_add_owner_sell_keywords.py` (applied, **298 phrase keywords**, validated first; a re-run reports nothing to add):
+- Generic, no location ("sell my house", "sell my flat", "sell my plot", "sell my independent house", "sell my office"...), in Metro-Sell and Other-Metro-Sell groups 1.1-1.5.
+  A plain "sell my house" phrase also catches locality searches such as "sell my house btm layout bangalore".
+- City-named ("sell my house in bengaluru") for the cities each campaign targets today: Metro-Sell = bengaluru, bangalore, hyderabad, chennai, mumbai, delhi, pune, gurgaon, noida;
+  Other-Metro-Sell = ahmedabad, jaipur, coimbatore, lucknow, kolkata (its 5 targeted cities).
+- No "free" phrases; seeker-reading phrases, existing keywords and negative-blocked phrases skipped. Bids, ads and landing pages untouched.
+
+**Not done / check after about a week:** search terms for seeker leakage; ad headlines that echo the new phrases ("Sell My House By Owner", "Sell House In Bengaluru") via `ads_add_keyword_headlines.py`;
+impression share for Metro-Sell (the rank loss may persist if bids/tCPA are the limit).
+
+**Headlines for the sell keywords (2026-11-18, `ads_add_sell_headlines.py`, applied):** 6 enabled ads were replaced by new ads (old ones paused, not removed): Sell House/Property 1.1 (2 ads each in Metro-Sell and Other-Metro-Sell) gained "Sell My House By Owner", "Sell Your House Online" (+ "List Your House For Sale" on the 12-headline ads), and Sell Villa 1.3 (both campaigns) gained "Sell Independent House" (+ "Sell My Villa Online" in Other-Metro). Slogan headlines ("Bhavano.com - Sell Faster", "India's Trusted Real estate", "Villa Sale Made Simple", "Sell Property, Save Time", "Post Ad, Get Genuine Leads") made room. **Not done:** Sell Flat 1.2, Plot 1.4 and Commercial 1.5 ads are at 15 headlines with nothing droppable, so they were skipped; city names are not in headlines (one ad serves several cities).
+
+**Coworking and commercial owner keywords (2026-11-18, `ads_add_owner_coworking_keywords.py`, applied, 127 phrase keywords, validated first):** "rent my coworking space", "rent my coworking space in bangalore" and "rent my office space" showed no ad. Metro Rent Out Ad Group 2.6 (coworking) had 8 phrases, none "rent my" / "lease", no city names, 7 of 8 Rarely served (13 impressions in 30 days); Ad Group 2.4 (commercial) had one generic phrase ("list commercial space for rent") and only city-named "rent out my office in <city>" phrases, all Rarely served.
+- 2.6 Metro: 43 (7 generic such as "rent my coworking space", "lease my coworking space"; 36 city-named across the 9 Metro cities).
+- 2.4 Metro: 80 (15 generic such as "rent my office space", "rent my shop", "lease my office space"; city-named "rent my office space in <city>" etc.). 2.4 Other-Metro: 4 generic only (its city list was not re-checked).
+- `ads_intent.py` OWNER_MARKERS gained "rent my", "lease my", "lease out", otherwise "rent my ... in bangalore" read as a seeker. Ads, bids and landing pages untouched.
