@@ -26,7 +26,7 @@ MAX_HEADLINES = 15
 # ad group name prefix -> new headlines
 GROUPS = {
     "Ad Group 1.1": ["Sell My House By Owner", "Sell Your House Online", "List Your House For Sale", "Sell House, No Broker"],
-    "Ad Group 1.2": ["Sell My Flat Online", "Sell My Apartment Online", "Sell Flat, No Broker"],
+    "Ad Group 1.2": ["Sell My Flat Online", "Sell Flat, No Broker", "Sell My Apartment Online"],
     "Ad Group 1.3": ["Sell Independent House", "Sell My Villa Online"],
     "Ad Group 1.4": ["Sell My Plot By Owner", "Sell My Land Online", "Sell Land, No Broker"],
     "Ad Group 1.5": ["Sell My Shop Online", "Sell My Office Space"],
@@ -35,7 +35,9 @@ GROUPS = {
 FILLER = ["Bhavano.com", "Villa Sale Made Simple", "Commercial Sale Simplified", "Sell Property, Save Time", "Zero Commission Listing",
           "Post Ad, Get Genuine Leads", "India's Trusted", "Trusted Flat Listing Site", "Zero Commission Flat Sale",
           "Owners Post Here Today", "Get Genuine Leads Fast", "No Platform Commission",
-          "Plot Sale Made Simple", "Post Ad, Get Real Buyers", "Plot Sellers Start Here"]
+          "Plot Sale Made Simple", "Post Ad, Get Real Buyers", "Plot Sellers Start Here",
+          "Get Buyer Calls for Flat", "Reach Buyers for Your Flat", "List Your Flat in 2 Mins",
+          "Commercial Sellers Start Here", "List Your Property Today"]
 
 
 def main():
