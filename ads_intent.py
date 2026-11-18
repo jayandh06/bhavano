@@ -12,7 +12,7 @@ hand in the Ads UI must not be silently paused just because this file has never 
 # Phrases only someone with a property to offer searches for. "put ... on rent", "give ... for
 # rent" and "let out" are the ordinary Indian English forms and are not typos.
 OWNER_MARKERS = (
-    "rent out", "put my", "give my", "give house", "give flat", "let out", "to let my",
+    "rent out", "rent my", "lease my", "lease out", "put my", "give my", "give house", "give flat", "let out", "to let my",
     "list my", "list your", "post my", "post free", "post property", "post pg",
     "post rental", "post commercial", "sell my", "sell your", "advertise my", "advertise your",
     "listing site", "without broker", "for owners", "owner property", "where to post",
