@@ -105,3 +105,5 @@ impression share for Metro-Sell (the rank loss may persist if bids/tCPA are the 
 - 2.6 Metro: 43 (7 generic such as "rent my coworking space", "lease my coworking space"; 36 city-named across the 9 Metro cities).
 - 2.4 Metro: 80 (15 generic such as "rent my office space", "rent my shop", "lease my office space"; city-named "rent my office space in <city>" etc.). 2.4 Other-Metro: 4 generic only (its city list was not re-checked).
 - `ads_intent.py` OWNER_MARKERS gained "rent my", "lease my", "lease out", otherwise "rent my ... in bangalore" read as a seeker. Ads, bids and landing pages untouched.
+
+**Plot headlines (2026-11-18, `ads_add_sell_headlines.py`, applied):** the 2 enabled Sell Plot/Land (1.4) ads, Metro and Other-Metro, were full at 15 (strength Excellent), so 3 slogan headlines ("Plot Sale Made Simple", "Post Ad, Get Real Buyers", "Plot Sellers Start Here") were swapped for "Sell My Plot By Owner", "Sell My Land Online", "Sell Land, No Broker"; old ads paused, not removed. Still skipped: Sell Flat 1.2 and Commercial 1.5 (full, nothing droppable).
