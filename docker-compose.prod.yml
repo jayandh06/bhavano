@@ -120,6 +120,12 @@ services:
       WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN}
       WHATSAPP_WELCOME_TEMPLATE: ${WHATSAPP_WELCOME_TEMPLATE}
       WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION}
+      # WHATSAPP_TRANSPORT=meta sends every MSG91-shaped WhatsApp message straight to Meta's Cloud API (unset = MSG91).
+      # The app secret and verify token authenticate Meta's delivery-status webhook at /webhooks/whatsapp-meta.
+      # See docs/plans/whatsapp-direct-meta-transport.md.
+      WHATSAPP_TRANSPORT: ${WHATSAPP_TRANSPORT:-}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+      WHATSAPP_WEBHOOK_VERIFY_TOKEN: ${WHATSAPP_WEBHOOK_VERIFY_TOKEN:-}
       WHATSAPP_TEMPLATE_LANGUAGE: ${WHATSAPP_TEMPLATE_LANGUAGE}
       # The owner win-back jobs' WhatsApp leg (ListingPostedReminderJob, DailyActivityDigestJob) —
       # see docs/plans/owner-win-back-notifications-and-mobile-email-capture.md. Unset disables

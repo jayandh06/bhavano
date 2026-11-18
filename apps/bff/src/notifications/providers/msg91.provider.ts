@@ -7,6 +7,8 @@ import { ConfigService } from '@nestjs/config';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { logThirdPartyCall, maskPhone } from '../../logging/thirdPartyCallLogger';
 import { whatsAppNumber } from '@bhavano/types/whatsapp';
+import { WhatsappProvider } from './whatsapp.provider';
+import { toMetaComponents, type Msg91Component } from './whatsapp-components';
 
 /**
  * MSG91 SMS delivery. Requires MSG91_AUTH_KEY (plus MSG91_SENDER_ID / MSG91_DLT_TEMPLATE_ID)
@@ -30,7 +32,58 @@ export class Msg91Provider {
   constructor(
     private readonly config: ConfigService,
     @InjectPinoLogger(Msg91Provider.name) private readonly callLogger: PinoLogger,
+    private readonly metaWhatsapp?: WhatsappProvider,
   ) {}
+
+  /**
+   * Every WhatsApp send in this class goes through here instead of calling `fetch` itself.
+   *
+   * Default (WHATSAPP_TRANSPORT unset or "msg91"): exactly the old behaviour, a plain `fetch` to MSG91.
+   * WHATSAPP_TRANSPORT=meta: the same MSG91-shaped request body is translated into Meta Cloud API
+   * components and sent directly through WhatsappProvider, and the answer is wrapped in a `Response`
+   * that looks like MSG91's (`request_id` = the Meta message id), so every caller's success check and
+   * providerMessageId tracking keep working untouched. Anything that goes wrong returns a failing
+   * response (never throws), which is what the OTP path needs to fall back to SMS.
+   * See docs/plans/whatsapp-direct-meta-transport.md.
+   */
+  private async waFetch(url: string, init: RequestInit): Promise<Response> {
+    if (this.config.get<string>('WHATSAPP_TRANSPORT') !== 'meta') return fetch(url, init);
+
+    const failure = (status: number, message: string) =>
+      new Response(JSON.stringify({ error: message }), { status, headers: { 'Content-Type': 'application/json' } });
+    if (!this.metaWhatsapp || !this.metaWhatsapp.configured) {
+      this.logger.warn('WHATSAPP_TRANSPORT=meta but WHATSAPP_ACCESS_TOKEN/WHATSAPP_PHONE_NUMBER_ID are not set — send failed');
+      return failure(503, 'WhatsApp direct transport not configured');
+    }
+    try {
+      const body = JSON.parse(String(init.body)) as {
+        payload?: {
+          template?: {
+            name?: string;
+            to_and_components?: Array<{ to?: string[]; components?: Record<string, Msg91Component> }>;
+          };
+        };
+      };
+      const template = body.payload?.template;
+      const target = template?.to_and_components?.[0];
+      const to = target?.to?.[0];
+      if (!template?.name || !to) return failure(400, 'malformed WhatsApp request');
+      const result = await this.metaWhatsapp.sendTemplateComponents(to, template.name, toMetaComponents(target?.components));
+      if (!result.ok) {
+        return new Response(result.responseText || JSON.stringify({ error: 'Meta send failed' }), {
+          status: result.status >= 400 ? result.status : 502,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(
+        JSON.stringify({ status: 'success', hasError: false, data: 'Sent via WhatsApp Cloud API', errors: null, request_id: result.messageId }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    } catch (error) {
+      this.logger.error(`WhatsApp direct send threw: ${error instanceof Error ? error.message : error}`);
+      return failure(500, 'WhatsApp direct send failed');
+    }
+  }
 
   async sendOtp(phone: string, code: string): Promise<void> {
     const authKey = this.config.get<string>('MSG91_AUTH_KEY');
@@ -177,7 +230,7 @@ export class Msg91Provider {
 
     const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
     try {
-      const res = await fetch(url, {
+      const res = await this.waFetch(url, {
         method: 'POST',
         headers: { authkey: authKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -261,7 +314,7 @@ export class Msg91Provider {
 
     const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
     try {
-      const res = await fetch(url, {
+      const res = await this.waFetch(url, {
         method: 'POST',
         headers: { authkey: authKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -358,7 +411,7 @@ export class Msg91Provider {
 
     const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
     try {
-      const res = await fetch(url, {
+      const res = await this.waFetch(url, {
         method: 'POST',
         headers: { authkey: authKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -466,7 +519,7 @@ export class Msg91Provider {
 
     const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
     try {
-      const res = await fetch(url, {
+      const res = await this.waFetch(url, {
         method: 'POST',
         headers: { authkey: authKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -595,7 +648,7 @@ export class Msg91Provider {
 
     const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
     try {
-      const res = await fetch(url, {
+      const res = await this.waFetch(url, {
         method: 'POST',
         headers: { authkey: authKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -699,7 +752,7 @@ export class Msg91Provider {
 
     const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
     try {
-      const res = await fetch(url, {
+      const res = await this.waFetch(url, {
         method: 'POST',
         headers: { authkey: authKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -791,7 +844,7 @@ export class Msg91Provider {
 
     const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
     try {
-      const res = await fetch(url, {
+      const res = await this.waFetch(url, {
         method: 'POST',
         headers: { authkey: authKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
