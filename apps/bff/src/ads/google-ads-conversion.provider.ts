@@ -14,6 +14,9 @@ import { toE164India } from '../outreach/phone';
  * docs/plans/server-side-google-ads-conversion-upload.md. */
 export const NEW_REGISTRATION_CONVERSION_ACTION_ID = '7750776144';
 export const POST_AD_SUCCESS_CONVERSION_ACTION_ID = '7750575968';
+/** A seeker unlocking an owner's phone number (ContactReveal). Created 2026-11-21 as a SECONDARY
+ * action (not used in bidding) by ads_create_offline_conversion_actions.py. */
+export const SEEKER_CONTACT_UNLOCK_CONVERSION_ACTION_ID = '7912011079';
 
 /**
  * Purchase upload actions, created 2026-09-20 by ads_create_offline_conversion_actions.py.

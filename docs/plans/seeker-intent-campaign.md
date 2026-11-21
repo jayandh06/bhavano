@@ -259,3 +259,21 @@ Lease campaigns. The keywords that took the money were generic "rent in <city>" 
 clicks do not turn into "Save a search" conversions, which is the goal the pilot was built to optimise for.
 **To resume:** re-enable both campaigns in the Ads UI. Before doing so, rethink the conversion goal (it is too rare for Smart Bidding to learn from) and the generic city keywords.
 **Check after about a week:** re-run the 10-day report on the poster campaigns alone and look at Boost purchase volume before touching the Rs 100 target CPA or the Rs 25 CPC ceiling.
+
+## Update 2026-11-21: seeker unlock conversion
+
+The two Seeker Intent campaigns (`24297610212`, `24392228394`) were paused on 2026-11-10. In the 30
+days before, they logged 1,515 visits; 128 people signed up from them, 44 of those viewed a listing
+while logged in and 21 unlocked an owner's number. Google Ads saw only 5 conversions, because its
+goals ("Save a search", "Post ad success") don't include that step.
+
+- New Google Ads conversion action **"Seeker contact unlock"** (`7912011079`, UPLOAD_CLICKS, category
+  CONTACT), created with `ads_create_offline_conversion_actions.py`. **Secondary** (`primary_for_goal`
+  false): it shows in All conversions but is not used in bidding, so the poster campaigns are
+  unaffected.
+- `ContactRevealService.revealContact` uploads it on the first reveal by a seeker (gclid from
+  `User.acquisitionGclid`, else hashed email/phone), with transaction id `reveal-<listingId>-<userId>`.
+  Skipped for staff and when iOS tracking was denied (`x-tracking-authorized: false`).
+- Next step, not done: when a seeker campaign is re-enabled and moved to a conversion-based bid
+  strategy, make this action primary (or a campaign goal) so it optimises on it. The campaigns use
+  Maximise Clicks today, which ignores conversions.
