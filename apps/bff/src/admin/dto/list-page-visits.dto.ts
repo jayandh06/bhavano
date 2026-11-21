@@ -132,10 +132,11 @@ export class ListPageVisitsDto {
   deviceType?: (typeof DEVICE_TYPES)[number];
 
   /** "android" / "ios" — see `osFromUserAgent`. Orthogonal to `deviceType`: a `mobile` or
-   * `tablet` row can be either, so this is a separate dropdown, not a value of deviceType. */
+   * `tablet` row can be either, so this is a separate dropdown, not a value of deviceType.
+   * "unknown" matches rows with no OS recorded (the admin's "Mobile (Other)"). */
   @IsOptional()
-  @IsIn(OS_FAMILIES)
-  os?: (typeof OS_FAMILIES)[number];
+  @IsIn([...OS_FAMILIES, 'unknown'])
+  os?: (typeof OS_FAMILIES)[number] | 'unknown';
 
   @IsOptional()
   @IsString()

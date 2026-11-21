@@ -129,7 +129,7 @@ export class AnalyticsService {
         ${dto.adGroupId ?? null}, ${dto.adId ?? null}, ${dto.landingPath ?? null},
         ${dto.ip ?? null}, ${geo?.city ?? null}, ${geo?.region ?? null}, ${geo?.country ?? null},
         ${deviceTypeFromUserAgent(dto.userAgent, dto.fromApp ?? false) ?? null},
-        ${osFromUserAgent(dto.userAgent)}, ${isBot}, now()
+        ${osFromUserAgent(dto.userAgent, dto.fromApp ?? false)}, ${isBot}, now()
       )
       ON CONFLICT ("sessionId") DO UPDATE SET
         "source"      = CASE WHEN "Visit"."source" IS NULL THEN EXCLUDED."source"      ELSE "Visit"."source"      END,
@@ -250,7 +250,7 @@ export class AnalyticsService {
         -- is legitimately still theirs, so these stay accurate.
         ${dto.ip ?? null}, ${geo?.city ?? null}, ${geo?.region ?? null}, ${geo?.country ?? null},
         ${deviceTypeFromUserAgent(dto.userAgent, dto.fromApp ?? false)},
-        ${osFromUserAgent(dto.userAgent)},
+        ${osFromUserAgent(dto.userAgent, dto.fromApp ?? false)},
         ${isBotFor(dto.userAgent, dto.fromApp)}
       )
       ON CONFLICT ("sessionId") DO NOTHING
