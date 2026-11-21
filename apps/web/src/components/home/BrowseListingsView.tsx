@@ -14,7 +14,6 @@ import { RequirementPrompt } from "./RequirementPrompt";
 import { AreaFilter } from "./AreaFilter";
 import { FilterPanel, FilterProvider, FiltersButton } from "./FilterSection";
 import { AssetTypeFilter } from "./TypeFilters";
-import { hasAssetFilter } from "@/lib/assetFilters";
 import { BhkFilter } from "./BhkFilter";
 import { BrowseFilterBar } from "./BrowseFilterBar";
 import { OwnersOnlyToggle } from "./OwnersOnlyToggle";
@@ -251,9 +250,9 @@ export async function BrowseListingsView({
                   {/* `cityName` is no longer required: without one BhkFilter builds the national path
                     * (/buy/apartment/2bhk), so /buy/apartment is no longer the one apartment page in the
                     * site with no BHK filter. */}
-                  {filterCategory && hasAssetFilter(filterCategory, "bedrooms") && <BhkFilter />}
+                  {/* Decides for itself from the asset in the draft, so it shows right after a Type is picked. */}
+                  <BhkFilter />
                   <BrowseFilterBar
-                    category={filterCategory}
                     activeMinPrice={query.minPrice}
                     activeMaxPrice={query.maxPrice}
                     activeFurnished={query.furnished}

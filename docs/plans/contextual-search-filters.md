@@ -359,6 +359,22 @@ use.
    keeps navigation while the new filters own refinement — but that is a bigger information-
    architecture question than this plan needs to settle.
 
+## Update 2026-11-21: the related filters follow the pending Type pick
+
+Phases 1 and 2 drew the asset-specific filters (price, furnishing, sharing, condition, amenities, BHK) from the **URL's** category, so a Type picked in the filter
+panel showed nothing new until Apply navigated; the visitor then filled the new filters and pressed Apply a second time.
+
+Now the filters are drawn for the asset in the **draft** (`useFilterCategory()` in `FilterSection.tsx`: the pending pick, else the page's own). `BrowseFilterBar` and
+`BhkFilter` use it and decide for themselves whether to render, so choosing Apartments shows BHK, furnishing, amenities and price immediately, in one Apply. "All types"
+in the draft shows none of them. Consequences handled in the same change:
+
+- `buildAppliedUrl` drops filters the new asset does not offer when the asset changes (`dropInapplicableFilters`): furnishing, sharing, condition, service type and
+  amenities keep only values that are options of the new asset, so a PG `sharingType` cannot ride along onto an apartment search. Price is asset-independent and is kept.
+- A pill whose value is not one of the shown asset's options neither highlights nor counts, and `BhkFilter` shows every bucket for a newly picked asset, matching what
+  Apply writes.
+- No URL, canonical, metadata or server-rendered content changes: the filter row is already a client island and the grammar is untouched. The mobile app is unaffected;
+  its filter sheet takes its category from the tab.
+
 ## Critical files
 
 - `apps/web/src/components/home/BrowseFilterBar.tsx` — the `!category` short-circuit, and the

@@ -34,6 +34,13 @@ export function useFilterSection(): FilterSectionValue {
   return value;
 }
 
+/** The asset type the filters should be drawn for: the one just picked in the draft (so the filters that belong to it appear before Apply), else the page's own.
+ * "All types" in the draft is `undefined`, which correctly shows none of the asset-specific filters. */
+export function useFilterCategory(): ListingCategory | undefined {
+  const { base, draft } = useFilterSection();
+  return draft.asset ? draft.asset.asset : base.category;
+}
+
 /** State for the filters on the homepage and the browse pages: which are applied (read from the URL), what is pending (the draft), and whether the panel is open.
  * It wraps both the **Filters** button (`FiltersButton`, which sits in the row before Sort) and the panel (`FilterPanel`, which opens under that row), so they share it.
  *

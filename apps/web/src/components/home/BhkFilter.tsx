@@ -2,11 +2,12 @@
 
 import { useRef, useState } from "react";
 import { bedroomLabel } from "@/lib/seoRoute";
+import { hasAssetFilter } from "@/lib/assetFilters";
 import { BEDROOM_COUNTS, currentBhk } from "@/lib/filterApply";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { useClampToViewport } from "@/lib/useClampToViewport";
 import { Icon } from "./Icon";
-import { useFilterSection } from "./FilterSection";
+import { useFilterCategory, useFilterSection } from "./FilterSection";
 
 /** Multi-select BHK filter for house/apartment/villa pages — same shape as `AreaFilter` (every bucket checked by default = no narrowing), for bedroom-count
  * buckets instead of areas. Ticks only change the filter section's draft; the section's Apply searches (see FilterSection), and at least one bucket must stay picked.
@@ -22,7 +23,11 @@ export function BhkFilter() {
   const panelRef = useRef<HTMLDivElement>(null);
   useClampToViewport(panelRef, open);
 
-  const selected = new Set(draft.bhk ?? currentBhk(base));
+  // Drawn for the asset in the draft, so it appears as soon as an asset with bedrooms is picked; renders nothing for one without (and for "All types").
+  const category = useFilterCategory();
+  // Applying a different asset drops the URL's bucket choice (see buildAppliedUrl), so show every bucket for it rather than the old asset's selection.
+  const assetChanged = !!draft.asset && draft.asset.asset !== base.category;
+  const selected = new Set(draft.bhk ?? (assetChanged ? BEDROOM_COUNTS : currentBhk(base)));
   const allSelected = selected.size === BEDROOM_COUNTS.length;
   // "3 BHK" for three *selected buckets* was indistinguishable from "3 BHK" the bedroom count — picking 2 and 3 read as "2 BHK". A count of selections has to say that it is one.
   const label = allSelected ? "All BHK" : selected.size === 0 ? "Pick a BHK" : selected.size === 1 ? `${bedroomLabel([...selected][0])} BHK` : `${selected.size} selected`;
@@ -35,6 +40,8 @@ export function BhkFilter() {
   }
 
   const active = open || !allSelected;
+
+  if (!hasAssetFilter(category, "bedrooms")) return null;
 
   return (
     <div
