@@ -4,6 +4,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
+import { leavingActiveNotice, statusOptionsFor } from "@bhavano/types/listingStatusInfo";
 import {
   brokerageFeeIssue,
   brokerageFeeNote,
@@ -35,13 +36,6 @@ import { ListingLocationEditor, type ListingLocationChange } from "../../../src/
 
 const ALLOWED_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const ALLOWED_VIDEO_MIME_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/3gpp", "video/x-matroska"];
-
-const STATUS_OPTIONS: { value: ListingStatus; label: string }[] = [
-  { value: "active", label: "Active — visible to buyers/renters" },
-  { value: "sold", label: "Sold" },
-  { value: "rented", label: "Rented" },
-  { value: "deactivated", label: "Deactivated — hidden from search" },
-];
 
 /** Same shape EditListingForm.tsx keeps on the web — the attributes column is JSONB
  * (Record<string, unknown> on the wire), so a legacy number/boolean needs coercing to the
@@ -108,7 +102,6 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
   const [locationChange, setLocationChange] = useState<ListingLocationChange | null>(null);
   const [locationMoved, setLocationMoved] = useState(false);
   const { data: cityList } = useCitiesQuery(undefined, true);
-  const [statusPickerOpen, setStatusPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -548,33 +541,53 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
       {mediaError && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{mediaError}</Text>}
 
       <Text style={[styles.label, { color: colors.textSoft, marginTop: 18 }]}>Status</Text>
-      <Pressable
-        onPress={() => setStatusPickerOpen((open) => !open)}
-        style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
-      >
-        <Text style={{ color: colors.text, fontSize: 14, flex: 1 }}>
-          {STATUS_OPTIONS.find((o) => o.value === status)?.label}
-        </Text>
-        <Icon name="chevronDown" size={13} color={colors.muted} />
-      </Pressable>
-      {statusPickerOpen && (
-        <View style={{ gap: 8, marginBottom: 8 }}>
-          {STATUS_OPTIONS.map((opt) => (
+      <Text style={{ color: colors.muted, fontSize: 12.5, marginBottom: 8 }}>
+        Deal done: choose Sold or Rented. Just not available right now: choose Paused.
+      </Text>
+      <View style={{ gap: 8, marginBottom: 8 }}>
+        {statusOptionsFor(initialListing.transactionType, initialListing.status).map((opt) => {
+          const selected = status === opt.value;
+          return (
             <Pressable
               key={opt.value}
-              onPress={() => {
-                setStatus(opt.value);
-                setStatusPickerOpen(false);
-              }}
+              onPress={() => setStatus(opt.value)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
               style={[
                 styles.statusOption,
-                { borderColor: status === opt.value ? colors.green : colors.border, backgroundColor: status === opt.value ? colors.surfaceAlt : colors.surface },
+                { borderColor: selected ? colors.green : colors.border, backgroundColor: selected ? colors.surfaceAlt : colors.surface },
               ]}
             >
-              <Text style={{ color: colors.text, fontSize: 13.5 }}>{opt.label}</Text>
+              <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>
+                {opt.title}
+                {opt.value === initialListing.status ? <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "600" }}>  current</Text> : null}
+              </Text>
+              <Text style={{ color: colors.textSoft, fontSize: 13, marginTop: 2 }}>{opt.summary}</Text>
+              {opt.effects.map((line) => (
+                <Text key={line} style={{ color: colors.muted, fontSize: 12.5, marginTop: 2 }}>
+                  {"• "}{line}
+                </Text>
+              ))}
             </Pressable>
-          ))}
-        </View>
+          );
+        })}
+      </View>
+      {leavingActiveNotice(status, initialListing.status, { featured: initialListing.isBoosted }) && (
+        <Text
+          style={{
+            color: colors.text,
+            fontSize: 13,
+            lineHeight: 18,
+            marginBottom: 8,
+            padding: 10,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: colors.surfaceAlt,
+          }}
+        >
+          {leavingActiveNotice(status, initialListing.status, { featured: initialListing.isBoosted })}
+        </Text>
       )}
 
       {message && (
