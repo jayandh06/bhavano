@@ -788,6 +788,10 @@ function ProfileFields({
         <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>View your requirements</Text>
       </Pressable>
 
+      <Pressable onPress={() => router.push("/saved-searches")} style={[styles.outlineButton, { borderColor: colors.green }]}>
+        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Saved searches &amp; alerts</Text>
+      </Pressable>
+
       <Pressable onPress={onOpenPurchases} style={[styles.outlineButton, { borderColor: colors.green }]}>
         <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>View your purchase history</Text>
       </Pressable>
