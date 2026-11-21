@@ -1,6 +1,10 @@
 import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import type { ContactRevealBalanceDto, ContactRevealSettingsDto, RevealContactResponseDto } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  GoogleAdsConversionProvider,
+  SEEKER_CONTACT_UNLOCK_CONVERSION_ACTION_ID,
+} from '../ads/google-ads-conversion.provider';
 import { OwnerAlertsService } from '../owner-alerts/owner-alerts.service';
 import { getPhoneRequirementMode } from '../auth/login-settings';
 import { PHONE_VERIFICATION_REQUIRED_CODE } from '@bhavano/types/loginSettings';
@@ -31,6 +35,7 @@ export class ContactRevealService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ownerAlerts: OwnerAlertsService,
+    private readonly googleAdsConversionProvider: GoogleAdsConversionProvider,
   ) {}
 
   async getSettings(): Promise<ContactRevealSettingsDto> {
@@ -190,7 +195,11 @@ export class ContactRevealService {
    * derives eligibility inside the transaction so two concurrent requests for the same listing
    * can't both succeed off a stale read). Mirrors messaging.service.ts's sendFirstMessage
    * idempotent-get-or-create shape. */
-  async revealContact(userId: string, listingId: string): Promise<RevealContactResponseDto> {
+  async revealContact(
+    userId: string,
+    listingId: string,
+    trackingAuthorized?: boolean,
+  ): Promise<RevealContactResponseDto> {
     // Throwaway email accounts were collecting owners' numbers with their free reveals. While an admin has "mobile number required" on (Admin ->
     // Settings -> Login methods), an account with no verified phone cannot reveal anyone's contact until it adds one.
     if ((await getPhoneRequirementMode(this.prisma)) === 'required') {
@@ -259,11 +268,27 @@ export class ContactRevealService {
     // Never when the one revealing is staff (checking or testing an ad): the owner must not be told.
     if (created && !isUnverified && listing.ownerId !== userId) {
       void this.prisma.user
-        .findUnique({ where: { id: userId }, select: { role: true } })
-        .then((requester) =>
-          requester?.role === 'admin'
-            ? undefined
-            : this.ownerAlerts
+        .findUnique({
+          where: { id: userId },
+          select: { role: true, email: true, phone: true, acquisitionGclid: true },
+        })
+        .then((requester) => {
+          if (requester?.role === 'admin') return undefined;
+          // Report the seeker's unlock to Google Ads (a secondary conversion, so it informs
+          // reporting but not bidding). Never for staff, and not when iOS tracking was denied.
+          if (trackingAuthorized !== false && (requester?.acquisitionGclid || requester?.email || requester?.phone)) {
+            void this.googleAdsConversionProvider
+              .uploadClickConversion({
+                gclid: requester.acquisitionGclid ?? undefined,
+                conversionActionId: SEEKER_CONTACT_UNLOCK_CONVERSION_ACTION_ID,
+                transactionId: `reveal-${listingId}-${userId}`,
+                eventTimestamp: new Date(),
+                email: requester.email,
+                phone: requester.phone,
+              })
+              .catch(() => undefined);
+          }
+          return this.ownerAlerts
                 .alert(listing.ownerId, {
                   kind: 'reveal',
                   listingId,
@@ -272,8 +297,8 @@ export class ContactRevealService {
                 })
                 .then((channel) =>
                   channel ? this.prisma.listingNotificationLog.create({ data: { listingId, kind: 'contact_revealed', channel } }) : undefined,
-                ),
-        )
+                );
+        })
         .catch(() => undefined);
     }
     return result;

@@ -9,6 +9,7 @@ function makeService(
     phoneRequirement?: string;
     requesterPhone?: string | null;
     requesterRole?: string;
+    requesterGclid?: string | null;
     alreadyRevealed?: boolean;
     claimContact?: { phone: string | null; email: string | null } | null;
   } = {},
@@ -25,7 +26,14 @@ function makeService(
   };
   const prisma = {
     loginSetting: { findUnique: jest.fn().mockResolvedValue(opts.phoneRequirement ? { emailLogin: 'all', phoneRequirement: opts.phoneRequirement } : null) },
-    user: { findUnique: jest.fn().mockResolvedValue({ phone: opts.requesterPhone ?? null, role: opts.requesterRole ?? 'user' }) },
+    user: {
+      findUnique: jest.fn().mockResolvedValue({
+        phone: opts.requesterPhone ?? null,
+        email: null,
+        acquisitionGclid: opts.requesterGclid ?? null,
+        role: opts.requesterRole ?? 'user',
+      }),
+    },
     listing: {
       findUnique: jest
         .fn()
@@ -58,7 +66,8 @@ function makeService(
     $transaction: (run: (t: typeof tx) => unknown) => run(tx),
   } as unknown as PrismaService;
   const ownerAlerts = { alert: jest.fn().mockResolvedValue(null) };
-  return { service: new ContactRevealService(prisma, ownerAlerts as never), tx, ownerAlerts };
+  const ads = { uploadClickConversion: jest.fn().mockResolvedValue(undefined) };
+  return { service: new ContactRevealService(prisma, ownerAlerts as never, ads as never), tx, ownerAlerts, ads };
 }
 
 describe('ContactRevealService — staff reveals never alert the owner', () => {
@@ -74,6 +83,38 @@ describe('ContactRevealService — staff reveals never alert the owner', () => {
     await service.revealContact('buyer1', 'l1');
     await new Promise((r) => setImmediate(r));
     expect(ownerAlerts.alert).toHaveBeenCalled();
+  });
+});
+
+describe('ContactRevealService — Google Ads conversion for a seeker unlock', () => {
+  it('reports the unlock with the seeker gclid and a stable transaction id', async () => {
+    const { service, ads } = makeService({ requesterPhone: '9876543210', requesterGclid: 'g1' });
+    await service.revealContact('buyer1', 'l1');
+    await new Promise((r) => setImmediate(r));
+    expect(ads.uploadClickConversion).toHaveBeenCalledWith(
+      expect.objectContaining({ gclid: 'g1', conversionActionId: '7912011079', transactionId: 'reveal-l1-buyer1' }),
+    );
+  });
+
+  it('does not report staff reveals', async () => {
+    const { service, ads } = makeService({ requesterRole: 'admin', requesterPhone: '9876543210', requesterGclid: 'g1' });
+    await service.revealContact('admin1', 'l1');
+    await new Promise((r) => setImmediate(r));
+    expect(ads.uploadClickConversion).not.toHaveBeenCalled();
+  });
+
+  it('does not report when iOS tracking was denied', async () => {
+    const { service, ads } = makeService({ requesterPhone: '9876543210', requesterGclid: 'g1' });
+    await service.revealContact('buyer1', 'l1', false);
+    await new Promise((r) => setImmediate(r));
+    expect(ads.uploadClickConversion).not.toHaveBeenCalled();
+  });
+
+  it('does not report a repeat call for an already-unlocked listing', async () => {
+    const { service, ads } = makeService({ requesterPhone: '9876543210', requesterGclid: 'g1', alreadyRevealed: true });
+    await service.revealContact('buyer1', 'l1');
+    await new Promise((r) => setImmediate(r));
+    expect(ads.uploadClickConversion).not.toHaveBeenCalled();
   });
 });
 

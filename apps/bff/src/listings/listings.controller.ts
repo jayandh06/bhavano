@@ -253,8 +253,12 @@ export class ListingsController {
    * credit is available — the frontend uses that status to open the purchase sheet. */
   @Post(':id/reveal-contact')
   @UseGuards(AuthGuard)
-  revealContact(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<RevealContactResponseDto> {
-    return this.contactRevealService.revealContact(user.id, id);
+  revealContact(
+    @Param('id') id: string,
+    @CurrentUser() user: RequestUser,
+    @Headers('x-tracking-authorized') trackingAuthorizedHeader?: string,
+  ): Promise<RevealContactResponseDto> {
+    return this.contactRevealService.revealContact(user.id, id, parseTrackingAuthorized(trackingAuthorizedHeader));
   }
 
   /** Adds a video to an already-existing listing — a single multipart request, unlike the

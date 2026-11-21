@@ -43,7 +43,14 @@ ACTIONS = [
     ("Boost purchase", "PURCHASE"),
     ("Contact reveal credits purchase", "PURCHASE"),
     ("Subscription purchase", "PURCHASE"),
+    # Added 2026-11-21. A seeker unlocks an owner's phone number (a ContactReveal): the closest
+    # thing to "the loop closed". Created SECONDARY (not used in bidding) so the poster campaigns
+    # are unaffected; flip it to primary only once a seeker campaign bids on it.
+    ("Seeker contact unlock", "CONTACT"),
 ]
+
+# Reported in "All conversions" but never used for bidding.
+SECONDARY = {"Seeker contact unlock"}
 
 
 def main():
@@ -73,6 +80,8 @@ def main():
         op.create.type_ = client.enums.ConversionActionTypeEnum.UPLOAD_CLICKS
         op.create.category = getattr(client.enums.ConversionActionCategoryEnum, category)
         op.create.status = client.enums.ConversionActionStatusEnum.ENABLED
+        if name in SECONDARY:
+            op.create.primary_for_goal = False
         # Purchases count every one (a second boost from the same ad click is real revenue);
         # leads/signups count one per click.
         op.create.counting_type = (
