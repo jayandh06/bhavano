@@ -162,7 +162,7 @@ iPhone/iPad too. Differences from Android:
   Sources. There is no per-user signup attribution like Android's Play referrer / `ws`.
 - **Smart App Banner** (`<meta name="apple-itunes-app" content="app-id=6811878602">` in `layout.tsx`):
   Safari's own "Open"/"Get" banner, replacing the custom strip on iOS. No `app-argument`, so "Open" lands on the
-  app's home (the tag is static in the root layout). Unlike the Android strip it is **not** hidden after a
+  app's home on every page except a listing. **Listing pages (added 2026-11-21)** set `app-argument` to their canonical https URL via `siteMetaOther(url)` (`lib/smartAppBanner.ts`), so "Open" lands on that listing (the app's incoming-link handler already reads bhavano.com URLs). Next replaces `other` wholesale per page, so the helper repeats the site-wide tags (Meta domain verification). Unlike the Android strip it is **not** hidden after a
   paid-ad click, because a static tag can't know that; it only offers an install, it does not redirect.
 - **`/ios`** (`iosRedirect`): 302 to the App Store, `?m=&c=` become the campaign token; `/app` (SMS link) now
   sends iPhones to the App Store too. Same noindex header as `/android`.

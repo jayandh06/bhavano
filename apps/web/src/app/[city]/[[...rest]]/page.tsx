@@ -19,6 +19,7 @@ import { rankAreasForLinks } from "@/lib/areaRanking";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
 import { CATEGORY_LABELS, isListingCategory, isTransactionType, resolveArea, resolveCity, formerCityRedirectPath } from "@/lib/browseRoute";
 import { buildBrowsePath, buildListingPath } from "@/lib/listingPath";
+import { siteMetaOther } from "@/lib/smartAppBanner";
 import {
   buildFacetSlug,
   buildHeading,
@@ -520,6 +521,8 @@ export async function generateMetadata({
       // falling back to it.
       openGraph: { title: listing.title, description, ...(listing.ogImage ? { images: [listing.ogImage] } : {}) },
       twitter: { title: listing.title, description },
+      // Safari's "Open" button takes an iPhone user to this exact listing in the app, not its home screen.
+      other: siteMetaOther(`${SITE_URL}${canonicalPath}`),
     };
   }
 
