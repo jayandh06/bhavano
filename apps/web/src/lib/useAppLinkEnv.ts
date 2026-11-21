@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useSyncExternalStore } from "react";
-import { cameFromAdRecently, isAndroidBrowser } from "./appLinks";
+import { cameFromAdRecently, isAndroidBrowser, isIosBrowser } from "./appLinks";
 
 const noSubscribe = () => () => {};
 
@@ -9,6 +9,11 @@ const noSubscribe = () => () => {};
  * real answer right after (useSyncExternalStore re-renders once with the client snapshot). */
 export function useIsAndroidBrowser(): boolean {
   return useSyncExternalStore(noSubscribe, () => isAndroidBrowser(navigator.userAgent), () => false);
+}
+
+/** Same for iPhone/iPad browsers (an iPad in desktop mode is detected by its touch screen). */
+export function useIsIosBrowser(): boolean {
+  return useSyncExternalStore(noSubscribe, () => isIosBrowser(navigator.userAgent, navigator.maxTouchPoints), () => false);
 }
 
 /** `cameFromAdRecently` for the current URL, re-read on every render. Server: false. */

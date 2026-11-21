@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { androidIntentUrl, appPathForWebPath, isAndroidBrowser, playStoreUrl, androidInstallHref, isSafeReferrerPart, playInstallUrl } from "./appLinks";
+import { androidIntentUrl, appPathForWebPath, appStoreUrl, iosInstallHref, isIosBrowser, isAndroidBrowser, playStoreUrl, androidInstallHref, isSafeReferrerPart, playInstallUrl } from "./appLinks";
 
 describe("appPathForWebPath", () => {
   it.each([
@@ -62,6 +62,21 @@ describe("playInstallUrl / androidInstallHref", () => {
 
   it("points the site's buttons at the /android redirect", () => {
     expect(androidInstallHref("play_badge", "post_success")).toBe("/android?m=play_badge&c=post_success");
+  });
+
+  it("builds a tagged App Store link and points the site's buttons at /ios", () => {
+    expect(appStoreUrl("app_store_badge", "footer")).toBe("https://apps.apple.com/app/id6811878602?ct=app_store_badge-footer");
+    expect(appStoreUrl("m".repeat(30), "c".repeat(30)).split("ct=")[1]).toHaveLength(40);
+    expect(iosInstallHref("app_store_badge", "post_success")).toBe("/ios?m=app_store_badge&c=post_success");
+  });
+
+  it("detects iPhone/iPad browsers, including an iPad sending a Mac user agent", () => {
+    const iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1";
+    const mac = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.0 Safari/605.1.15";
+    expect(isIosBrowser(iphone)).toBe(true);
+    expect(isIosBrowser(mac, 5)).toBe(true);
+    expect(isIosBrowser(mac, 0)).toBe(false);
+    expect(isIosBrowser("Mozilla/5.0 (Linux; Android 14; Pixel 8)")).toBe(false);
   });
 
   it("only accepts plain identifiers for the referrer parts", () => {

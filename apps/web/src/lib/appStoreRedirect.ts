@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isSafeReferrerPart, playInstallUrl } from "./appLinks";
+import { appStoreUrl, isIosBrowser, isSafeReferrerPart, playInstallUrl } from "./appLinks";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.finfolia.bhavano";
@@ -28,11 +28,22 @@ function playStoreUrl(campaign: string): string {
   return `${PLAY_STORE_URL}&referrer=${referrer}`;
 }
 
-/** `/app` — Android goes to the Play listing; everything else (iPhone, desktop) to the homepage,
- * which is where sign-in lives. */
+/** `/app` — Android goes to the Play listing, iPhone/iPad to the App Store; desktop and anything else to
+ * the homepage, which is where sign-in lives. */
 export function appRedirect(request: NextRequest): NextResponse {
-  const isAndroid = /android/i.test(request.headers.get("user-agent") ?? "");
-  return redirect(isAndroid ? playStoreUrl("broker-invite") : SITE_URL);
+  const userAgent = request.headers.get("user-agent") ?? "";
+  if (/android/i.test(userAgent)) return redirect(playStoreUrl("broker-invite"));
+  if (isIosBrowser(userAgent)) return redirect(appStoreUrl("sms", "broker-invite"));
+  return redirect(SITE_URL);
+}
+
+/** `/ios` — always the App Store listing, whatever the device. With `?m=<medium>&c=<campaign>` (the site's own
+ * buttons, see iosInstallHref) the campaign token carries the placement. */
+export function iosRedirect(request?: NextRequest): NextResponse {
+  const medium = request?.nextUrl.searchParams.get("m") ?? null;
+  const campaign = request?.nextUrl.searchParams.get("c") ?? null;
+  if (isSafeReferrerPart(medium) && isSafeReferrerPart(campaign)) return redirect(appStoreUrl(medium, campaign));
+  return redirect(appStoreUrl("sms", "ios-link"));
 }
 
 /** `/android` — always the Play listing, whatever the device.

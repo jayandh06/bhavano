@@ -46,6 +46,7 @@ const SAME_AS = [
   "https://www.instagram.com/bhavano.app/",
   "https://www.linkedin.com/company/bhavano",
   "https://play.google.com/store/apps/details?id=com.finfolia.bhavano",
+  "https://apps.apple.com/app/id6811878602",
 ];
 const SITE_TITLE = "Bhavano — Buy, Rent, Plots, Coworking, PG & More";
 const SITE_DESCRIPTION =
@@ -73,6 +74,9 @@ export const metadata: Metadata = {
   // client-injected tag) so Meta's crawler can see it on the plain HTML response.
   other: {
     "facebook-domain-verification": "zcmoqn7tfxb945q9n2og13fpipopfb",
+    // Safari's native Smart App Banner on iPhone/iPad ("Open" if installed, "Get" otherwise). Server-rendered,
+    // no JS, ignored by every other browser. No app-argument: it is static here, so "Open" lands on the app's home.
+    "apple-itunes-app": "app-id=6811878602",
   },
 };
 
@@ -116,7 +120,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           * server HTML and shown by CSS. Deciding it after hydration (useIsAndroidBrowser) made the icon
           * appear late and shift the header — same test as isAndroidBrowser in lib/appLinks.ts. */}
         <Script id="android-flag" strategy="beforeInteractive">
-          {`document.documentElement.dataset.android=/Android/i.test(navigator.userAgent)&&!/; wv\\)/.test(navigator.userAgent)?'1':'0';`}
+          {`var u=navigator.userAgent,d=document.documentElement.dataset;d.android=/Android/i.test(u)&&!/; wv\\)/.test(u)?'1':'0';d.ios=/iPhone|iPad|iPod/i.test(u)||(/Macintosh/i.test(u)&&navigator.maxTouchPoints>1)?'1':'0';`}
         </Script>
         {/* Runs a function once, on the visitor's first interaction or after 3.5s, whichever is first. The Meta Pixel and
           * GTM tags (about 780 KiB of script, ~1.4s of main-thread work in PageSpeed) load through it so they no longer

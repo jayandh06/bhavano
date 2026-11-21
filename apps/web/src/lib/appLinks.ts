@@ -23,6 +23,28 @@ export function androidInstallHref(medium: string, campaign: string): string {
   return `/android?m=${encodeURIComponent(medium)}&c=${encodeURIComponent(campaign)}`;
 }
 
+export const IOS_APP_ID = "6811878602";
+
+/** App Store listing tagged with a campaign token (`ct`), so App Store Connect → Analytics → Sources splits
+ * installs by where they came from. Unlike Play there is no install referrer: the app never sees this, so
+ * it only measures installs in aggregate, with no per-user signup attribution. `ct` allows up to 40 chars. */
+export function appStoreUrl(medium: string, campaign: string): string {
+  return `https://apps.apple.com/app/id${IOS_APP_ID}?ct=${encodeURIComponent(`${medium}-${campaign}`.slice(0, 40))}`;
+}
+
+/** The website's iOS "Get the app" buttons point here instead of straight at the App Store, mirroring
+ * androidInstallHref, so the destination and tagging can change without touching every button. */
+export function iosInstallHref(medium: string, campaign: string): string {
+  return `/ios?m=${encodeURIComponent(medium)}&c=${encodeURIComponent(campaign)}`;
+}
+
+/** iPhone / iPad / iPod Safari and friends. iPadOS 13+ sends a Mac user agent by default, so a Mac UA
+ * with a touch screen (`maxTouchPoints` > 1; no Mac has one) counts as an iPad. `maxTouchPoints` is
+ * optional so server code, which only has the header, still gets the iPhone/iPod/legacy-iPad answer. */
+export function isIosBrowser(userAgent: string, maxTouchPoints = 0): boolean {
+  return /iPhone|iPad|iPod/i.test(userAgent) || (/Macintosh/i.test(userAgent) && maxTouchPoints > 1);
+}
+
 /** `medium`/`campaign` arrive in a URL on our own domain, so only plain identifiers are accepted. */
 export function isSafeReferrerPart(value: string | null): value is string {
   return !!value && /^[a-z0-9_-]{1,40}$/i.test(value);
