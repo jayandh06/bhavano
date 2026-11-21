@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DEVICE_FILTER_OPTIONS, resolveDeviceFilter, type OsFilter } from "@/lib/pageVisitDeviceFilter";
+import { DEVICE_FILTER_OPTIONS, resolveDeviceFilter } from "@/lib/pageVisitDeviceFilter";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   AdminPageVisitIdentity,
@@ -70,15 +70,6 @@ const HIGHLIGHT_OPTIONS: { value: string; label: string }[] = [
   { value: "active", label: "Active purchase now" },
 ];
 
-/** Orthogonal to the Device options — see Visit.os's own schema comment. "Unknown" is a row whose OS the
- * User-Agent did not reveal. */
-const OS_OPTIONS: { value: OsFilter | "any"; label: string }[] = [
-  { value: "any", label: "Any OS" },
-  { value: "android", label: "Android" },
-  { value: "ios", label: "iOS" },
-  { value: "unknown", label: "Unknown OS" },
-];
-
 export default async function PageVisitsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { accessToken } = await requireAdmin();
   const sp = await searchParams;
@@ -94,7 +85,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const highlight = HIGHLIGHT_OPTIONS.some((o) => o.value === highlightRaw && o.value !== "all") ? highlightRaw : undefined;
   const groupByUser = str(sp.group) === "user";
   const osRaw = str(sp.os);
-  // "Mobile (iOS)" etc. are one Device pick that sets both the device type and the OS.
+  // One Device dropdown holds the OS splits too ("Mobile (iOS)"); `os` in the URL is still honoured for old links.
   const { deviceType, os } = resolveDeviceFilter(deviceTypeRaw, osRaw);
   // Same silent-default pattern as DEFAULT_TRAFFIC above: absent from/to defaults to a 1-day
   // window rather than unbounded history, but doesn't redirect the URL to show it — the URL only
@@ -364,16 +355,6 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       <SelectField name="deviceType" defaultValue={deviceTypeRaw ?? "any"} style={headerSelectStyle}>
                         {DEVICE_FILTER_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </SelectField>
-                      {/* Orthogonal to deviceType (a mobile/tablet row can be either OS) — see
-                          Visit.os's own schema comment. Stacked here, not its own column: it only
-                          ever shows alongside the Device cell in the table body too. */}
-                      <SelectField name="os" defaultValue={os ?? "any"} style={headerSelectStyle}>
-                        {OS_OPTIONS.map((o) => (
                           <option key={o.value} value={o.value}>
                             {o.label}
                           </option>
