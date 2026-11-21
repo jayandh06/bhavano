@@ -17,6 +17,7 @@ import { LayoutShiftReporter } from "@/components/home/LayoutShiftReporter";
 import { SessionUserLink } from "@/components/home/SessionUserLink";
 import { SoftNavPageViews } from "@/components/home/SoftNavPageViews";
 import { SignupConversionTracker } from "@/components/home/SignupConversionTracker";
+import { siteMetaOther } from "@/lib/smartAppBanner";
 import { OpenInAppStrip } from "@/components/home/OpenInAppStrip";
 import { JsonLd } from "@/components/JsonLd";
 import "./globals.css";
@@ -69,15 +70,8 @@ export const metadata: Metadata = {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },
-  // Meta Business Manager domain verification (business.facebook.com > Brand Safety > Domains) —
-  // a one-time ownership proof for the WhatsApp/Meta integrations. Server-rendered here (not a
-  // client-injected tag) so Meta's crawler can see it on the plain HTML response.
-  other: {
-    "facebook-domain-verification": "zcmoqn7tfxb945q9n2og13fpipopfb",
-    // Safari's native Smart App Banner on iPhone/iPad ("Open" if installed, "Get" otherwise). Server-rendered,
-    // no JS, ignored by every other browser. No app-argument: it is static here, so "Open" lands on the app's home.
-    "apple-itunes-app": "app-id=6811878602",
-  },
+  // Site-wide meta tags (Meta domain verification, Safari Smart App Banner) — see lib/smartAppBanner.ts.
+  other: siteMetaOther(),
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
