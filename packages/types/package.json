@@ -296,6 +296,10 @@
     "./whatsapp": {
       "types": "./dist/whatsapp.d.ts",
       "default": "./dist/whatsapp.js"
+    },
+    "./listingStatusInfo": {
+      "types": "./dist/listingStatusInfo.d.ts",
+      "default": "./dist/listingStatusInfo.js"
     }
   },
   "scripts": {

@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, Style
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
+import { ownerStatusLabel } from "@bhavano/types/listingStatusInfo";
 import { listingPriceText } from "@bhavano/types/priceWords";
 import { goLiveTimeText } from "@bhavano/types/goLive";
 import { featuredEndsSoon } from "@bhavano/types/featuredRenewal";
@@ -15,13 +16,6 @@ import { ListingInterestsPanel } from "../../src/components/home/ListingInterest
 import { Icon } from "../../src/components/Icon";
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import { appWebUrl } from "../../src/lib/appWebUrl";
-
-const STATUS_LABELS: Record<ListingStatus, string> = {
-  active: "Active",
-  sold: "Sold",
-  rented: "Rented",
-  deactivated: "Deactivated",
-};
 
 function statusColor(status: ListingStatus, colors: { green: string; muted: string }): string {
   return status === "active" ? colors.green : status === "deactivated" ? "#b3413a" : colors.muted;
@@ -115,7 +109,7 @@ export default function MyListingsScreen() {
                 <View style={styles.badgeRow}>
                   <View style={[styles.badge, { borderColor: statusColor(item.status, colors) }]}>
                     <Text style={{ fontSize: 11, fontWeight: "700", color: statusColor(item.status, colors) }}>
-                      {STATUS_LABELS[item.status]}
+                      {ownerStatusLabel(item.status)}
                     </Text>
                   </View>
                   {isPendingPublish && (

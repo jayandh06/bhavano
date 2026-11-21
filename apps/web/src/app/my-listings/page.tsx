@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import type { ListingDetailDto, ListingStatus, MyReferralsDto } from "@bhavano/types";
+import { ownerStatusLabel } from "@bhavano/types/listingStatusInfo";
 import { featuredEndsSoon } from "@bhavano/types/featuredRenewal";
 import { listingPriceText } from "@bhavano/types/priceWords";
 import { goLiveTimeText } from "@bhavano/types/goLive";
@@ -31,13 +32,6 @@ import { VideoManager } from "@/components/home/VideoManager";
 import { Icon } from "@/components/home/Icon";
 
 const renewedAtFormatter = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
-
-const STATUS_LABELS: Record<ListingStatus, string> = {
-  active: "Active",
-  sold: "Sold",
-  rented: "Rented",
-  deactivated: "Deactivated",
-};
 
 const STATUS_COLORS: Record<ListingStatus, string> = {
   active: "var(--green)",
@@ -266,7 +260,7 @@ function MyListingRow({
             className="text-[11px] font-bold rounded-md px-2 py-0.5 border"
             style={{ color: STATUS_COLORS[item.status], borderColor: STATUS_COLORS[item.status] }}
           >
-            {STATUS_LABELS[item.status]}
+            {ownerStatusLabel(item.status)}
           </span>
           {isPendingPublish && (
             <span className="text-[11px] font-bold rounded-md px-2 py-0.5 border border-[#b3413a] text-[#b3413a]">

@@ -10,6 +10,8 @@ import {
   listingAttributesIssue,
 } from "@bhavano/types/categoryFields";
 import { fromBrokerDefault } from "@bhavano/types/sellerType";
+import { ownerStatusLabel } from "@bhavano/types/listingStatusInfo";
+import { ListingStatusPicker } from "./ListingStatusPicker";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import { updateListingAction } from "@/app/actions/listings";
@@ -53,13 +55,6 @@ function RequiredLabel({ text }: { text: string }) {
     </label>
   );
 }
-
-const STATUS_OPTIONS: { value: ListingStatus; label: string }[] = [
-  { value: "active", label: "Active — visible to buyers/renters" },
-  { value: "sold", label: "Sold" },
-  { value: "rented", label: "Rented" },
-  { value: "deactivated", label: "Deactivated — hidden from search" },
-];
 
 export function EditListingForm({
   listing,
@@ -360,7 +355,7 @@ export function EditListingForm({
         <VideoManager listing={listing} accessToken={accessToken} expanded />
       </div>
 
-      <div className="max-w-[420px]">
+      <div className="max-w-[520px]">
         <label className={labelClass}>Status</label>
         <div className="flex flex-wrap gap-2 mb-2">
           <span
@@ -372,7 +367,7 @@ export function EditListingForm({
                 status === "active" ? "var(--green)" : status === "deactivated" ? "#b3413a" : "var(--muted)",
             }}
           >
-            {STATUS_OPTIONS.find((o) => o.value === status)?.label.split(" — ")[0] ?? status}
+            {ownerStatusLabel(listing.status)}
           </span>
           {isPendingPublish && (
             <span className="text-[11px] font-bold rounded-md px-2 py-0.5 border border-[#b3413a] text-[#b3413a]">
@@ -385,13 +380,13 @@ export function EditListingForm({
             This ad is not visible to buyers until you complete publish checkout on My listings.
           </p>
         )}
-        <SelectField value={status} onChange={(e) => setStatus(e.target.value as ListingStatus)}>
-          {STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </SelectField>
+        <ListingStatusPicker
+          value={status}
+          current={listing.status}
+          transactionType={listing.transactionType}
+          isBoosted={listing.isBoosted}
+          onChange={setStatus}
+        />
       </div>
 
       {message && (
