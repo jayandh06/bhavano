@@ -151,3 +151,23 @@ three separate measurements. Their totals line up, but they don't connect to eac
      "Found via"). Values are cut to the DTO's 100-character limit.
    - Ships with the **1.0.1 native build** (it adds the native `expo-application` module); 1.0.0
      phones report nothing.
+
+## iOS counterpart (2026-11-21)
+
+The iOS app went live on 2026-11-21 (App Store ID `6811878602`), so the site's get-the-app UI now serves
+iPhone/iPad too. Differences from Android:
+
+- **No `intent://`, no install referrer.** Installs are tagged with the App Store campaign token
+  (`?ct=<medium>-<campaign>`, `appStoreUrl` in `appLinks.ts`), visible only in App Store Connect → Analytics →
+  Sources. There is no per-user signup attribution like Android's Play referrer / `ws`.
+- **Smart App Banner** (`<meta name="apple-itunes-app" content="app-id=6811878602">` in `layout.tsx`):
+  Safari's own "Open"/"Get" banner, replacing the custom strip on iOS. No `app-argument`, so "Open" lands on the
+  app's home (the tag is static in the root layout). Unlike the Android strip it is **not** hidden after a
+  paid-ad click, because a static tag can't know that; it only offers an install, it does not redirect.
+- **`/ios`** (`iosRedirect`): 302 to the App Store, `?m=&c=` become the campaign token; `/app` (SMS link) now
+  sends iPhones to the App Store too. Same noindex header as `/android`.
+- **`html[data-ios]`** is set before first paint next to `data-android` (iPad in desktop mode detected by touch
+  points). Footer shows the App Store badge below `lg` (Android phones see only Play, iPhones only App Store);
+  the phone header gets an iOS icon button; `GetAppCard` and `InstallAppAlertBanner` switch on iOS.
+- Badge artwork lives at `public/badges/app-store.svg` (Apple's official file, not redrawn).
+- Not built yet: App Store desktop QR (the QRs are Play-only), `OpenInAppStrip` for iOS (Smart Banner covers it).

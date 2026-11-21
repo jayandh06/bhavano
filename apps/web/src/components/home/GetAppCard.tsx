@@ -1,8 +1,9 @@
 "use client";
 
 import { androidIntentUrl } from "@/lib/appLinks";
-import { useIsAndroidBrowser } from "@/lib/useAppLinkEnv";
+import { useIsAndroidBrowser, useIsIosBrowser } from "@/lib/useAppLinkEnv";
 import type { GetAppPlacement } from "@/lib/getAppEvents";
+import { AppStoreBadge } from "./AppStoreBadge";
 import { GooglePlayBadge } from "./GooglePlayBadge";
 
 /** A concrete-reason pitch for the Android app: a Play Store QR code on desktop (`lg:`), the
@@ -27,6 +28,9 @@ export function GetAppCard({
   body: string;
 }) {
   const android = useIsAndroidBrowser();
+  // iPhones and iPads get the App Store badge at every width (an iPad can be `lg:` wide but can't scan its own
+  // screen, same as the Android tablet case); the desktop QR below stays Play-only.
+  const ios = useIsIosBrowser();
 
   const headingEl = <div className="font-bold text-[15px] text-text">{heading}</div>;
   const bodyEl = <p className="text-[13px] text-text-soft mt-1 mb-0">{body}</p>;
@@ -39,16 +43,20 @@ export function GetAppCard({
         {headingEl}
         {bodyEl}
       </div>
-      <GooglePlayBadge
-        placement={placement}
-        height={40}
-        href={android ? androidIntentUrl(appPath, "get_app_card", placement) : undefined}
-        appPath={android ? appPath : undefined}
-      />
+      {ios ? (
+        <AppStoreBadge placement={placement} height={40} />
+      ) : (
+        <GooglePlayBadge
+          placement={placement}
+          height={40}
+          href={android ? androidIntentUrl(appPath, "get_app_card", placement) : undefined}
+          appPath={android ? appPath : undefined}
+        />
+      )}
     </div>
   );
 
-  if (android) return badgeCard("flex");
+  if (android || ios) return badgeCard("flex");
 
   return (
     <>

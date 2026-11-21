@@ -5,6 +5,7 @@ import { fetchCities } from "@/lib/bff";
 import { buildBrowsePath } from "@/lib/listingPath";
 import { postHref } from "@/lib/postHref";
 import { GooglePlayBadge } from "./GooglePlayBadge";
+import { AppStoreBadge } from "./AppStoreBadge";
 
 // Today's largest seeded city has 20 curated areas — this is a defensive ceiling against a
 // future city accumulating far more user-added areas, not an active truncation. Cities are a
@@ -186,7 +187,12 @@ export async function Footer({
             className="hidden lg:block rounded bg-white"
           />
           <p className="hidden lg:block text-[12px] text-on-green/75 mt-1.5 mb-0 max-w-[120px]">Scan with your Android phone</p>
-          <GooglePlayBadge placement="footer" height={44} className="inline-block lg:hidden" />
+          {/* Both badges below `lg`; html[data-ios] / html[data-android] (set before first paint) hide the
+            * one that device can't use, so an iPhone sees only the App Store and an Android phone only Play. */}
+          <div className="flex flex-wrap items-center gap-2 lg:hidden">
+            <GooglePlayBadge placement="footer" height={44} className="[html[data-ios='1']_&]:hidden" />
+            <AppStoreBadge placement="footer" height={44} hideOnAndroid />
+          </div>
         </div>
       </div>
       <div className="max-w-[1280px] mx-auto mt-8 pt-5 border-t border-on-green/20 flex flex-wrap items-center justify-between gap-4">

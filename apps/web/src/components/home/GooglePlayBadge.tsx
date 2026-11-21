@@ -79,7 +79,7 @@ export function GetAppHeaderQr() {
   );
 }
 
-/** Phone header: just the Play logo, for Android browsers only (there is no iOS app). A play.google.com
+/** Phone header: just the Play logo, for Android browsers only (iPhones get AppStoreHeaderIcon). A play.google.com
  * link opens the Play Store app on Android.
  *
  * Always in the server HTML and hidden by default; `html[data-android="1"]` (set by a tiny script in
