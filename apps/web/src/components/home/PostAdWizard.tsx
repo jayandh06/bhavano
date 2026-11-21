@@ -3501,7 +3501,7 @@ export function PostAdWizard({
               placement="post_success"
               appPath="my-listings"
               heading="Never miss an enquiry"
-              body="The Bhavano Android app notifies you the moment someone messages about your ad, so you can reply first."
+              body="The Bhavano app notifies you the moment someone messages about your ad, so you can reply first."
             />
 
             {/* Below the Featured offer, the share card and the app card, never above them: this screen is where most Featured
