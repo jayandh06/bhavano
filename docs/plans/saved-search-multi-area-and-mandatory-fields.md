@@ -101,3 +101,22 @@ Revert the migration (`prisma migrate resolve` back one step, or reapply the inv
 `areaId`/`bedrooms`, backfill from `areaIds[0]`/`bedroomOptions[0]`, drop the array columns) and
 revert the BFF/web commits together — the DTO, service, and both web forms all changed shape in
 the same step and don't work independently.
+
+## Update 2026-11-21: mobile app
+
+The app now has saved searches too (before this it had none; only the Terms text mentioned them).
+
+- **Create**: a "Save search" pill in the home screen's filter row (`SaveSearchButton.tsx`), shown on
+  every tab except All, and only once a city and a full price range are set — the same two mandatory
+  fields as the website's button. It asks only for a name; category, transaction type, areas and BHK
+  come from `requirementCriteriaFromBrowse` (via `deriveHomeRequirementCriteria`), so an app search
+  maps the way a captured requirement does (Buy → sell, Rent & Lease / PG → rent). Logged-out taps go
+  to login first.
+- **Manage**: `app/saved-searches.tsx`, linked from the Account tab ("Saved searches & alerts"). Lists
+  the user's searches with delete, shows how many free alerts are left, and points to Plus once the
+  free quota is used up (`/saved-searches/allowance`).
+- **Not built**: the website's from-scratch create form (area/BHK pickers on the standalone page). On
+  the app, searches are created from the browse screen instead.
+- No BFF change was needed: the app uses the same `/saved-searches` endpoints as the website. Alerts
+  go out through `NotificationsService.notifySavedSearchMatch` as before; whether a match also
+  produces an in-app push was not checked in this change.

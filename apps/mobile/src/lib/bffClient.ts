@@ -30,6 +30,7 @@ import type {
   CreateInstantAlertsOrderResponseDto,
   CreateListingInput,
   CreateRequirementInput,
+  CreateSavedSearchInput,
   CreateSubscriptionOrderResponseDto,
   HomeCategoryFilter,
   ListingCardDto,
@@ -46,6 +47,8 @@ import type {
   RequirementDto,
   RevealContactResponseDto,
   ReverseGeocodeResultDto,
+  SavedSearchAllowanceDto,
+  SavedSearchDto,
   LinkIdentifierResult,
   ProfileNudgeDto,
   SendFirstMessageResponseDto,
@@ -909,6 +912,24 @@ export function createRequirement(accessToken: string, input: CreateRequirementI
 
 export function fetchMyRequirements(accessToken: string): Promise<RequirementDto[]> {
   return authedBffFetch(accessToken, "/requirements/mine");
+}
+
+/** Saved searches (new-listing alerts) — the same endpoints the website's /saved-searches page
+ * uses. Everyone has a free quota; `allowance.canCreate` is false once it is used up without Plus. */
+export function fetchSavedSearches(accessToken: string): Promise<SavedSearchDto[]> {
+  return authedBffFetch(accessToken, "/saved-searches");
+}
+
+export function fetchSavedSearchAllowance(accessToken: string): Promise<SavedSearchAllowanceDto> {
+  return authedBffFetch(accessToken, "/saved-searches/allowance");
+}
+
+export function createSavedSearch(accessToken: string, input: CreateSavedSearchInput): Promise<SavedSearchDto> {
+  return authedBffFetch(accessToken, "/saved-searches", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function deleteSavedSearch(accessToken: string, id: string): Promise<void> {
+  return authedBffFetch(accessToken, `/saved-searches/${id}`, { method: "DELETE" });
 }
 
 /** The owner/agent requirements browse feed — mobile counterpart to web's `fetchRequirementFeed`

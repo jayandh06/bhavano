@@ -30,6 +30,7 @@ import { SortSheet, SORT_OPTIONS, type SortValue } from "../../src/components/ho
 import { HOME_TABS, type HomeTabValue } from "../../src/components/home/categories";
 
 import { HeaderSearchInput } from "../../src/components/home/HeaderSearchInput";
+import { SaveSearchButton } from "../../src/components/home/SaveSearchButton";
 /** Below this width, `FlatList` renders one column; at/above it, two — comfortably below every
  * iPad's portrait width (744pt+) and above every phone's, including large phones in portrait. */
 const WIDE_SCREEN_BREAKPOINT = 700;
@@ -282,6 +283,22 @@ export default function HomeScreen() {
                   Sort: {sortLabel}
                 </Text>
               </Pressable>
+              {/* Not on All, like the filters: a saved search needs one category's price range. */}
+              {category !== "all" && (
+                <SaveSearchButton
+                  // Remount per search so the "Saved" state never carries over to different filters.
+                  key={`${category}|${city?.id}|${filters.areaIds.join(",")}|${filters.bedrooms.join(",")}|${filters.minPrice}|${filters.maxPrice}|${propertyType}`}
+                  criteria={{
+                    category: requirementCriteria.category,
+                    transactionType: requirementCriteria.transactionType,
+                    cityId: city?.id,
+                    areaIds: requirementCriteria.areaIds,
+                    minPrice: filters.minPrice,
+                    maxPrice: filters.maxPrice,
+                    bedroomOptions: requirementCriteria.bedroomOptions,
+                  }}
+                />
+              )}
             </View>
 
             <View style={styles.sectionHeading}>
