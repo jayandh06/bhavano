@@ -3189,3 +3189,50 @@ describe('ListingsService.update — an owner moving their own listing', () => {
     });
   });
 });
+
+describe('ListingsService.insertListingWithMedia — a listing never exists without its photos', () => {
+  function setup(opts: { failPhotos?: boolean } = {}) {
+    const { service, prisma } = makeService();
+    const calls: string[] = [];
+    const tx = {
+      listing: { create: jest.fn().mockImplementation(async () => (calls.push('listing'), { id: 'l1' })) },
+      user: { update: jest.fn().mockImplementation(async () => calls.push('user')) },
+      listingPhoto: {
+        createMany: jest.fn().mockImplementation(async () => {
+          calls.push('photos');
+          if (opts.failPhotos) throw new Error('photo insert failed');
+        }),
+      },
+      photoVariantJob: { createMany: jest.fn().mockImplementation(async () => calls.push('jobs')) },
+      listingVideo: { createMany: jest.fn().mockImplementation(async () => calls.push('videos')) },
+    };
+    (prisma.$transaction as jest.Mock).mockImplementation((run: (t: typeof tx) => unknown) => run(tx));
+    // Anything written through `prisma` itself (not `tx`) would survive a rollback.
+    const outside = { listing: { create: jest.fn() }, listingPhoto: { createMany: jest.fn() } };
+    Object.assign(prisma, outside);
+    const args = {
+      listingData: { id: 'l1' } as never,
+      ownerId: 'u1',
+      saveSellerType: 'agent' as const,
+      photos: [1, 2, 3].map((n) => ({ photoNo: n, hash: `h${n}`, ext: 'jpg' })) as never,
+      videos: [],
+    };
+    const run = () => (service as unknown as { insertListingWithMedia: (a: typeof args) => Promise<{ id: string }> }).insertListingWithMedia(args);
+    return { run, prisma, tx, calls, outside };
+  }
+
+  it('writes the listing, seller type, photos and jobs inside one transaction, in order', async () => {
+    const { run, prisma, calls, outside } = setup();
+    await expect(run()).resolves.toEqual({ id: 'l1' });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(calls).toEqual(['listing', 'user', 'photos', 'jobs']);
+    expect(outside.listing.create).not.toHaveBeenCalled();
+    expect(outside.listingPhoto.createMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects when the photo insert fails, so the transaction rolls the listing back', async () => {
+    const { run, calls } = setup({ failPhotos: true });
+    await expect(run()).rejects.toThrow('photo insert failed');
+    expect(calls).toEqual(['listing', 'user', 'photos']);
+  });
+});
