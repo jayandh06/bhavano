@@ -9,7 +9,9 @@ export const ANDROID_PACKAGE = "com.finfolia.bhavano";
 /** Play Store listing tagged with a Play install referrer, so Play Console's acquisition report
  * splits installs by where on the site they came from. The QR images in public/app-qr/ encode
  * this URL for their placement — regenerate them if this format changes:
- *   pnpm dlx qrcode -t svg -o apps/web/public/app-qr/<campaign>.svg "<playStoreUrl('qr', '<campaign>')>" */
+ *   pnpm dlx qrcode -t svg -o apps/web/public/app-qr/<campaign>.svg "<playStoreUrl('qr', '<campaign>')>"
+ * The iOS twins (`ios-<campaign>.svg`) encode the site's own redirect, so the tag can change without new codes:
+ *   pnpm dlx qrcode -t svg -o apps/web/public/app-qr/ios-<campaign>.svg "https://www.bhavano.com/ios?m=qr&c=<campaign>" */
 export function playStoreUrl(medium: string, campaign: string): string {
   const referrer = `utm_source=bhavano_web&utm_medium=${medium}&utm_campaign=${campaign}`;
   return `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}&referrer=${encodeURIComponent(referrer)}`;

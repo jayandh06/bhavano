@@ -62,18 +62,22 @@ export function GetAppCard({
     <>
       {badgeCard("flex lg:hidden")}
       <div className="hidden lg:flex w-full items-center gap-4 rounded-[10px] border border-border bg-surface-alt/60 px-4 py-3">
-        {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
-        <img
-          src={`/app-qr/${placement}.svg`}
-          alt="QR code for the Bhavano app on Google Play"
-          width={88}
-          height={88}
-          className="shrink-0 rounded bg-white"
-        />
+        <div className="flex shrink-0 gap-3">
+          {[
+            { src: `/app-qr/${placement}.svg`, alt: "QR code for the Bhavano app on Google Play", label: "Android" },
+            { src: `/app-qr/ios-${placement}.svg`, alt: "QR code for the Bhavano app on the App Store", label: "iPhone" },
+          ].map((qr) => (
+            <figure key={qr.label} className="m-0 text-center">
+              {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
+              <img src={qr.src} alt={qr.alt} width={88} height={88} className="rounded bg-white" />
+              <figcaption className="text-[11px] text-muted mt-1">{qr.label}</figcaption>
+            </figure>
+          ))}
+        </div>
         <div className="min-w-0">
           {headingEl}
           {bodyEl}
-          <p className="text-[12px] text-muted mt-1.5 mb-0">Scan with your Android phone to get the app.</p>
+          <p className="text-[12px] text-muted mt-1.5 mb-0">Scan with your phone&apos;s camera to get the app.</p>
         </div>
       </div>
     </>
