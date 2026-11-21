@@ -1,12 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { ListingCategory } from "@bhavano/types";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { useClampToViewport } from "@/lib/useClampToViewport";
 import { amenityOptionsFor, assetFiltersFor, type FilterableKey } from "@/lib/assetFilters";
 import { customPriceLabel, parseAmount } from "@/lib/priceInput";
-import { useFilterSection } from "./FilterSection";
+import { useFilterCategory, useFilterSection } from "./FilterSection";
 
 /** `price` plus whichever config-derived select filters this asset has. */
 type OpenFilter = "price" | "amenities" | FilterableKey | null;
@@ -28,7 +27,6 @@ const dropdownClass =
  * needs no per-category scale. Every dropdown here only changes the filter section's draft (FilterSection); its Apply searches and its Reset clears. The `active*` props are
  * what the URL says now; a draft, when there is one, shows instead. */
 export function BrowseFilterBar({
-  category,
   activeMinPrice,
   activeMaxPrice,
   activeFurnished,
@@ -37,7 +35,6 @@ export function BrowseFilterBar({
   activeServiceType,
   activeAmenities,
 }: {
-  category?: ListingCategory;
   activeMinPrice?: number;
   activeMaxPrice?: number;
   activeFurnished?: string;
@@ -51,6 +48,8 @@ export function BrowseFilterBar({
   activeAmenities?: string[];
 }) {
   const { draft, update } = useFilterSection();
+  // The asset the filters are drawn for: a Type just picked in the draft counts straight away, so its filters show before Apply instead of after a second search.
+  const category = useFilterCategory();
   const [open, setOpen] = useState<OpenFilter>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(null));
@@ -85,7 +84,11 @@ export function BrowseFilterBar({
     condition: activeCondition,
     serviceType: activeServiceType,
   };
-  const valueOf = (key: FilterableKey) => (key in query ? query[key] : activeValues[key]);
+  // A value left over from another asset (the URL's, until Apply) is not one of this asset's options, so it neither highlights the pill nor counts as chosen.
+  const valueOf = (key: FilterableKey) => {
+    const value = key in query ? query[key] : activeValues[key];
+    return selectFilters.find((f) => f.key === key)?.options.some((o) => o.value === value) ? value : undefined;
+  };
 
   // No bottom margin here — this sits as one flex item inside the shared `flex flex-wrap` filter row alongside AreaFilter/AssetTypeFilter/BhkFilter. A margin on a flex item still
   // counts toward that row's height even under `items-start`; the row's own container already carries the spacing to whatever comes after it.

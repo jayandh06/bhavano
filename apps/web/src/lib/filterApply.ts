@@ -1,7 +1,7 @@
 import type { Area, ListingCategory } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { AREAS_NONE } from "./areaSelection";
-import { hasAssetFilter, intentOffersAssets } from "./assetFilters";
+import { amenityOptionsFor, assetFiltersFor, hasAssetFilter, intentOffersAssets, type FilterableKey } from "./assetFilters";
 import { buildFilterUrl } from "./filterUrl";
 import { buildBrowsePath } from "./listingPath";
 import { parseAmount } from "./priceInput";
@@ -84,6 +84,24 @@ function groupFor(base: FilterBase): TransactionGroup | undefined {
   return segmentsForHomeCategory(base.intent).transactionGroup ?? base.segments?.transactionGroup;
 }
 
+const SELECT_FILTER_KEYS: Exclude<FilterableKey, "bedrooms">[] = ["furnished", "sharingType", "condition", "serviceType"];
+
+/** Furnishing, sharing, condition, service type and amenities belong to one asset: they only mean something where its config offers them, and a value has to be one of that
+ * asset's own options. When the asset changes, whatever the URL (or a pending pick) holds for the old one would otherwise ride along, so a leftover PG `sharingType` could end
+ * up on an apartment search. Keeps each value the new asset still accepts (the comma lists too) and drops the rest. */
+function dropInapplicableFilters(params: URLSearchParams, category: ListingCategory | undefined): void {
+  const keepOnly = (key: string, allowed: string[]) => {
+    const raw = params.get(key);
+    if (!raw) return;
+    const kept = raw.split(",").filter((value) => allowed.includes(value));
+    if (kept.length === 0) params.delete(key);
+    else params.set(key, kept.join(","));
+  };
+  const filters = assetFiltersFor(category);
+  for (const key of SELECT_FILTER_KEYS) keepOnly(key, filters.find((f) => f.key === key)?.options.map((o) => o.value) ?? []);
+  keepOnly("amenities", amenityOptionsFor(category).map((o) => o.value));
+}
+
 /** The URL that applies `draft` on top of what is showing now. With an empty draft this is the current page in its canonical form. */
 export function buildAppliedUrl(base: FilterBase, draft: FilterDraft): string {
   const params = new URLSearchParams(base.search);
@@ -108,6 +126,7 @@ export function buildAppliedUrl(base: FilterBase, draft: FilterDraft): string {
 
   const assetChanged = !!draft.asset && draft.asset.asset !== base.category;
   const category = draft.asset ? draft.asset.asset : base.category;
+  if (assetChanged) dropInapplicableFilters(params, category);
   const areaIds = draft.areas ?? currentAreaIds(base);
   const allAreas = areaIds.length === base.areas.length && base.areas.length > 0;
   // BHK only means something where the asset has bedrooms; changing the asset drops a bucket choice it cannot hold.

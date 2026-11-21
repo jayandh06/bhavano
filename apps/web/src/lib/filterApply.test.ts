@@ -52,6 +52,33 @@ describe("buildAppliedUrl on a browse page", () => {
   });
 });
 
+describe("changing the asset drops filters the new asset does not have", () => {
+  it("drops a PG sharing choice and its amenities when switching to apartments, and keeps price", () => {
+    const base = browse({ intent: "pg", category: "pg", segments: { category: "pg" }, search: "sharingType=double&amenities=wifi&minPrice=5000" });
+    const url = buildAppliedUrl({ ...base, intent: "buy", category: undefined, segments: { transactionGroup: "buy" } }, { asset: { asset: "apartment" } });
+    expect(url).toBe("/bengaluru/buy/apartment?minPrice=5000");
+  });
+
+  it("drops a pending pick for another asset's filter too", () => {
+    const url = buildAppliedUrl(browse({ category: undefined, segments: { transactionGroup: "buy" } }), {
+      asset: { asset: "plot" },
+      query: { furnished: "semi", sharingType: "single" },
+    });
+    expect(url).toBe("/bengaluru/plot");
+  });
+
+  it("keeps filters the new asset still offers, and leaves a same-asset search alone", () => {
+    const furnished = buildAppliedUrl(browse({ search: "furnished=semi" }), { asset: { asset: "villa" } });
+    expect(furnished).toContain("furnished=semi");
+    expect(buildAppliedUrl(browse({ search: "furnished=semi" }), { query: { condition: undefined } })).toBe("/bengaluru/buy/apartment?furnished=semi");
+  });
+
+  it("choosing All types clears every asset-specific filter", () => {
+    const url = buildAppliedUrl(browse({ search: "furnished=semi&amenities=lift&minPrice=20000" }), { asset: { asset: undefined } });
+    expect(url).toBe("/bengaluru/buy?minPrice=20000");
+  });
+});
+
 describe("buildAppliedUrl on the homepage", () => {
   const home = (over: Partial<FilterBase> = {}): FilterBase => ({ urlMode: "query", cityName: "Bengaluru", areas: AREAS, intent: "buy", search: "", ...over });
 

@@ -27,7 +27,6 @@ import { FilterPanel, FilterProvider, FiltersButton } from "@/components/home/Fi
 import { AssetTypeFilter } from "@/components/home/TypeFilters";
 import { BhkFilter } from "@/components/home/BhkFilter";
 import { OwnersOnlyToggle } from "@/components/home/OwnersOnlyToggle";
-import { hasAssetFilter } from "@/lib/assetFilters";
 import { ListingGrid } from "@/components/home/ListingGrid";
 import { FeaturedRail } from "@/components/home/FeaturedRail";
 import { Pagination } from "@/components/home/Pagination";
@@ -348,7 +347,7 @@ export default async function HomePage({
                 {/* No transaction-type pill here — the tab row above it (CategoryTabs) already *is* that choice. */}
                 <AssetTypeFilter />
                 {/* 1 BHK … 5+ BHK, once the chosen asset actually has bedrooms per CATEGORY_FIELD_CONFIG. The homepage has no browse path, so it writes `?bedrooms=`. */}
-                {homeAsset && hasAssetFilter(homeAsset, "bedrooms") && <BhkFilter />}
+                <BhkFilter />
                 {(activeTab.value === "buy" || activeTab.value === "rentLease") && <OwnersOnlyToggle active={postedBy === "owner"} />}
               </>
             )}
