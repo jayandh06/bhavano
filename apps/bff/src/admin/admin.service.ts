@@ -1004,7 +1004,7 @@ export class AdminService {
             ? { userId }
             : {}),
       ...(deviceType ? { deviceType } : {}),
-      ...(os ? { os } : {}),
+      ...(os ? { os: os === 'unknown' ? null : os } : {}),
     };
 
     for (const [field, raw] of [

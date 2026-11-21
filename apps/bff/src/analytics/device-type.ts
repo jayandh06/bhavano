@@ -28,14 +28,20 @@ export type OsFamily = (typeof OS_FAMILIES)[number];
  * Null for desktop UAs and anything unrecognised, same "not classified, not a claim either way"
  * precedent as `isBot`.
  *
- * Deliberately not UA-sniffed differently for `fromApp` requests: the native app's own fetch
- * sends whatever User-Agent its platform defaults to, which this reads the same way as a browser
- * UA. There's no iOS app yet to distinguish from Android, so a null or unexpected result for an
- * app-originated row isn't a bug to chase down — just not useful information yet.
+ * `fromApp` requests also get the native HTTP stacks' agents recognised (see the body), since the
+ * app sends no browser-style UA. Rows written before that was added have no OS and cannot be
+ * recovered: the UA is not stored.
  */
-export function osFromUserAgent(userAgent: string | undefined): OsFamily | null {
+export function osFromUserAgent(userAgent: string | undefined, fromApp = false): OsFamily | null {
   if (!userAgent) return null;
   if (/Android/i.test(userAgent)) return 'android';
   if (/iPhone|iPad|iPod/i.test(userAgent)) return 'ios';
+  // The native app's own requests carry the HTTP stack's User-Agent, not a browser's: React Native sends
+  // `okhttp/…` on Android and `<App>/<build> CFNetwork/… Darwin/…` on iOS. Only trusted for `fromApp`
+  // requests, because a bare okhttp or CFNetwork agent from anywhere else is just some API client.
+  if (fromApp) {
+    if (/okhttp|Dalvik/i.test(userAgent)) return 'android';
+    if (/CFNetwork|Darwin/i.test(userAgent)) return 'ios';
+  }
   return null;
 }

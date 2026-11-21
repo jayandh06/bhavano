@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { DeviceType, OsFamily } from "@bhavano/types";
+import { DEVICE_FILTER_OPTIONS, resolveDeviceFilter, type OsFilter } from "@/lib/pageVisitDeviceFilter";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   AdminPageVisitIdentity,
@@ -59,14 +59,6 @@ const TRAFFIC_OPTIONS: { value: AdminPageVisitTraffic; label: string }[] = [
  * `humans`. Revisit this default once there's a full window of confirmed history. */
 const DEFAULT_TRAFFIC: AdminPageVisitTraffic = "humans";
 
-const DEVICE_TYPE_OPTIONS: { value: DeviceType | "any"; label: string }[] = [
-  { value: "any", label: "All devices" },
-  { value: "desktop", label: "Desktop" },
-  { value: "mobile", label: "Mobile" },
-  { value: "tablet", label: "Tablet" },
-  { value: "mobile_app", label: "Mobile App" },
-];
-
 /** `all` sends nothing; the rest are the BFF's `highlight` values, the same four rules as the row colours. */
 const HIGHLIGHT_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "All visits" },
@@ -78,11 +70,13 @@ const HIGHLIGHT_OPTIONS: { value: string; label: string }[] = [
   { value: "active", label: "Active purchase now" },
 ];
 
-/** Orthogonal to DEVICE_TYPE_OPTIONS — see Visit.os's own schema comment. */
-const OS_OPTIONS: { value: OsFamily | "any"; label: string }[] = [
+/** Orthogonal to the Device options — see Visit.os's own schema comment. "Unknown" is a row whose OS the
+ * User-Agent did not reveal. */
+const OS_OPTIONS: { value: OsFilter | "any"; label: string }[] = [
   { value: "any", label: "Any OS" },
   { value: "android", label: "Android" },
   { value: "ios", label: "iOS" },
+  { value: "unknown", label: "Unknown OS" },
 ];
 
 export default async function PageVisitsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -96,12 +90,12 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const identity = str(sp.identity) as AdminPageVisitIdentity | undefined;
   const traffic = (str(sp.traffic) as AdminPageVisitTraffic | undefined) ?? DEFAULT_TRAFFIC;
   const deviceTypeRaw = str(sp.deviceType);
-  const deviceType = deviceTypeRaw && deviceTypeRaw !== "any" ? (deviceTypeRaw as DeviceType) : undefined;
   const highlightRaw = str(sp.highlight);
   const highlight = HIGHLIGHT_OPTIONS.some((o) => o.value === highlightRaw && o.value !== "all") ? highlightRaw : undefined;
   const groupByUser = str(sp.group) === "user";
   const osRaw = str(sp.os);
-  const os = osRaw && osRaw !== "any" ? (osRaw as OsFamily) : undefined;
+  // "Mobile (iOS)" etc. are one Device pick that sets both the device type and the OS.
+  const { deviceType, os } = resolveDeviceFilter(deviceTypeRaw, osRaw);
   // Same silent-default pattern as DEFAULT_TRAFFIC above: absent from/to defaults to a 1-day
   // window rather than unbounded history, but doesn't redirect the URL to show it — the URL only
   // gains ?from=&to= once the visitor actually picks a range (a preset or Custom).
@@ -368,8 +362,8 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                   </th>
                   <th style={filterThStyle}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <SelectField name="deviceType" defaultValue={deviceType ?? "any"} style={headerSelectStyle}>
-                        {DEVICE_TYPE_OPTIONS.map((o) => (
+                      <SelectField name="deviceType" defaultValue={deviceTypeRaw ?? "any"} style={headerSelectStyle}>
+                        {DEVICE_FILTER_OPTIONS.map((o) => (
                           <option key={o.value} value={o.value}>
                             {o.label}
                           </option>

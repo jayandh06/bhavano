@@ -657,7 +657,7 @@ export interface PageVisitsQuery {
   /** `user` folds one account's sessions into a row. */
   groupBy?: "user";
   deviceType?: DeviceType;
-  os?: OsFamily;
+  os?: OsFamily | "unknown";
   source?: string;
   medium?: string;
   ip?: string;
