@@ -170,4 +170,5 @@ iPhone/iPad too. Differences from Android:
   points). Footer shows the App Store badge below `lg` (Android phones see only Play, iPhones only App Store);
   the phone header gets an iOS icon button; `GetAppCard` and `InstallAppAlertBanner` switch on iOS.
 - Badge artwork lives at `public/badges/app-store.svg` (Apple's official file, not redrawn).
-- Not built yet: App Store desktop QR (the QRs are Play-only), `OpenInAppStrip` for iOS (Smart Banner covers it).
+- **Desktop QR (2026-11-21):** every desktop QR (footer, header popover, `GetAppCard`) now shows two codes, Android and iPhone. The iOS ones are `public/app-qr/ios-<placement>.svg`, encoding `https://www.bhavano.com/ios?m=qr&c=<placement>` (static, so the App Store campaign token is `qr-<placement>`).
+- Not built yet: `OpenInAppStrip` for iOS (the Smart Banner covers it).

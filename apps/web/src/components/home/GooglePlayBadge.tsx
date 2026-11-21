@@ -62,17 +62,20 @@ export function GetAppHeaderQr() {
         <Icon name="smartphone" /> Get the app
       </a>
       <div className="absolute right-0 top-full pt-2 z-50 hidden group-hover:block group-focus-within:block">
-        <div className="w-[200px] rounded-[10px] border border-border bg-surface p-3 shadow-[0_8px_24px_rgba(0,0,0,0.12)] text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
-          <img
-            src="/app-qr/header.svg"
-            alt="QR code for the Bhavano app on Google Play"
-            width={140}
-            height={140}
-            loading="lazy"
-            className="mx-auto rounded bg-white"
-          />
-          <p className="text-[12px] text-text-soft mt-2 mb-0">Scan with your Android phone to get the Bhavano app.</p>
+        <div className="w-[300px] rounded-[10px] border border-border bg-surface p-3 shadow-[0_8px_24px_rgba(0,0,0,0.12)] text-center">
+          <div className="flex justify-center gap-3">
+            {[
+              { src: "/app-qr/header.svg", alt: "QR code for the Bhavano app on Google Play", label: "Android" },
+              { src: "/app-qr/ios-header.svg", alt: "QR code for the Bhavano app on the App Store", label: "iPhone" },
+            ].map((qr) => (
+              <figure key={qr.label} className="m-0">
+                {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
+                <img src={qr.src} alt={qr.alt} width={130} height={130} loading="lazy" className="rounded bg-white" />
+                <figcaption className="text-[12px] text-text-soft mt-1">{qr.label}</figcaption>
+              </figure>
+            ))}
+          </div>
+          <p className="text-[12px] text-text-soft mt-2 mb-0">Scan with your phone&apos;s camera to get the Bhavano app.</p>
         </div>
       </div>
     </div>

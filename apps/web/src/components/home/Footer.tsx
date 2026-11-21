@@ -177,16 +177,18 @@ export async function Footer({
           <div className="font-bold text-[13px] text-on-green mb-2.5">Get the app</div>
           {/* Desktop gets a QR (a phone camera is the easy way from there); phones and tablets
             * get the Play badge, which opens the Play Store app directly. */}
-          {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
-          <img
-            src="/app-qr/footer.svg"
-            alt="QR code for the Bhavano app on Google Play"
-            width={96}
-            height={96}
-            loading="lazy"
-            className="hidden lg:block rounded bg-white"
-          />
-          <p className="hidden lg:block text-[12px] text-on-green/75 mt-1.5 mb-0 max-w-[120px]">Scan with your Android phone</p>
+          <div className="hidden lg:flex gap-3">
+            {[
+              { src: "/app-qr/footer.svg", alt: "QR code for the Bhavano app on Google Play", label: "Android" },
+              { src: "/app-qr/ios-footer.svg", alt: "QR code for the Bhavano app on the App Store", label: "iPhone" },
+            ].map((qr) => (
+              <figure key={qr.label} className="m-0 text-center">
+                {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
+                <img src={qr.src} alt={qr.alt} width={96} height={96} loading="lazy" className="rounded bg-white" />
+                <figcaption className="text-[12px] text-on-green/75 mt-1.5">{qr.label}</figcaption>
+              </figure>
+            ))}
+          </div>
           {/* Both badges below `lg`; html[data-ios] / html[data-android] (set before first paint) hide the
             * one that device can't use, so an iPhone sees only the App Store and an Android phone only Play. */}
           <div className="flex flex-wrap items-center gap-2 lg:hidden">
