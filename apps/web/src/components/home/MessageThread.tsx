@@ -274,7 +274,7 @@ export function MessageThread({
             placement="contact"
             appPath={appPathForWebPath(pathname)}
             heading="Get the owner's reply as a notification"
-            body="The Bhavano Android app tells you the instant they reply, so you never miss it."
+            body="The Bhavano app tells you the instant they reply, so you never miss it."
           />
         </div>
       )}

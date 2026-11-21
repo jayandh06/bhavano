@@ -267,7 +267,7 @@ days before, they logged 1,515 visits; 128 people signed up from them, 44 of tho
 while logged in and 21 unlocked an owner's number. Google Ads saw only 5 conversions, because its
 goals ("Save a search", "Post ad success") don't include that step.
 
-- New Google Ads conversion action **"Seeker contact unlock"** (`7912011079`, UPLOAD_CLICKS, category
+- New Google Ads conversion action **"Seeker unlocked owner contact"** (`7912011079`, UPLOAD_CLICKS, category
   CONTACT), created with `ads_create_offline_conversion_actions.py`. **Secondary** (`primary_for_goal`
   false): it shows in All conversions but is not used in bidding, so the poster campaigns are
   unaffected.

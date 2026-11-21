@@ -46,11 +46,11 @@ ACTIONS = [
     # Added 2026-11-21. A seeker unlocks an owner's phone number (a ContactReveal): the closest
     # thing to "the loop closed". Created SECONDARY (not used in bidding) so the poster campaigns
     # are unaffected; flip it to primary only once a seeker campaign bids on it.
-    ("Seeker contact unlock", "CONTACT"),
+    ("Seeker unlocked owner contact", "CONTACT"),
 ]
 
 # Reported in "All conversions" but never used for bidding.
-SECONDARY = {"Seeker contact unlock"}
+SECONDARY = {"Seeker unlocked owner contact"}
 
 
 def main():

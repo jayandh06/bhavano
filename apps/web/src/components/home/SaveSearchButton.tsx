@@ -99,7 +99,7 @@ export function SaveSearchButton({ criteria }: { criteria: SaveSearchCriteria })
                 placement="saved_search"
                 appPath={appPathForWebPath(pathname)}
                 heading="Be first to see new matches"
-                body="Get an instant alert in the Bhavano Android app the moment a new match is posted."
+                body="Get an instant alert in the Bhavano app the moment a new match is posted."
               />
               <button
                 onClick={() => setOpen(false)}

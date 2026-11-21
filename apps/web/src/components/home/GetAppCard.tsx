@@ -6,7 +6,7 @@ import type { GetAppPlacement } from "@/lib/getAppEvents";
 import { AppStoreBadge } from "./AppStoreBadge";
 import { GooglePlayBadge } from "./GooglePlayBadge";
 
-/** A concrete-reason pitch for the Android app: a Play Store QR code on desktop (`lg:`), the
+/** A concrete-reason pitch for the Bhavano app (Android and iPhone): a Play Store QR code on desktop (`lg:`), the
  * "Get it on Google Play" badge on phones and tablets. The QR/badge split is CSS-gated so it
  * server-renders without a layout shift. On Android the badge is an intent link — it opens the app
  * at `appPath` when installed, the Play Store otherwise — and shows at every width, since an

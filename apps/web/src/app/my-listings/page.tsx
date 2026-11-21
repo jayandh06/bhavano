@@ -195,7 +195,7 @@ async function MyListingsGrid({
           placement="my_listings"
           appPath="my-listings"
           heading="Never miss an enquiry"
-          body="The Bhavano Android app notifies you the moment someone messages about your ad, so you can reply first."
+          body="The Bhavano app notifies you the moment someone messages about your ad, so you can reply first."
         />
       )}
       {pastListings.length > 0 && (
