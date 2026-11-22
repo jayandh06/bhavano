@@ -1952,111 +1952,72 @@ export class ListingsService {
       ? scrubPhonesInText(input.description.trim())
       : null;
 
-    const created = await this.prisma.listing.create({
-      data: {
-        id: input.id,
-        category: input.category,
-        transactionType: input.transactionType,
-        price: resolvedPrice.price,
-        priceUnit: resolvedPrice.priceUnit,
-        priceQualifier: input.priceQualifier ?? '',
-        title,
-        slug: slugify(title),
-        areaId,
-        cityId: input.cityId,
-        specs: input.specs ?? [],
-        // Empty string normalised to null: "left blank" and "cleared" are the same thing here,
-        // and a null keeps the "has a description" check a single test everywhere downstream.
-        description,
-        attributes: attributes as Prisma.InputJsonValue,
-        tag: deriveTag(input),
-        ownerId,
-        expiresAt,
-        lat: input.lat,
-        lng: input.lng,
-        claimContactId: input.claimContactId ?? null,
-        // Set unconditionally, not just for the publishes-immediately branch below — see this
-        // column's own schema comment for why a pending_checkout listing needs it preserved too.
-        createSessionId: input.sessionId ?? null,
-        ...(assisted
-          ? {
-              publishState: 'awaiting_claim' as const,
-              publishedAt: null,
-              claimPhoneE164: assisted.claimPhoneE164,
-              claimName: assisted.claimName,
-              claimSellerType: assisted.claimSellerType,
-              createdByAdminId: assisted.adminId,
-              adminReviewed: true,
-            }
-          : {
-              publishState: pendingCheckout
-                ? ('pending_checkout' as const)
-                : scheduled
-                  ? ('scheduled' as const)
-                  : ('live' as const),
-              publishedAt: pendingCheckout || scheduled ? null : now,
-              publishAt,
-            }),
-        // A post-creation addPhoto atomically increments this — see the field's own doc comment
-        // in schema.prisma for why it must start at least as high as any photoNo already in use.
-        photoNoCounter: Math.max(0, ...input.photos.map((p) => p.photoNo)),
-      },
-    });
-
-    if (declaredSellerType.saveToProfile && !assisted) {
-      const sellerType = declaredSellerType.saveToProfile;
-      await this.prisma.user.update({
-        where: { id: ownerId },
-        data: {
-          sellerType,
-          ...(sellerType === 'owner' ? { agencyName: null, reraNumber: null, reraVerifiedAt: null } : {}),
-        },
-      });
-    }
-
-    await this.prisma.listingPhoto.createMany({
-      data: input.photos.map((p) => ({
-        listingId: created.id,
-        photoNo: p.photoNo,
-        hash: p.hash,
-        // Starts equal to photoNo (upload order) — the owner's first photo is the cover until
-        // someone explicitly picks another. See ListingPhoto.displayOrder's own doc comment.
-        displayOrder: p.photoNo,
-      })),
-    });
-    const variants = Object.keys(PHOTO_VARIANTS) as PhotoVariant[];
-    await this.prisma.photoVariantJob.createMany({
-      data: input.photos.flatMap((p) =>
-        variants.map((variant) => ({
-          listingId: created.id,
-          photoNo: p.photoNo,
-          ext: p.ext,
-          variant,
-        })),
-      ),
-    });
+    const listingData: Prisma.ListingUncheckedCreateInput = {
+      id: input.id,
+      category: input.category,
+      transactionType: input.transactionType,
+      price: resolvedPrice.price,
+      priceUnit: resolvedPrice.priceUnit,
+      priceQualifier: input.priceQualifier ?? '',
+      title,
+      slug: slugify(title),
+      areaId,
+      cityId: input.cityId,
+      specs: input.specs ?? [],
+      // Empty string normalised to null: "left blank" and "cleared" are the same thing here,
+      // and a null keeps the "has a description" check a single test everywhere downstream.
+      description,
+      attributes: attributes as Prisma.InputJsonValue,
+      tag: deriveTag(input),
+      ownerId,
+      expiresAt,
+      lat: input.lat,
+      lng: input.lng,
+      claimContactId: input.claimContactId ?? null,
+      // Set unconditionally, not just for the publishes-immediately branch below — see this
+      // column's own schema comment for why a pending_checkout listing needs it preserved too.
+      createSessionId: input.sessionId ?? null,
+      ...(assisted
+        ? {
+            publishState: 'awaiting_claim' as const,
+            publishedAt: null,
+            claimPhoneE164: assisted.claimPhoneE164,
+            claimName: assisted.claimName,
+            claimSellerType: assisted.claimSellerType,
+            createdByAdminId: assisted.adminId,
+            adminReviewed: true,
+          }
+        : {
+            publishState: pendingCheckout
+              ? ('pending_checkout' as const)
+              : scheduled
+                ? ('scheduled' as const)
+                : ('live' as const),
+            publishedAt: pendingCheckout || scheduled ? null : now,
+            publishAt,
+          }),
+      // A post-creation addPhoto atomically increments this — see the field's own doc comment
+      // in schema.prisma for why it must start at least as high as any photoNo already in use.
+      photoNoCounter: Math.max(0, ...input.photos.map((p) => p.photoNo)),
+    };
 
     // Video never blocks a post — trim silently rather than reject the whole listing, since
     // entitlement (agentProUntil) can lapse between the uploads and this call and video is
     // optional (unlike photos, required above). No listing exists yet at this point, so only an
     // active Agent Pro subscription can elevate the limit — a boost is impossible pre-creation.
-    const acceptedVideos = this.acceptVideosForOwner(
+    const videos = await this.acceptVideosForOwner(ownerId, input.videos ?? []);
+
+    // One transaction for the listing and everything that makes it valid. These used to be
+    // separate statements, so a restart or failure between the insert and the photo insert left a
+    // live listing with no photos (and no edit-log entry) — seen on 2026-11-21 when a deploy
+    // landed mid-post. Now either all of it exists or none of it does.
+    const created = await this.insertListingWithMedia({
+      listingData,
       ownerId,
-      input.videos ?? [],
-    );
-    const videos = await acceptedVideos;
-    if (videos.length > 0) {
-      await this.prisma.listingVideo.createMany({
-        data: videos.map((v, index) => ({
-          listingId: created.id,
-          videoNo: index + 1,
-          storageId: v.storageId,
-          ext: v.ext,
-          durationSec: v.durationSec,
-          sizeBytes: v.sizeBytes,
-        })),
-      });
-    }
+      saveSellerType: assisted ? null : declaredSellerType.saveToProfile ?? null,
+      photos: input.photos,
+      videos,
+    });
 
     const listing = await this.prisma.listing.findUniqueOrThrow({
       where: { id: created.id },
@@ -2140,6 +2101,73 @@ export class ListingsService {
 
   private siteUrl(): string {
     return this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+  }
+
+  /**
+   * Inserts a new listing together with its photos, photo-processing jobs, videos and (when the
+   * owner just answered it) their saved seller type, in a single transaction — see the call site in
+   * `create()` for why. The listing is never visible without its photos.
+   */
+  private async insertListingWithMedia(args: {
+    listingData: Prisma.ListingUncheckedCreateInput;
+    ownerId: string;
+    saveSellerType: ReturnType<typeof resolveDeclaredSellerType>['saveToProfile'];
+    photos: CreateListingInput['photos'];
+    videos: CreatedVideoInput[];
+  }): Promise<{ id: string }> {
+    const { listingData, ownerId, saveSellerType, photos, videos } = args;
+    const variants = Object.keys(PHOTO_VARIANTS) as PhotoVariant[];
+    return this.prisma.$transaction(
+      async (tx) => {
+        const created = await tx.listing.create({ data: listingData });
+
+        if (saveSellerType) {
+          await tx.user.update({
+            where: { id: ownerId },
+            data: {
+              sellerType: saveSellerType,
+              ...(saveSellerType === 'owner' ? { agencyName: null, reraNumber: null, reraVerifiedAt: null } : {}),
+            },
+          });
+        }
+
+        await tx.listingPhoto.createMany({
+          data: photos.map((p) => ({
+            listingId: created.id,
+            photoNo: p.photoNo,
+            hash: p.hash,
+            // Starts equal to photoNo (upload order) — the owner's first photo is the cover until
+            // someone explicitly picks another. See ListingPhoto.displayOrder's own doc comment.
+            displayOrder: p.photoNo,
+          })),
+        });
+        await tx.photoVariantJob.createMany({
+          data: photos.flatMap((p) =>
+            variants.map((variant) => ({
+              listingId: created.id,
+              photoNo: p.photoNo,
+              ext: p.ext,
+              variant,
+            })),
+          ),
+        });
+
+        if (videos.length > 0) {
+          await tx.listingVideo.createMany({
+            data: videos.map((v, index) => ({
+              listingId: created.id,
+              videoNo: index + 1,
+              storageId: v.storageId,
+              ext: v.ext,
+              durationSec: v.durationSec,
+              sizeBytes: v.sizeBytes,
+            })),
+          });
+        }
+        return created;
+      },
+      { timeout: 15000 },
+    );
   }
 
   /** Trims a wizard-submitted videos array down to what the owner is currently entitled to
