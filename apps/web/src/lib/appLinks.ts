@@ -108,6 +108,13 @@ export function androidIntentUrl(appPath: string, medium: string, campaign: stri
   return `intent://${appPath}#Intent;scheme=bhavano;package=${ANDROID_PACKAGE};S.browser_fallback_url=${fallback};end`;
 }
 
+/** The app's own link scheme for a screen, e.g. `bhavano://listing/abc`. On iPhone a plain scheme link is the only
+ * way a web page can ask the app to open (there is no intent:// equivalent); with no app installed Safari shows
+ * an error, so callers must fall back to the App Store themselves (see OpenInAppStrip). */
+export function iosAppUrl(appPath: string): string {
+  return `bhavano://${appPath}`;
+}
+
 /** Android Chrome / Samsung Internet etc. — excludes in-app WebViews (Facebook, Instagram and
  * other `; wv)` user agents), where intent:// links are unreliable. */
 export function isAndroidBrowser(userAgent: string): boolean {

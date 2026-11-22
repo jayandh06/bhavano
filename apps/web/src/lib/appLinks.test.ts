@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { androidIntentUrl, appPathForWebPath, appStoreUrl, iosInstallHref, isIosBrowser, isAndroidBrowser, playStoreUrl, androidInstallHref, isSafeReferrerPart, playInstallUrl } from "./appLinks";
+import { iosAppUrl, androidIntentUrl, appPathForWebPath, appStoreUrl, iosInstallHref, isIosBrowser, isAndroidBrowser, playStoreUrl, androidInstallHref, isSafeReferrerPart, playInstallUrl } from "./appLinks";
 
 describe("appPathForWebPath", () => {
   it.each([
@@ -84,5 +84,12 @@ describe("playInstallUrl / androidInstallHref", () => {
     expect(isSafeReferrerPart("a b")).toBe(false);
     expect(isSafeReferrerPart("x&ws=1")).toBe(false);
     expect(isSafeReferrerPart(null)).toBe(false);
+  });
+});
+
+describe("iosAppUrl", () => {
+  it("is the app scheme plus the screen path, matching the Android intent's path", () => {
+    expect(iosAppUrl("listing/abc")).toBe("bhavano://listing/abc");
+    expect(iosAppUrl("")).toBe("bhavano://");
   });
 });

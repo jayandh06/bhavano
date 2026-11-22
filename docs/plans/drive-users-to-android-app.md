@@ -187,4 +187,9 @@ iPhone/iPad too. Differences from Android:
 - `InstallAppAlertBanner` (owner alert pickers): on phones the "Get the free app" text button is the official
   store badge, one per device (Play hidden on iOS, App Store hidden on Android). From `sm` up it keeps the
   original text button. Same `/android` and `/ios` links and attribution.
-- Unchanged: the Android-only "Open in the Bhavano app" bottom bar, the footer and GetAppCard.
+- Unchanged: the footer and GetAppCard.
+- "Open in the Bhavano app" bottom bar (`OpenInAppStrip`) now also shows on iPhone/iPad. Android uses an `intent://`
+  link; iPhone has no such link, so the button tries `bhavano://<path>` and, if the page is still visible and
+  focused after 2.5 s (nothing took over), goes to the App Store (`openInIosApp`). **Not yet verified on a real
+  iPhone**: with no app installed Safari shows its own "cannot open the page" alert before the fallback, and
+  whether iOS's "Open in Bhavano?" confirmation blurs the page (which cancels the fallback) is assumed.
