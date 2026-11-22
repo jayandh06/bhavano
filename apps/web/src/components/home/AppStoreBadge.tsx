@@ -43,6 +43,25 @@ export function AppStoreBadge({
   );
 }
 
+/** Bhavano's own app icon with a small download arrow, used wherever an icon-only App Store link is needed
+ * (phone header, desktop header). See AppStoreHeaderIcon for why it is Bhavano's icon and not an Apple one. */
+export function BhavanoAppStoreIcon() {
+  return (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element -- the site's own 38px logo, already cached by the header */}
+      <img src="/logo.png" alt="" width={32} height={32} className="block w-8 h-8 rounded-[10px]" />
+      <span
+        aria-hidden
+        className="absolute -right-1 -bottom-1 w-4 h-4 rounded-full bg-green text-on-green border border-surface flex items-center justify-center"
+      >
+        <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 4v13M6 12l6 6 6-6" />
+        </svg>
+      </span>
+    </>
+  );
+}
+
 /** Phone header: Bhavano's own app icon, with a small download arrow, linking to the App Store. iPhone/iPad
  * browsers only, beside Messages/Login (Android phones get GooglePlayHeaderIcon). Icon only, no text.
  *
@@ -63,16 +82,7 @@ export function AppStoreHeaderIcon() {
       title="Get the app on the App Store"
       className="hidden max-sm:[html[data-ios='1']_&]:block relative shrink-0 w-8 h-8"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element -- the site's own 38px logo, already cached by the header */}
-      <img src="/logo.png" alt="" width={32} height={32} className="block w-8 h-8 rounded-[10px]" />
-      <span
-        aria-hidden
-        className="absolute -right-1 -bottom-1 w-4 h-4 rounded-full bg-green text-on-green border border-surface flex items-center justify-center"
-      >
-        <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 4v13M6 12l6 6 6-6" />
-        </svg>
-      </span>
+      <BhavanoAppStoreIcon />
     </a>
   );
 }

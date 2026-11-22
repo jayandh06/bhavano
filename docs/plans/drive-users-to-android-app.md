@@ -177,7 +177,9 @@ iPhone/iPad too. Differences from Android:
 
 - Phone header row (`max-sm`, one per device, no text): Android keeps the Google Play icon; iPhone/iPad now
   shows Bhavano's own app icon with a small download arrow, linking to the App Store (`AppStoreHeaderIcon`),
-  replacing the generic phone glyph. Desktop is unchanged: "Get the app" with the two QR codes in a popover.
+  replacing the generic phone glyph.
+- Desktop header (`GetAppHeaderQr`, `lg` up): the same two icons side by side, no text; hovering or focusing either
+  opens a popover with that platform's QR code (before: a "Get the app" text link with both QR codes).
 - Why Bhavano's icon on iOS: Apple's marketing rules allow only its badge and forbid its icons or logo in
   the badge's place (developer.apple.com/app-store/marketing/guidelines); linking your own app icon is what
   its link tools generate. The badge needs 40 px of height, which truncated the "Bhavano" wordmark at 375 px
