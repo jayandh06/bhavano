@@ -1,8 +1,8 @@
 "use client";
 
-import { androidInstallHref } from "@/lib/appLinks";
+import { androidInstallHref, iosInstallHref } from "@/lib/appLinks";
 import { reportGetAppEvent, type GetAppPlacement } from "@/lib/getAppEvents";
-import { Icon } from "./Icon";
+import { BhavanoAppStoreIcon } from "./AppStoreBadge";
 
 /** Google's own artwork is 180×53.33; its brand rules forbid recolouring or redrawing it. */
 const BADGE_ASPECT = 180 / 53.333;
@@ -46,38 +46,57 @@ export function GooglePlayBadge({
   );
 }
 
-/** Desktop header: "Get the app", with the Play QR in a popover on hover or keyboard focus — a
- * phone camera is the easy way from a desktop. Clicking opens the Play web listing, which can
- * install to a signed-in phone. CSS-gated (`lg:`), so it server-renders with no layout shift. */
+/** Desktop header: the Google Play icon and the App Store icon (Bhavano's app icon with a download arrow),
+ * icons only, no text. Hovering or focusing either opens a popover with that platform's QR code — a phone
+ * camera is the easy way from a desktop. Clicking opens the store listing, which can install to a signed-in
+ * phone. CSS-gated (`lg:`), so it server-renders with no layout shift. */
 export function GetAppHeaderQr() {
+  const stores = [
+    {
+      label: "Android",
+      aria: "Get the Bhavano app on Google Play",
+      href: androidInstallHref("header_link", "header"),
+      qr: "/app-qr/header.svg",
+      qrAlt: "QR code for the Bhavano app on Google Play",
+      icon: (
+        // eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise
+        <img src="/badges/google-play-icon.svg" alt="" width={16} height={17} className="block" />
+      ),
+      frame: "rounded-lg border border-border bg-surface w-8 h-8 flex items-center justify-center",
+    },
+    {
+      label: "iPhone",
+      aria: "Get the Bhavano app on the App Store",
+      href: iosInstallHref("header_link", "header"),
+      qr: "/app-qr/ios-header.svg",
+      qrAlt: "QR code for the Bhavano app on the App Store",
+      icon: <BhavanoAppStoreIcon />,
+      frame: "relative w-8 h-8",
+    },
+  ];
   return (
-    <div className="group relative hidden lg:block shrink-0">
-      <a
-        href={androidInstallHref("header_link", "header")}
-        target="_blank"
-        rel="noopener"
-        onClick={() => reportGetAppEvent("click", "header")}
-        className="inline-flex items-center gap-1.5 text-text text-sm font-bold whitespace-nowrap"
-      >
-        <Icon name="smartphone" /> Get the app
-      </a>
-      <div className="absolute right-0 top-full pt-2 z-50 hidden group-hover:block group-focus-within:block">
-        <div className="w-[300px] rounded-[10px] border border-border bg-surface p-3 shadow-[0_8px_24px_rgba(0,0,0,0.12)] text-center">
-          <div className="flex justify-center gap-3">
-            {[
-              { src: "/app-qr/header.svg", alt: "QR code for the Bhavano app on Google Play", label: "Android" },
-              { src: "/app-qr/ios-header.svg", alt: "QR code for the Bhavano app on the App Store", label: "iPhone" },
-            ].map((qr) => (
-              <figure key={qr.label} className="m-0">
-                {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
-                <img src={qr.src} alt={qr.alt} width={130} height={130} loading="lazy" className="rounded bg-white" />
-                <figcaption className="text-[12px] text-text-soft mt-1">{qr.label}</figcaption>
-              </figure>
-            ))}
+    <div className="hidden lg:flex items-center gap-2.5 shrink-0">
+      {stores.map((store) => (
+        <div key={store.label} className="group relative">
+          <a
+            href={store.href}
+            target="_blank"
+            rel="noopener"
+            onClick={() => reportGetAppEvent("click", "header")}
+            aria-label={store.aria}
+            className={`block ${store.frame}`}
+          >
+            {store.icon}
+          </a>
+          <div className="absolute right-0 top-full pt-2 z-50 hidden group-hover:block group-focus-within:block">
+            <div className="w-[190px] rounded-[10px] border border-border bg-surface p-3 shadow-[0_8px_24px_rgba(0,0,0,0.12)] text-center">
+              {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
+              <img src={store.qr} alt={store.qrAlt} width={160} height={160} loading="lazy" className="rounded bg-white mx-auto" />
+              <p className="text-[12px] text-text-soft mt-2 mb-0">Scan with your phone&apos;s camera to get the {store.label} app.</p>
+            </div>
           </div>
-          <p className="text-[12px] text-text-soft mt-2 mb-0">Scan with your phone&apos;s camera to get the Bhavano app.</p>
         </div>
-      </div>
+      ))}
     </div>
   );
 }

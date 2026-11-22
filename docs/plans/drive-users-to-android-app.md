@@ -172,3 +172,19 @@ iPhone/iPad too. Differences from Android:
 - Badge artwork lives at `public/badges/app-store.svg` (Apple's official file, not redrawn).
 - **Desktop QR (2026-11-21):** every desktop QR (footer, header popover, `GetAppCard`) now shows two codes, Android and iPhone. The iOS ones are `public/app-qr/ios-<placement>.svg`, encoding `https://www.bhavano.com/ios?m=qr&c=<placement>` (static, so the App Store campaign token is `qr-<placement>`).
 - Not built yet: `OpenInAppStrip` for iOS (the Smart Banner covers it).
+
+## Update 2026-11-22: icon-only install control on phone browsers
+
+- Phone header row (`max-sm`, one per device, no text): Android keeps the Google Play icon; iPhone/iPad now
+  shows Bhavano's own app icon with a small download arrow, linking to the App Store (`AppStoreHeaderIcon`),
+  replacing the generic phone glyph.
+- Desktop header (`GetAppHeaderQr`, `lg` up): the same two icons side by side, no text; hovering or focusing either
+  opens a popover with that platform's QR code (before: a "Get the app" text link with both QR codes).
+- Why Bhavano's icon on iOS: Apple's marketing rules allow only its badge and forbid its icons or logo in
+  the badge's place (developer.apple.com/app-store/marketing/guidelines); linking your own app icon is what
+  its link tools generate. The badge needs 40 px of height, which truncated the "Bhavano" wordmark at 375 px
+  in the header row, and an own row under the header was rejected.
+- `InstallAppAlertBanner` (owner alert pickers): on phones the "Get the free app" text button is the official
+  store badge, one per device (Play hidden on iOS, App Store hidden on Android). From `sm` up it keeps the
+  original text button. Same `/android` and `/ios` links and attribution.
+- Unchanged: the Android-only "Open in the Bhavano app" bottom bar, the footer and GetAppCard.
