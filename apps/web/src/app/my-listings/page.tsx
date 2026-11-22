@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import type { ListingDetailDto, ListingStatus, MyReferralsDto } from "@bhavano/types";
 import { ownerStatusLabel } from "@bhavano/types/listingStatusInfo";
+import { requirementMatchHref, requirementMatchText } from "@/lib/requirementMatchLink";
 import { featuredEndsSoon } from "@bhavano/types/featuredRenewal";
 import { listingPriceText } from "@bhavano/types/priceWords";
 import { goLiveTimeText } from "@bhavano/types/goLive";
@@ -291,6 +292,11 @@ function MyListingRow({
             </span>
           )}
         </div>
+        {(item.matchingRequirementCount ?? 0) > 0 && (
+          <Link href={requirementMatchHref(item)} prefetch={false} className="inline-block text-[12px] font-bold text-green mt-1.5">
+            {requirementMatchText(item.matchingRequirementCount ?? 0)} →
+          </Link>
+        )}
         {item.renewCount > 0 && (
           <div className="text-[11.5px] text-muted mt-1">
             Renewed {item.renewCount} time{item.renewCount === 1 ? "" : "s"}

@@ -158,6 +158,15 @@ export default function MyListingsScreen() {
                     </Text>
                   )}
                 </View>
+                {(item.matchingRequirementCount ?? 0) > 0 && (
+                  // The Requirements tab keeps its filters in its own state, so unlike the website this cannot
+                  // narrow to this ad; it opens the tab, where "Only ones my listings fit" shows these.
+                  <Pressable onPress={() => router.push("/requirements")} style={{ marginTop: 4 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.green }}>
+                      {item.matchingRequirementCount} {item.matchingRequirementCount === 1 ? "person is" : "people are"} looking for this →
+                    </Text>
+                  </Pressable>
+                )}
                 {item.renewCount > 0 && (
                   <Text style={{ fontSize: 11.5, color: colors.muted, marginTop: 2 }}>
                     Renewed {item.renewCount} time{item.renewCount === 1 ? "" : "s"}
