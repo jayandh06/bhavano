@@ -2,7 +2,7 @@
 
 import { androidInstallHref, iosInstallHref } from "@/lib/appLinks";
 import { reportGetAppEvent, type GetAppPlacement } from "@/lib/getAppEvents";
-import { BhavanoAppStoreIcon } from "./AppStoreBadge";
+import { AppleStoreIcon } from "./AppStoreBadge";
 
 /** Google's own artwork is 180×53.33; its brand rules forbid recolouring or redrawing it. */
 const BADGE_ASPECT = 180 / 53.333;
@@ -46,7 +46,7 @@ export function GooglePlayBadge({
   );
 }
 
-/** Desktop header: the Google Play icon and the App Store icon (Bhavano's app icon with a download arrow),
+/** Desktop header: the Google Play icon and the App Store icon (the Apple mark),
  * icons only, no text. Hovering or focusing either opens a popover with that platform's QR code — a phone
  * camera is the easy way from a desktop. Clicking opens the store listing, which can install to a signed-in
  * phone. CSS-gated (`lg:`), so it server-renders with no layout shift. */
@@ -70,8 +70,8 @@ export function GetAppHeaderQr() {
       href: iosInstallHref("header_link", "header"),
       qr: "/app-qr/ios-header.svg",
       qrAlt: "QR code for the Bhavano app on the App Store",
-      icon: <BhavanoAppStoreIcon />,
-      frame: "relative w-8 h-8",
+      icon: <AppleStoreIcon />,
+      frame: "rounded-lg border border-border bg-surface text-text w-8 h-8 flex items-center justify-center",
     },
   ];
   return (

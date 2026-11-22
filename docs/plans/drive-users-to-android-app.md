@@ -175,10 +175,13 @@ iPhone/iPad too. Differences from Android:
 
 ## Update 2026-11-22: icon-only install control on phone browsers
 
-- Phone header row (`max-sm`, one per device, no text): Android keeps the Google Play icon; iPhone/iPad now
-  shows Bhavano's own app icon with a small download arrow, linking to the App Store (`AppStoreHeaderIcon`),
-  replacing the generic phone glyph.
-- Desktop header (`GetAppHeaderQr`, `lg` up): the same two icons side by side, no text; hovering or focusing either
+- Phone header row (`max-sm`, one per device, no text): Android keeps the Google Play icon; iPhone/iPad shows the
+  Apple mark (`AppleStoreIcon`) linking to the App Store. It was briefly Bhavano's own app icon with a download
+  arrow (2026-11-22), changed to the Apple mark at the owner's request. **Guideline risk:** Apple's marketing
+  guidelines allow only its App Store badge for promoting an app and say not to use the standalone Apple logo
+  (developer.apple.com/app-store/marketing/guidelines). Chosen anyway; the icon lives in one component
+  (`AppleStoreIcon` in `AppStoreBadge.tsx`) so it is a one-line change back.
+- Desktop header (`GetAppHeaderQr`, `lg` up): the Google Play icon and the Apple mark side by side, no text; hovering or focusing either
   opens a popover with that platform's QR code (before: a "Get the app" text link with both QR codes).
 - Why Bhavano's icon on iOS: Apple's marketing rules allow only its badge and forbid its icons or logo in
   the badge's place (developer.apple.com/app-store/marketing/guidelines); linking your own app icon is what
