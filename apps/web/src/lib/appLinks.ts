@@ -27,11 +27,16 @@ export function androidInstallHref(medium: string, campaign: string): string {
 
 export const IOS_APP_ID = "6811878602";
 
+/** The App Store listing without a campaign token. Bhavano is on the India storefront only, and a link with no
+ * country (`/app/id…`) lands on "The page you're looking for can't be found" for anyone whose App Store region
+ * is elsewhere, so the `/in/` storefront and the app's slug are part of the address. */
+export const IOS_STORE_URL = `https://apps.apple.com/in/app/bhavano/id${IOS_APP_ID}`;
+
 /** App Store listing tagged with a campaign token (`ct`), so App Store Connect → Analytics → Sources splits
  * installs by where they came from. Unlike Play there is no install referrer: the app never sees this, so
  * it only measures installs in aggregate, with no per-user signup attribution. `ct` allows up to 40 chars. */
 export function appStoreUrl(medium: string, campaign: string): string {
-  return `https://apps.apple.com/app/id${IOS_APP_ID}?ct=${encodeURIComponent(`${medium}-${campaign}`.slice(0, 40))}`;
+  return `${IOS_STORE_URL}?ct=${encodeURIComponent(`${medium}-${campaign}`.slice(0, 40))}`;
 }
 
 /** The website's iOS "Get the app" buttons point here instead of straight at the App Store, mirroring

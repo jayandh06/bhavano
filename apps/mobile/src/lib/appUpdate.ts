@@ -8,7 +8,8 @@ export const IOS_APP_ID = "6811878602";
 export const STORE_URLS = {
   android: `market://details?id=${ANDROID_PACKAGE}`,
   androidWeb: `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}`,
-  ios: `https://apps.apple.com/app/id${IOS_APP_ID}`,
+  // India storefront and slug: without a country the App Store says the page cannot be found.
+  ios: `https://apps.apple.com/in/app/bhavano/id${IOS_APP_ID}`,
 } as const;
 
 export interface UpdateRequirement {
