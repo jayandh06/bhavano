@@ -10,8 +10,7 @@ import { Icon } from "./Icon";
 import { MessagesNavItem, UnreadCountProvider } from "./MessagesNavItem";
 import { SessionKeepAlive } from "./SessionKeepAlive";
 import { GuestSavesSync } from "./GuestSavesSync";
-import { GetAppHeaderQr, GooglePlayHeaderIcon } from "./GooglePlayBadge";
-import { AppStoreHeaderIcon } from "./AppStoreBadge";
+import { GetAppHeaderQr } from "./GooglePlayBadge";
 
 export function HeaderAuthButtons({
   userName,
@@ -43,8 +42,6 @@ export function HeaderAuthButtons({
       )}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0 ml-auto">
         <GetAppHeaderQr />
-        <GooglePlayHeaderIcon />
-        <AppStoreHeaderIcon />
         {/* Desktop keeps these as top-level links, where there is room for words. On a phone they
           * move into the account menu — the same place My listings already lives — so the first
           * row holds only identity. Both need an account anyway, so nothing is lost by putting

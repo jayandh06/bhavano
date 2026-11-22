@@ -81,26 +81,3 @@ export function GetAppHeaderQr() {
     </div>
   );
 }
-
-/** Phone header: just the Play logo, for Android browsers only (iPhones get AppStoreHeaderIcon). A play.google.com
- * link opens the Play Store app on Android.
- *
- * Always in the server HTML and hidden by default; `html[data-android="1"]` (set by a tiny script in
- * layout.tsx before first paint) reveals it on Android phones. It used to render only after hydration,
- * which made it pop in and shift the whole header row (a layout-shift source on mobile). */
-export function GooglePlayHeaderIcon() {
-  return (
-    <a
-      href={androidInstallHref("play_icon", "header_mobile")}
-      target="_blank"
-      rel="noopener"
-      onClick={() => reportGetAppEvent("click", "header_mobile")}
-      aria-label="Get the Bhavano app on Google Play"
-      title="Get the app on Google Play"
-      className="hidden max-sm:[html[data-android='1']_&]:inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-surface"
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
-      <img src="/badges/google-play-icon.svg" alt="" width={16} height={17} className="block" />
-    </a>
-  );
-}

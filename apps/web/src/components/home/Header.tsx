@@ -15,6 +15,7 @@ import { MobileHeaderCollapse } from "./MobileHeaderCollapse";
 import { MobileInlineSearch } from "./MobileInlineSearch";
 import { HeaderDrawer } from "./HeaderDrawer";
 import { Icon } from "./Icon";
+import { StoreBadgeRow } from "./StoreBadgeRow";
 
 export function Header({
   cityName,
@@ -158,7 +159,7 @@ export function Header({
           * original single row summed to roughly twice a 360px viewport and pushed the page into
           * horizontal scroll, which is what made everything else look misaligned. */}
         <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
-          {/* On a 360px phone the Google Play icon, Messages icon and account name are all on this row
+          {/* On a 360px phone the Messages icon and account name are both on this row
             * too. The logo side is the one that gives way (the wordmark truncates) and the theme button is
             * shrink-0, so the button can never be pushed past the screen edge and clipped. */}
           <div className="flex items-center gap-2 sm:gap-3 py-2.5 sm:py-3">
@@ -215,6 +216,7 @@ export function Header({
             </Suspense>
           </div>
         </div>
+        <StoreBadgeRow />
       </header>
     </MobileHeaderCollapse>
   );

@@ -2,7 +2,6 @@
 
 import { iosInstallHref } from "@/lib/appLinks";
 import { reportGetAppEvent, type GetAppPlacement } from "@/lib/getAppEvents";
-import { Icon } from "./Icon";
 
 /** Apple's own artwork is 120×40; its marketing guidelines forbid recolouring or redrawing it. */
 const BADGE_ASPECT = 120 / 40;
@@ -40,25 +39,6 @@ export function AppStoreBadge({
         loading="lazy"
         className="block"
       />
-    </a>
-  );
-}
-
-/** Phone header: an app icon button for iPhone/iPad browsers only, beside Messages/Login. Always in the
- * server HTML and hidden by default; `html[data-ios="1"]` (set before first paint in layout.tsx) reveals it,
- * so it never shifts the header. A generic phone icon rather than Apple's logo, which is reserved for the badge. */
-export function AppStoreHeaderIcon() {
-  return (
-    <a
-      href={iosInstallHref("app_store_icon", "header_mobile")}
-      target="_blank"
-      rel="noopener"
-      onClick={() => reportGetAppEvent("click", "header_mobile")}
-      aria-label="Get the Bhavano app on the App Store"
-      title="Get the app on the App Store"
-      className="hidden max-sm:[html[data-ios='1']_&]:inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-surface text-text"
-    >
-      <Icon name="smartphone" />
     </a>
   );
 }

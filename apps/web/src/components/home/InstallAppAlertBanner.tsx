@@ -16,19 +16,26 @@ export function InstallAppAlertBanner({ campaign }: { campaign: string }) {
           Seekers move on quickly. With the app you are notified the moment someone writes, views your number or shows interest, and you can answer in one tap.
         </p>
       </div>
-      {/* Two links, one shown: html[data-ios] (set before first paint) swaps in the App Store one on iPhone/iPad. */}
-      <a
-        href={androidInstallHref("alert_picker", campaign)}
-        className="shrink-0 rounded-lg bg-green px-3.5 py-2 text-[13px] font-bold text-on-green text-center no-underline [html[data-ios='1']_&]:hidden"
-      >
-        Get the free app
-      </a>
-      <a
-        href={iosInstallHref("alert_picker", campaign)}
-        className="hidden shrink-0 rounded-lg bg-green px-3.5 py-2 text-[13px] font-bold text-on-green text-center no-underline [html[data-ios='1']_&]:block"
-      >
-        Get the free app
-      </a>
+      {/* The official store badges, not a text button. One is shown per device (set before first paint, so no
+        * shift): the App Store badge on iPhone/iPad, Google Play on Android, both on a desktop browser where
+        * either phone could scan or follow it. The links keep the `/android` and `/ios` redirects and the same
+        * medium/campaign as before, so install attribution is unchanged. */}
+      <div className="flex items-center gap-2 shrink-0">
+        <a
+          href={androidInstallHref("alert_picker", campaign)}
+          className="shrink-0 [html[data-ios='1']_&]:hidden"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
+          <img src="/badges/google-play.svg" alt="Get it on Google Play" width={Math.round(40 * (180 / 53.333))} height={40} className="block" />
+        </a>
+        <a
+          href={iosInstallHref("alert_picker", campaign)}
+          className="shrink-0 [html[data-android='1']_&]:hidden"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
+          <img src="/badges/app-store.svg" alt="Download on the App Store" width={120} height={40} className="block" />
+        </a>
+      </div>
     </div>
   );
 }
