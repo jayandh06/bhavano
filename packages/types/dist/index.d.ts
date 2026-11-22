@@ -265,6 +265,10 @@ export interface ListingDetailDto extends ListingCardDto {
     /** Owner's own listing only (`getMine`), and only if it has ever been Featured — what the boost has
      * done so far. Never on the public detail response. */
     featuredPerformance?: FeaturedPerformanceDto;
+    /** Owner's own list (`listMine`) only, active live ads only, and only when above zero: how many open, lead-ready
+     * requirements this ad fits, by the Requirements tab's own rule. Never on a public response; carries no seeker
+     * identity. See docs/plans/requirement-matches-for-owners.md. */
+    matchingRequirementCount?: number;
     /** How many times the owner has renewed this listing (pushed `expiresAt` forward). */
     renewCount: number;
     /** Newest-first renewal audit trail — each entry's `from`/`to` are the expiry dates either

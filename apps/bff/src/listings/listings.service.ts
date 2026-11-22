@@ -63,6 +63,7 @@ import { formatInrInWords, perUnitTotalPrice } from '@bhavano/types/priceWords';
 import { listingPriceIssue } from '@bhavano/types/priceBounds';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
+import { countFittingRequirements } from '../requirements/requirement-lead-ready';
 import { MAX_PHOTOS, MIN_PHOTOS, PHOTO_LIMITS, resolvePhotoEntitlement } from '@bhavano/types/photoLimits';
 import { buildFeaturedPerformance } from '@bhavano/types/featuredPerformance';
 import { isQuickResponderOwner } from './quick-responder.store';
@@ -2540,9 +2541,20 @@ export class ListingsService {
           });
     const interestByListing = new Map(interestCounts.map((r) => [r.listingId, r._count._all]));
 
+    // Only ads that are on the site can be matched to a requirement: closed, pending or hidden ones are not.
+    const matchCounts = await countFittingRequirements(
+      this.prisma,
+      userId,
+      listings
+        .filter((l) => l.status === 'active' && l.publishState === 'live')
+        .map((l) => ({ id: l.id, cityId: l.cityId, areaId: l.areaId, category: l.category, transactionType: l.transactionType })),
+    );
+
     return listings.map((listing) => {
       const dto = this.toDetailDto(listing, undefined, true, true);
       dto.interestCount = interestByListing.get(listing.id) ?? 0;
+      const matches = matchCounts.get(listing.id);
+      if (matches) dto.matchingRequirementCount = matches;
       return dto;
     });
   }

@@ -19,6 +19,7 @@ import type { City, Requirement } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { RequestUser } from '../auth/guards/auth.guard';
 import { areaNamesFor, criteriaOf } from './requirements.service';
+import { loadLeadReadyRows } from './requirement-lead-ready';
 import {
   feedDetails,
   listingFits,
@@ -28,10 +29,6 @@ import {
   type InventoryItem,
 } from './requirement-feed';
 
-/** Far above today's volume (under 100 open); the whole set is filtered in memory, which keeps the
- * "unanswered counts as a match" rules in one readable function instead of a SQL builder. Revisit
- * with real indexes when open requirements approach this. */
-const FEED_SCAN_LIMIT = 2000;
 const FEED_PAGE_LIMIT = 50;
 /** A refine within this long of posting is part of posting, not an update worth flagging. */
 const UPDATED_AFTER_MS = 10 * 60 * 1000;
@@ -49,21 +46,8 @@ type Row = Requirement & { city: City | null };
 export class RequirementFeedService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async leadReadyRows(excludeSeekerId?: string): Promise<Row[]> {
-    const rows = await this.prisma.requirement.findMany({
-      where: {
-        status: { in: ['open', 'working'] },
-        expiresAt: { gt: new Date() },
-        cityId: { not: null },
-        category: { not: null },
-        transactionType: { not: null },
-        ...(excludeSeekerId ? { seekerId: { not: excludeSeekerId } } : {}),
-      },
-      include: { city: true },
-      orderBy: { createdAt: 'desc' },
-      take: FEED_SCAN_LIMIT,
-    });
-    return rows.filter((row) => isLeadReady(criteriaOf(row)));
+  private leadReadyRows(excludeSeekerId?: string): Promise<Row[]> {
+    return loadLeadReadyRows(this.prisma, excludeSeekerId);
   }
 
   /**
