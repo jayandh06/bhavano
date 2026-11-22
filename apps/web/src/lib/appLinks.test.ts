@@ -65,7 +65,7 @@ describe("playInstallUrl / androidInstallHref", () => {
   });
 
   it("builds a tagged App Store link and points the site's buttons at /ios", () => {
-    expect(appStoreUrl("app_store_badge", "footer")).toBe("https://apps.apple.com/app/id6811878602?ct=app_store_badge-footer");
+    expect(appStoreUrl("app_store_badge", "footer")).toBe("https://apps.apple.com/in/app/bhavano/id6811878602?ct=app_store_badge-footer");
     expect(appStoreUrl("m".repeat(30), "c".repeat(30)).split("ct=")[1]).toHaveLength(40);
     expect(iosInstallHref("app_store_badge", "post_success")).toBe("/ios?m=app_store_badge&c=post_success");
   });

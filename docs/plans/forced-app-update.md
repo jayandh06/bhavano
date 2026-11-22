@@ -37,4 +37,4 @@ no minimum-version check. This adds one.
 - No soft "update available" prompt: this is the hard block only. Play's in-app update API was left
   out because it is Android-only and needs a native module; the store button covers both platforms.
 - Store links: Android `market://details?id=com.finfolia.bhavano` with the https page as fallback;
-  iOS `https://apps.apple.com/app/id6811878602`.
+  iOS `https://apps.apple.com/in/app/bhavano/id6811878602`.

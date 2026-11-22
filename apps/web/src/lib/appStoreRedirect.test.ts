@@ -15,7 +15,7 @@ describe("iosRedirect and appRedirect", () => {
     const location = new URL(response.headers.get("location") ?? "");
     expect(response.status).toBe(302);
     expect(location.hostname).toBe("apps.apple.com");
-    expect(location.pathname).toBe("/app/id6811878602");
+    expect(location.pathname).toBe("/in/app/bhavano/id6811878602");
     expect(location.searchParams.get("ct")).toBe("app_store_badge-footer");
   });
 

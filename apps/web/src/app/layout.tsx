@@ -47,7 +47,7 @@ const SAME_AS = [
   "https://www.instagram.com/bhavano.app/",
   "https://www.linkedin.com/company/bhavano",
   "https://play.google.com/store/apps/details?id=com.finfolia.bhavano",
-  "https://apps.apple.com/app/id6811878602",
+  "https://apps.apple.com/in/app/bhavano/id6811878602",
 ];
 const SITE_TITLE = "Bhavano — Buy, Rent, Plots, Coworking, PG & More";
 const SITE_DESCRIPTION =
