@@ -110,8 +110,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             {`window.__BHAVANO_GOOGLE_MAPS_JS_KEY__=${JSON.stringify(GOOGLE_MAPS_JS_KEY)};`}
           </Script>
         )}
-        {/* Sets html[data-android] before first paint so the phone store badge row (StoreBadgeRow) can be in
-          * the server HTML and shown by CSS. Deciding it after hydration (useIsAndroidBrowser) made the icon
+        {/* Sets html[data-android] before first paint so the phone header's Play Store icon can be in the
+          * server HTML and shown by CSS. Deciding it after hydration (useIsAndroidBrowser) made the icon
           * appear late and shift the header — same test as isAndroidBrowser in lib/appLinks.ts. */}
         <Script id="android-flag" strategy="beforeInteractive">
           {`var u=navigator.userAgent,d=document.documentElement.dataset;d.android=/Android/i.test(u)&&!/; wv\\)/.test(u)?'1':'0';d.ios=/iPhone|iPad|iPod/i.test(u)||(/Macintosh/i.test(u)&&navigator.maxTouchPoints>1)?'1':'0';`}
