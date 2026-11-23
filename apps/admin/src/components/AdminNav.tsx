@@ -94,17 +94,25 @@ function isActive(pathname: string, href: string): boolean {
 export function AdminNav() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  // The desktop bar: which group's dropdown is open (hover or click), if any.
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const menuWrapRef = useRef<HTMLDivElement>(null);
 
   // Close the menu on Escape or an outside click. Navigation uses full page loads, so the
   // component unmounts after choosing a menu item.
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuOpen && !openGroup) return;
     const onDown = (e: MouseEvent) => {
-      if (menuWrapRef.current && !menuWrapRef.current.contains(e.target as Node)) setMenuOpen(false);
+      if (menuWrapRef.current && !menuWrapRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+        setOpenGroup(null);
+      }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setOpenGroup(null);
+      }
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -112,7 +120,7 @@ export function AdminNav() {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [menuOpen]);
+  }, [menuOpen, openGroup]);
 
   if (pathname === "/login" || pathname.startsWith("/auth/")) return null;
 
@@ -153,12 +161,55 @@ export function AdminNav() {
           </span>
           <span>Menu</span>
         </button>
-        <span style={{ display: "flex", alignItems: "baseline", gap: 7, marginRight: "auto" }}>
+        <span className="admin-nav-brand" style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
           <span style={{ fontSize: 17, fontWeight: 800, color: "var(--green)", letterSpacing: "-0.01em" }}>Bhavano</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Admin
           </span>
         </span>
+        {/* Wide screens: the groups sit in the bar as dropdowns, like a website menu. Below 960px the Menu
+          * button above opens the panel instead (CSS shows one or the other). */}
+        <nav className="admin-nav-desktop" aria-label="Admin pages">
+          {NAV_GROUPS.map((group) => {
+            const groupActive = group.links.some((link) => isActive(pathname, link.href));
+            const open = openGroup === group.label;
+            return (
+              <div
+                key={group.label}
+                className="admin-nav-dropwrap"
+                onMouseEnter={() => setOpenGroup(group.label)}
+                onMouseLeave={() => setOpenGroup((g) => (g === group.label ? null : g))}
+              >
+                <button
+                  type="button"
+                  className="admin-nav-trigger"
+                  aria-expanded={open}
+                  aria-haspopup="true"
+                  data-active={groupActive ? "true" : undefined}
+                  onClick={() => setOpenGroup(open ? null : group.label)}
+                >
+                  {group.label}
+                  <span aria-hidden="true" className="admin-nav-caret">▾</span>
+                </button>
+                {open && (
+                  <div className={`admin-nav-dropdown${group.links.length > 8 ? " admin-nav-dropdown-wide" : ""}`}>
+                    {group.links.map((link) => (
+                      <a
+                        key={link.href}
+                        href={link.href}
+                        className="admin-nav-link"
+                        aria-current={isActive(pathname, link.href) ? "page" : undefined}
+                        onClick={() => setOpenGroup(null)}
+                      >
+                        {link.label}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
         <form action={signOutAction}>
           <button type="submit" className="admin-nav-logout">Logout</button>
         </form>
