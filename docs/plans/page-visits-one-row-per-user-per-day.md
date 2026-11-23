@@ -1,11 +1,17 @@
 # Page visits: one row per user (or device) per day
 
-## Status: step (a) built 2026-11-23; (b) app session and (c) device key not built
+## Status: (a) grouping and (b) app session built 2026-11-23; (c) device key not built
 
 **As built (a):** `group=user_day` ("One row per user per day" in the Page visits View select). BFF:
 `groupVisitsByUserDay` and `istDay` in `admin/page-visit-groups.ts`, `ListPageVisitsDto.groupBy` accepts `user_day`,
 `listPageVisitsGrouped(…, perDay)`, `PageVisitDto.groupedDay` (`YYYY-MM-DD`, logged-in rows only). Admin: select option,
 explanation line, and "N sessions on YYYY-MM-DD" in the row. Reuses `mergeVisitGroup` unchanged; no migration.
+**As built (b):** the app keeps its analytics session in storage (`bhavano.analyticsSession`: id, last activity and
+whether the Visit/JS confirmation were already posted) and continues it after a close and reopen inside **30 minutes**
+(`analyticsSessionPolicy.ts`, `analyticsSession.ts`). Activity is saved at most every 15 s and when the app leaves
+the foreground; after more than 30 idle minutes (background or foreground) the next page view starts a new session,
+and the account link is made again for it. Only updated apps behave this way; older versions still start a session per
+launch, which the per-day grouping covers. Not verified on a device.
 Days are IST by session start, as proposed (confirmed by building it; say if a different day boundary is wanted).
 
 **Ask (owner):** show a user's activity in Admin → Page visits consolidated per day, not as separate rows, and
