@@ -1,5 +1,5 @@
 import type { PageVisitDto, PageVisitHighlights } from '@bhavano/types';
-import { groupVisitsByUser, mergeHighlights, mergeVisitGroup } from './page-visit-groups';
+import { groupVisitsByUser, groupVisitsByUserDay, istDay, mergeHighlights, mergeVisitGroup } from './page-visit-groups';
 
 function visit(over: Partial<PageVisitDto> = {}): PageVisitDto {
   return {
@@ -91,5 +91,63 @@ describe('mergeVisitGroup', () => {
     const login = { userId: 'u1', name: 'A', phone: null, email: null, deleted: false, method: 'google' as const, createdAt: '2026-11-01T05:00:00.000Z' };
     const merged = mergeVisitGroup([{ ...early, sessionLogins: [login] }, { ...late, sessionLogins: [login] }]);
     expect(merged.sessionLogins).toHaveLength(1);
+  });
+});
+
+describe('istDay', () => {
+  it('uses the Indian calendar day, not UTC', () => {
+    // 2026-11-22 20:00 UTC is already 01:30 on the 23rd in India.
+    expect(istDay(new Date('2026-11-22T20:00:00Z'))).toBe('2026-11-23');
+    expect(istDay(new Date('2026-11-22T18:29:59Z'))).toBe('2026-11-22');
+    expect(istDay(new Date('2026-11-22T18:30:00Z'))).toBe('2026-11-23');
+  });
+});
+
+describe('groupVisitsByUserDay', () => {
+  const at = (iso: string) => new Date(iso);
+
+  it("merges one user's sessions on the same IST day, even across the UTC date change", () => {
+    // The 2026-11-23 report: four app launches between 23:58 and 00:26 UTC, all the morning of 23 Nov in India.
+    const groups = groupVisitsByUserDay([
+      { id: 'a', userId: 'u1', createdAt: at('2026-11-23T00:15:21Z') },
+      { id: 'b', userId: 'u1', createdAt: at('2026-11-23T00:12:20Z') },
+      { id: 'c', userId: 'u1', createdAt: at('2026-11-23T00:11:53Z') },
+      { id: 'd', userId: 'u1', createdAt: at('2026-11-22T23:58:10Z') },
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].ids).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it("keeps one user's sessions on different IST days as different rows", () => {
+    const groups = groupVisitsByUserDay([
+      { id: 'a', userId: 'u1', createdAt: at('2026-11-23T06:00:00Z') },
+      { id: 'b', userId: 'u1', createdAt: at('2026-11-21T06:00:00Z') },
+    ]);
+    expect(groups.map((g) => g.ids)).toEqual([['a'], ['b']]);
+  });
+
+  it('keeps different users apart on the same day', () => {
+    const groups = groupVisitsByUserDay([
+      { id: 'a', userId: 'u1', createdAt: at('2026-11-23T06:00:00Z') },
+      { id: 'b', userId: 'u2', createdAt: at('2026-11-23T06:05:00Z') },
+    ]);
+    expect(groups).toHaveLength(2);
+  });
+
+  it('never merges visits nobody logged in on', () => {
+    const groups = groupVisitsByUserDay([
+      { id: 'a', userId: null, createdAt: at('2026-11-23T06:00:00Z') },
+      { id: 'b', userId: null, createdAt: at('2026-11-23T06:01:00Z') },
+    ]);
+    expect(groups.map((g) => g.ids)).toEqual([['a'], ['b']]);
+  });
+
+  it('keeps newest-first order of groups', () => {
+    const groups = groupVisitsByUserDay([
+      { id: 'a', userId: 'u2', createdAt: at('2026-11-23T08:00:00Z') },
+      { id: 'b', userId: 'u1', createdAt: at('2026-11-23T07:00:00Z') },
+      { id: 'c', userId: 'u2', createdAt: at('2026-11-23T06:00:00Z') },
+    ]);
+    expect(groups.map((g) => g.key.split(':')[0])).toEqual(['u2', 'u1']);
   });
 });

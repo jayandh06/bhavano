@@ -122,10 +122,12 @@ export class ListPageVisitsDto {
   @IsIn(PAGE_VISIT_HIGHLIGHT_VALUES)
   highlight?: PageVisitHighlightFilter;
 
-  /** `user` folds one account's sessions into a single row, newest activity first. Anything else is one row per session. */
+  /** `user` folds one account's sessions into a single row, newest activity first. `user_day` does it per IST calendar day,
+   * so a user active over several days gets one row for each (docs/plans/page-visits-one-row-per-user-per-day.md).
+   * Anything else is one row per session. */
   @IsOptional()
-  @IsIn(['session', 'user'])
-  groupBy?: 'session' | 'user';
+  @IsIn(['session', 'user', 'user_day'])
+  groupBy?: 'session' | 'user' | 'user_day';
 
   @IsOptional()
   @IsIn(DEVICE_TYPES)

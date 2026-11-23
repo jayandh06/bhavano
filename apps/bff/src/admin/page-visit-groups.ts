@@ -7,6 +7,8 @@ export const PAGE_VISIT_GROUP_SCAN_CAP = 5000;
 export interface ScannedVisit {
   id: string;
   userId: string | null;
+  /** When the session started; only "one row per user per day" reads it. */
+  createdAt?: Date;
 }
 
 export interface VisitGroup {
@@ -22,6 +24,27 @@ export function groupVisitsByUser(visits: ScannedVisit[]): VisitGroup[] {
   const groups = new Map<string, VisitGroup>();
   for (const v of visits) {
     const key = v.userId ?? `visit:${v.id}`;
+    const group = groups.get(key);
+    if (group) group.ids.push(v.id);
+    else groups.set(key, { key, ids: [v.id] });
+  }
+  return [...groups.values()];
+}
+
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+/** The IST calendar day (`YYYY-MM-DD`) of an instant. India has no daylight saving, so a fixed offset is exact. */
+export function istDay(at: Date): string {
+  return new Date(at.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/** Like `groupVisitsByUser`, but one group per account per IST day the session *started* on, so a user active on three days
+ * gets three rows. A session that runs past midnight stays whole on its start day. Visits nobody logged in on stay one row each
+ * and are never merged (no identity to merge on). Same order contract: `visits` newest activity first. */
+export function groupVisitsByUserDay(visits: ScannedVisit[]): VisitGroup[] {
+  const groups = new Map<string, VisitGroup>();
+  for (const v of visits) {
+    const key = v.userId ? `${v.userId}:${istDay(v.createdAt ?? new Date(0))}` : `visit:${v.id}`;
     const group = groups.get(key);
     if (group) group.ids.push(v.id);
     else groups.set(key, { key, ids: [v.id] });

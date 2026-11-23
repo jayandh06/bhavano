@@ -80,7 +80,7 @@ import {
   type SessionListingFacts,
   type SessionRequirementFacts,
 } from './page-visit-highlights';
-import { groupVisitsByUser, mergeVisitGroup, PAGE_VISIT_GROUP_SCAN_CAP } from './page-visit-groups';
+import { groupVisitsByUser, groupVisitsByUserDay, istDay, mergeVisitGroup, PAGE_VISIT_GROUP_SCAN_CAP } from './page-visit-groups';
 
 type VisitWithUser = Prisma.VisitGetPayload<{ include: { user: { select: { name: true; phone: true; email: true; deletedAt: true } } } }>;
 import { PostFunnelQueryDto } from './dto/post-funnel-query.dto';
@@ -1063,8 +1063,8 @@ export class AdminService {
              OR (${traffic}::text = 'bots' AND v."isBot" = true)
              OR (${traffic}::text = 'unclassified' AND v."isBot" IS NULL))`;
 
-    if (query.groupBy === 'user') {
-      const grouped = await this.listPageVisitsGrouped(where, offset ?? 0, limit);
+    if (query.groupBy === 'user' || query.groupBy === 'user_day') {
+      const grouped = await this.listPageVisitsGrouped(where, offset ?? 0, limit, query.groupBy === 'user_day');
       return { ...grouped, avgPageViewsPerSession: avgRow && avgRow.sessions > 0 ? avgRow.views / avgRow.sessions : null };
     }
 
@@ -1172,15 +1172,17 @@ export class AdminService {
     where: Prisma.VisitWhereInput,
     offset: number,
     limit: number,
+    perDay = false,
   ): Promise<{ items: PageVisitDto[]; total: number; groupedScanCapped: boolean }> {
     const scanned = await this.prisma.visit.findMany({
       where,
-      select: { id: true, userId: true },
+      select: { id: true, userId: true, createdAt: true },
       orderBy: PAGE_VISIT_ORDER_BY.lastActivity_desc,
       take: PAGE_VISIT_GROUP_SCAN_CAP + 1,
     });
     const capped = scanned.length > PAGE_VISIT_GROUP_SCAN_CAP;
-    const groups = groupVisitsByUser(capped ? scanned.slice(0, PAGE_VISIT_GROUP_SCAN_CAP) : scanned);
+    const kept = capped ? scanned.slice(0, PAGE_VISIT_GROUP_SCAN_CAP) : scanned;
+    const groups = perDay ? groupVisitsByUserDay(kept) : groupVisitsByUser(kept);
     const pageGroups = groups.slice(offset, offset + limit);
 
     const ids = pageGroups.flatMap((g) => g.ids);
@@ -1191,7 +1193,11 @@ export class AdminService {
         })
       : [];
     const byId = new Map((await this.buildPageVisitItems(rows)).map((item) => [item.id, item]));
-    const items = pageGroups.map((g) => mergeVisitGroup(g.ids.map((id) => byId.get(id)).filter((i): i is PageVisitDto => !!i)));
+    const items = pageGroups.map((g) => {
+      const merged = mergeVisitGroup(g.ids.map((id) => byId.get(id)).filter((i): i is PageVisitDto => !!i));
+      // The day label goes on a logged-in row only; a visit nobody logged in on is not a day's worth of one person.
+      return perDay && merged?.userId ? { ...merged, groupedDay: istDay(new Date(merged.createdAt)) } : merged;
+    });
     return { items: items.filter((i) => !!i), total: groups.length, groupedScanCapped: capped };
   }
 

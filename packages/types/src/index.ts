@@ -1148,6 +1148,8 @@ export interface PageVisitDto {
   /** Set only on a row that folds several sessions of one account together ("Group by user"): every session id, earliest
    * first. The row's details are the first session's; `lastActivityAt` is the newest session's and `pageViewCount` the total. */
   groupedSessionIds?: string[];
+  /** Set on every row of "One row per user per day": the IST calendar day (`YYYY-MM-DD`) the row's sessions started on. */
+  groupedDay?: string;
 }
 
 /** Row highlights on the admin Page visits list. `ad`, `featured` and `requirement` are about what this session created;
