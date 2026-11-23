@@ -83,7 +83,8 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const deviceTypeRaw = str(sp.deviceType);
   const highlightRaw = str(sp.highlight);
   const highlight = HIGHLIGHT_OPTIONS.some((o) => o.value === highlightRaw && o.value !== "all") ? highlightRaw : undefined;
-  const groupByUser = str(sp.group) === "user";
+  const groupMode = str(sp.group) === "user_day" ? "user_day" : str(sp.group) === "user" ? "user" : "session";
+  const groupByUser = groupMode !== "session";
   const osRaw = str(sp.os);
   // One Device dropdown holds the OS splits too ("Mobile (iOS)"); `os` in the URL is still honoured for old links.
   const { deviceType, os } = resolveDeviceFilter(deviceTypeRaw, osRaw);
@@ -115,7 +116,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
     identity,
     traffic,
     highlight,
-    groupBy: groupByUser ? "user" : undefined,
+    groupBy: groupByUser ? groupMode : undefined,
     deviceType,
     os,
     source,
@@ -218,9 +219,10 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
             </Field>
 
             <Field label="View">
-              <SelectField name="group" defaultValue={groupByUser ? "user" : "session"} style={selectStyle}>
+              <SelectField name="group" defaultValue={groupMode} style={selectStyle}>
                 <option value="session">One row per session</option>
                 <option value="user">Group by user</option>
+                <option value="user_day">One row per user per day</option>
               </SelectField>
             </Field>
 
@@ -270,8 +272,10 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
 
           {groupByUser && (
             <p style={{ margin: "0 0 8px", fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
-              One row per logged-in user, newest activity first (sorting by column is off). Each row combines that user&apos;s sessions: it shows the
-              first session&apos;s source and device, the latest activity and the total pages. Visits nobody logged in on stay one row each.
+              {groupMode === "user_day"
+                ? "One row per logged-in user per day (Indian time, by the day a session started), newest first (sorting by column is off). Each row combines that user's sessions of the day: the first session's source and device, the latest activity and the total pages."
+                : "One row per logged-in user, newest activity first (sorting by column is off). Each row combines that user's sessions: it shows the first session's source and device, the latest activity and the total pages."}{" "}
+              Visits nobody logged in on stay one row each.
               {result.groupedScanCapped && " This range has more visits than grouping looks at, so the oldest are left out. Narrow the dates to see them."}
             </p>
           )}

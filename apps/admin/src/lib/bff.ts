@@ -655,7 +655,7 @@ export interface PageVisitsQuery {
   /** `any`, `ad`, `featured`, `purchased` or `active`: keep only visits with that row highlight. */
   highlight?: string;
   /** `user` folds one account's sessions into a row. */
-  groupBy?: "user";
+  groupBy?: "user" | "user_day";
   deviceType?: DeviceType;
   os?: OsFamily | "unknown";
   source?: string;

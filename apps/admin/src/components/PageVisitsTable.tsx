@@ -106,7 +106,7 @@ export function PageVisitsTable({
                 {formatDateTime(v.lastActivityAt ?? v.createdAt)}
                 {v.groupedSessionIds && (
                   <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--green)" }} title="Sessions of this account, combined">
-                    {v.groupedSessionIds.length} sessions
+                    {v.groupedSessionIds.length} sessions{v.groupedDay ? ` on ${v.groupedDay}` : ""}
                   </div>
                 )}
                 {v.lastActivityAt && v.lastActivityAt.slice(0, 10) !== v.createdAt.slice(0, 10) && (
