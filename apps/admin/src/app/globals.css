@@ -172,6 +172,110 @@ button {
   background: var(--surface-alt);
 }
 
+/* Desktop bar: group triggers with dropdowns. Shown from 960px; below it the Menu button and panel are used. */
+.admin-nav-brand {
+  margin-right: auto;
+}
+
+.admin-nav-desktop {
+  display: none;
+}
+
+.admin-nav-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 8px 11px;
+  white-space: nowrap;
+}
+
+.admin-nav-trigger:hover,
+.admin-nav-trigger[aria-expanded="true"] {
+  background: var(--surface-alt);
+}
+
+.admin-nav-trigger[data-active="true"] {
+  color: var(--green);
+  box-shadow: inset 0 -2px 0 var(--green);
+}
+
+.admin-nav-trigger:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.admin-nav-caret {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.admin-nav-dropwrap {
+  position: relative;
+}
+
+/* No gap between the trigger and the panel (padding, not margin), so the pointer can cross from one to the other
+   without the hover ending. */
+.admin-nav-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 60;
+  min-width: 220px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  padding: 6px;
+}
+
+.admin-nav-dropdown::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 0;
+  left: 0;
+  height: 6px;
+}
+
+/* The last groups open towards the left so a wide panel never runs off the right edge of the window. */
+.admin-nav-dropwrap:nth-last-child(-n + 2) .admin-nav-dropdown {
+  right: 0;
+  left: auto;
+}
+
+.admin-nav-dropdown-wide {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 440px;
+}
+
+@media (min-width: 960px) {
+  .admin-nav-menu-button,
+  .admin-nav-menu {
+    display: none !important;
+  }
+
+  .admin-nav-desktop {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-right: auto;
+  }
+
+  .admin-nav-brand {
+    margin-right: 18px;
+  }
+}
+
 @media (max-width: 767px) {
   .admin-page-content [style*="max-width: 1280px"] {
     padding-right: 16px !important;
