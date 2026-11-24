@@ -11,6 +11,7 @@ import { listAllAreasAction } from "@/app/actions/locations";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { fieldClass, labelClass, outlineButtonClass, primaryButtonClass, secondaryButtonClass } from "@/lib/formStyles";
 import { SelectField } from "./SelectField";
+import { Currency } from "./Currency";
 
 const CATEGORY_OPTIONS: { value: ListingCategory; label: string }[] = [
   { value: "house", label: "House" },
@@ -299,11 +300,11 @@ export function SavedSearchesManager({
 
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className={labelClass}>Min price (₹) *</label>
+              <label className={labelClass}>Min price (<Currency />) *</label>
               <input type="number" min={0} value={minPrice} onChange={(e) => setMinPrice(e.target.value)} className={fieldClass} />
             </div>
             <div className="flex-1">
-              <label className={labelClass}>Max price (₹) *</label>
+              <label className={labelClass}>Max price (<Currency />) *</label>
               <input type="number" min={0} value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className={fieldClass} />
             </div>
           </div>

@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { HorizontalScroller } from "@/components/home/HorizontalScroller";
 import type { PaymentHistoryItemDto, PaymentPurpose, PaymentStatus } from "@bhavano/types";
+import { Currency } from "@/components/home/Currency";
 
 const PURPOSE_LABELS: Record<PaymentPurpose, string> = {
   listing_boost: "Listing Feature",
@@ -124,7 +125,7 @@ async function PurchaseHistoryTable({ accessToken, cursor }: { accessToken: stri
                 </td>
                 <td className="p-3 text-[13px] text-text-soft align-top">{detailFor(item)}</td>
                 <td className="p-3 text-[13px] text-text align-top whitespace-nowrap">
-                  ₹{item.amount / 100}
+                  <Currency />{item.amount / 100}
                 </td>
                 <td className={`p-3 text-[12.5px] font-bold align-top whitespace-nowrap ${STATUS_STYLE[item.status]}`}>
                   {item.status}

@@ -4,6 +4,7 @@ import type { BoostPricingPreviewDto } from "@bhavano/types";
 import { boostOptionFor, defaultBoostDuration, offeredBoostDurations } from "@bhavano/types/boostPricing";
 import { boostRecoveryMessage, type BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import { Icon } from "./Icon";
+import { Currency } from "./Currency";
 
 /**
  * Interstitial making the case for Feature before a seller actually leaves without it — see
@@ -51,8 +52,8 @@ export function BoostRecoveryDialog({
     "Free"
   ) : (
     <>
-      {option.discountApplied && <span className="line-through mr-1.5 text-on-green/70">₹{option.originalAmount}</span>}
-      ₹{option.amount}
+      {option.discountApplied && <span className="line-through mr-1.5 text-on-green/70"><Currency />{option.originalAmount}</span>}
+      <Currency />{option.amount}
     </>
   );
 

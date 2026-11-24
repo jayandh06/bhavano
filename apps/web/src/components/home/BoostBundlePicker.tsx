@@ -18,6 +18,7 @@ import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import { previewBoostPricingAction, redeemReferralBoostAction } from "@/app/actions/payments";
 import { startBoostCheckout } from "@/lib/boostCheckout";
 import { Icon } from "./Icon";
+import { Currency } from "./Currency";
 
 /** The Boost picker on the post-ad success screen and My Listings. Fetches every duration's price
  * up front (via PaymentsService.previewBoostPricing, which also auto-applies the current promo code
@@ -305,11 +306,11 @@ export function BoostBundlePicker({
                 </span>
                 {saving ? (
                   <span className="text-[12px] font-normal text-green">
-                    ₹{saving.perDay}/day · save ₹{saving.rupees} ({saving.percent}%) vs the 7-day price
+                    <Currency />{saving.perDay}/day · save <Currency />{saving.rupees} ({saving.percent}%) vs the 7-day price
                   </span>
                 ) : (
                   opt &&
-                  !opt.free && <span className="text-[12px] font-normal text-muted">₹{Math.round(opt.amount / days)}/day</span>
+                  !opt.free && <span className="text-[12px] font-normal text-muted"><Currency />{Math.round(opt.amount / days)}/day</span>
                 )}
               </span>
               <PriceTag option={opt} />
@@ -403,9 +404,9 @@ function PriceTag({ option, bold }: { option: { amount: number; originalAmount: 
   return (
     <span className={bold ? "text-on-green" : "text-green"}>
       {option.discountApplied && (
-        <span className={`line-through mr-1.5 ${bold ? "text-on-green/70" : "text-muted"}`}>₹{option.originalAmount}</span>
+        <span className={`line-through mr-1.5 ${bold ? "text-on-green/70" : "text-muted"}`}><Currency />{option.originalAmount}</span>
       )}
-      ₹{option.amount}
+      <Currency />{option.amount}
     </span>
   );
 }

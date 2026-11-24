@@ -31,6 +31,7 @@ import { EditListingPhotos } from "./EditListingPhotos";
 import { VideoManager } from "./VideoManager";
 import { FeaturedPerformanceCard } from "./FeaturedPerformanceCard";
 import { ListingLocationEditor, type ListingLocationChange } from "./ListingLocationEditor";
+import { useMarket } from "@/lib/useMarket";
 
 function attributesToStrings(
   attributes: Record<string, unknown>,
@@ -73,6 +74,7 @@ export function EditListingForm({
   /** For the fallback city choice when a pin lands outside every city we list. */
   cities: City[];
 }) {
+  const market = useMarket();
   const router = useRouter();
   const isPendingPublish = listing.publishState === "pending_checkout";
   const [initialTitle] = useState(listing.title);
@@ -290,7 +292,7 @@ export function EditListingForm({
                 )}
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <RequiredLabel text={priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹)` : "Price (₹)"} />
+                    <RequiredLabel text={priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (${market.currencySymbol})` : `Price (${market.currencySymbol})`} />
                     <input
                       type="number"
                       // Native constraints have to agree with `valid` above, or a browser that

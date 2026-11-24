@@ -139,6 +139,7 @@ import { SelectField } from "./SelectField";
 import { Icon, isIconName } from "./Icon";
 import { AlertChannelPicker, type AlertChannelChoice } from "./AlertChannelPicker";
 import { UploadZone } from "./UploadZone";
+import { useMarket } from "@/lib/useMarket";
 
 
 // Same fallback BrowseListingsView.tsx uses — buildListingPath is relative, and the "Feedback"
@@ -455,6 +456,7 @@ export function PostAdWizard({
    * anything with no `from` param. */
   entry?: string;
 }) {
+  const market = useMarket();
   const { requireLogin, requireVerifiedPhone } = useAuthGate();
   const [listingId] = useState(() => crypto.randomUUID());
   // Which Details form this visitor sees (docs/plans/post-ad-simpler-form.md). Decided once, from a stable per-browser bucket, in
@@ -1721,7 +1723,7 @@ export function PostAdWizard({
     minPhotos: MIN_PHOTOS,
     askSellerType,
     sellerTypeAnswered: !!postedAs,
-    assistedProblem: assistedMode ? assistedSellerProblem(assistedSeller) : null,
+    assistedProblem: assistedMode ? assistedSellerProblem(assistedSeller, market.id) : null,
     title,
     titleMin: TITLE_MIN_LENGTH,
     description,
@@ -2104,7 +2106,7 @@ export function PostAdWizard({
       setTimeout(() => sellerTypeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
       return;
     }
-    const assistedProblem = assistedMode ? assistedSellerProblem(assistedSeller) : null;
+    const assistedProblem = assistedMode ? assistedSellerProblem(assistedSeller, market.id) : null;
     if (assistedProblem) {
       setError(assistedProblem);
       return;
@@ -2756,7 +2758,7 @@ export function PostAdWizard({
                     )}
                     <div className="flex gap-3">
                       <div className="flex-1" data-req={stateOf("price")}>
-                        <RequiredLabel text={priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹)` : "Price (₹)"} />
+                        <RequiredLabel text={priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (${market.currencySymbol})` : `Price (${market.currencySymbol})`} />
                         <input
                           type="number"
                           // Native constraints have to agree with `priceValid` above, or a browser

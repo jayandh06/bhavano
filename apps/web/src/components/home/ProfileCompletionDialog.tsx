@@ -12,6 +12,7 @@ import {
   verifyEmailAction,
 } from "@/app/actions/users";
 import { Icon } from "./Icon";
+import { useMarket } from "@/lib/useMarket";
 
 /**
  * Deferred profile-completion dialog — see docs/plans/profile-completion-dialog.md.
@@ -35,6 +36,7 @@ const primaryClass =
 const ghostClass = "w-full bg-transparent border-0 text-muted text-[13px] font-bold cursor-pointer mt-2 disabled:opacity-50";
 
 export function ProfileCompletionDialog() {
+  const market = useMarket();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -230,7 +232,7 @@ export function ProfileCompletionDialog() {
               type="tel"
               inputMode="numeric"
               autoFocus
-              placeholder="10-digit mobile number"
+              placeholder={market.phonePlaceholder}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className={inputClass}

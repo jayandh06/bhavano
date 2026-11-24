@@ -29,6 +29,7 @@ exports.MARKETS = {
         phoneNationalLength: 10,
         phoneTrunkPrefix: "0",
         phoneLabel: "10-digit Indian mobile number",
+        phonePlaceholder: "10-digit mobile number",
         phoneLoginPrimary: true,
         categories: ["house", "apartment", "villa", "pg", "storage", "coworking", "furniture", "interiors", "plot", "commercial"],
         indexable: true,
@@ -50,6 +51,7 @@ exports.MARKETS = {
         phoneNationalLength: 10,
         phoneTrunkPrefix: "",
         phoneLabel: "10-digit US phone number",
+        phonePlaceholder: "10-digit phone number",
         phoneLoginPrimary: false,
         // Starting set; the wedge decision in the plan may change it. No PG, coworking, plots or furniture/interiors.
         categories: ["house", "apartment", "villa", "storage", "commercial"],

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
 import { reportPostAction } from "@/lib/postActionTrail";
+import { Currency } from "./Currency";
 
 /** The "your slots are full" notice. `where` is the page-visits surface: "category" (shown before the form is filled in) or "review" (publish was refused).
  * The upgrade links are the main action; `onCheckAgain` (review only) lets someone who just closed an ad try publishing again. */
@@ -35,7 +36,7 @@ export function ListingSlotCapPrompt({
       <div className="flex flex-wrap items-center gap-3">
         {pack && (
           <Link href="/premium#seller-slots" onClick={click("pack")} className={upgradeClass}>
-            Get {pack.totalSlots} slots · ₹{pack.monthlyPrice}/month
+            Get {pack.totalSlots} slots · <Currency />{pack.monthlyPrice}/month
           </Link>
         )}
         {pro && (
@@ -44,7 +45,7 @@ export function ListingSlotCapPrompt({
             onClick={click("pro")}
             className={pack ? "text-green font-bold" : upgradeClass}
           >
-            Agent Pro · {pro.totalSlots} slots · ₹{pro.monthlyPrice}/month
+            Agent Pro · {pro.totalSlots} slots · <Currency />{pro.monthlyPrice}/month
           </Link>
         )}
         <Link href="/my-listings" onClick={click("manage")} className="text-muted font-bold">

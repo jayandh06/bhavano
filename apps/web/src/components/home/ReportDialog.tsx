@@ -4,6 +4,8 @@ import { useState } from "react";
 import { MESSAGE_MAX_LENGTH, MESSAGE_MIN_LENGTH, type ContactTopic } from "@bhavano/types/support";
 import { submitSupportTicketAction } from "@/app/actions/support";
 import { Icon } from "./Icon";
+import { useMarket } from "@/lib/useMarket";
+import { isValidNationalPhone } from "@bhavano/types/market";
 
 const inputClass =
   "w-full bg-surface border border-border rounded-lg px-3 py-2 text-base sm:text-sm text-text placeholder:text-muted";
@@ -44,6 +46,7 @@ export function ReportDialog({
   defaultPhone?: string;
   onClose: () => void;
 }) {
+  const market = useMarket();
   const [name, setName] = useState(defaultName ?? "");
   const [email, setEmail] = useState(defaultEmail ?? "");
   const [phone, setPhone] = useState(defaultPhone ?? "");
@@ -55,7 +58,7 @@ export function ReportDialog({
   function validate(): string | null {
     if (!name.trim()) return "Please tell us your name.";
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return "Please enter a valid email address.";
-    if (phone.trim() && !/^[6-9]\d{9}$/.test(phone.trim())) return "Phone must be a 10-digit Indian mobile number.";
+    if (phone.trim() && !isValidNationalPhone(market.id, phone.trim())) return `Phone must be a ${market.phoneLabel}.`;
     if (message.trim().length < MESSAGE_MIN_LENGTH) {
       return `Please describe the issue in at least ${MESSAGE_MIN_LENGTH} characters.`;
     }
@@ -147,7 +150,7 @@ export function ReportDialog({
                   className={inputClass}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="10-digit mobile number"
+                  placeholder={market.phonePlaceholder}
                 />
               </div>
 

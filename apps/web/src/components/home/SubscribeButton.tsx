@@ -9,6 +9,7 @@ import { hasSessionAction } from "@/app/actions/auth";
 import { useAuthGate } from "./AuthGateProvider";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { pushDataLayerEvent } from "@/lib/gtm";
+import { Currency } from "./Currency";
 
 const DURATIONS_BY_TIER: Record<SubscriptionTier, number[]> = {
   buyerPremium: [1, 6, 12],
@@ -134,7 +135,7 @@ export function SubscribeButton({
                   ? `1 month — ${agentProUnits * planPricing.proListingSlotsPerUnit} listings`
                   : `${months} months`}
           </span>
-          <span className="text-green">₹{subscriptionPriceFor(tier, months, agentProUnits, planPricing)}</span>
+          <span className="text-green"><Currency />{subscriptionPriceFor(tier, months, agentProUnits, planPricing)}</span>
         </button>
       ))}
       {error && <p className="text-[#b3413a] text-[13px] m-0">{error}</p>}
