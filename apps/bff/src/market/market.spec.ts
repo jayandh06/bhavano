@@ -5,6 +5,9 @@ import {
   formatMoney,
   getMarket,
   isValidNationalPhone,
+  nationalPhoneDigits,
+  phoneErrorMessage,
+  toE164,
   marketFromPath,
   marketPath,
   stripMarketPrefix,
@@ -96,5 +99,39 @@ describe('goLiveTimeText stays identical for India', () => {
   it('uses the US zone when asked', () => {
     const now = new Date('2026-10-23T05:00:00Z');
     expect(goLiveTimeText(new Date('2026-10-23T17:40:00Z'), now, 'us')).toMatch(/1:40 pm$/);
+  });
+});
+
+describe('phone helpers', () => {
+  // The implementation that existed before the market config (outreach/phone.ts).
+  function legacyIndia(raw: string | null | undefined): string | null {
+    if (!raw) return null;
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length === 10) return /^[6-9]/.test(digits) ? `+91${digits}` : null;
+    if (digits.length === 11 && digits.startsWith('0')) return legacyIndia(digits.slice(1));
+    if (digits.length === 12 && digits.startsWith('91')) return legacyIndia(digits.slice(2));
+    return null;
+  }
+
+  it('normalises India exactly as before', () => {
+    const inputs = [
+      '9876543210', '98765 43210', '+91-9876543210', '919876543210', '09876543210', '+91 98765 43210',
+      '1234567890', '12345', '', null, undefined, '0919876543210', '9198765432101', '5876543210', '98765-43210',
+    ];
+    for (const raw of inputs) expect(toE164('in', raw)).toBe(legacyIndia(raw as string));
+  });
+
+  it('normalises US numbers', () => {
+    for (const raw of ['4155552671', '(415) 555-2671', '+1 415 555 2671', '1-415-555-2671', '415.555.2671']) {
+      expect(toE164('us', raw)).toBe('+14155552671');
+    }
+    expect(nationalPhoneDigits('us', '0155552671')).toBeNull();
+    expect(nationalPhoneDigits('us', '4151552671')).toBeNull();
+    expect(nationalPhoneDigits('us', '12345')).toBeNull();
+  });
+
+  it('keeps the India validation message', () => {
+    expect(phoneErrorMessage('in')).toBe('phone must be a 10-digit Indian mobile number');
+    expect(phoneErrorMessage('us')).toBe('phone must be a 10-digit US phone number');
   });
 });

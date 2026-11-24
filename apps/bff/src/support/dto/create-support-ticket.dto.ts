@@ -12,6 +12,8 @@ import {
   MESSAGE_MIN_LENGTH,
   type ContactTopic,
 } from '@bhavano/types/support';
+import { phoneErrorMessage } from '@bhavano/types/market';
+import { MARKET } from '../../market/market-config';
 
 /** Multipart form fields arrive as strings, so numeric/boolean-ish fields are parsed in the
  * controller rather than declared as non-string types here. */
@@ -29,8 +31,8 @@ export class CreateSupportTicketDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^[6-9]\d{9}$/, {
-    message: 'phone must be a 10-digit Indian mobile number',
+  @Matches(MARKET.phoneNationalPattern, {
+    message: phoneErrorMessage(MARKET.id),
   })
   phone?: string;
 

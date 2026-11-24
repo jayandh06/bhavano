@@ -69,7 +69,7 @@ import { buildFeaturedPerformance } from '@bhavano/types/featuredPerformance';
 import { isQuickResponderOwner } from './quick-responder.store';
 import type { DuplicatePhotoErrorBody } from '@bhavano/types/duplicatePhoto';
 import { PrismaService } from '../prisma/prisma.service';
-import { toE164India } from '../outreach/phone';
+import { toE164 } from '../outreach/phone';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../push/push.service';
@@ -138,6 +138,7 @@ import {
 } from './posted-confirmation-settings';
 import { assistedClaimCutoff, assistedClaimUrl, maskClaimPhone } from './assisted-listing';
 import { isMetaTraffic, sendMetaConversion } from '../ads/meta-capi';
+import { MARKET } from '../market/market-config';
 
 /** `create`'s admin-assisted mode — see ListingsService.createAssisted. */
 export interface AssistedCreateOptions {
@@ -2055,9 +2056,9 @@ export class ListingsService {
     input: CreateListingInput & { claimPhone: string; claimName: string; postedAs: SellerType },
     adminId: string,
   ): Promise<ListingDetailDto> {
-    const claimPhoneE164 = toE164India(input.claimPhone);
+    const claimPhoneE164 = toE164(input.claimPhone);
     if (!claimPhoneE164) {
-      throw new BadRequestException("The seller's phone must be a 10-digit Indian mobile number.");
+      throw new BadRequestException(`The seller's phone must be a ${MARKET.phoneLabel}.`);
     }
     if (input.postedAs !== 'owner' && input.postedAs !== 'agent') {
       throw new BadRequestException('Choose whether the seller is the owner or an agent.');
@@ -3000,7 +3001,7 @@ export class ListingsService {
       where: { id: userId },
       select: { phone: true },
     });
-    const userPhoneE164 = toE164India(user?.phone);
+    const userPhoneE164 = toE164(user?.phone);
     if (!userPhoneE164 || userPhoneE164 !== claimPhoneE164) {
       throw new ForbiddenException(
         existing.claimContactId

@@ -38,6 +38,12 @@ export interface MarketConfig {
   phoneDialCode: string;
   /** National-number pattern a phone input must match (digits only, after the dial code is removed). */
   phoneNationalPattern: RegExp;
+  /** Digits in a national number (10 in both India and the US). */
+  phoneNationalLength: number;
+  /** Prefix people dial before a national number at home and that is dropped on input ("0" in India, none in the US). */
+  phoneTrunkPrefix: string;
+  /** How validation errors name the number, e.g. "phone must be a 10-digit Indian mobile number". */
+  phoneLabel: string;
   /** Phone numbers are the login identity here. False means email or social login leads. */
   phoneLoginPrimary: boolean;
   /** Categories that exist in this market. */
@@ -60,6 +66,9 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
     areaUnits: ["sqft", "sqm", "acre", "hectare", "cent"],
     phoneDialCode: "91",
     phoneNationalPattern: /^[6-9]\d{9}$/,
+    phoneNationalLength: 10,
+    phoneTrunkPrefix: "0",
+    phoneLabel: "10-digit Indian mobile number",
     phoneLoginPrimary: true,
     categories: ["house", "apartment", "villa", "pg", "storage", "coworking", "furniture", "interiors", "plot", "commercial"],
     indexable: true,
@@ -78,6 +87,9 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
     areaUnits: ["sqft", "acre"],
     phoneDialCode: "1",
     phoneNationalPattern: /^[2-9]\d{2}[2-9]\d{6}$/,
+    phoneNationalLength: 10,
+    phoneTrunkPrefix: "",
+    phoneLabel: "10-digit US phone number",
     phoneLoginPrimary: false,
     // Starting set; the wedge decision in the plan may change it. No PG, coworking, plots or furniture/interiors.
     categories: ["house", "apartment", "villa", "storage", "commercial"],
@@ -128,4 +140,31 @@ export function formatMoney(id: MarketId, amount: number): string {
 /** Whether a national phone number (digits only, no dial code) is valid in the market. */
 export function isValidNationalPhone(id: MarketId, digits: string): boolean {
   return MARKETS[id].phoneNationalPattern.test(digits);
+}
+
+/** The national number (digits only) from anything a person types or pastes: with or without the dial code or "+", with
+ * spaces, dashes or dots, or with the home trunk prefix ("+91 98765 43210", "09876543210", "(415) 555-2671", "+1 415 555 2671").
+ * Null when it is not a valid number in the market. */
+export function nationalPhoneDigits(id: MarketId, raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const m = MARKETS[id];
+  let digits = raw.replace(/\D/g, "");
+  const n = m.phoneNationalLength;
+  if (digits.length === n + m.phoneDialCode.length && digits.startsWith(m.phoneDialCode)) {
+    digits = digits.slice(m.phoneDialCode.length);
+  } else if (m.phoneTrunkPrefix && digits.length === n + m.phoneTrunkPrefix.length && digits.startsWith(m.phoneTrunkPrefix)) {
+    digits = digits.slice(m.phoneTrunkPrefix.length);
+  }
+  return m.phoneNationalPattern.test(digits) ? digits : null;
+}
+
+/** E.164 ("+919876543210", "+14155552671") for a valid number in the market, else null. */
+export function toE164(id: MarketId, raw: string | null | undefined): string | null {
+  const national = nationalPhoneDigits(id, raw);
+  return national ? `+${MARKETS[id].phoneDialCode}${national}` : null;
+}
+
+/** Validation message for a bad phone: "phone must be a 10-digit Indian mobile number" for India. */
+export function phoneErrorMessage(id: MarketId): string {
+  return `phone must be a ${MARKETS[id].phoneLabel}`;
 }

@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import { Logger } from '@nestjs/common';
-import { toE164India } from '../outreach/phone';
+import { toE164 } from '../outreach/phone';
 
 /**
  * Reports a conversion to Meta (Facebook / Instagram) through the Conversions API, so Ads Manager can show sign-ups, posted ads and purchases from Meta ads and
@@ -46,7 +46,7 @@ const sha256 = (value: string): string => createHash('sha256').update(value).dig
 export function buildMetaEvent(input: MetaConversionInput): Record<string, unknown> {
   const userData: Record<string, unknown> = {};
   if (input.email?.trim()) userData.em = [sha256(input.email.trim().toLowerCase())];
-  const e164 = toE164India(input.phone);
+  const e164 = toE164(input.phone);
   if (e164) userData.ph = [sha256(e164.replace(/\D/g, ''))];
   if (input.userId) userData.external_id = [sha256(input.userId)];
   if (input.fbp) userData.fbp = input.fbp;

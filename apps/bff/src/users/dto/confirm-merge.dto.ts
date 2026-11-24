@@ -1,4 +1,6 @@
 import { IsEmail, IsOptional, IsString, Matches } from 'class-validator';
+import { phoneErrorMessage } from '@bhavano/types/market';
+import { MARKET } from '../../market/market-config';
 
 /** Exactly one of these identifies the account being merged in. It must be one the caller
  * already proved in the request that returned `confirm` — the service re-checks that the
@@ -6,8 +8,8 @@ import { IsEmail, IsOptional, IsString, Matches } from 'class-validator';
 export class ConfirmMergeDto {
   @IsOptional()
   @IsString()
-  @Matches(/^[6-9]\d{9}$/, {
-    message: 'phone must be a 10-digit Indian mobile number',
+  @Matches(MARKET.phoneNationalPattern, {
+    message: phoneErrorMessage(MARKET.id),
   })
   phone?: string;
 

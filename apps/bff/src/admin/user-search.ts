@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import { MARKET } from '../market/market-config';
 
 /** A trimmed query made only of digits and the punctuation a phone number is typically typed or
  * pasted with — `+`, spaces, dashes, parentheses, dots. A name or email never matches this (an
@@ -17,8 +18,9 @@ const PHONE_LIKE = /^[+()\-.\s\d]+$/;
 export function normalizedPhoneDigitsForSearch(query: string): string | undefined {
   if (!PHONE_LIKE.test(query)) return undefined;
   let digits = query.replace(/\D/g, '');
-  if (digits.length > 10 && digits.startsWith('91')) digits = digits.slice(2);
-  else if (digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
+  const { phoneNationalLength: national, phoneDialCode: dial, phoneTrunkPrefix: trunk } = MARKET;
+  if (digits.length > national && digits.startsWith(dial)) digits = digits.slice(dial.length);
+  else if (trunk && digits.length === national + trunk.length && digits.startsWith(trunk)) digits = digits.slice(trunk.length);
   return digits.length >= 3 ? digits : undefined;
 }
 

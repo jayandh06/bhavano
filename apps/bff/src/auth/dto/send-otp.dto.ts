@@ -1,12 +1,14 @@
 import { IsIn, IsOptional, IsString, Matches } from 'class-validator';
+import { phoneErrorMessage } from '@bhavano/types/market';
+import { MARKET } from '../../market/market-config';
 
 export const OTP_CHANNELS = ['whatsapp', 'sms'] as const;
 export type OtpChannel = (typeof OTP_CHANNELS)[number];
 
 export class SendOtpDto {
   @IsString()
-  @Matches(/^[6-9]\d{9}$/, {
-    message: 'phone must be a 10-digit Indian mobile number',
+  @Matches(MARKET.phoneNationalPattern, {
+    message: phoneErrorMessage(MARKET.id),
   })
   phone!: string;
 
