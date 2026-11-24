@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { City } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { MARKET } from '../market/market-config';
 
 /** How many of a person's most recent located visits to look at. */
 const RECENT_VISITS = 30;
@@ -45,7 +46,7 @@ export class UserCityFromIpService {
   /** The served city this person's visits point to, or null if there is no usable guess. */
   async suggestFor(userId: string): Promise<City | null> {
     const visits = await this.prisma.visit.findMany({
-      where: { userId, ipCountry: 'IN', ipCity: { not: null } },
+      where: { userId, ipCountry: MARKET.countryCode, ipCity: { not: null } },
       select: { ipCity: true },
       orderBy: { createdAt: 'desc' },
       take: RECENT_VISITS,
@@ -80,7 +81,7 @@ export class UserCityFromIpService {
           cityId: null,
           deletedAt: null,
           createdAt: { lte: new Date(now.getTime() - GRACE_MS) },
-          visits: { some: { ipCountry: 'IN', ipCity: { not: null } } },
+          visits: { some: { ipCountry: MARKET.countryCode, ipCity: { not: null } } },
         },
         select: { id: true },
         orderBy: { id: 'asc' },
