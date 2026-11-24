@@ -49,6 +49,13 @@ This is not a translation job; the product assumptions change:
 
 ## Plan
 
+**Built 2026-11-24 (step 2, time zones in the BFF):** `apps/bff/src/market/market-config.ts` exports `MARKET` and
+`MARKET_TIME_ZONE` from the `MARKET` env var (`in` or `us`; unset, empty or unknown is India, so no deployment changes
+unless it sets it). All 15 `@Cron` jobs and the offer-end date text in `admin.service.ts` read it instead of a literal
+`Asia/Kolkata`. Deliberately **not** changed: the promotional SMS send window (`outreach/send-window.ts`, India's TRAI/DLT
+rule) and the admin app's IST date formatting and `istDay*` helpers (an India admin; the US admin gets its own setting
+when its stack exists). Still open from the audit: web/mobile time zones, `country:in`, `addressCountry`, `ipCountry`.
+
 **Built 2026-11-24 (step 2, first part):** `packages/types/src/market.ts` (`@bhavano/types/market`): `MARKETS` (`in`, `us`),
 `getMarket` (unknown falls back to India), `marketFromPath` (only `/us` and `/us/...` are the US), `marketPath`,
 `stripMarketPrefix`, `formatMoney`, `isValidNationalPhone`. India's values equal the old hardcoded ones. First consumer:

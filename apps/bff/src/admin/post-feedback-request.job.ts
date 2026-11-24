@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AdminService } from './admin.service';
 import { POST_FEEDBACK_REQUEST_KIND } from './post-feedback-message';
 import { getReminderSettings } from './reminder-settings';
+import { MARKET_TIME_ZONE } from '../market/market-config';
 
 /** Asks an owner how posting their ad went (docs/plans/post-ad-experience-feedback.md), by default 48 hours after it went live (Admin →
  * Settings → Reminders sets the hours and switches it off). Sent as the same in-app "Bhavano Admin" message (and push) the Boost
@@ -34,7 +35,7 @@ export class PostFeedbackRequestJob {
     private readonly adminService: AdminService,
   ) {}
 
-  @Cron('35 9-20 * * *', { timeZone: 'Asia/Kolkata' })
+  @Cron('35 9-20 * * *', { timeZone: MARKET_TIME_ZONE })
   async run(): Promise<void> {
     if (process.env.POST_FEEDBACK_REQUEST_ENABLED === 'false') return;
     if (this.running) return;

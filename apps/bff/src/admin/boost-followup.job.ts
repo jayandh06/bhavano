@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminService } from './admin.service';
 import { getReminderSettings } from './reminder-settings';
+import { MARKET_TIME_ZONE } from '../market/market-config';
 
 /** Follows up on a non-Featured ad with the existing in-app Boost message, by default 4 hours, 1 day and 3 days after it went live
  * (Admin → Settings → Reminders sets the hours and switches it off) — see
@@ -48,7 +49,7 @@ export class BoostFollowupJob {
     private readonly adminService: AdminService,
   ) {}
 
-  @Cron('5 9-20 * * *', { timeZone: 'Asia/Kolkata' })
+  @Cron('5 9-20 * * *', { timeZone: MARKET_TIME_ZONE })
   async run(): Promise<void> {
     if (process.env.BOOST_FOLLOWUP_ENABLED === 'false') return;
     if (this.running) return;

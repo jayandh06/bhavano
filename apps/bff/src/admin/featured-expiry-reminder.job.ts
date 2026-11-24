@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminService } from './admin.service';
 import { getReminderSettings } from './reminder-settings';
+import { MARKET_TIME_ZONE } from '../market/market-config';
 
 /** Tells a seller their Featured period is ending, by default 3 days and 1 day before (Admin → Settings → Reminders sets the days and
  * switches it off) — see docs/plans/featured-expiry-reminder.md.
@@ -37,7 +38,7 @@ export class FeaturedExpiryReminderJob {
     private readonly adminService: AdminService,
   ) {}
 
-  @Cron('0 10 * * *', { timeZone: 'Asia/Kolkata' })
+  @Cron('0 10 * * *', { timeZone: MARKET_TIME_ZONE })
   async run(): Promise<void> {
     if (process.env.FEATURED_EXPIRY_REMINDER_ENABLED === 'false') return;
     if (this.running) return;

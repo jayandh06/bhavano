@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { BoostEffectivenessStatService } from './boost-effectiveness.service';
+import { MARKET_TIME_ZONE } from '../market/market-config';
 
 /** Nightly recompute of the boosted-vs-unboosted comparison — see BoostEffectivenessStatService's
  * own doc comment and docs/plans/boost-recovery-dialog.md. Low-traffic hour, no particular reason
@@ -12,7 +13,7 @@ export class BoostEffectivenessJob {
 
   constructor(private readonly stats: BoostEffectivenessStatService) {}
 
-  @Cron('30 2 * * *', { timeZone: 'Asia/Kolkata' })
+  @Cron('30 2 * * *', { timeZone: MARKET_TIME_ZONE })
   async run(): Promise<void> {
     try {
       await this.stats.computeAndStore();

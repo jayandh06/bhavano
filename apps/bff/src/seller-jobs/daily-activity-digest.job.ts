@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MARKET_TIME_ZONE } from '../market/market-config';
 
 const DIGEST_KIND = 'daily_activity_digest';
 
@@ -17,7 +18,7 @@ export class DailyActivityDigestJob {
 
   /** A different hour from the existing 9am jobs, spreading cron load rather than batching
    * everything at once. */
-  @Cron('0 8 * * *', { timeZone: 'Asia/Kolkata' })
+  @Cron('0 8 * * *', { timeZone: MARKET_TIME_ZONE })
   async runDaily(): Promise<void> {
     if (this.running) return;
     this.running = true;
