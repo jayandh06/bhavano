@@ -8,6 +8,7 @@ import { platformFeeFor } from "@bhavano/types/platformFeePricing";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { discountPercentFor } from "@bhavano/types/promoCode";
 import { Icon } from "../Icon";
+import { Currency } from "./Currency";
 
 /**
  * Ad-preview-step counterpart to BoostBundleCard — same duration-rows + Instant-Alerts-toggle
@@ -85,11 +86,11 @@ export function BoostPlanSelector({
   // surface, so colors.muted always reads fine — no need for BoostBundleCard's strikeColor prop.
   function PriceText({ opt }: { opt: BoostPricingPreviewDto["boost7"] }) {
     if (opt.free) return <>Free</>;
-    if (!opt.discountApplied) return <>₹{opt.amount}</>;
+    if (!opt.discountApplied) return <><Currency />{opt.amount}</>;
     return (
       <>
-        <Text style={{ textDecorationLine: "line-through", color: colors.muted }}>₹{opt.originalAmount}</Text>{" "}
-        ₹{opt.amount}
+        <Text style={{ textDecorationLine: "line-through", color: colors.muted }}><Currency />{opt.originalAmount}</Text>{" "}
+        <Currency />{opt.amount}
       </>
     );
   }
@@ -99,7 +100,7 @@ export function BoostPlanSelector({
       {platformFeeRupees > 0 && (
         <View style={[styles.optionButton, { borderColor: colors.green, backgroundColor: `${colors.green}1a`, marginBottom: 12 }]}>
           <Text style={{ flex: 1, fontWeight: "700", fontSize: 14, color: colors.text }}>Platform fee (required)</Text>
-          <Text style={{ fontWeight: "700", fontSize: 14, color: colors.green }}>₹{platformFeeRupees}</Text>
+          <Text style={{ fontWeight: "700", fontSize: 14, color: colors.green }}><Currency />{platformFeeRupees}</Text>
         </View>
       )}
 
@@ -157,12 +158,12 @@ export function BoostPlanSelector({
                 </View>
                 {saving ? (
                   <Text style={{ fontSize: 12, color: colors.green }}>
-                    ₹{saving.perDay}/day · save ₹{saving.rupees} ({saving.percent}%) vs the 7-day price
+                    <Currency />{saving.perDay}/day · save <Currency />{saving.rupees} ({saving.percent}%) vs the 7-day price
                   </Text>
                 ) : (
                   opt &&
                   !opt.free && (
-                    <Text style={{ fontSize: 12, color: colors.muted }}>₹{Math.round(opt.amount / days)}/day</Text>
+                    <Text style={{ fontSize: 12, color: colors.muted }}><Currency />{Math.round(opt.amount / days)}/day</Text>
                   )
                 )}
               </View>
@@ -213,7 +214,7 @@ export function BoostPlanSelector({
       )}
 
       {(platformFeeRupees > 0 || value) && (
-        <Text style={{ fontWeight: "700", fontSize: 13, color: colors.green, marginTop: 12 }}>Due today: ₹{dueToday}</Text>
+        <Text style={{ fontWeight: "700", fontSize: 13, color: colors.green, marginTop: 12 }}>Due today: <Currency />{dueToday}</Text>
       )}
     </View>
   );

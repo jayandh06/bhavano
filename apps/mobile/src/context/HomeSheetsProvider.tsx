@@ -51,6 +51,7 @@ import { Icon } from "../components/Icon";
 import { GoogleIcon } from "../components/GoogleIcon";
 import { ProfileBasicsStep, basicsFromProfile, canDismissBasics, profileNeedsBasics, profileNeedsMandatoryBasics, type ProfileBasicsValues } from "../components/home/ProfileBasicsStep";
 import { appWebUrl } from "../lib/appWebUrl";
+import { useMarket } from "../lib/market";
 
 // Exported so PostAdWizard can re-read the just-written token directly after a login it
 // triggered mid-submit — see its own onSubmit for why a fresh read beats the accessToken prop.
@@ -162,6 +163,7 @@ export function HomeSheetsProvider({
   children: ReactNode;
   popularCities: City[];
 }) {
+  const market = useMarket();
   const { colors } = useAppTheme();
   const router = useRouter();
   // A BottomSheetModal draws over the whole window, including under Android's gesture/3-button
@@ -1031,12 +1033,12 @@ export function HomeSheetsProvider({
               <Text style={[styles.sheetTitle, { color: colors.text }]}>Enter your phone number</Text>
               <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
                 <View style={[styles.countryChip, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-                  <Text style={{ color: colors.text, fontWeight: "700" }}>+91</Text>
+                  <Text style={{ color: colors.text, fontWeight: "700" }}>+{market.phoneDialCode}</Text>
                 </View>
                 <BottomSheetTextInput
                   value={phone}
-                  onChangeText={(v) => setPhone(v.replace(/\D/g, "").slice(0, 10))}
-                  placeholder="10-digit mobile number"
+                  onChangeText={(v) => setPhone(v.replace(/\D/g, "").slice(0, market.phoneNationalLength))}
+                  placeholder={market.phonePlaceholder}
                   placeholderTextColor={colors.muted}
                   keyboardType="number-pad"
                   style={[styles.input, { letterSpacing: 0, flex: 1, borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
@@ -1045,8 +1047,8 @@ export function HomeSheetsProvider({
               {error && <Text style={styles.errorText}>{error}</Text>}
               <Pressable
                 onPress={() => void handleSendOtp()}
-                disabled={phone.length !== 10 || pending}
-                style={[styles.primaryButton, { backgroundColor: colors.green, opacity: phone.length === 10 ? 1 : 0.5 }]}
+                disabled={phone.length !== market.phoneNationalLength || pending}
+                style={[styles.primaryButton, { backgroundColor: colors.green, opacity: phone.length === market.phoneNationalLength ? 1 : 0.5 }]}
               >
                 <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Send OTP on WhatsApp</Text>
               </Pressable>
@@ -1068,8 +1070,8 @@ export function HomeSheetsProvider({
               <Text style={[styles.sheetTitle, { color: colors.text }]}>Enter the OTP</Text>
               <Text style={{ color: colors.text, fontSize: 14, lineHeight: 21, marginBottom: 12 }}>
                 {otpChannel === "whatsapp"
-                  ? `We sent a 6-digit code to WhatsApp on +91 ${phone}. Open WhatsApp, tap Copy code, then paste it here.`
-                  : `We sent a 6-digit code by SMS to +91 ${phone}.`}
+                  ? `We sent a 6-digit code to WhatsApp on +${market.phoneDialCode} ${phone}. Open WhatsApp, tap Copy code, then paste it here.`
+                  : `We sent a 6-digit code by SMS to +${market.phoneDialCode} ${phone}.`}
               </Text>
               <BottomSheetTextInput
                 value={otp}

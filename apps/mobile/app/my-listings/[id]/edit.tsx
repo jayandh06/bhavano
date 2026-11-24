@@ -33,6 +33,7 @@ import { ScreenHeader } from "../../../src/components/home/ScreenHeader";
 import { PerUnitTotalHint, PriceWordsHint } from "../../../src/components/home/PriceWithWords";
 import { CategoryFieldsForm } from "../../../src/components/home/CategoryFieldsForm";
 import { ListingLocationEditor, type ListingLocationChange } from "../../../src/components/home/ListingLocationEditor";
+import { useMarket } from "../../../src/lib/market";
 
 const ALLOWED_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const ALLOWED_VIDEO_MIME_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/3gpp", "video/x-matroska"];
@@ -77,6 +78,7 @@ export default function EditListingScreen() {
 }
 
 function EditListingFormBody({ listing: initialListing, accessToken }: { listing: ListingDetailDto; accessToken: string }) {
+  const market = useMarket();
   const { colors } = useAppTheme();
   const router = useRouter();
   // Photos/videos live on `listing` and are refreshed straight from each mutation's own response
@@ -404,7 +406,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
                 <View style={{ flexDirection: "row", gap: 12 }}>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.label, { color: colors.textSoft }]}>
-                      {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹) *` : "Price (₹) *"}
+                      {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (${market.currencySymbol}) *` : `Price (${market.currencySymbol}) *`}
                     </Text>
                     <TextInput
                       value={price}

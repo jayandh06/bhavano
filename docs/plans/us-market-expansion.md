@@ -49,6 +49,15 @@ This is not a translation job; the product assumptions change:
 
 ## Plan
 
+**Built 2026-11-24 (mobile UI for phone and currency; ships with the next app release):** `apps/mobile/src/lib/market.ts` holds the
+app's market (India by default, persisted in storage as `bhavano.market`, `useMarket()` re-renders on change,
+`setCurrentMarket` for the future switch) and `components/home/Currency.tsx` renders its symbol. The login sheet, account
+phone link, profile basics and completion dialog take the dial code, placeholder and length from it; Boost, plan,
+subscription, purchases, requirement and post/edit price labels and the listing preview card use the currency. Nothing
+sets the market yet, so every install stays India (identical text) until the market switch and the US API address are built.
+**Not done on mobile:** the market switch itself and per-market API URL, dates, the saved-search and price-input short forms
+(k/L/Cr), the Tools calculators (India content), `formatInr`, and `gtm`-style phone hashing.
+
 **Built 2026-11-24 (web UI for phone and currency):** `apps/web/src/lib/useMarket.ts` reads the market from the URL path
 (`/us` is the US, everything else India; one build serves both) and `components/home/Currency.tsx` renders its symbol.
 The web login, profile, contact, report and assisted-seller forms take the dial code chip, placeholder, length checks and

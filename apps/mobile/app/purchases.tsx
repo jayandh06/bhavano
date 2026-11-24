@@ -5,6 +5,7 @@ import { useAppTheme } from "../src/theme/ThemeContext";
 import { useHomeSheets } from "../src/context/HomeSheetsProvider";
 import { useInfinitePaymentHistoryQuery } from "../src/lib/queries";
 import { ScreenHeader } from "../src/components/home/ScreenHeader";
+import { Currency } from "../src/components/home/Currency";
 
 const PURPOSE_LABELS: Record<PaymentPurpose, string> = {
   listing_boost: "Listing boost",
@@ -91,7 +92,7 @@ export default function PurchasesScreen() {
                 <Text style={{ fontSize: 11.5, color: colors.muted }}>{new Date(item.createdAt).toLocaleDateString()}</Text>
               </View>
               <View style={{ alignItems: "flex-end", gap: 2 }}>
-                <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}>₹{item.amount / 100}</Text>
+                <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}><Currency />{item.amount / 100}</Text>
                 <Text style={{ fontSize: 11.5, fontWeight: "700", color: statusColor(item.status, colors) }}>
                   {item.status}
                 </Text>

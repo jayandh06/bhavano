@@ -17,6 +17,8 @@ import { PendingPayments } from "../src/components/home/PendingPayments";
 import { IosSubscribeSheet } from "../src/components/home/IosPurchaseSheets";
 import { appleSubscriptionsFor } from "@bhavano/types/appleProducts";
 import { iosPurchases } from "../src/lib/iosPurchasesClient";
+import { useMarket } from "../src/lib/market";
+import { Currency } from "../src/components/home/Currency";
 
 interface PlanCard {
   tier: SubscriptionTier;
@@ -24,7 +26,7 @@ interface PlanCard {
   title: string;
   audience: string;
   /** `ios` hides web prices: an iOS card shows the App Store's price, never the web one. */
-  features: (settings: SubscriptionPlanSettings, ios: boolean) => string[];
+  features: (settings: SubscriptionPlanSettings, ios: boolean, symbol: string) => string[];
 }
 
 const PLAN_CARDS: PlanCard[] = [
@@ -54,8 +56,8 @@ const PLAN_CARDS: PlanCard[] = [
     icon: "building",
     title: "Agent/Broker Pro",
     audience: "For agents & brokers",
-    features: (s, ios) => [
-      ios ? `${s.proListingSlotsPerUnit} active listings` : `${s.proListingSlotsPerUnit} active listings per ₹${s.agentProMonthlyPricePerUnit}/month`,
+    features: (s, ios, symbol) => [
+      ios ? `${s.proListingSlotsPerUnit} active listings` : `${s.proListingSlotsPerUnit} active listings per ${symbol}${s.agentProMonthlyPricePerUnit}/month`,
       "Public storefront with a Bhavano Pro badge",
       "Elevated video limits when posting",
       "One 7-day boost credit every month",
@@ -80,6 +82,7 @@ const PLAN_CARDS: PlanCard[] = [
  * See docs/plans/ios-in-app-purchase.md.
  */
 export default function PlansScreen() {
+  const market = useMarket();
   const { colors } = useAppTheme();
   const router = useRouter();
   const { accessToken, profile, requireLogin, refreshProfile } = useHomeSheets();
@@ -164,7 +167,7 @@ export default function PlansScreen() {
             <Text style={{ fontFamily: "serif", fontSize: 17, fontWeight: "700", color: colors.text }}>
               Free seller
             </Text>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.green }}>₹0</Text>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.green }}><Currency />0</Text>
           </View>
           <Text style={{ fontSize: 12.5, color: colors.muted, marginTop: 2 }}>
             {planPricing.freeListingSlots} active listings — included on every account.
@@ -202,13 +205,13 @@ export default function PlansScreen() {
                   </Text>
                 </View>
                 <Text style={{ fontSize: 13, fontWeight: "700", color: colors.green }}>
-                  {ios ? (iosPrices[appleSubscriptionsFor(plan.tier)[0].productId] ?? "") : `₹${fromPrice}/mo`}
+                  {ios ? (iosPrices[appleSubscriptionsFor(plan.tier)[0].productId] ?? "") : `${market.currencySymbol}${fromPrice}/mo`}
                 </Text>
               </View>
               <Text style={{ fontSize: 12.5, color: colors.muted, marginTop: 2 }}>{plan.audience}</Text>
 
               <View style={{ gap: 7, marginTop: 12 }}>
-                {plan.features(planPricing, ios).map((feature) => (
+                {plan.features(planPricing, ios, market.currencySymbol).map((feature) => (
                   <View key={feature} style={{ flexDirection: "row", gap: 7 }}>
                     <Icon name="check" size={13} color={colors.green} />
                     <Text style={{ flex: 1, fontSize: 13, color: colors.textSoft, lineHeight: 18 }}>{feature}</Text>

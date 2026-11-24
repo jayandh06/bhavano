@@ -16,6 +16,7 @@ import {
 } from "../../lib/bffClient";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
+import { useMarket } from "../../lib/market";
 
 const MIN_CITY_QUERY = 2;
 
@@ -127,6 +128,7 @@ export function ProfileBasicsStep({
   /** Backing out of `verifyPhoneOnly` (its Back button) - abandon the verification. */
   onCancel?: () => void;
 }) {
+  const market = useMarket();
   const { colors } = useAppTheme();
   const [name, setName] = useState(initial.name);
   const [cityId, setCityId] = useState<string | null>(initial.cityId);
@@ -417,12 +419,12 @@ export function ProfileBasicsStep({
               backgroundColor: colors.surfaceAlt,
             }}
           >
-            <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}>+91</Text>
+            <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}>+{market.phoneDialCode}</Text>
           </View>
           <BottomSheetTextInput
             value={phoneDigits}
-            onChangeText={(v) => setPhoneDigits(v.replace(/\D/g, "").slice(0, 10))}
-            placeholder="10-digit mobile number"
+            onChangeText={(v) => setPhoneDigits(v.replace(/\D/g, "").slice(0, market.phoneNationalLength))}
+            placeholder={market.phonePlaceholder}
             placeholderTextColor={colors.muted}
             keyboardType="number-pad"
             ref={focusAfterSheetSettles}
@@ -432,10 +434,10 @@ export function ProfileBasicsStep({
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Pressable
           onPress={() => void onSendLinkOtp()}
-          disabled={pending || phoneDigits.length !== 10}
+          disabled={pending || phoneDigits.length !== market.phoneNationalLength}
           style={[
             styles.primaryButton,
-            { backgroundColor: colors.green, opacity: pending || phoneDigits.length !== 10 ? 0.5 : 1 },
+            { backgroundColor: colors.green, opacity: pending || phoneDigits.length !== market.phoneNationalLength ? 0.5 : 1 },
           ]}
         >
           {pending ? (
@@ -462,7 +464,7 @@ export function ProfileBasicsStep({
     return (
       <View>
         <Text style={[styles.title, { color: colors.text }]}>Enter the OTP</Text>
-        <Text style={[styles.hint, { color: colors.muted }]}>Sent to +91 {phoneDigits}.</Text>
+        <Text style={[styles.hint, { color: colors.muted }]}>Sent to +{market.phoneDialCode} {phoneDigits}.</Text>
         <BottomSheetTextInput
           value={otp}
           onChangeText={(v) => setOtp(v.replace(/\D/g, "").slice(0, 6))}

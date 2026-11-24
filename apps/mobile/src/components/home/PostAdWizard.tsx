@@ -111,6 +111,7 @@ import { PostFeedbackForm } from "./PostFeedbackForm";
 import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
 import { iosPurchases } from "../../lib/iosPurchasesClient";
 import { IosBoostSheet } from "./IosPurchaseSheets";
+import { useMarket } from "../../lib/market";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
 
@@ -306,6 +307,7 @@ export function PostAdWizard({
    * analytics event, same as web's own `entry` prop. */
   entry?: string;
 }) {
+  const market = useMarket();
   const { colors } = useAppTheme();
   // Admin has seeker contact on: the Featured list then says Featured owners see interested people's numbers. Off until the lookup says otherwise.
   const [leadContactOn, setLeadContactOn] = useState(false);
@@ -2423,7 +2425,7 @@ export function PostAdWizard({
                 )}
                 <View ref={anchor("price")} collapsable={false} />
                 <Text style={[styles.label, { color: colors.textSoft }]}>
-                  {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹)` : "Price (₹)"}
+                  {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (${market.currencySymbol})` : `Price (${market.currencySymbol})`}
                   <RequiredMark />
                 </Text>
                 <TextInput

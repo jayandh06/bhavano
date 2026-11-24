@@ -17,6 +17,7 @@ import { previewBoostPricing } from "../../lib/bffClient";
 import { startBoostCheckout } from "../../lib/boostCheckout";
 import { Icon } from "../Icon";
 import { ReferralFreeBoost } from "./ReferralFreeBoost";
+import { Currency } from "./Currency";
 
 // Temporary September promo — same constant as the website's own copy in
 // app/actions/payments.ts. Auto-applied so the price shown is just what checkout will actually
@@ -125,11 +126,11 @@ export function BoostBundleCard({
   function PriceText({ opt, strikeColor }: { opt: BoostPricingPreviewDto["boost7"] | undefined; strikeColor: string }) {
     if (!opt) return <>…</>;
     if (opt.free) return <>Free</>;
-    if (!opt.discountApplied) return <>₹{opt.amount}</>;
+    if (!opt.discountApplied) return <><Currency />{opt.amount}</>;
     return (
       <>
-        <Text style={{ textDecorationLine: "line-through", color: strikeColor }}>₹{opt.originalAmount}</Text>{" "}
-        ₹{opt.amount}
+        <Text style={{ textDecorationLine: "line-through", color: strikeColor }}><Currency />{opt.originalAmount}</Text>{" "}
+        <Currency />{opt.amount}
       </>
     );
   }
@@ -221,12 +222,12 @@ export function BoostBundleCard({
                 </View>
                 {saving ? (
                   <Text style={{ fontSize: 12, color: colors.green }}>
-                    ₹{saving.perDay}/day · save ₹{saving.rupees} ({saving.percent}%) vs the 7-day price
+                    <Currency />{saving.perDay}/day · save <Currency />{saving.rupees} ({saving.percent}%) vs the 7-day price
                   </Text>
                 ) : (
                   opt &&
                   !opt.free && (
-                    <Text style={{ fontSize: 12, color: colors.muted }}>₹{Math.round(opt.amount / days)}/day</Text>
+                    <Text style={{ fontSize: 12, color: colors.muted }}><Currency />{Math.round(opt.amount / days)}/day</Text>
                   )
                 )}
               </View>

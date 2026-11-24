@@ -6,10 +6,10 @@
  */
 export type PriceLike = { amount: number; originalAmount: number; discountApplied: boolean; free: boolean };
 
-export function priceSuffix(opt?: PriceLike): string {
+export function priceSuffix(opt?: PriceLike, symbol = "₹"): string {
   if (!opt) return "";
   if (opt.free) return " — Free";
   return opt.discountApplied && opt.originalAmount > opt.amount
-    ? ` — ₹${opt.originalAmount} → ₹${opt.amount}`
-    : ` — ₹${opt.amount}`;
+    ? ` — ${symbol}${opt.originalAmount} → ${symbol}${opt.amount}`
+    : ` — ${symbol}${opt.amount}`;
 }
