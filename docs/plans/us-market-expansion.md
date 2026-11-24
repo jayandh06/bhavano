@@ -206,8 +206,8 @@ entry is `indexable: false`. Tests: `apps/bff/src/market/market.spec.ts`.
 
 ## Hosting in the US (EC2)
 
-Today there is one EC2 host in Mumbai (`ap-south-1`) running Caddy, web, bff, admin, Postgres and Grafana through
-`docker-compose.prod.yml`. For the US, add a **second EC2 host in a US region**, not a cross-region hop to Mumbai
+Today there are two EC2 instances in Mumbai (`ap-south-1`): an app instance running Caddy, web, bff, admin and Grafana through
+`docker-compose.prod.yml`, and a DB instance running PostgreSQL (`docs/deployment.md`). For the US, add **a second pair of EC2 instances (app and DB) in a US region**, not a cross-region hop to Mumbai
 (about 200-250 ms per round trip, so every page and API call feels slow).
 
 - **Region:** `us-east-1` (N. Virginia, cheapest, closest to the most US users) to start. `us-east-2` (Ohio) is

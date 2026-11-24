@@ -1,4 +1,4 @@
-# The US stack, for its own host (docs/plans/us-stack-setup.md): the same app as India, running with MARKET=us and its own database, photo bucket,
+# The US stack, for its own host (docs/plans/us-stack-setup.md): the same app as India, running with MARKET=us and its own database (a separate DB instance, like India's: no Postgres container here), photo bucket,
 # keys, cookies and API address. Nothing here is shared with docker-compose.prod.yml: a different host, project name (bhavano-us), images and .env.
 #   docker compose -p bhavano-us -f docker-compose.us.yml --env-file .env up -d --no-build
 # Images come from the registry (scripts/deploy-from-registry.ps1 -Stack us): web is the web-us image (built for /us), bff is the same image as India's.
@@ -10,22 +10,6 @@ x-logging: &default-logging
     max-file: "3"
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    logging: *default-logging
-    environment:
-      POSTGRES_USER: bhavano
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: bhavano
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bhavano -d bhavano"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
   bff:
     image: bhavano-us-bff:latest
     restart: unless-stopped
@@ -33,7 +17,7 @@ services:
     environment:
       PORT: 4000
       MARKET: us
-      DATABASE_URL: postgresql://bhavano:${POSTGRES_PASSWORD}@postgres:5432/bhavano
+      DATABASE_URL: ${DATABASE_URL}
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
@@ -64,9 +48,6 @@ services:
       - bff_logs:/app/apps/bff/logs
       - bff_video_tmp:/app/apps/bff/uploads
       - ./apps/bff/notification-templates:/app/apps/bff/notification-templates:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
     expose:
       - "4000"
     healthcheck:
@@ -129,7 +110,6 @@ services:
       - bff
 
 volumes:
-  pgdata:
   caddy-data:
   caddy-config:
   bff_logs:
