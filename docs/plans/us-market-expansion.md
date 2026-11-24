@@ -49,6 +49,18 @@ This is not a translation job; the product assumptions change:
 
 ## Plan
 
+**Built 2026-11-24 (step 3, money in the shared helpers and BFF):** `market.ts` gains `groupAmount` (lakh grouping for India,
+thousands for the US, hand-rolled so Node, browsers and Hermes agree) and `formatMoney` is now symbol + `groupAmount`.
+`priceWords.ts` (`formatInrInWords`, `perUnitTotalPrice`, `formatInrWithWords`, `formatInrRangeWithWords`) takes an optional
+market (default India); the US gets plain `$1,250,000` with no lakh/crore words. The BFF uses `MARKET` for the listing
+price strings (symbol and locale), per-unit totals, price-in-words, requirement-match budget text, boost message amounts
+and purchase-email dates. India output is identical (tests compare against the old implementations). **Not done:** the
+web/mobile/admin UI that prints "₹" itself (about 45 files: boost and plan screens, price inputs and quick-pick
+brackets, `PriceWithWords`, saved searches), which needs the market on the client (the URL path on web, the account in the
+app); `priceBounds.ts` messages and the `listingLimits` bounds (INR ranges); `cardSpecs`/`areaUnit` en-IN number grouping;
+the Tools calculators (`formatInr`), which are India content and stay hidden in the US; and US price tiers for boost,
+subscriptions and platform fees (new numbers, not a conversion).
+
 **Built 2026-11-24 (step 4, phone rules in the BFF):** `market.ts` gains `phoneNationalLength`, `phoneTrunkPrefix`, `phoneLabel`
 and the helpers `nationalPhoneDigits`, `toE164`, `phoneErrorMessage`. The BFF's OTP/login/support/merge/delete DTOs, the
 assisted-listing phone check and mask, admin user search, the WhatsApp Cloud recipient format and the Google Ads/Meta

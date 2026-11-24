@@ -5,6 +5,7 @@ import { isLeadReady } from '@bhavano/types/requirementQuestions';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { MARKET_TIME_ZONE } from '../market/market-config';
+import { MARKET } from '../market/market-config';
 
 /**
  * Tells owners about demand they could actually fill — the half of Phase 1 that connects seekers
@@ -125,7 +126,7 @@ export class RequirementMatchJob {
       }
 
       const where = requirement.area?.name ?? requirement.city?.name ?? 'your area';
-      const budget = requirement.maxPrice ? ` up to ${formatInrWithWords(requirement.maxPrice)}` : '';
+      const budget = requirement.maxPrice ? ` up to ${formatInrWithWords(requirement.maxPrice, MARKET.id)}` : '';
       const by = requirement.moveInBy ? `, needed by ${requirement.moveInBy.toISOString().slice(0, 10)}` : '';
       const line = `${requirement.searchLabel} — in ${where}${budget}${by}`;
 

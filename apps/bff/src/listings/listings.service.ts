@@ -313,7 +313,7 @@ const LISTING_PERFORMANCE_ORDER_BY: Record<
   boosted_desc: adminOrderBy({ boostedUntil: nullsLast('desc') }),
 };
 
-const priceFormatter = new Intl.NumberFormat('en-IN');
+const priceFormatter = new Intl.NumberFormat(MARKET.locale);
 
 // `owner` (just agentProUntil) is included here too, alongside every photo/video, since it's
 // needed to resolve the poster's video entitlement on every read that also needs videos — folding
@@ -4113,9 +4113,9 @@ export class ListingsService {
     if (listing.price === 0) return 'Contact for price';
     const perUnit = this.perUnitPrice(listing);
     if (perUnit === null || !listing.priceUnit) {
-      return `₹${priceFormatter.format(listing.price)}`;
+      return `${MARKET.currencySymbol}${priceFormatter.format(listing.price)}`;
     }
-    return `₹${priceFormatter.format(perUnit)}/${areaUnitShortLabel(listing.priceUnit as AreaUnit, perUnit)}`;
+    return `${MARKET.currencySymbol}${priceFormatter.format(perUnit)}/${areaUnitShortLabel(listing.priceUnit as AreaUnit, perUnit)}`;
   }
 
   /** For a per-unit price, the stored total it came from and the area it was multiplied by — what
@@ -4130,15 +4130,15 @@ export class ListingsService {
     const areaField = this.areaFieldFor(listing.category);
     const attrs = (listing.attributes as Record<string, unknown> | null) ?? {};
     const areaValue = Number(areaField ? attrs[areaField.key] : undefined);
-    return perUnitTotalPrice(listing.price, areaValue, listing.priceUnit as AreaUnit);
+    return perUnitTotalPrice(listing.price, areaValue, listing.priceUnit as AreaUnit, MARKET.id);
   }
 
   /** Buyer-facing twin of `formatListingPrice` — "₹35 Lakh" / "₹5 Thousand/cent". */
   private formatListingPriceInWords(listing: { category: ListingCategory; price: number; priceUnit: string | null; attributes: unknown }): string {
     if (listing.price === 0) return 'Contact for price';
     const perUnit = this.perUnitPrice(listing);
-    if (perUnit === null || !listing.priceUnit) return formatInrInWords(listing.price);
-    return `${formatInrInWords(perUnit)}/${areaUnitShortLabel(listing.priceUnit as AreaUnit, 1)}`;
+    if (perUnit === null || !listing.priceUnit) return formatInrInWords(listing.price, MARKET.id);
+    return `${formatInrInWords(perUnit, MARKET.id)}/${areaUnitShortLabel(listing.priceUnit as AreaUnit, 1)}`;
   }
 
   /** Writes one ListingEditLog row — see that model's own doc comment for the shape. Awaited

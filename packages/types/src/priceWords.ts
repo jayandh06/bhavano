@@ -8,6 +8,7 @@
 
 import type { ListingTotalPriceDto } from "./index";
 import { formatArea, type AreaUnit } from "./areaUnit";
+import { MARKETS, formatMoney, type MarketId } from "./market";
 
 const SCALES: ReadonlyArray<{ value: number; word: string }> = [
   { value: 10_000_000, word: "Crore" },
@@ -23,8 +24,11 @@ function scaled(amount: number, scale: number): string {
   return String(hundredths / 100);
 }
 
-export function formatInrInWords(amount: number): string {
+/** Lakh/crore words for India (the default). Markets without them (the US) get the plain amount, which callers treat as
+ * "no words" because it equals the price. */
+export function formatInrInWords(amount: number, marketId: MarketId = "in"): string {
   const rounded = Math.round(amount);
+  if (!MARKETS[marketId].priceInIndianWords) return formatMoney(marketId, rounded);
   for (const { value, word } of SCALES) {
     if (rounded >= value) return `₹${scaled(rounded, value)} ${word}`;
   }
@@ -46,7 +50,7 @@ export function groupInr(amount: number): string {
  * no words at all, so callers render just `price`. */
 export function priceWordsNote(price: string, priceInWords?: string | null): string | null {
   if (!priceInWords || priceInWords === price) return null;
-  return priceInWords.replace(/^₹/, "");
+  return priceInWords.replace(/^[₹$]/, "");
 }
 
 /** "₹35,00,000 (35 Lakh)" from a listing DTO's `price` + `priceInWords` pair. */
@@ -65,8 +69,8 @@ export function compactPrice(price: string, priceInWords?: string | null): strin
 
 /** A per-unit listing's `totalPrice` — the whole-rupee total and the area it was multiplied out
  * over. Built the same way by the BFF and by the post wizard's preview card. */
-export function perUnitTotalPrice(total: number, area: number, unit: AreaUnit): ListingTotalPriceDto {
-  return { price: `₹${groupInr(total)}`, priceInWords: formatInrInWords(total), area: formatArea(area, unit) };
+export function perUnitTotalPrice(total: number, area: number, unit: AreaUnit, marketId: MarketId = "in"): ListingTotalPriceDto {
+  return { price: formatMoney(marketId, total), priceInWords: formatInrInWords(total, marketId), area: formatArea(area, unit) };
 }
 
 export interface ListingPriceFields {
@@ -103,21 +107,21 @@ export function listingPriceText(item: ListingPriceFields, style: "compact" | "f
 }
 
 /** "₹35,00,000 (35 Lakh)"; below ₹1,000 there is no word form, so just "₹500". */
-export function formatInrWithWords(amount: number): string {
-  return priceWithWords(`₹${groupInr(amount)}`, formatInrInWords(amount));
+export function formatInrWithWords(amount: number, marketId: MarketId = "in"): string {
+  return priceWithWords(formatMoney(marketId, amount), formatInrInWords(amount, marketId));
 }
 
 /** A budget range, number + words — "₹30,00,000 – ₹60,00,000 (30 Lakh – 60 Lakh)",
  * "up to ₹60,00,000 (60 Lakh)", "from ₹15,000 (15 Thousand)". Undefined when neither bound is set. */
-export function formatInrRangeWithWords(min?: number | null, max?: number | null): string | undefined {
+export function formatInrRangeWithWords(min?: number | null, max?: number | null, marketId: MarketId = "in"): string | undefined {
   const hasMin = min !== undefined && min !== null && min > 0;
   const hasMax = max !== undefined && max !== null && max > 0;
   if (hasMin && hasMax) {
-    const words = [min, max].map((n) => priceWordsNote(`₹${groupInr(n)}`, formatInrInWords(n)) ?? `₹${groupInr(n)}`);
-    const numbers = `₹${groupInr(min)} – ₹${groupInr(max)}`;
-    return max >= 1_000 ? `${numbers} (${words[0]} – ${words[1]})` : numbers;
+    const words = [min, max].map((n) => priceWordsNote(formatMoney(marketId, n), formatInrInWords(n, marketId)) ?? formatMoney(marketId, n));
+    const numbers = `${formatMoney(marketId, min)} – ${formatMoney(marketId, max)}`;
+    return max >= 1_000 && MARKETS[marketId].priceInIndianWords ? `${numbers} (${words[0]} – ${words[1]})` : numbers;
   }
-  if (hasMax) return `up to ${formatInrWithWords(max)}`;
-  if (hasMin) return `from ${formatInrWithWords(min)}`;
+  if (hasMax) return `up to ${formatInrWithWords(max, marketId)}`;
+  if (hasMin) return `from ${formatInrWithWords(min, marketId)}`;
   return undefined;
 }

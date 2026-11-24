@@ -1,8 +1,10 @@
 import { goLiveTimeText } from '@bhavano/types/goLive';
+import { formatInrInWords, formatInrRangeWithWords, formatInrWithWords, groupInr, perUnitTotalPrice, priceWordsNote } from '@bhavano/types/priceWords';
 import {
   DEFAULT_MARKET_ID,
   MARKETS,
   formatMoney,
+  groupAmount,
   getMarket,
   isValidNationalPhone,
   nationalPhoneDigits,
@@ -133,5 +135,57 @@ describe('phone helpers', () => {
   it('keeps the India validation message', () => {
     expect(phoneErrorMessage('in')).toBe('phone must be a 10-digit Indian mobile number');
     expect(phoneErrorMessage('us')).toBe('phone must be a 10-digit US phone number');
+  });
+});
+
+describe('money formatting', () => {
+  // The implementations before the market config (packages/types/src/priceWords.ts).
+  const SCALES = [
+    { value: 10_000_000, word: 'Crore' },
+    { value: 100_000, word: 'Lakh' },
+    { value: 1_000, word: 'Thousand' },
+  ];
+  const scaled = (a: number, scale: number) => String(Math.floor((a * 100) / scale + 1e-9) / 100);
+  function legacyWords(amount: number): string {
+    const r = Math.round(amount);
+    for (const { value, word } of SCALES) if (r >= value) return `₹${scaled(r, value)} ${word}`;
+    return `₹${r}`;
+  }
+  const legacyWithWords = (a: number) => {
+    const price = `₹${groupInr(a)}`;
+    const note = priceWordsNote(price, legacyWords(a));
+    return note ? `${price} (${note})` : price;
+  };
+  const AMOUNTS = [0, 5, 500, 999, 1000, 23_500, 99_999, 100_000, 3_500_000, 9_999_999, 10_000_000, 125_000_000, 1_234_567_890];
+
+  it('keeps India output identical', () => {
+    for (const a of AMOUNTS) {
+      expect(groupAmount('in', a)).toBe(groupInr(a));
+      expect(formatMoney('in', a)).toBe(`₹${groupInr(a)}`);
+      expect(formatInrInWords(a)).toBe(legacyWords(a));
+      expect(formatInrInWords(a, 'in')).toBe(legacyWords(a));
+      expect(formatInrWithWords(a)).toBe(legacyWithWords(a));
+      expect(perUnitTotalPrice(a, 1200, 'sqft')).toEqual({
+        price: `₹${groupInr(a)}`,
+        priceInWords: legacyWords(a),
+        area: perUnitTotalPrice(a, 1200, 'sqft').area,
+      });
+    }
+    expect(formatInrRangeWithWords(3_000_000, 6_000_000)).toBe('₹30,00,000 – ₹60,00,000 (30 Lakh – 60 Lakh)');
+    expect(formatInrRangeWithWords(null, 6_000_000)).toBe('up to ₹60,00,000 (60 Lakh)');
+    expect(formatInrRangeWithWords(15_000, null)).toBe('from ₹15,000 (15 Thousand)');
+    expect(formatInrRangeWithWords(500, 900)).toBe('₹500 – ₹900');
+    expect(formatInrRangeWithWords(null, null)).toBeUndefined();
+  });
+
+  it('formats US amounts with thousands grouping and no lakh/crore words', () => {
+    expect(groupAmount('us', 1_250_000)).toBe('1,250,000');
+    expect(formatMoney('us', 1250)).toBe('$1,250');
+    expect(formatMoney('us', 950)).toBe('$950');
+    expect(formatMoney('us', -1250)).toBe('-$1,250');
+    expect(formatInrInWords(3_500_000, 'us')).toBe('$3,500,000');
+    expect(formatInrWithWords(3_500_000, 'us')).toBe('$3,500,000');
+    expect(formatInrRangeWithWords(1500, 2500, 'us')).toBe('$1,500 – $2,500');
+    expect(perUnitTotalPrice(600_000, 1200, 'sqft', 'us').price).toBe('$600,000');
   });
 });

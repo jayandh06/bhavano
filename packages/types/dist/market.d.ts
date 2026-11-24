@@ -63,7 +63,10 @@ export declare function marketFromPath(pathname: string): MarketId;
 export declare function marketPath(id: MarketId, path: string): string;
 /** The path without its market prefix ("/us/austin-tx/rent" becomes "/austin-tx/rent"). */
 export declare function stripMarketPrefix(pathname: string): string;
-/** Formats an amount in the market's currency and locale, whole units (no paise or cents). */
+/** Whole-unit digits grouped the way the market writes them: "12,50,000" in India (lakh/crore), "1,250,000" in the US.
+ * Hand-rolled rather than `toLocaleString` so Node, browsers and Hermes all print the same thing. Negative keeps its sign. */
+export declare function groupAmount(id: MarketId, amount: number): string;
+/** The market's currency symbol and whole-unit amount: "₹12,50,000", "$1,250". Negative: "-$1,250". */
 export declare function formatMoney(id: MarketId, amount: number): string;
 /** Whether a national phone number (digits only, no dial code) is valid in the market. */
 export declare function isValidNationalPhone(id: MarketId, digits: string): boolean;
