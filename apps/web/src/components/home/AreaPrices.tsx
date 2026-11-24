@@ -1,7 +1,8 @@
 import { fetchAreaPriceStats } from "@/lib/bff";
 import type { ParsedSegments } from "@/lib/seoRoute";
+import { SERVER_MARKET } from "@/lib/serverMarket";
 
-const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+const rupees = (n: number) => `${SERVER_MARKET.currencySymbol}${n.toLocaleString(SERVER_MARKET.locale)}`;
 
 /** Live asking-price figures for an area's apartments, on the plain area page only. Computed from our
  * own active listings, so each figure shows how many listings it comes from and the date. The BFF

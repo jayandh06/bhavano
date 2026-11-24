@@ -33,6 +33,7 @@ import {
 import { refineRequirementAction } from "@/app/actions/requirements";
 import { listAllAreasAction } from "@/app/actions/locations";
 import { RequirementCityPicker, type PickedCity } from "./RequirementCityPicker";
+import { Currency } from "./Currency";
 
 type WizardStep = RequirementStep | "review";
 
@@ -605,12 +606,12 @@ export function RequirementRefineWizard({
         </ChipRow>
         <div className="grid grid-cols-2 gap-3 w-full">
           <label className="flex flex-col gap-1 min-w-0">
-            <span className="text-[11.5px] text-muted font-bold">From ₹</span>
+            <span className="text-[11.5px] text-muted font-bold">From <Currency /></span>
             <input inputMode="numeric" value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)} className={`${inputClass} w-full`} />
             {min !== undefined && <span className="text-[11.5px] text-muted">{formatInrWithWords(min)}</span>}
           </label>
           <label className="flex flex-col gap-1 min-w-0">
-            <span className="text-[11.5px] text-muted font-bold">Up to ₹</span>
+            <span className="text-[11.5px] text-muted font-bold">Up to <Currency /></span>
             <input inputMode="numeric" value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} className={`${inputClass} w-full`} />
             {max !== undefined && <span className="text-[11.5px] text-muted">{formatInrWithWords(max)}</span>}
           </label>

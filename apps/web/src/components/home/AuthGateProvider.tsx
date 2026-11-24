@@ -30,6 +30,7 @@ import {
   profileNeedsMandatoryBasics,
   type ProfileBasicsValues,
 } from "./ProfileBasicsStep";
+import { useMarket } from "@/lib/useMarket";
 
 /** `basics` = name + verified secondary + optional city after login — see
  * docs/plans/post-login-name-and-city.md. */
@@ -72,6 +73,7 @@ export function useAuthGate(): AuthGateContextValue {
 }
 
 export function AuthGateProvider({ children }: { children: ReactNode }) {
+  const market = useMarket();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginStep, setLoginStep] = useState<LoginStep>("choose");
   const [phone, setPhone] = useState("");
@@ -543,19 +545,19 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
             {loginStep === "phone" && (
               <>
                 <div className="flex gap-2 mb-3.5">
-                  <div className="bg-surface-alt border border-border rounded-[9px] px-3.5 py-3 font-bold text-sm">+91</div>
+                  <div className="bg-surface-alt border border-border rounded-[9px] px-3.5 py-3 font-bold text-sm">+{market.phoneDialCode}</div>
                   <input
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                    placeholder="10-digit mobile number"
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, market.phoneNationalLength))}
+                    placeholder={market.phonePlaceholder}
                     className={inputClass}
                   />
                 </div>
                 {error && <p className={errorClass}>{error}</p>}
                 <button
                   onClick={() => void handleSendOtp()}
-                  disabled={phone.length !== 10 || pending}
-                  className={`${primaryButtonClass} ${phone.length === 10 ? "opacity-100" : "opacity-50"}`}
+                  disabled={phone.length !== market.phoneNationalLength || pending}
+                  className={`${primaryButtonClass} ${phone.length === market.phoneNationalLength ? "opacity-100" : "opacity-50"}`}
                 >
                   Send OTP on WhatsApp
                 </button>
@@ -574,12 +576,12 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                 <p className="text-sm text-text mb-3 leading-[1.5]">
                   {otpChannel === "whatsapp" ? (
                     <>
-                      We sent a 6-digit code to <strong>WhatsApp</strong> on +91 {phone}. Open WhatsApp, tap{" "}
+                      We sent a 6-digit code to <strong>WhatsApp</strong> on +{market.phoneDialCode} {phone}. Open WhatsApp, tap{" "}
                       <strong>Copy code</strong>, then paste it here.
                     </>
                   ) : (
                     <>
-                      We sent a 6-digit code by <strong>SMS</strong> to +91 {phone}.
+                      We sent a 6-digit code by <strong>SMS</strong> to +{market.phoneDialCode} {phone}.
                     </>
                   )}
                 </p>

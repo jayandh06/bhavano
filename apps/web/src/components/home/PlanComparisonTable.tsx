@@ -4,6 +4,8 @@ import { HorizontalScroller } from "./HorizontalScroller";
 import type { ContactRevealSettingsDto, UserProfileDto } from "@bhavano/types";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import { Icon } from "./Icon";
+import { useMarket } from "@/lib/useMarket";
+import { Currency } from "./Currency";
 
 type Cell = string | { type: "yes" } | { type: "no" } | { type: "dash" };
 
@@ -22,19 +24,19 @@ function CellContent({ value }: { value: Cell }) {
 
 /** Built from live settings (not literal copy) so this table can never drift from what
  * SubscribeButton actually charges — see docs/plans/admin-manage-plans-pricing.md. */
-function sellerRows(settings: SubscriptionPlanSettings): { label: string; free: Cell; pack: Cell; pro: Cell }[] {
+function sellerRows(settings: SubscriptionPlanSettings, symbol: string): { label: string; free: Cell; pack: Cell; pro: Cell }[] {
   return [
     {
       label: "Price",
-      free: "₹0",
-      pack: `₹${settings.sellerSlotPackMonthlyPrice} / month`,
-      pro: `₹${settings.agentProMonthlyPricePerUnit} / month`,
+      free: `${symbol}0`,
+      pack: `${symbol}${settings.sellerSlotPackMonthlyPrice} / month`,
+      pro: `${symbol}${settings.agentProMonthlyPricePerUnit} / month`,
     },
     {
       label: "Active listings at once",
       free: String(settings.freeListingSlots),
       pack: String(settings.sellerSlotPackTotalSlots),
-      pro: `${settings.proListingSlotsPerUnit} (+${settings.proListingSlotsPerUnit} per extra ₹${settings.agentProMonthlyPricePerUnit})`,
+      pro: `${settings.proListingSlotsPerUnit} (+${settings.proListingSlotsPerUnit} per extra ${symbol}${settings.agentProMonthlyPricePerUnit})`,
     },
     {
       label: "Slots free when ads expire or you remove them",
@@ -60,11 +62,11 @@ function sellerRows(settings: SubscriptionPlanSettings): { label: string; free: 
   ];
 }
 
-function buyerRows(settings: SubscriptionPlanSettings): { label: string; plus: Cell }[] {
+function buyerRows(settings: SubscriptionPlanSettings, symbol: string): { label: string; plus: Cell }[] {
   return [
     {
       label: "Price",
-      plus: `₹${settings.buyerPremiumPrice1Month} / mo · ₹${settings.buyerPremiumPrice6Months} / 6 mo · ₹${settings.buyerPremiumPrice12Months} / yr`,
+      plus: `${symbol}${settings.buyerPremiumPrice1Month} / mo · ${symbol}${settings.buyerPremiumPrice6Months} / 6 mo · ${symbol}${settings.buyerPremiumPrice12Months} / yr`,
     },
     { label: "Early-access saved-search alerts", plus: { type: "yes" } },
     { label: "Verified Buyer badge on messages", plus: { type: "yes" } },
@@ -119,11 +121,12 @@ export function PlanComparisonTable({
   contactRevealSettings: ContactRevealSettingsDto;
   planPricing: SubscriptionPlanSettings;
 }) {
+  const market = useMarket();
   const sellerPlan = currentSellerPlan(profile);
   const isBuyerPlus =
     profile?.premiumUntil && new Date(profile.premiumUntil).getTime() > Date.now();
-  const sellerRowsData = sellerRows(planPricing);
-  const buyerRowsData = buyerRows(planPricing);
+  const sellerRowsData = sellerRows(planPricing, market.currencySymbol);
+  const buyerRowsData = buyerRows(planPricing, market.currencySymbol);
 
   return (
     <div className="flex flex-col gap-8">
@@ -254,7 +257,7 @@ export function PlanComparisonTable({
               <tr className="border-b border-border">
                 <td className="p-3 text-[12px] text-muted align-top">Credit pack</td>
                 <td className="p-3 align-top text-[13px] text-text">
-                  {contactRevealSettings.creditPackSize} reveals for ₹{contactRevealSettings.creditPackPriceRupees}
+                  {contactRevealSettings.creditPackSize} reveals for <Currency />{contactRevealSettings.creditPackPriceRupees}
                 </td>
               </tr>
               <tr className="border-b border-border last:border-0">

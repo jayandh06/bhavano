@@ -5,6 +5,7 @@ import { PlanComparisonTable } from "@/components/home/PlanComparisonTable";
 import { ListingSlotMeter } from "@/components/home/ListingSlotMeter";
 import { SubscribeButton } from "@/components/home/SubscribeButton";
 import { Icon } from "./Icon";
+import { Currency } from "./Currency";
 
 /**
  * The whole of `/premium`, for logged-in and logged-out visitors alike (`profile` is null for
@@ -61,7 +62,7 @@ export function PremiumPlansView({
         <section className="border border-border rounded-2xl p-6 bg-surface">
           <div className="flex items-baseline justify-between gap-2 flex-wrap mb-1">
             <div className="font-lora text-xl font-bold text-text">Free seller</div>
-            <span className="text-[13px] font-bold text-green">₹0</span>
+            <span className="text-[13px] font-bold text-green"><Currency />0</span>
           </div>
           <p className="text-[13px] text-muted mb-3 m-0">
             {planPricing.freeListingSlots} active listings — included for every account.
@@ -124,8 +125,8 @@ export function PremiumPlansView({
           <p className="text-[13px] text-muted mb-4 m-0">For agents &amp; brokers — scale inventory and brand.</p>
           <ul className="text-[13px] text-text-soft m-0 mb-4 pl-5 list-disc flex flex-col gap-1">
             <li>
-              <strong>{planPricing.proListingSlotsPerUnit} active listings</strong> per ₹{planPricing.agentProMonthlyPricePerUnit}/month
-              (each extra ₹{planPricing.agentProMonthlyPricePerUnit} adds +{planPricing.proListingSlotsPerUnit})
+              <strong>{planPricing.proListingSlotsPerUnit} active listings</strong> per <Currency />{planPricing.agentProMonthlyPricePerUnit}/month
+              (each extra <Currency />{planPricing.agentProMonthlyPricePerUnit} adds +{planPricing.proListingSlotsPerUnit})
             </li>
             <li>Public storefront with Bhavano Pro badge</li>
             <li>Elevated video limits when posting</li>
@@ -157,7 +158,7 @@ export function PremiumPlansView({
               <strong>{contactRevealSettings.freeRevealsPerUser} free reveals</strong> on every account, no purchase needed
             </li>
             <li>
-              Then <strong>{contactRevealSettings.creditPackSize} reveals for ₹{contactRevealSettings.creditPackPriceRupees}</strong> —
+              Then <strong>{contactRevealSettings.creditPackSize} reveals for <Currency />{contactRevealSettings.creditPackPriceRupees}</strong> —
               a credit unlocks a listing&apos;s contact info for good, not just for one visit
             </li>
             <li>Credits last {contactRevealSettings.creditExpiryMonths} month{contactRevealSettings.creditExpiryMonths === 1 ? "" : "s"} from purchase</li>

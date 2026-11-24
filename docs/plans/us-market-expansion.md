@@ -49,6 +49,15 @@ This is not a translation job; the product assumptions change:
 
 ## Plan
 
+**Built 2026-11-24 (web UI for phone and currency):** `apps/web/src/lib/useMarket.ts` reads the market from the URL path
+(`/us` is the US, everything else India; one build serves both) and `components/home/Currency.tsx` renders its symbol.
+The web login, profile, contact, report and assisted-seller forms take the dial code chip, placeholder, length checks and
+validation from the market (`phonePlaceholder` added to the config); the Boost, plan, subscription, credit-pack, saved-search,
+requirement and post/edit price labels, the listing preview card, area prices and purchases page use the market currency.
+India renders the same text. **Not done on web:** dates (`en-IN` formatters, many module-level), price-input quick-pick
+brackets and parsing (`priceInput.ts`, `parseSearchQuery.ts`, `seoRoute.ts` use India's k/L/Cr), the Tools calculators and
+blog/guides (India content, hide in the US), `gtm.ts` phone hashing, the INR price-range bounds, and all of admin and mobile.
+
 **Built 2026-11-24 (step 3, money in the shared helpers and BFF):** `market.ts` gains `groupAmount` (lakh grouping for India,
 thousands for the US, hand-rolled so Node, browsers and Hermes agree) and `formatMoney` is now symbol + `groupAmount`.
 `priceWords.ts` (`formatInrInWords`, `perUnitTotalPrice`, `formatInrWithWords`, `formatInrRangeWithWords`) takes an optional

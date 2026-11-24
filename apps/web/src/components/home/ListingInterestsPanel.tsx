@@ -13,6 +13,7 @@ import {
 } from "@/app/actions/listings";
 import { useBuyCredits } from "./BuyCreditsProvider";
 import { reportPostAction } from "@/lib/postActionTrail";
+import { useMarket } from "@/lib/useMarket";
 
 const timeFormatter = new Intl.DateTimeFormat("en-IN", {
   day: "numeric",
@@ -36,6 +37,7 @@ export function ListingInterestsPanel({
   listingId: string;
   interestCount: number;
 }) {
+  const market = useMarket();
   const router = useRouter();
   const { buyCredits } = useBuyCredits();
   const [open, setOpen] = useState(false);
@@ -126,7 +128,7 @@ export function ListingInterestsPanel({
     if (!summary) return "Unlock contact";
     if (summary.freeLeadReveals > 0) return "Unlock contact (free)";
     if (summary.creditsRemaining > 0) return "Unlock contact · 1 credit";
-    return `Unlock contact · ₹${summary.creditPackPriceRupees} for ${summary.creditPackSize}`;
+    return `Unlock contact · ${market.currencySymbol}${summary.creditPackPriceRupees} for ${summary.creditPackSize}`;
   };
 
   return (

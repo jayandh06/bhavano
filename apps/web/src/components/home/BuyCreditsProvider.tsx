@@ -4,6 +4,7 @@ import { createContext, useContext, useRef, useState, type ReactNode } from "rea
 import { createContactRevealCreditsOrderAction } from "@/app/actions/payments";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { pushDataLayerEvent } from "@/lib/gtm";
+import { Currency } from "./Currency";
 
 /**
  * One shared "buy contact-reveal credits" modal for the whole app — see
@@ -124,7 +125,7 @@ export function BuyCreditsProvider({ children }: { children: ReactNode }) {
           >
             <div className="font-lora font-bold text-[17px] text-text mb-1">Buy contact-reveal credits</div>
             <p className="text-[13px] text-muted mb-4 m-0">
-              You&rsquo;ve used your free reveals. {packSize} credits for ₹{packPrice} — each credit unlocks one
+              You&rsquo;ve used your free reveals. {packSize} credits for <Currency />{packPrice} — each credit unlocks one
               listing&rsquo;s contact, permanently.
             </p>
             <label className="block text-[11.5px] font-bold text-muted mb-1.5">Discount code (optional)</label>
@@ -139,7 +140,7 @@ export function BuyCreditsProvider({ children }: { children: ReactNode }) {
               disabled={pending}
               className="w-full bg-green text-on-green border-0 rounded-lg py-3 text-sm font-extrabold cursor-pointer disabled:opacity-60"
             >
-              {pending ? "Opening checkout…" : `Buy ${packSize} credits — ₹${packPrice}`}
+              {pending ? "Opening checkout…" : <>Buy {packSize} credits — <Currency />{packPrice}</>}
             </button>
             {error && <p className="text-[#b3413a] text-[13px] mt-3 mb-0">{error}</p>}
             <button

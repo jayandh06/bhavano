@@ -6,6 +6,8 @@ import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { formatInrInWords, groupInr, perUnitTotalPrice } from "@bhavano/types/priceWords";
 import { Icon } from "./Icon";
 import { ListingPrice } from "./PriceWithWords";
+import { useMarket } from "@/lib/useMarket";
+import { formatMoney } from "@bhavano/types/market";
 
 /**
  * What the actual browse-grid `ListingCard` will look like once this ad is posted — same photo/
@@ -63,11 +65,12 @@ export function ListingPreviewCard({
    * so the image itself doesn't re-fetch. */
   featured?: boolean;
 }) {
+  const market = useMarket();
   const priceNum = Number(price);
   const exactPrice =
-    priceNum > 0 ? `₹${groupInr(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, priceNum)}` : ""}` : "Contact for price";
+    priceNum > 0 ? `${formatMoney(market.id, priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, priceNum)}` : ""}` : "Contact for price";
   const wordsPrice =
-    priceNum > 0 ? `${formatInrInWords(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, 1)}` : ""}` : null;
+    priceNum > 0 ? `${formatInrInWords(priceNum, market.id)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, 1)}` : ""}` : null;
   const totalPrice =
     priceNum > 0 && priceUnit && priceArea && priceArea > 0
       ? perUnitTotalPrice(Math.round(priceNum * priceArea), priceArea, priceUnit)

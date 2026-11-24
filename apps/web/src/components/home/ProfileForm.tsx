@@ -14,10 +14,12 @@ import {
 } from "@/app/actions/users";
 import { linkPhoneAction, sendOtpAction, signOutAction } from "@/app/actions/auth";
 import { Icon } from "./Icon";
+import { useMarket } from "@/lib/useMarket";
 
 type PhoneStep = "idle" | "otpSent";
 
 export function ProfileForm({ profile }: { profile: UserProfileDto }) {
+  const market = useMarket();
   const [name, setName] = useState(profile.name ?? "");
   const [sellerType, setSellerType] = useState<SellerType | null>(profile.sellerType);
   const [agencyName, setAgencyName] = useState(profile.agencyName ?? "");
@@ -465,19 +467,19 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
             {phoneStep === "idle" ? (
               <>
                 <div className="flex gap-2">
-                  <div className={countryChipClass}>+91</div>
+                  <div className={countryChipClass}>+{market.phoneDialCode}</div>
                   <input
                     value={phoneInput}
-                    onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                    placeholder="10-digit mobile number"
+                    onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, "").slice(0, market.phoneNationalLength))}
+                    placeholder={market.phonePlaceholder}
                     className={inputClass}
                   />
                 </div>
                 {phoneError && <p className={errorClass}>{phoneError}</p>}
                 <button
                   onClick={onSendPhoneOtp}
-                  disabled={phoneInput.length !== 10 || phonePending}
-                  className={`${secondaryButtonClass} mt-2.5 ${phoneInput.length === 10 ? "opacity-100" : "opacity-50"}`}
+                  disabled={phoneInput.length !== market.phoneNationalLength || phonePending}
+                  className={`${secondaryButtonClass} mt-2.5 ${phoneInput.length === market.phoneNationalLength ? "opacity-100" : "opacity-50"}`}
                 >
                   {phonePending ? "Sending…" : "Send OTP"}
                 </button>

@@ -10,6 +10,7 @@ import { discountPercentFor } from "@bhavano/types/promoCode";
 import { boostRecoveryMessage } from "@bhavano/types/boostEffectiveness";
 import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import { Icon } from "./Icon";
+import { Currency } from "./Currency";
 
 // Strikes out the original price rather than an arrow (₹149 → ₹99) — same convention as
 // BoostBundlePicker's PriceTag, so an offer being applied reads the same way everywhere a boost
@@ -21,8 +22,8 @@ function PriceDisplay({ opt }: { opt: BoostPricingPreviewDto["boost7"] }) {
   if (opt.free) return <>Free</>;
   return (
     <>
-      {opt.discountApplied && <span className="line-through mr-1.5 text-muted">₹{opt.originalAmount}</span>}
-      ₹{opt.amount}
+      {opt.discountApplied && <span className="line-through mr-1.5 text-muted"><Currency />{opt.originalAmount}</span>}
+      <Currency />{opt.amount}
     </>
   );
 }
@@ -102,7 +103,7 @@ export function BoostPlanSelector({
       {platformFeeRupees > 0 && (
         <div className="flex justify-between items-center border-[1.5px] border-green bg-green/10 rounded-[10px] px-4 py-3 text-sm font-bold text-text mb-3">
           <span>Platform fee (required)</span>
-          <span className="text-green">₹{platformFeeRupees}</span>
+          <span className="text-green"><Currency />{platformFeeRupees}</span>
         </div>
       )}
 
@@ -147,12 +148,12 @@ export function BoostPlanSelector({
                 </span>
                 {saving ? (
                   <span className="text-[12px] font-normal text-green">
-                    ₹{saving.perDay}/day · save ₹{saving.rupees} ({saving.percent}%) vs the 7-day price
+                    <Currency />{saving.perDay}/day · save <Currency />{saving.rupees} ({saving.percent}%) vs the 7-day price
                   </span>
                 ) : (
                   !opt.free && (
                     <span className="text-[12px] font-normal text-muted">
-                      ₹{Math.round(opt.amount / days)}/day
+                      <Currency />{Math.round(opt.amount / days)}/day
                     </span>
                   )
                 )}
@@ -224,7 +225,7 @@ export function BoostPlanSelector({
       )}
 
       {showPriceSummary && (platformFeeRupees > 0 || value) && (
-        <p className="text-[13px] font-bold text-green mt-3 mb-0">Due today: ₹{dueToday}</p>
+        <p className="text-[13px] font-bold text-green mt-3 mb-0">Due today: <Currency />{dueToday}</p>
       )}
     </div>
   );

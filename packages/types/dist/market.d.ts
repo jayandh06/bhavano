@@ -42,6 +42,8 @@ export interface MarketConfig {
     phoneTrunkPrefix: string;
     /** How validation errors name the number, e.g. "phone must be a 10-digit Indian mobile number". */
     phoneLabel: string;
+    /** Placeholder for a phone input: "10-digit mobile number" in India. */
+    phonePlaceholder: string;
     /** Phone numbers are the login identity here. False means email or social login leads. */
     phoneLoginPrimary: boolean;
     /** Categories that exist in this market. */

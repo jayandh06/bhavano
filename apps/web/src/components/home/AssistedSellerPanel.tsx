@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import type { ListingOwnerDto, SellerType } from "@bhavano/types";
 import { searchUsersAsAdminAction } from "@/app/actions/listings";
+import { useMarket } from "@/lib/useMarket";
+import { getMarket, nationalPhoneDigits, type MarketId } from "@bhavano/types/market";
 
 export interface AssistedSeller {
   enabled: boolean;
@@ -13,17 +15,15 @@ export interface AssistedSeller {
 
 export const EMPTY_ASSISTED_SELLER: AssistedSeller = { enabled: false, name: "", phone: "", sellerType: null };
 
-/** The last 10 digits of an Indian mobile typed with or without +91 / 0 / spaces, or null. */
-export function assistedSellerPhoneDigits(phone: string): string | null {
-  const digits = phone.replace(/\D/g, "");
-  const local = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits.length === 11 && digits.startsWith("0") ? digits.slice(1) : digits;
-  return /^[6-9]\d{9}$/.test(local) ? local : null;
+/** The national number of a mobile typed with or without the dial code, trunk 0 or spaces, or null (India unless another market is named). */
+export function assistedSellerPhoneDigits(phone: string, marketId: MarketId = "in"): string | null {
+  return nationalPhoneDigits(marketId, phone);
 }
 
 /** What's still missing before an assisted ad can be posted, or null when it's complete. */
-export function assistedSellerProblem(seller: AssistedSeller): string | null {
+export function assistedSellerProblem(seller: AssistedSeller, marketId: MarketId = "in"): string | null {
   if (seller.name.trim().length < 2) return "Enter the seller's name.";
-  if (!assistedSellerPhoneDigits(seller.phone)) return "Enter the seller's 10-digit mobile number.";
+  if (!assistedSellerPhoneDigits(seller.phone, marketId)) return `Enter the seller's ${getMarket(marketId).phoneNationalLength}-digit mobile number.`;
   if (!seller.sellerType) return "Choose whether the seller is the owner or an agent.";
   return null;
 }
@@ -44,6 +44,7 @@ export function AssistedSellerPanel({
   value: AssistedSeller;
   onChange: (next: AssistedSeller) => void;
 }) {
+  const market = useMarket();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ListingOwnerDto[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -117,7 +118,7 @@ export function AssistedSellerPanel({
             />
             <input
               className={inputClass}
-              placeholder="Seller's mobile (10 digits)"
+              placeholder={`Seller's mobile (${market.phoneNationalLength} digits)`}
               inputMode="tel"
               value={value.phone}
               onChange={(e) => onChange({ ...value, phone: e.target.value })}

@@ -12,6 +12,7 @@ import {
   verifyEmailAction,
 } from "@/app/actions/users";
 import { Icon } from "./Icon";
+import { useMarket } from "@/lib/useMarket";
 
 const MIN_CITY_QUERY = 2;
 
@@ -128,6 +129,7 @@ export function ProfileBasicsStep({
   /** Backing out of `verifyPhoneOnly` (its Back button) — abandon the verification. */
   onCancel?: () => void;
 }) {
+  const market = useMarket();
   const [name, setName] = useState(initial.name);
   const [cityId, setCityId] = useState<string | null>(initial.cityId);
   const [cityName, setCityName] = useState<string | null>(initial.cityName);
@@ -378,14 +380,14 @@ export function ProfileBasicsStep({
           phone later.
         </p>
         <div className="flex gap-2 mb-3.5">
-          <div className="bg-surface-alt border border-border rounded-[9px] px-3.5 py-3 font-bold text-sm">+91</div>
+          <div className="bg-surface-alt border border-border rounded-[9px] px-3.5 py-3 font-bold text-sm">+{market.phoneDialCode}</div>
           <input
             type="tel"
             inputMode="numeric"
             autoFocus
             value={linkPhone}
-            onChange={(e) => setLinkPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-            placeholder="10-digit mobile number"
+            onChange={(e) => setLinkPhone(e.target.value.replace(/\D/g, "").slice(0, market.phoneNationalLength))}
+            placeholder={market.phonePlaceholder}
             className={inputClass}
           />
         </div>
@@ -393,8 +395,8 @@ export function ProfileBasicsStep({
         <button
           type="button"
           onClick={() => void onSendLinkOtp()}
-          disabled={pending || linkPhone.length !== 10}
-          className={`${primaryButtonClass} mt-3 ${linkPhone.length === 10 ? "opacity-100" : "opacity-50"}`}
+          disabled={pending || linkPhone.length !== market.phoneNationalLength}
+          className={`${primaryButtonClass} mt-3 ${linkPhone.length === market.phoneNationalLength ? "opacity-100" : "opacity-50"}`}
         >
           {pending ? "Sending…" : "Send OTP"}
         </button>
@@ -413,7 +415,7 @@ export function ProfileBasicsStep({
   if (phase === "askOtp") {
     return (
       <div>
-        <p className="text-[13px] text-muted m-0 mb-4">Enter the OTP sent to +91 {linkPhone} on WhatsApp (or by SMS).</p>
+        <p className="text-[13px] text-muted m-0 mb-4">Enter the OTP sent to +{market.phoneDialCode} {linkPhone} on WhatsApp (or by SMS).</p>
         <input
           type="text"
           inputMode="numeric"
