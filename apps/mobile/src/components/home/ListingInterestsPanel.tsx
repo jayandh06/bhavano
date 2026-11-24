@@ -11,6 +11,7 @@ import {
   unlockLeadContact,
 } from "../../lib/bffClient";
 import { appWebUrl } from "../../lib/appWebUrl";
+import { useMarket } from "../../lib/market";
 
 const timeFormatter = new Intl.DateTimeFormat("en-IN", {
   day: "numeric",
@@ -31,6 +32,7 @@ export function ListingInterestsPanel({
   interestCount: number;
   accessToken: string;
 }) {
+  const market = useMarket();
   const { colors } = useAppTheme();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -110,7 +112,7 @@ export function ListingInterestsPanel({
     if (!summary) return "Unlock contact";
     if (summary.freeLeadReveals > 0) return "Unlock (free)";
     if (summary.creditsRemaining > 0) return "Unlock · 1 credit";
-    return `Unlock · ₹${summary.creditPackPriceRupees}/${summary.creditPackSize}`;
+    return `Unlock · ${market.currencySymbol}${summary.creditPackPriceRupees}/${summary.creditPackSize}`;
   };
 
   const pill = (label: string, onPress: () => void, disabled = false) => (

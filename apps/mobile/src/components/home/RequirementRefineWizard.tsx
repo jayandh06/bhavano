@@ -48,6 +48,7 @@ import { refineMyRequirement } from "../../lib/bffClient";
 import { useAreasQuery } from "../../lib/queries";
 import { useTabBarHeight } from "../../lib/tabBarHeight";
 import { RequirementCityPicker, type PickedCity } from "./RequirementCityPicker";
+import { Currency } from "./Currency";
 
 type WizardStep = RequirementStep | "review";
 type Colors = ReturnType<typeof useAppTheme>["colors"];
@@ -676,7 +677,7 @@ export function RequirementRefineWizard({
         </ChipRow>
         <View style={{ flexDirection: "row", gap: 10 }}>
           <View style={{ flex: 1, gap: 4 }}>
-            <FieldLabel colors={colors}>From ₹</FieldLabel>
+            <FieldLabel colors={colors}>From <Currency /></FieldLabel>
             <TextInput
               value={budgetMin}
               onChangeText={(t) => setBudgetMin(t.replace(/\D/g, ""))}
@@ -686,7 +687,7 @@ export function RequirementRefineWizard({
             {min !== undefined && <Hint colors={colors}>{formatInrWithWords(min)}</Hint>}
           </View>
           <View style={{ flex: 1, gap: 4 }}>
-            <FieldLabel colors={colors}>Up to ₹</FieldLabel>
+            <FieldLabel colors={colors}>Up to <Currency /></FieldLabel>
             <TextInput
               value={budgetMax}
               onChangeText={(t) => setBudgetMax(t.replace(/\D/g, ""))}

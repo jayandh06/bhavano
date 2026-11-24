@@ -4,11 +4,13 @@ import type { ListingCategory, TransactionType } from "@bhavano/types";
 import { deriveCardSpecs } from "@bhavano/types/cardSpecs";
 import { deriveTag } from "@bhavano/types/listingTag";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
-import { formatInrInWords, groupInr, perUnitTotalPrice } from "@bhavano/types/priceWords";
+import { formatInrInWords, perUnitTotalPrice } from "@bhavano/types/priceWords";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 import { ListingPrice } from "./PriceWithWords";
 import { PHOTO_CYCLE_MS } from "../../lib/photoCycle";
+import { useMarket } from "../../lib/market";
+import { formatMoney } from "@bhavano/types/market";
 
 /**
  * Mobile counterpart to the web wizard's ListingPreviewCard — same reasoning: the review step
@@ -54,6 +56,7 @@ export function ListingPreviewCard({
    * promises a look the real card won't have. */
   featured?: boolean;
 }) {
+  const market = useMarket();
   const { colors } = useAppTheme();
   // Built-in Animated, not Reanimated (installed but unused elsewhere in this app) — a one-shot
   // pulse on every featured toggle, not a persistent animation, so a plain Animated.Value driven
@@ -84,12 +87,12 @@ export function ListingPreviewCard({
 
   const priceNum = Number(price);
   const exactPrice =
-    priceNum > 0 ? `₹${groupInr(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, priceNum)}` : ""}` : "Contact for price";
+    priceNum > 0 ? `${formatMoney(market.id, priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, priceNum)}` : ""}` : "Contact for price";
   const wordsPrice =
-    priceNum > 0 ? `${formatInrInWords(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, 1)}` : ""}` : null;
+    priceNum > 0 ? `${formatInrInWords(priceNum, market.id)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, 1)}` : ""}` : null;
   const totalPrice =
     priceNum > 0 && priceUnit && priceArea && priceArea > 0
-      ? perUnitTotalPrice(Math.round(priceNum * priceArea), priceArea, priceUnit)
+      ? perUnitTotalPrice(Math.round(priceNum * priceArea), priceArea, priceUnit, market.id)
       : null;
   const specs = deriveCardSpecs(category, attributes);
 

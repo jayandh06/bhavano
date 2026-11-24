@@ -14,6 +14,7 @@ import {
   verifyEmail,
 } from "../../lib/bffClient";
 import { Icon } from "../Icon";
+import { useMarket } from "../../lib/market";
 
 type Step = "askPhone" | "askOtp" | "askEmail" | "askEmailCode" | "confirmMerge" | "done";
 
@@ -37,6 +38,7 @@ let shownThisLaunch = false;
  * the BFF's own cap/snooze is what keeps that from nagging.
  */
 export function ProfileCompletionDialog() {
+  const market = useMarket();
   const { accessToken, isLoggedIn, isNewUser, refreshProfile, logout } = useHomeSheets();
   const { colors } = useAppTheme();
   const pathname = usePathname();
@@ -236,10 +238,10 @@ export function ProfileCompletionDialog() {
               <TextInput
                 autoFocus
                 keyboardType="number-pad"
-                placeholder="10-digit mobile number"
+                placeholder={market.phonePlaceholder}
                 placeholderTextColor={colors.muted}
                 value={phone}
-                onChangeText={(v) => setPhone(v.replace(/\D/g, "").slice(0, 10))}
+                onChangeText={(v) => setPhone(v.replace(/\D/g, "").slice(0, market.phoneNationalLength))}
                 style={[inputStyle, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
               />
               {error && <Text style={errorStyle}>{error}</Text>}

@@ -24,6 +24,7 @@ import { Icon } from "../../src/components/Icon";
 import { AlertPreferenceCard } from "../../src/components/home/AlertPreferenceCard";
 import { ContactShareCard } from "../../src/components/home/ContactShareCard";
 import { IosCreditsSheet } from "../../src/components/home/IosPurchaseSheets";
+import { useMarket } from "../../src/lib/market";
 
 type PhoneStep = "idle" | "otpSent";
 
@@ -113,6 +114,7 @@ function ProfileFields({
   loggingOut: boolean;
   onBack?: () => void;
 }) {
+  const market = useMarket();
   const { colors } = useAppTheme();
   const { logout } = useHomeSheets();
   const router = useRouter();
@@ -632,12 +634,12 @@ function ProfileFields({
             <>
               <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
                 <View style={[styles.countryChip, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-                  <Text style={{ color: colors.text, fontWeight: "700" }}>+91</Text>
+                  <Text style={{ color: colors.text, fontWeight: "700" }}>+{market.phoneDialCode}</Text>
                 </View>
                 <TextInput
                   value={phoneInput}
-                  onChangeText={(v) => setPhoneInput(v.replace(/\D/g, "").slice(0, 10))}
-                  placeholder="10-digit mobile number"
+                  onChangeText={(v) => setPhoneInput(v.replace(/\D/g, "").slice(0, market.phoneNationalLength))}
+                  placeholder={market.phonePlaceholder}
                   placeholderTextColor={colors.muted}
                   keyboardType="number-pad"
                   style={[styles.input, { letterSpacing: 0, flex: 1, marginBottom: 0, borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
@@ -646,8 +648,8 @@ function ProfileFields({
               {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
               <Pressable
                 onPress={onSendPhoneOtp}
-                disabled={phoneInput.length !== 10 || phonePending}
-                style={[styles.secondaryButton, { borderColor: colors.green, opacity: phoneInput.length === 10 ? 1 : 0.5 }]}
+                disabled={phoneInput.length !== market.phoneNationalLength || phonePending}
+                style={[styles.secondaryButton, { borderColor: colors.green, opacity: phoneInput.length === market.phoneNationalLength ? 1 : 0.5 }]}
               >
                 <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>
                   {phonePending ? "Sending…" : "Send OTP"}

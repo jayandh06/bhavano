@@ -3,7 +3,7 @@ import type { ListingCategory, TransactionType } from "@bhavano/types";
 import { deriveCardSpecs } from "@bhavano/types/cardSpecs";
 import { deriveTag } from "@bhavano/types/listingTag";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
-import { formatInrInWords, groupInr, perUnitTotalPrice } from "@bhavano/types/priceWords";
+import { formatInrInWords, perUnitTotalPrice } from "@bhavano/types/priceWords";
 import { Icon } from "./Icon";
 import { ListingPrice } from "./PriceWithWords";
 import { useMarket } from "@/lib/useMarket";
@@ -73,7 +73,7 @@ export function ListingPreviewCard({
     priceNum > 0 ? `${formatInrInWords(priceNum, market.id)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, 1)}` : ""}` : null;
   const totalPrice =
     priceNum > 0 && priceUnit && priceArea && priceArea > 0
-      ? perUnitTotalPrice(Math.round(priceNum * priceArea), priceArea, priceUnit)
+      ? perUnitTotalPrice(Math.round(priceNum * priceArea), priceArea, priceUnit, market.id)
       : null;
   const specs = deriveCardSpecs(category, attributes);
 

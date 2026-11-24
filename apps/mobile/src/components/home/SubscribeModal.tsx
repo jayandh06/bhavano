@@ -6,6 +6,7 @@ import { subscriptionPriceFor, type SubscriptionPlanSettings } from "@bhavano/ty
 import { useAppTheme } from "../../theme/ThemeContext";
 import { createSubscriptionOrder } from "../../lib/bffClient";
 import { isRazorpayUserCancel, razorpayFailureMessage } from "../../lib/razorpayNative";
+import { Currency } from "./Currency";
 
 /** Same per-tier durations the website's SubscribeButton offers — only Bhavano Plus has terms
  * longer than a month. */
@@ -132,7 +133,7 @@ export function SubscribeModal({
                   {durationLabel(tier, months, planPricing)}
                 </Text>
                 <Text style={{ fontWeight: "700", fontSize: 14, color: colors.green }}>
-                  ₹{subscriptionPriceFor(tier, months, 1, planPricing)}
+                  <Currency />{subscriptionPriceFor(tier, months, 1, planPricing)}
                 </Text>
               </Pressable>
             ))}

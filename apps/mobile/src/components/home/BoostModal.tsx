@@ -14,6 +14,7 @@ import { createBoostOrder, fetchPlanPricing, previewBoostPricing } from "../../l
 import { isRazorpayUserCancel, razorpayFailureMessage } from "../../lib/razorpayNative";
 import { recordAppPageView } from "../../lib/analyticsSession";
 import { ReferralFreeBoost } from "./ReferralFreeBoost";
+import { Currency } from "./Currency";
 
 /** One step of a Featured purchase made from My listings, written as a synthetic page visit so the admin trail shows it
  * (same `/post/action` path the post flow uses, with screen=boost). Fire-and-forget. */
@@ -174,7 +175,7 @@ export function BoostModal({
               >
                 <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}>{days} days</Text>
                 <Text style={{ fontWeight: "700", fontSize: 14, color: colors.green }}>
-                  ₹{boostPriceFor(category, days, boostPriceSettings)}
+                  <Currency />{boostPriceFor(category, days, boostPriceSettings)}
                 </Text>
               </Pressable>
             ))}
