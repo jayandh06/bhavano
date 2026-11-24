@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReferralNotificationsService } from './referral-notifications.service';
+import { MARKET_TIME_ZONE } from '../market/market-config';
 
 const REMIND_DAYS_AHEAD = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -20,7 +21,7 @@ export class ReferralCreditExpiryReminderJob {
     private readonly notifier: ReferralNotificationsService,
   ) {}
 
-  @Cron('0 10 * * *', { timeZone: 'Asia/Kolkata' })
+  @Cron('0 10 * * *', { timeZone: MARKET_TIME_ZONE })
   async runDaily(): Promise<void> {
     if (this.running) return;
     this.running = true;

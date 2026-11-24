@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminService } from './admin.service';
+import { MARKET_TIME_ZONE } from '../market/market-config';
 
 /** Automatic Boost nudge for a quiet ad — see docs/plans/admin-in-app-boost-message.md.
  *
@@ -34,7 +35,7 @@ export class BoostNudgeJob {
 
   /** Hourly at :15, 10:00–19:59 IST — a message that lands at 3am is read as spam, and a push at
    * that hour is worse. */
-  @Cron('15 10-19 * * *', { timeZone: 'Asia/Kolkata' })
+  @Cron('15 10-19 * * *', { timeZone: MARKET_TIME_ZONE })
   async run(): Promise<void> {
     if (process.env.BOOST_NUDGE_AUTO_ENABLED !== 'true') return;
     if (this.running) return;

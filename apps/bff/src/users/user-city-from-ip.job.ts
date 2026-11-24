@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { UserCityFromIpService } from './user-city-from-ip.service';
+import { MARKET_TIME_ZONE } from '../market/market-config';
 
 /** Once a day, gives accounts that skipped the city question an approximate one from their visit
  * IPs (marked `cityFromIp`). See docs/plans/profile-city-from-ip.md. */
@@ -11,7 +12,7 @@ export class UserCityFromIpJob {
 
   constructor(private readonly cities: UserCityFromIpService) {}
 
-  @Cron('10 4 * * *', { timeZone: 'Asia/Kolkata' })
+  @Cron('10 4 * * *', { timeZone: MARKET_TIME_ZONE })
   async run(): Promise<void> {
     if (this.running) return;
     this.running = true;

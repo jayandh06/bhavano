@@ -7,6 +7,8 @@
 export const SEND_WINDOW_START_HOUR_IST = 9;
 export const SEND_WINDOW_END_HOUR_IST = 21;
 
+/** Deliberately not the market's time zone: this is India's TRAI/DLT rule, so it stays on India time in every
+ * deployment (a US market has its own rules, see docs/plans/us-market-expansion.md). */
 function hourInIndia(at: Date): number {
   const hour = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Kolkata',

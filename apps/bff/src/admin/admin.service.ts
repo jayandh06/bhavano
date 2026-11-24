@@ -143,6 +143,7 @@ import {
 } from './post-feedback-message';
 import { normalizedPhoneDigitsForSearch, buildUserSearchOr } from './user-search';
 import { isListingBoosted } from '../listings/listing-boost.util';
+import { MARKET, MARKET_TIME_ZONE } from '../market/market-config';
 
 const APPROVED_MESSAGE = 'Your listing has been reviewed and is live again.';
 const ACTIVITY_LIMIT_PER_SOURCE = 50;
@@ -367,10 +368,10 @@ const BULK_IMPORT_OWNER_PHONE = '9000000002';
  * which is the only honest thing to say about a date that does not exist. */
 function formatOfferEnd(expiresAt: Date | null): string {
   if (!expiresAt) return 'while it lasts';
-  return new Intl.DateTimeFormat('en-IN', {
+  return new Intl.DateTimeFormat(MARKET.locale, {
     day: 'numeric',
     month: 'long',
-    timeZone: 'Asia/Kolkata',
+    timeZone: MARKET_TIME_ZONE,
   }).format(expiresAt);
 }
 

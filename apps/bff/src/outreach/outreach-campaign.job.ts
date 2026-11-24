@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OutreachService, hasAudienceScope, renderTemplate } from './outreach.service';
 import { OutreachSenderService } from './outreach-sender.service';
 import { SEND_WINDOW_MESSAGE, isWithinPromotionalSendWindow } from './send-window';
+import { MARKET_TIME_ZONE } from '../market/market-config';
 
 /**
  * Drives due campaigns. Same shape as ListingExpiryReminderJob — hourly @Cron in IST, a
@@ -24,7 +25,7 @@ export class OutreachCampaignJob {
     private readonly sender: OutreachSenderService,
   ) {}
 
-  @Cron('0 * * * *', { timeZone: 'Asia/Kolkata' })
+  @Cron('0 * * * *', { timeZone: MARKET_TIME_ZONE })
   async runHourly(): Promise<void> {
     if (this.running) return;
     this.running = true;

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ListingsService } from './listings.service';
+import { MARKET_TIME_ZONE } from '../market/market-config';
 
 /** Deletes admin-assisted listings their seller never claimed — see ASSISTED_CLAIM_DAYS. */
 @Injectable()
@@ -10,7 +11,7 @@ export class AssistedListingExpiryJob {
 
   constructor(private readonly listingsService: ListingsService) {}
 
-  @Cron('30 3 * * *', { timeZone: 'Asia/Kolkata' })
+  @Cron('30 3 * * *', { timeZone: MARKET_TIME_ZONE })
   async runDaily(): Promise<void> {
     if (this.running) return;
     this.running = true;

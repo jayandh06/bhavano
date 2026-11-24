@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MARKET_TIME_ZONE } from '../market/market-config';
 
 /** `expiresAt` is no longer a real deadline (see docs/plans/explicit-close-not-auto-expire.md —
  * nothing happens when it passes), but it's still exactly 30 days after the listing went live or
@@ -20,7 +21,7 @@ export class ListingExpiryReminderJob {
     private readonly notifications: NotificationsService,
   ) {}
 
-  @Cron('0 9 * * *', { timeZone: 'Asia/Kolkata' })
+  @Cron('0 9 * * *', { timeZone: MARKET_TIME_ZONE })
   async runDaily(): Promise<void> {
     if (this.running) return;
     this.running = true;

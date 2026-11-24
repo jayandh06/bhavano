@@ -4,6 +4,7 @@ import { formatInrWithWords } from '@bhavano/types/priceWords';
 import { isLeadReady } from '@bhavano/types/requirementQuestions';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MARKET_TIME_ZONE } from '../market/market-config';
 
 /**
  * Tells owners about demand they could actually fill — the half of Phase 1 that connects seekers
@@ -48,7 +49,7 @@ export class RequirementMatchJob {
 
   /** 10:00 IST — an hour after the admin digest, so a person has seen the queue first and can
    * close out anything obviously junk before owners are told about it. */
-  @Cron('0 10 * * *', { timeZone: 'Asia/Kolkata' })
+  @Cron('0 10 * * *', { timeZone: MARKET_TIME_ZONE })
   async runDaily(): Promise<void> {
     if (this.running) return;
     this.running = true;

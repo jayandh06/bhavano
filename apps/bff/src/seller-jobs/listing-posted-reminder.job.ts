@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MARKET_TIME_ZONE } from '../market/market-config';
 
 /** N days after posting is when most owners have stopped checking back on their own —
  * `boost-nudge.job.ts` picks 24-72h on "most ads get only a couple of views in their first
@@ -20,7 +21,7 @@ export class ListingPostedReminderJob {
     private readonly notifications: NotificationsService,
   ) {}
 
-  @Cron('0 9 * * *', { timeZone: 'Asia/Kolkata' })
+  @Cron('0 9 * * *', { timeZone: MARKET_TIME_ZONE })
   async runDaily(): Promise<void> {
     if (this.running) return;
     this.running = true;

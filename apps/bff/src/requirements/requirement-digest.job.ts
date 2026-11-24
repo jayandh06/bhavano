@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MARKET_TIME_ZONE } from '../market/market-config';
 
 /** How many items the digest lists before it stops — the email is a prompt to go and look, not
  * the queue itself. */
@@ -32,7 +33,7 @@ export class RequirementDigestJob {
 
   /** 09:00 IST, alongside the listing-expiry reminder — the start of a working day, so the list
    * is actionable the moment it arrives. */
-  @Cron('0 9 * * *', { timeZone: 'Asia/Kolkata' })
+  @Cron('0 9 * * *', { timeZone: MARKET_TIME_ZONE })
   async runDaily(): Promise<void> {
     if (this.running) return;
     this.running = true;

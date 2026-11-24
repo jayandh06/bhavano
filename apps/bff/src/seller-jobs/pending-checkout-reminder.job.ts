@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MARKET_TIME_ZONE } from '../market/market-config';
 
 /** A `pending_checkout` listing has no expiry (see docs/plans/
  * pending-checkout-payment-reminder.md) — nothing else ever tells the owner it's waiting unless
@@ -32,7 +33,7 @@ export class PendingCheckoutReminderJob {
   ) {}
 
   /** 20 minutes past the hour — `outreach-campaign.job.ts` already owns the top of the hour. */
-  @Cron('20 * * * *', { timeZone: 'Asia/Kolkata' })
+  @Cron('20 * * * *', { timeZone: MARKET_TIME_ZONE })
   async runHourly(): Promise<void> {
     if (this.running) return;
     this.running = true;
