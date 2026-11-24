@@ -45,6 +45,7 @@ import { parseAreaSelection } from "@/lib/areaSelection";
 import { BrowseListingsView, PAGE_SIZE } from "@/components/home/BrowseListingsView";
 import { ListingDetailView } from "@/components/home/ListingDetailView";
 import { JsonLd } from "@/components/JsonLd";
+import { SERVER_MARKET } from "@/lib/serverMarket";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 
@@ -330,7 +331,7 @@ function listingJsonLd(listing: ListingDetailDto) {
           "@type": "PostalAddress",
           addressLocality: listing.area,
           addressRegion: listing.cityName,
-          addressCountry: "IN",
+          addressCountry: SERVER_MARKET.countryCode,
         },
         ...(listing.lat !== undefined && listing.lng !== undefined
           ? { geo: { "@type": "GeoCoordinates", latitude: listing.lat, longitude: listing.lng } }
@@ -364,7 +365,7 @@ function listingJsonLd(listing: ListingDetailDto) {
       "@type": "PostalAddress",
       addressLocality: listing.area,
       addressRegion: listing.cityName,
-      addressCountry: "IN",
+      addressCountry: SERVER_MARKET.countryCode,
     },
     ...(listing.lat !== undefined && listing.lng !== undefined
       ? { geo: { "@type": "GeoCoordinates", latitude: listing.lat, longitude: listing.lng } }

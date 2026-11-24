@@ -49,6 +49,15 @@ This is not a translation job; the product assumptions change:
 
 ## Plan
 
+**Built 2026-11-24 (step 2, country restrictions):** Google Places autocomplete (`locations.service.ts`, `components=country:<market>`),
+the web map picker (`LocationMapPicker`, country from the URL path via `marketFromPath`), the JSON-LD `addressCountry`
+(`apps/web/src/lib/serverMarket.ts`, runtime `MARKET` env, India when unset) and the post-funnel India flag
+(`MARKET.name`) now read the market. India output is identical. **Found:** `Visit.ipCountry` stores MaxMind's English country
+*name* ("India"), but `user-city-from-ip.service.ts` filters on `'IN'`, which never matches, so that job fills nothing today.
+It now reads `MARKET.countryCode` (same behaviour); fixing it to the name would switch the feature on, which is a separate
+decision (see `profile-city-from-ip.md` and `remove-automatic-ip-city-detection.md`). Caveat: the web `MARKET` env is read at
+runtime on the server, so the US page set must be dynamic (or built per market) before launch.
+
 **Built 2026-11-24 (step 2, time zones in the BFF):** `apps/bff/src/market/market-config.ts` exports `MARKET` and
 `MARKET_TIME_ZONE` from the `MARKET` env var (`in` or `us`; unset, empty or unknown is India, so no deployment changes
 unless it sets it). All 15 `@Cron` jobs and the offer-end date text in `admin.service.ts` read it instead of a literal

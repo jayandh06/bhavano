@@ -1429,7 +1429,7 @@ export class AdminService {
       select: { sessionId: true, deviceType: true, ipCountry: true },
     });
     return new Map(
-      visits.map((v) => [v.sessionId, { isApp: v.deviceType === 'mobile_app', isIndia: v.ipCountry === 'India' }]),
+      visits.map((v) => [v.sessionId, { isApp: v.deviceType === 'mobile_app', isIndia: v.ipCountry === MARKET.name }]),
     );
   }
 

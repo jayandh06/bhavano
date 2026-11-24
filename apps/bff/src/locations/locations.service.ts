@@ -13,6 +13,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { logThirdPartyCall, maskUrlParam } from '../logging/thirdPartyCallLogger';
 import { cleanAreaName } from './area-name';
 import type { Area, City } from '@prisma/client';
+import { MARKET } from '../market/market-config';
 
 interface GoogleGeocodeAddressComponent {
   long_name: string;
@@ -527,7 +528,7 @@ export class LocationsService {
 
   /** Backs the map picker's address search box (native's own — web loads the Places JS SDK
    * client-side with a referrer-restricted key, which a distributed app binary can't do, same
-   * reasoning as `getStaticMapImage`). `components=country:in`: Bhavano is India-only, and
+   * reasoning as `getStaticMapImage`). `components=country:<market>` (India for the India deployment): the deployment serves one country, and
    * without it a search for a common street name returns predictions from anywhere in the world
    * before the relevant Indian one. */
   async placeAutocomplete(query: string): Promise<PlaceAutocompletePrediction[]> {
@@ -536,7 +537,7 @@ export class LocationsService {
       throw new ServiceUnavailableException('Location lookup is not configured on this server yet');
     }
 
-    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&components=country:in&language=en&key=${apiKey}`;
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&components=country:${MARKET.countryCode.toLowerCase()}&language=en&key=${apiKey}`;
     const maskedUrl = maskUrlParam(url, 'key');
     const res = await fetch(url);
     const responseText = await res.text();

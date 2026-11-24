@@ -5,6 +5,7 @@ import type { ReverseGeocodeResultDto } from "@bhavano/types";
 import { loadGoogleMaps } from "@/lib/googleMaps";
 import { reverseGeocodeAction } from "@/app/actions/locations";
 import { Icon } from "./Icon";
+import { getMarket, marketFromPath } from "@bhavano/types/market";
 import type { RequiredState } from "@/lib/requiredFieldState";
 
 // Matches lib/formStyles.ts — text-base on mobile so iOS does not zoom on focus.
@@ -136,11 +137,11 @@ export function LocationMapPicker({
         });
 
         if (searchInputRef.current) {
-          // country: "in" — Bhavano is India-only; the BFF's own placeAutocomplete (mobile's
-          // search box) already restricts the same way (locations.service.ts's
-          // `components=country:in`) — this client-side SDK call had no restriction at all.
+          // Restricted to the market's country (India on bhavano.com, the US under /us), read from the URL
+          // path. The BFF's placeAutocomplete (mobile's search box) restricts the same way
+          // (locations.service.ts's `components=country:<market>`).
           const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current, {
-            componentRestrictions: { country: "in" },
+            componentRestrictions: { country: getMarket(marketFromPath(window.location.pathname)).countryCode.toLowerCase() },
           });
           autocomplete.addListener("place_changed", () => {
             const place = autocomplete.getPlace();
