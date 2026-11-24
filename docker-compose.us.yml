@@ -115,6 +115,8 @@ services:
     environment:
       US_ORIGIN_DOMAIN: ${US_ORIGIN_DOMAIN}
       US_API_DOMAIN: ${US_API_DOMAIN}
+      # X-Robots-Tag on every US response; unset keeps "noindex, nofollow". Set to "all" at launch.
+      US_ROBOTS_TAG: ${US_ROBOTS_TAG:-noindex, nofollow}
     ports:
       - "80:80"
       - "443:443"
