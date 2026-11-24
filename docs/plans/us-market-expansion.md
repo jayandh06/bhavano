@@ -49,6 +49,15 @@ This is not a translation job; the product assumptions change:
 
 ## Plan
 
+**Built 2026-11-24 (step 4, phone rules in the BFF):** `market.ts` gains `phoneNationalLength`, `phoneTrunkPrefix`, `phoneLabel`
+and the helpers `nationalPhoneDigits`, `toE164`, `phoneErrorMessage`. The BFF's OTP/login/support/merge/delete DTOs, the
+assisted-listing phone check and mask, admin user search, the WhatsApp Cloud recipient format and the Google Ads/Meta
+hashed phone all read the deployment's market (`toE164India` is now `toE164`); India's accepted inputs, outputs and error
+text are unchanged (tests compare against the old implementation). **Not done yet:** the web, admin and mobile login/profile
+forms (the "+91" chip, "10-digit mobile number" placeholders and `length === 10` checks, about 15 files), MSG91 SMS (India-only
+by design), `scrub-listing-phones.ts` and the log masker (India number patterns), `seekerContact` masking, admin outreach CSV
+and `gtm.ts`. The US login itself (email-first, Twilio) is a separate piece of work.
+
 **Built 2026-11-24 (step 2, country restrictions):** Google Places autocomplete (`locations.service.ts`, `components=country:<market>`),
 the web map picker (`LocationMapPicker`, country from the URL path via `marketFromPath`), the JSON-LD `addressCountry`
 (`apps/web/src/lib/serverMarket.ts`, runtime `MARKET` env, India when unset) and the post-funnel India flag

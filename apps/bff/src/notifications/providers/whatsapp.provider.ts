@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { logThirdPartyCall, maskPhone } from '../../logging/thirdPartyCallLogger';
+import { MARKET } from '../../market/market-config';
 
 /** Graph API version pinned rather than floating: Meta deprecates versions on a schedule, and a
  * silently-shifting default is how a working integration breaks on a date nobody wrote down. */
@@ -59,7 +60,7 @@ export class WhatsappProvider {
     }
     const version = this.config.get<string>('WHATSAPP_API_VERSION')?.trim() || DEFAULT_API_VERSION;
     const language = this.config.get<string>('WHATSAPP_TEMPLATE_LANGUAGE') || DEFAULT_TEMPLATE_LANGUAGE;
-    const to = phone.startsWith('91') && phone.length > 10 ? phone : `91${phone}`;
+    const to = whatsAppRecipient(phone);
     const url = `https://graph.facebook.com/${version}/${phoneNumberId}/messages`;
     try {
       const res = await fetch(url, {
@@ -157,10 +158,9 @@ export class WhatsappProvider {
       this.config.get<string>('WHATSAPP_TEMPLATE_LANGUAGE') ??
       DEFAULT_TEMPLATE_LANGUAGE;
 
-    // E.164 without the leading "+". Callers store bare 10-digit Indian numbers, the same
-    // assumption msg91.provider.ts makes when it prefixes 91.
-    const to =
-      phone.startsWith('91') && phone.length > 10 ? phone : `91${phone}`;
+    // E.164 without the leading "+". Callers store bare national numbers of the deployment's market
+    // (10-digit Indian mobiles for India), the same assumption msg91.provider.ts makes when it prefixes 91.
+    const to = whatsAppRecipient(phone);
 
     // Named parameters carry `parameter_name` alongside the value; positional ones are matched
     // by array order and must not carry it. Meta rejects the wrong shape for the template's
@@ -252,4 +252,11 @@ export class WhatsappProvider {
       return false;
     }
   }
+}
+
+/** Meta wants E.164 without the "+": the market's dial code plus the national number, unless the number already carries it.
+ * Stored phones are bare national numbers (10 digits), so a longer string starting with the dial code is already complete. */
+function whatsAppRecipient(phone: string): string {
+  const { phoneDialCode: dial, phoneNationalLength: national } = MARKET;
+  return phone.startsWith(dial) && phone.length > national ? phone : `${dial}${phone}`;
 }

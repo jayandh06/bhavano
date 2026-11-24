@@ -1,9 +1,11 @@
 import { IsString, Matches } from 'class-validator';
+import { phoneErrorMessage } from '@bhavano/types/market';
+import { MARKET } from '../../market/market-config';
 
 export class DevLoginDto {
   @IsString()
-  @Matches(/^[6-9]\d{9}$/, {
-    message: 'phone must be a 10-digit Indian mobile number',
+  @Matches(MARKET.phoneNationalPattern, {
+    message: phoneErrorMessage(MARKET.id),
   })
   phone!: string;
 }

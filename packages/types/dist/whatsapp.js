@@ -3,12 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.whatsAppNumber = whatsAppNumber;
 exports.whatsAppChatUrl = whatsAppChatUrl;
 exports.ownerEnquiryText = ownerEnquiryText;
+const market_1 = require("./market");
 /** Digits wa.me expects: country code + number, no "+" or spaces. A bare 10-digit number is an
  * Indian mobile (how this app stores most phones). Null when it can't be a phone number. */
-function whatsAppNumber(phone) {
+function whatsAppNumber(phone, marketId) {
     const digits = phone.replace(/\D/g, "");
-    if (digits.length === 10)
-        return `91${digits}`;
+    const market = (0, market_1.getMarket)(marketId);
+    if (digits.length === market.phoneNationalLength)
+        return `${market.phoneDialCode}${digits}`;
     if (digits.length >= 11 && digits.length <= 15)
         return digits;
     return null;

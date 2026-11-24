@@ -6,7 +6,7 @@ import { CreateListingDto } from '../../listings/dto/create-listing.dto';
  * `postedAs` keeps the parent's optional validation (class-validator inherits @IsOptional), so
  * ListingsService.createAssisted rejects a missing one. */
 export class CreateAssistedListingDto extends CreateListingDto {
-  /** Indian mobile, optionally with +91 / 0 and spaces; normalised by toE164India. */
+  /** Indian mobile, optionally with +91 / 0 and spaces; normalised by toE164. */
   @IsString()
   @Matches(/^[+\d\s-]{10,16}$/)
   claimPhone!: string;

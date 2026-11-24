@@ -33,7 +33,7 @@ import { Msg91Provider } from '../notifications/providers/msg91.provider';
 import { EmailProvider } from '../notifications/providers/email.provider';
 import { renderEmail } from '../notifications/emailLayout';
 import { loadTemplate, renderTemplate as renderEmailTemplate } from '../notifications/templateLoader';
-import { toE164India } from './phone';
+import { toE164 } from './phone';
 import { ListingsService } from '../listings/listings.service';
 import { R2StorageService } from '../storage/r2-storage.service';
 import { computeDHash } from '../uploads/photo-hash';
@@ -414,7 +414,7 @@ export class OutreachService {
     let skipped = 0;
 
     for (const raw of input.contacts) {
-      const phoneE164 = toE164India(raw.phone);
+      const phoneE164 = toE164(raw.phone);
       const email = raw.email?.trim().toLowerCase() || null;
       if (!phoneE164 && !email) {
         skipped++;

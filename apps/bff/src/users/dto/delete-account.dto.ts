@@ -1,4 +1,6 @@
 import { IsEmail, IsOptional, IsString, Matches } from 'class-validator';
+import { phoneErrorMessage } from '@bhavano/types/market';
+import { MARKET } from '../../market/market-config';
 
 /** Deletion is irreversible, so it re-proves ownership rather than trusting the session alone:
  * a borrowed unlocked phone should not be enough to erase someone's account and take their
@@ -6,8 +8,8 @@ import { IsEmail, IsOptional, IsString, Matches } from 'class-validator';
 export class DeleteAccountDto {
   @IsOptional()
   @IsString()
-  @Matches(/^[6-9]\d{9}$/, {
-    message: 'phone must be a 10-digit Indian mobile number',
+  @Matches(MARKET.phoneNationalPattern, {
+    message: phoneErrorMessage(MARKET.id),
   })
   phone?: string;
 

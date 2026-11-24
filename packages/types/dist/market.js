@@ -8,6 +8,9 @@ exports.marketPath = marketPath;
 exports.stripMarketPrefix = stripMarketPrefix;
 exports.formatMoney = formatMoney;
 exports.isValidNationalPhone = isValidNationalPhone;
+exports.nationalPhoneDigits = nationalPhoneDigits;
+exports.toE164 = toE164;
+exports.phoneErrorMessage = phoneErrorMessage;
 exports.MARKETS = {
     in: {
         id: "in",
@@ -22,6 +25,9 @@ exports.MARKETS = {
         areaUnits: ["sqft", "sqm", "acre", "hectare", "cent"],
         phoneDialCode: "91",
         phoneNationalPattern: /^[6-9]\d{9}$/,
+        phoneNationalLength: 10,
+        phoneTrunkPrefix: "0",
+        phoneLabel: "10-digit Indian mobile number",
         phoneLoginPrimary: true,
         categories: ["house", "apartment", "villa", "pg", "storage", "coworking", "furniture", "interiors", "plot", "commercial"],
         indexable: true,
@@ -40,6 +46,9 @@ exports.MARKETS = {
         areaUnits: ["sqft", "acre"],
         phoneDialCode: "1",
         phoneNationalPattern: /^[2-9]\d{2}[2-9]\d{6}$/,
+        phoneNationalLength: 10,
+        phoneTrunkPrefix: "",
+        phoneLabel: "10-digit US phone number",
         phoneLoginPrimary: false,
         // Starting set; the wedge decision in the plan may change it. No PG, coworking, plots or furniture/interiors.
         categories: ["house", "apartment", "villa", "storage", "commercial"],
@@ -84,4 +93,30 @@ function formatMoney(id, amount) {
 /** Whether a national phone number (digits only, no dial code) is valid in the market. */
 function isValidNationalPhone(id, digits) {
     return exports.MARKETS[id].phoneNationalPattern.test(digits);
+}
+/** The national number (digits only) from anything a person types or pastes: with or without the dial code or "+", with
+ * spaces, dashes or dots, or with the home trunk prefix ("+91 98765 43210", "09876543210", "(415) 555-2671", "+1 415 555 2671").
+ * Null when it is not a valid number in the market. */
+function nationalPhoneDigits(id, raw) {
+    if (!raw)
+        return null;
+    const m = exports.MARKETS[id];
+    let digits = raw.replace(/\D/g, "");
+    const n = m.phoneNationalLength;
+    if (digits.length === n + m.phoneDialCode.length && digits.startsWith(m.phoneDialCode)) {
+        digits = digits.slice(m.phoneDialCode.length);
+    }
+    else if (m.phoneTrunkPrefix && digits.length === n + m.phoneTrunkPrefix.length && digits.startsWith(m.phoneTrunkPrefix)) {
+        digits = digits.slice(m.phoneTrunkPrefix.length);
+    }
+    return m.phoneNationalPattern.test(digits) ? digits : null;
+}
+/** E.164 ("+919876543210", "+14155552671") for a valid number in the market, else null. */
+function toE164(id, raw) {
+    const national = nationalPhoneDigits(id, raw);
+    return national ? `+${exports.MARKETS[id].phoneDialCode}${national}` : null;
+}
+/** Validation message for a bad phone: "phone must be a 10-digit Indian mobile number" for India. */
+function phoneErrorMessage(id) {
+    return `phone must be a ${exports.MARKETS[id].phoneLabel}`;
 }

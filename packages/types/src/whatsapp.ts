@@ -1,8 +1,11 @@
+import { getMarket, type MarketId } from "./market";
+
 /** Digits wa.me expects: country code + number, no "+" or spaces. A bare 10-digit number is an
  * Indian mobile (how this app stores most phones). Null when it can't be a phone number. */
-export function whatsAppNumber(phone: string): string | null {
+export function whatsAppNumber(phone: string, marketId?: MarketId): string | null {
   const digits = phone.replace(/\D/g, "");
-  if (digits.length === 10) return `91${digits}`;
+  const market = getMarket(marketId);
+  if (digits.length === market.phoneNationalLength) return `${market.phoneDialCode}${digits}`;
   if (digits.length >= 11 && digits.length <= 15) return digits;
   return null;
 }

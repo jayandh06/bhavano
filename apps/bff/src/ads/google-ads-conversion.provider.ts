@@ -4,7 +4,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { createHash } from 'crypto';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { logThirdPartyCall } from '../logging/thirdPartyCallLogger';
-import { toE164India } from '../outreach/phone';
+import { toE164 } from '../outreach/phone';
 
 /** Fixed, permanent conversion action ids for this account's two UPLOAD_CLICKS actions —
  * created once by ads_create_offline_conversion_actions.py, not worth re-resolving on every
@@ -221,7 +221,7 @@ export class GoogleAdsConversionProvider {
 
 /** Google hashes user-provided data itself when it's well-formed input — for a phone number
  * that means E.164 (+91XXXXXXXXXX) *before* hashing, not the bare 10-digit string this codebase
- * stores it as everywhere else (see toE164India's own doc comment). Hashing the raw digits
+ * stores it as everywhere else (see toE164's own doc comment). Hashing the raw digits
  * produces a hash that can never match Google's own E.164-based hash of the same number, which
  * silently fails matching rather than erroring — exactly the kind of "not well-formed" data
  * https://support.google.com/google-ads/answer/13812240 flags in a Google Ads account's offline
@@ -233,7 +233,7 @@ function buildUserIdentifiers(
 ): Array<{ emailAddress: string } | { phoneNumber: string }> | undefined {
   const identifiers: Array<{ emailAddress: string } | { phoneNumber: string }> = [];
   if (email) identifiers.push({ emailAddress: sha256(email.trim().toLowerCase()) });
-  const e164Phone = toE164India(phone);
+  const e164Phone = toE164(phone);
   if (e164Phone) identifiers.push({ phoneNumber: sha256(e164Phone) });
   return identifiers.length ? identifiers : undefined;
 }
