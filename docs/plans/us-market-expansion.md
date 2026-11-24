@@ -60,7 +60,7 @@ The market comes from the URL path on web (`/us/...` is the US, everything else 
 | Time zone | India time | US business-day zone for jobs | BFF jobs read `MARKET`; per-user US zones not built |
 | Dates | `en-IN` | `en-US` | Not yet (many module-level formatters) |
 | Place search | Google Places restricted to India | Restricted to the US | Done (BFF and web map picker) |
-| Structured data and SEO | `addressCountry: IN`, indexable | US, `noindex` until launch | Country done; US sitemap/robots not built |
+| Structured data and SEO | `addressCountry: IN`, indexable | US, `noindex` until launch | Country and `noindex` (meta tag plus header) done 2026-11-24; US sitemap not built |
 | Listing types | House, apartment, villa, PG, storage, coworking, furniture, interiors, plot, commercial | House, apartment, villa, storage, commercial (starting set) | Config only; the post flow does not filter yet |
 | Area and bedrooms | sq ft, sq m, acre, hectare, cent; BHK | sq ft and acre; bed/bath | Units listed in config; forms not changed |
 | Fair Housing fields | "Bachelor", "Vegetarians only", PG gender | Removed in the US | Not built (needs legal review) |

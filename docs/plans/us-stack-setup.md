@@ -49,17 +49,21 @@ US host (its own EC2, a US region)
 6. **Route `/us` on the India host** (the only change to India's live behavior, so do it last): on the India host set `US_ORIGIN_DOMAIN` in
    `.env`, `cp caddy/market-routes/us.caddy.example caddy/market-routes/us.caddy`, then recreate Caddy
    (`docker compose -f docker-compose.prod.yml --env-file .env up -d caddy`). Roll back by deleting `us.caddy` and recreating Caddy.
-7. **Keep it hidden until launch**: the US pages should answer `noindex` until the launch decision (the market config has `indexable: false`);
-   see "Not done" below.
+7. **Keep it hidden until launch** (built 2026-11-24): two layers, both on by default. The US build's root layout sets `robots: noindex, nofollow`
+   from the market's `indexable: false` (`apps/web/src/lib/marketRobots.ts`), and the US Caddy adds `X-Robots-Tag: noindex, nofollow` to every
+   response (`US_ROBOTS_TAG` in the US `.env`, default noindex). India's layout still says `index, follow`. **Launch** is deliberate and has
+   three parts: set `US_ROBOTS_TAG=all`, flip `indexable: true` for the US in `packages/types/src/market.ts` and rebuild the US image, then add the
+   US sitemap (see "Not done").
 
 ## Not done / not verified
 
 - **No end-to-end run.** The US-mode web build compiled here, but the stack has not been started: Docker was not running on this
   machine, so the Caddy files were not validated with `caddy validate`, and the compose file was only checked as YAML.
   Bring it up on a staging host first.
-- **`noindex` and the US `robots`/`sitemap`** are not wired: the US build still serves the same `robots.ts` and `sitemap.ts` (which build URLs
-  from `NEXT_PUBLIC_SITE_URL`, now `.../us`). Add `noindex` for the US build before the host is reachable, and have counsel and you
-  agree the launch date. Do not touch India's `robots`/`sitemap` (CLAUDE.md).
+- **US `robots`/`sitemap`**: `noindex` is wired (step 7), but the US build still contains `robots.ts` and `sitemap.ts`, which would be served at
+  `/us/robots.txt` and `/us/sitemap.xml`. Crawlers only read `robots.txt` at the host root (India's, untouched), so the US one is inert; the US
+  sitemap has to be listed in the root `robots.txt` or Search Console at launch, which needs your approval (CLAUDE.md). The noindex meta tag
+  and header are not tested against a running US build (only `siteRobots` is unit-tested); check `curl -I` and view-source on staging.
 - **Latency**: India's Caddy proxying `/us/*` to the US host adds a hop for US visitors (US to India to US). The proper fix is to route
   `/us/*` at an edge (Cloudflare or a CDN) straight to the US origin; this setup works without it but is not the final shape.
 - **Admin for the US**: not included. US admin is the India admin pointed at the US API (a second login) or its own deployment; undecided.

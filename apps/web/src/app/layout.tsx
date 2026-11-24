@@ -18,6 +18,7 @@ import { SessionUserLink } from "@/components/home/SessionUserLink";
 import { SoftNavPageViews } from "@/components/home/SoftNavPageViews";
 import { SignupConversionTracker } from "@/components/home/SignupConversionTracker";
 import { siteMetaOther } from "@/lib/smartAppBanner";
+import { siteRobots } from "@/lib/marketRobots";
 import { OpenInAppStrip } from "@/components/home/OpenInAppStrip";
 import { JsonLd } from "@/components/JsonLd";
 import "./globals.css";
@@ -57,7 +58,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: SITE_TITLE, template: `%s — ${SITE_NAME}` },
   description: SITE_DESCRIPTION,
-  robots: { index: true, follow: true },
+  // India: index, follow. A market that is not launched (the US) is noindex, nofollow: see lib/marketRobots.ts.
+  robots: siteRobots(),
   openGraph: {
     siteName: SITE_NAME,
     type: "website",

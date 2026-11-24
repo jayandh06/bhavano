@@ -8,6 +8,10 @@
 
 {$US_ORIGIN_DOMAIN} {
 	import hsts
+	# Not indexable until the US launches: the header covers every response (assets, redirects, errors), the page
+	# meta tag (apps/web/src/lib/marketRobots.ts) covers the HTML. Launch: set US_ROBOTS_TAG=all in .env (and flip
+	# `indexable` for the US in packages/types/src/market.ts).
+	header X-Robots-Tag "{$US_ROBOTS_TAG:noindex, nofollow}"
 	# The US web app is built with basePath /us, so it expects the /us prefix India's Caddy forwards as is.
 	reverse_proxy web:3000
 }
