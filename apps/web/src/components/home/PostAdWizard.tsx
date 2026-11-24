@@ -37,7 +37,7 @@ import {
   TITLE_MIN_LENGTH,
 } from "@bhavano/types/listingLimits";
 import { listingPriceIssue } from "@bhavano/types/priceBounds";
-import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
+import { POST_CATEGORIES, marketPostCategoryGroups } from "@bhavano/types/postCategories";
 import { reverseGeocodeAction } from "@/app/actions/locations";
 import { AdminTestScenarios } from "./AdminTestScenarios";
 import { AdminFormVersionSwitch } from "./AdminFormVersionSwitch";
@@ -2530,7 +2530,7 @@ export function PostAdWizard({
             )}
           </div>
           <h2 className="font-lora text-xl font-semibold text-text m-0 -mb-2">What are you listing?</h2>
-          {POST_CATEGORY_GROUPS.map((group) => (
+          {marketPostCategoryGroups(market.id).map((group) => (
             <div key={group.title}>
               <h3 className="text-[13px] font-bold text-text-soft uppercase tracking-wide m-0 mb-2.5">{group.title}</h3>
               {/* Two columns on a phone, three from sm up. Three fixed columns left roughly 100px

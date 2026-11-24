@@ -3,19 +3,10 @@ import { ArrayMaxSize, IsIn, IsInt, IsOptional, IsString, Max, Min, MinLength } 
 import type { ListingCategory, TransactionType } from '@bhavano/types';
 import { MAX_REQUIREMENT_AREAS } from '@bhavano/types/requirementQuestions';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
+import { MARKET } from '../../market/market-config';
 
-const LISTING_CATEGORIES: ListingCategory[] = [
-  'house',
-  'apartment',
-  'villa',
-  'pg',
-  'storage',
-  'coworking',
-  'furniture',
-  'interiors',
-  'plot',
-  'commercial',
-];
+/** Categories this deployment's market allows (all ten for India). */
+const LISTING_CATEGORIES: ListingCategory[] = MARKET.categories;
 const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
 
 export class CreateSavedSearchDto {

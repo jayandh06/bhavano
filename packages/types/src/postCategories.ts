@@ -1,4 +1,5 @@
 import type { ListingCategory } from "./index";
+import { isMarketCategory, type MarketId } from "./market";
 
 export interface PostCategoryOption {
   value: ListingCategory;
@@ -62,3 +63,11 @@ export const POST_CATEGORY_GROUPS: PostCategoryGroup[] = [
 
 /** Flat list, for anywhere that needs to look a category up rather than offer a choice. */
 export const POST_CATEGORIES: PostCategoryOption[] = POST_CATEGORY_GROUPS.flatMap((g) => g.options);
+
+/** The category groups offered in the posting wizard in this market: only categories the market has, and no empty group.
+ * India's list is the full `POST_CATEGORY_GROUPS`, unchanged. */
+export function marketPostCategoryGroups(id: MarketId): PostCategoryGroup[] {
+  return POST_CATEGORY_GROUPS.map((g) => ({ ...g, options: g.options.filter((o) => isMarketCategory(id, o.value)) })).filter(
+    (g) => g.options.length > 0,
+  );
+}

@@ -12,6 +12,8 @@ exports.isValidNationalPhone = isValidNationalPhone;
 exports.nationalPhoneDigits = nationalPhoneDigits;
 exports.toE164 = toE164;
 exports.phoneErrorMessage = phoneErrorMessage;
+exports.marketAreaUnits = marketAreaUnits;
+exports.isMarketCategory = isMarketCategory;
 exports.MARKETS = {
     in: {
         id: "in",
@@ -136,4 +138,15 @@ function toE164(id, raw) {
 /** Validation message for a bad phone: "phone must be a 10-digit Indian mobile number" for India. */
 function phoneErrorMessage(id) {
     return `phone must be a ${exports.MARKETS[id].phoneLabel}`;
+}
+/** The units a field's own list allows (`FieldDef.units`, sq ft when it names none), limited to what the market offers.
+ * India offers every unit, so its lists come back unchanged; if none are left the market's default unit stands alone. */
+function marketAreaUnits(id, units) {
+    const offered = exports.MARKETS[id].areaUnits;
+    const allowed = (units ?? ["sqft"]).filter((u) => offered.includes(u));
+    return allowed.length > 0 ? allowed : [offered[0]];
+}
+/** Whether listings of this category can be posted in the market. */
+function isMarketCategory(id, category) {
+    return exports.MARKETS[id].categories.includes(category);
 }

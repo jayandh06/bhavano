@@ -24,23 +24,15 @@ import {
   TITLE_MAX_LENGTH,
   TITLE_MIN_LENGTH,
 } from '@bhavano/types/listingLimits';
+import { MARKET } from '../../market/market-config';
 
 const SELLER_TYPES: SellerType[] = ['owner', 'agent'];
 
-const AREA_UNITS: AreaUnit[] = ['sqft', 'sqm', 'acre', 'hectare', 'cent'];
+/** Units this deployment's market offers (all five for India). */
+const AREA_UNITS: AreaUnit[] = MARKET.areaUnits;
 
-const LISTING_CATEGORIES: ListingCategory[] = [
-  'house',
-  'apartment',
-  'villa',
-  'pg',
-  'storage',
-  'coworking',
-  'furniture',
-  'interiors',
-  'plot',
-  'commercial',
-];
+/** Categories this deployment's market allows (all ten for India). */
+const LISTING_CATEGORIES: ListingCategory[] = MARKET.categories;
 const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
 
 export class CreatedPhotoInputDto {

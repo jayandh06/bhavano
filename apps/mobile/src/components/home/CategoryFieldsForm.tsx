@@ -17,6 +17,8 @@ import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 import { CompletenessMeter } from "./CompletenessMeter";
+import { useMarket } from "../../lib/market";
+import { marketAreaUnits } from "@bhavano/types/market";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
 type Attributes = Record<string, string | string[]>;
@@ -85,6 +87,7 @@ export function CategoryFieldsForm({
   /** A muted line under one field's input — e.g. what a brokerage % comes to in rupees. */
   fieldNote?: { key: string; text: string } | null;
 }) {
+  const market = useMarket();
   const { colors } = useAppTheme();
   const optionSheetRef = useRef<BottomSheetModal>(null);
   const [openField, setOpenField] = useState<FieldConfig | null>(null);
@@ -247,7 +250,7 @@ export function CategoryFieldsForm({
       </View>,
     ];
 
-    const unitOptions = field.type === "area" ? (field.units ?? ["sqft"]) : [];
+    const unitOptions = field.type === "area" ? marketAreaUnits(market.id, field.units) : [];
     if (unitOptions.length > 1) {
       const currentUnit = (attributes[`${field.key}Unit`] as AreaUnit | undefined) ?? "sqft";
       const unitField: FieldConfig = {

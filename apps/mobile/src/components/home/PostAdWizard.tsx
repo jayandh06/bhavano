@@ -42,7 +42,7 @@ import {
   SECTION_ORDER,
   type FieldSection,
 } from "@bhavano/types/categoryFields";
-import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
+import { POST_CATEGORIES, marketPostCategoryGroups } from "@bhavano/types/postCategories";
 import {
   AREA_NAME_MAX_LENGTH,
   clampPrice,
@@ -112,6 +112,7 @@ import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
 import { iosPurchases } from "../../lib/iosPurchasesClient";
 import { IosBoostSheet } from "./IosPurchaseSheets";
 import { useMarket } from "../../lib/market";
+import { marketAreaUnits } from "@bhavano/types/market";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
 
@@ -1205,7 +1206,7 @@ export function PostAdWizard({
       </View>,
     ];
 
-    const unitOptions = field.type === "area" ? (field.units ?? ["sqft"]) : [];
+    const unitOptions = field.type === "area" ? marketAreaUnits(market.id, field.units) : [];
     if (unitOptions.length > 1) {
       const currentUnit = (attributes[`${field.key}Unit`] as AreaUnit | undefined) ?? "sqft";
       const unitField: FieldConfig = {
@@ -2105,7 +2106,7 @@ export function PostAdWizard({
             ) : null}
           </View>
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700", marginBottom: -12 }}>What are you listing?</Text>
-          {POST_CATEGORY_GROUPS.map((group) => (
+          {marketPostCategoryGroups(market.id).map((group) => (
             <View key={group.title} style={{ gap: 10 }}>
               <Text style={[styles.groupHeading, { color: colors.textSoft }]}>{group.title.toUpperCase()}</Text>
               {group.options.map((c) => {

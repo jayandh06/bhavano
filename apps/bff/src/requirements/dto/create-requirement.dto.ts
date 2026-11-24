@@ -18,21 +18,13 @@ import type { ListingCategory, TransactionType } from '@bhavano/types';
 import type { AreaUnit } from '@bhavano/types/areaUnit';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { MAX_REQUIREMENT_AREAS, type RequirementAttributes } from '@bhavano/types/requirementQuestions';
+import { MARKET } from '../../market/market-config';
 
-export const LISTING_CATEGORIES: ListingCategory[] = [
-  'house',
-  'apartment',
-  'villa',
-  'pg',
-  'storage',
-  'coworking',
-  'furniture',
-  'interiors',
-  'plot',
-  'commercial',
-];
+/** Categories this deployment's market allows (all ten for India). */
+export const LISTING_CATEGORIES: ListingCategory[] = MARKET.categories;
 export const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
-export const AREA_UNITS: AreaUnit[] = ['sqft', 'sqm', 'acre', 'hectare', 'cent'];
+/** Units this deployment's market offers (all five for India). */
+export const AREA_UNITS: AreaUnit[] = MARKET.areaUnits;
 
 /** Mirrors CreateSavedSearchDto's criteria vocabulary deliberately — the same fields the matcher
  * already speaks, so one prompt can create both without translating between two shapes.
