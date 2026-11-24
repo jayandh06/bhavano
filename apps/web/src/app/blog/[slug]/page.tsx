@@ -6,6 +6,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { BlogBody } from "@/components/blog/BlogBody";
 import { BlogCover } from "@/components/blog/BlogCover";
 import { POSTS, bylineFor, getPost, relatedPosts } from "@/lib/blog/posts";
+import { SERVER_MARKET } from "@/lib/serverMarket";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 
@@ -46,7 +47,7 @@ function reviewersLine(reviewers: { name: string; role?: string }[]): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-IN", {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString(SERVER_MARKET.locale, {
     day: "numeric",
     month: "long",
     year: "numeric",

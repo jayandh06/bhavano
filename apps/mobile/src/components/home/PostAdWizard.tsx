@@ -2157,7 +2157,7 @@ export function PostAdWizard({
             </View>
             {draftSavedAt !== null && (
               <Text style={{ fontSize: 11.5, color: colors.muted, marginTop: 6 }}>
-                Draft saved on this device at {new Date(draftSavedAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}
+                Draft saved on this device at {new Date(draftSavedAt).toLocaleTimeString(market.locale, { hour: "numeric", minute: "2-digit" })}
               </Text>
             )}
           </View>
@@ -2442,7 +2442,7 @@ export function PostAdWizard({
                   suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
                 />
                 {pricedPerUnit && (
-                  <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit) : null} />
+                  <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit, market.id) : null} />
                 )}
                 {price.length > 0 && !priceIsValid(price, category) ? (
                   <Text style={styles.fieldError}>Enter a price greater than 0.</Text>

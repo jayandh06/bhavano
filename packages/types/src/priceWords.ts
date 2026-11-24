@@ -70,7 +70,7 @@ export function compactPrice(price: string, priceInWords?: string | null): strin
 /** A per-unit listing's `totalPrice` — the whole-rupee total and the area it was multiplied out
  * over. Built the same way by the BFF and by the post wizard's preview card. */
 export function perUnitTotalPrice(total: number, area: number, unit: AreaUnit, marketId: MarketId = "in"): ListingTotalPriceDto {
-  return { price: formatMoney(marketId, total), priceInWords: formatInrInWords(total, marketId), area: formatArea(area, unit) };
+  return { price: formatMoney(marketId, total), priceInWords: formatInrInWords(total, marketId), area: formatArea(area, unit, marketId) };
 }
 
 export interface ListingPriceFields {

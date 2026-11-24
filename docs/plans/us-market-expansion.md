@@ -76,6 +76,15 @@ Visitors are never redirected by location; someone on the wrong market gets a vi
 
 ## Plan
 
+**Built 2026-11-24 (dates per market):** `marketDateFormatter(market, options)` (cached `Intl.DateTimeFormat` in the market's locale)
+and a market argument on `formatArea`. The web and mobile screens that formatted dates with a fixed `en-IN` (blog, My listings,
+referrals, requirements cards and feed, listing interests, Featured performance, draft-saved time, boost credit expiry, area
+prices) and the BFF's referral notification dates now use the market locale (server pages use `SERVER_MARKET`, client screens
+`useMarket`, mobile module-level helpers `getCurrentMarketId()`). India prints identical dates (tests compare with `en-IN`;
+the US prints "Nov 24, 2026"). **Not done:** the admin app (IST by design for an India admin), area/number grouping in
+`cardSpecs` chips, the Tools converters and calculators (India content), `requirementQuestions` summary text, and showing
+times in the viewer's own US time zone (`marketDateFormatter` takes the zone from the caller's options).
+
 **Built 2026-11-24 (Fair Housing fields per market):** `MarketConfig.hiddenFieldKeys` (India none; US `preferredTenantTypes`,
 `vegetariansOnly`, `gender`, `foodType`) and `isMarketField`. `fieldIsVisible`, `pruneHiddenAttributes`,
 `listingAttributeIssues`/`listingAttributesIssue`, `listingCompleteness` and `sanitizeRequirementAttributes` take an optional market;

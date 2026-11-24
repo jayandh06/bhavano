@@ -1,4 +1,5 @@
 import { goLiveTimeText } from '@bhavano/types/goLive';
+import { formatArea } from '@bhavano/types/areaUnit';
 import { CATEGORY_FIELD_CONFIG, fieldIsVisible, listingAttributeIssues, pruneHiddenAttributes } from '@bhavano/types/categoryFields';
 import { REQUIREMENT_ATTRIBUTE_QUESTIONS, requirementQuestionsFor, sanitizeRequirementAttributes } from '@bhavano/types/requirementQuestions';
 import { POST_CATEGORY_GROUPS, marketPostCategoryGroups } from '@bhavano/types/postCategories';
@@ -13,6 +14,7 @@ import {
   isMarketField,
   isValidNationalPhone,
   marketAreaUnits,
+  marketDateFormatter,
   nationalPhoneDigits,
   phoneErrorMessage,
   toE164,
@@ -280,5 +282,42 @@ describe('Fair Housing fields', () => {
     expect(india.attributes.preferredTenantTypes).toEqual(['family']);
     const us = sanitizeRequirementAttributes('apartment', 'rent', { preferredTenantTypes: ['family'] }, 'us');
     expect(us.errors.length).toBeGreaterThan(0);
+  });
+});
+
+describe('market dates and areas', () => {
+  const D = new Date('2026-11-24T10:15:00Z');
+  const OPTIONS: Intl.DateTimeFormatOptions[] = [
+    { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' },
+    { day: 'numeric', month: 'short', timeZone: 'UTC' },
+    { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' },
+    { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' },
+  ];
+
+  it('prints India dates exactly as en-IN did', () => {
+    for (const o of OPTIONS) {
+      expect(marketDateFormatter('in', o).format(D)).toBe(new Intl.DateTimeFormat('en-IN', o).format(D));
+    }
+    expect(marketDateFormatter('in', OPTIONS[0]).format(D)).toBe('24 Nov 2026');
+  });
+
+  it('prints US dates the US way', () => {
+    expect(marketDateFormatter('us', OPTIONS[0]).format(D)).toBe('Nov 24, 2026');
+    expect(marketDateFormatter('us', OPTIONS[1]).format(D)).toBe('Nov 24');
+  });
+
+  it('caches by market and options', () => {
+    expect(marketDateFormatter('in', OPTIONS[0])).toBe(marketDateFormatter('in', OPTIONS[0]));
+    expect(marketDateFormatter('in', OPTIONS[0])).not.toBe(marketDateFormatter('us', OPTIONS[0]));
+  });
+
+  it('formats areas with the market locale, India unchanged', () => {
+    for (const [v, u] of [[1200, 'sqft'], [100000, 'sqft'], [2.5, 'acre'], [1, 'acre'], [1234567.891, 'sqm']] as const) {
+      const legacy = `${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(v)} `;
+      expect(formatArea(v, u).startsWith(legacy)).toBe(true);
+      expect(formatArea(v, u, 'in')).toBe(formatArea(v, u));
+    }
+    expect(formatArea(100000, 'sqft')).toBe('1,00,000 sq ft');
+    expect(formatArea(100000, 'sqft', 'us')).toBe('100,000 sq ft');
   });
 });

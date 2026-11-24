@@ -76,7 +76,7 @@ function compactPrice(price, priceInWords) {
 /** A per-unit listing's `totalPrice` — the whole-rupee total and the area it was multiplied out
  * over. Built the same way by the BFF and by the post wizard's preview card. */
 function perUnitTotalPrice(total, area, unit, marketId = "in") {
-    return { price: (0, market_1.formatMoney)(marketId, total), priceInWords: formatInrInWords(total, marketId), area: (0, areaUnit_1.formatArea)(area, unit) };
+    return { price: (0, market_1.formatMoney)(marketId, total), priceInWords: formatInrInWords(total, marketId), area: (0, areaUnit_1.formatArea)(area, unit, marketId) };
 }
 /** The price a listing leads with. A per-unit price leads with the whole listing's total and keeps
  * the rate as a second line — { price: "₹60,00,000", priceInWords: "₹60 Lakh",

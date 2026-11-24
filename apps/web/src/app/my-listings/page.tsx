@@ -31,8 +31,10 @@ import { OwnerFacebookShare } from "@/components/home/OwnerFacebookShare";
 import { GetAppCard } from "@/components/home/GetAppCard";
 import { VideoManager } from "@/components/home/VideoManager";
 import { Icon } from "@/components/home/Icon";
+import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
+import { SERVER_MARKET } from "@/lib/serverMarket";
 
-const renewedAtFormatter = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
+const renewedAtFormatter = (id: MarketId) => marketDateFormatter(id, { day: "numeric", month: "short", year: "numeric" });
 
 const STATUS_COLORS: Record<ListingStatus, string> = {
   active: "var(--green)",
@@ -221,7 +223,7 @@ function ReferralBanner({ referrals }: { referrals: MyReferralsDto }) {
             <span className="font-bold text-text">
               {credits.length === 1 ? "You have a free Feature" : `You have ${credits.length} free Features`}
             </span>{" "}
-            — tap Feature on any ad to use it. Expires {renewedAtFormatter.format(new Date(soonest.expiresAt))}.
+            — tap Feature on any ad to use it. Expires {renewedAtFormatter(SERVER_MARKET.id).format(new Date(soonest.expiresAt))}.
           </span>
         ) : (
           <span>
@@ -300,7 +302,7 @@ function MyListingRow({
         {item.renewCount > 0 && (
           <div className="text-[11.5px] text-muted mt-1">
             Renewed {item.renewCount} time{item.renewCount === 1 ? "" : "s"}
-            {lastRenewedAt && ` · last on ${renewedAtFormatter.format(new Date(lastRenewedAt))}`}
+            {lastRenewedAt && ` · last on ${renewedAtFormatter(SERVER_MARKET.id).format(new Date(lastRenewedAt))}`}
           </div>
         )}
         <ListingInterestsPanel listingId={item.id} interestCount={item.interestCount ?? 0} />

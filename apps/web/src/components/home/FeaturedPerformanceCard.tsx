@@ -1,8 +1,9 @@
 import type { FeaturedPerformanceDto } from "@bhavano/types/featuredPerformance";
 import { perDay } from "@bhavano/types/featuredPerformance";
+import { SERVER_MARKET } from "@/lib/serverMarket";
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  return new Date(iso).toLocaleDateString(SERVER_MARKET.locale, { day: "numeric", month: "short" });
 }
 
 /** What the owner's Featured period has produced so far — views, enquiries, contact reveals, and, when

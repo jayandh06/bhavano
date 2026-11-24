@@ -7,6 +7,8 @@ import { useMyReferralsQuery } from "../../src/lib/queries";
 import { sharedWebUrl } from "../../src/lib/appWebUrl";
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import { Icon } from "../../src/components/Icon";
+import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
+import { getCurrentMarketId } from "../../src/lib/market";
 
 const INVITE_TEXT = "I use Bhavano to buy, sell and rent property. Post your own ad here:";
 
@@ -20,7 +22,7 @@ const STATUS_LABELS: Record<ReferralStatus, string> = {
   reversed: "Not counted",
 };
 
-const dateFormatter = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
+const dateFormatter = (id: MarketId) => marketDateFormatter(id, { day: "numeric", month: "short", year: "numeric" });
 
 /** The app's twin of apps/web/src/app/referrals/page.tsx — balance, invite link, counts and the
  * people referred. Reached from Account and from every referral push (`data.path`). */
@@ -84,7 +86,7 @@ export default function ReferralsScreen() {
           </View>
           <Text style={{ fontSize: 13, color: colors.textSoft }}>
             {soonest
-              ? `Next one expires on ${dateFormatter.format(new Date(soonest.expiresAt))}. Use it from My listings — tap Boost Ad on any ad.`
+              ? `Next one expires on ${dateFormatter(getCurrentMarketId()).format(new Date(soonest.expiresAt))}. Use it from My listings — tap Boost Ad on any ad.`
               : `Each friend who joins from your link and gets their first ad approved earns you a free ${data.boostDays}-day boost.`}
           </Text>
           {soonest && (
@@ -137,7 +139,7 @@ export default function ReferralsScreen() {
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}>{item.firstName ?? "A friend"}</Text>
                   <Text style={{ fontSize: 11.5, color: colors.muted }}>
-                    Joined {dateFormatter.format(new Date(item.signedUpAt))}
+                    Joined {dateFormatter(getCurrentMarketId()).format(new Date(item.signedUpAt))}
                   </Text>
                 </View>
                 <Text

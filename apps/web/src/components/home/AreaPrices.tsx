@@ -23,7 +23,7 @@ export async function AreaPrices({
   if (segments.transactionGroup || segments.category || segments.facetValue || segments.listingSlugId) return null;
   const stats = await fetchAreaPriceStats(areaId);
   if (!stats || (!stats.salePricePerSqft && !stats.monthlyRent)) return null;
-  const date = new Date(stats.asOf).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  const date = new Date(stats.asOf).toLocaleDateString(SERVER_MARKET.locale, { day: "numeric", month: "short", year: "numeric" });
 
   return (
     <section className="mt-10 max-w-[720px]" aria-label={`Asking prices in ${areaName}`}>

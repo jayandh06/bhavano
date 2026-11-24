@@ -14,8 +14,9 @@ import {
 import { useBuyCredits } from "./BuyCreditsProvider";
 import { reportPostAction } from "@/lib/postActionTrail";
 import { useMarket } from "@/lib/useMarket";
+import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
 
-const timeFormatter = new Intl.DateTimeFormat("en-IN", {
+const timeFormatter = (id: MarketId) => marketDateFormatter(id, {
   day: "numeric",
   month: "short",
   hour: "numeric",
@@ -157,7 +158,7 @@ export function ListingInterestsPanel({
                   )}
                 </div>
                 <div className="text-[11.5px] text-muted">
-                  Interested {timeFormatter.format(new Date(row.lastSeenAt))}
+                  Interested {timeFormatter(market.id).format(new Date(row.lastSeenAt))}
                 </div>
                 {row.contact === "available" && row.phone && (
                   <div className="text-[13px] font-bold text-text mt-0.5">{row.phone}</div>

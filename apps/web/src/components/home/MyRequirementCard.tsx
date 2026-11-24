@@ -11,12 +11,14 @@ import {
   renewRequirementAction,
   updateRequirementDetailsAction,
 } from "@/app/actions/requirements";
+import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
+import { useMarket } from "@/lib/useMarket";
 
 /** How far ahead of expiry the Renew affordance appears — same 7-day window as a listing's, so
  * the two pages behave alike. */
 const RENEW_WINDOW_DAYS = 7;
 
-const dateFormatter = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
+const dateFormatter = (id: MarketId) => marketDateFormatter(id, { day: "numeric", month: "short", year: "numeric" });
 
 function daysUntil(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
@@ -36,6 +38,7 @@ function budgetText(r: RequirementDto): string | null {
  * close it, or add the detail the one-tap capture never asked for.
  */
 export function MyRequirementCard({ requirement }: { requirement: RequirementDto }) {
+  const market = useMarket();
   const [current, setCurrent] = useState(requirement);
   const [note, setNote] = useState(requirement.note ?? "");
   const [moveInBy, setMoveInBy] = useState(requirement.moveInBy?.slice(0, 10) ?? "");
@@ -71,7 +74,7 @@ export function MyRequirementCard({ requirement }: { requirement: RequirementDto
           : "Closed"
     : current.isExpired
       ? "Expired — renew to start it again"
-      : `Active until ${dateFormatter.format(new Date(current.expiresAt))}`;
+      : `Active until ${dateFormatter(market.id).format(new Date(current.expiresAt))}`;
 
   return (
     <div className="border border-border rounded-xl bg-surface p-5">

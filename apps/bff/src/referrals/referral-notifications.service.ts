@@ -3,8 +3,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../push/push.service';
 import { DEFAULT_REFERRAL_SETTINGS, REFERRAL_SETTINGS_ID } from './referrals.constants';
+import { MARKET } from '../market/market-config';
 
-const dateText = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+const dateText = (d: Date) => d.toLocaleDateString(MARKET.locale, { day: 'numeric', month: 'short' });
 const daysText = (n: number) => `${n}-day`;
 
 /** Phase 6 of docs/plans/bhavano-referral-program-implementation.md: email (when the user has

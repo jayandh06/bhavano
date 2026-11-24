@@ -6,8 +6,10 @@ import { bedroomLabel } from "@bhavano/types/bedrooms";
 import { formatCompactInr } from "@bhavano/types/requirementQuestions";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
+import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
+import { getCurrentMarketId } from "../../lib/market";
 
-const dateFormatter = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" });
+const dateFormatter = (id: MarketId) => marketDateFormatter(id, { day: "numeric", month: "short" });
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function postedAgo(iso: string): string {
@@ -27,7 +29,7 @@ function budgetText(card: RequirementFeedCardDto): string | null {
 
 function sizeText(card: RequirementFeedCardDto): string | null {
   const unit = card.areaUnit ?? "sqft";
-  const show = (sqft: number) => formatArea(Math.round(convertArea(sqft, "sqft", unit) * 100) / 100, unit);
+  const show = (sqft: number) => formatArea(Math.round(convertArea(sqft, "sqft", unit) * 100) / 100, unit, getCurrentMarketId());
   if (card.minAreaSqft && card.maxAreaSqft) return `${show(card.minAreaSqft)} – ${show(card.maxAreaSqft)}`;
   if (card.maxAreaSqft) return `Up to ${show(card.maxAreaSqft)}`;
   if (card.minAreaSqft) return `At least ${show(card.minAreaSqft)}`;
@@ -37,7 +39,7 @@ function sizeText(card: RequirementFeedCardDto): string | null {
 function moveInText(iso: string | undefined): string {
   if (!iso) return "Just exploring";
   const date = new Date(iso);
-  return date.getTime() <= Date.now() ? "Needs it now" : `Move in by ${dateFormatter.format(date)}`;
+  return date.getTime() <= Date.now() ? "Needs it now" : `Move in by ${dateFormatter(getCurrentMarketId()).format(date)}`;
 }
 
 /**
