@@ -47,6 +47,33 @@ This is not a translation job; the product assumptions change:
 | Hosting | Single host in Mumbai (13.205.0.54), R2/CDN for photos | A US region host (e.g. AWS us-east/us-west) for the US stack so pages and API are not 200+ ms away; Caddy/compose pattern copies as is. Photos already on R2/CDN. |
 | Time zone, locale | IST, `en-IN` | Multiple US time zones: store UTC and render in the viewer's zone; `en-US` formats. Admin Page visits "days are IST" becomes per-market. |
 
+## What an India user and a US user each see (as of 2026-11-24)
+
+The market comes from the URL path on web (`/us/...` is the US, everything else India) and from a stored setting in the app
+(India by default; nothing sets it yet). The "Built" column is what exists in master today.
+
+| | India | US | Built |
+|---|---|---|---|
+| Web address | `bhavano.com/...`, unchanged | `bhavano.com/us/...` | Market read from the path; no `/us` routes yet |
+| Phone login | +91, 10-digit mobile starting 6-9 | +1, 10-digit US number | Rules, forms and BFF validation read the market |
+| Money | `₹12,50,000`, "35 Lakh" words | `$1,250,000`, no lakh/crore words | Shared formatters, BFF and web/mobile labels |
+| Time zone | India time | US business-day zone for jobs | BFF jobs read `MARKET`; per-user US zones not built |
+| Dates | `en-IN` | `en-US` | Not yet (many module-level formatters) |
+| Place search | Google Places restricted to India | Restricted to the US | Done (BFF and web map picker) |
+| Structured data and SEO | `addressCountry: IN`, indexable | US, `noindex` until launch | Country done; US sitemap/robots not built |
+| Listing types | House, apartment, villa, PG, storage, coworking, furniture, interiors, plot, commercial | House, apartment, villa, storage, commercial (starting set) | Config only; the post flow does not filter yet |
+| Area and bedrooms | sq ft, sq m, acre, hectare, cent; BHK | sq ft and acre; bed/bath | Units listed in config; forms not changed |
+| Fair Housing fields | "Bachelor", "Vegetarians only", PG gender | Removed in the US | Not built (needs legal review) |
+| Content | Blog, guides, land-record pages, India calculators | Hidden at launch | Not built |
+| Sign-in | Phone/WhatsApp OTP first, Google, Apple, email | Email, Google, Apple first; phone optional | Phone rules only; US flow not built |
+| Notifications | WhatsApp and MSG91 SMS | Email and push (SMS only with consent) | Not built |
+| Pricing and payments | Razorpay, Apple/Google INR tiers | Stripe or USD store tiers, new price numbers | Not built |
+| Legal | Finfolia Technologies LLP texts, DLT | US entity, CCPA, Fair Housing notice | Not built |
+| Mobile app | One app, India API, India storefront link | Same app, US API, US storefront link | Market store and UI done; switch, US API and release not built |
+| Search and ads | Existing pages and rankings untouched | New Google Ads setup, housing-ad rules | Not built |
+
+Visitors are never redirected by location; someone on the wrong market gets a visible link to the other one.
+
 ## Plan
 
 **Built 2026-11-24 (mobile UI for phone and currency; ships with the next app release):** `apps/mobile/src/lib/market.ts` holds the
