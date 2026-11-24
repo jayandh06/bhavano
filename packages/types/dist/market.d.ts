@@ -48,6 +48,10 @@ export interface MarketConfig {
     phoneLoginPrimary: boolean;
     /** Categories that exist in this market. */
     categories: ListingCategory[];
+    /** Listing and requirement field keys this market does not offer. The US drops the fields that state a preference for
+     * (or against) a kind of tenant: family or bachelor, vegetarians only, gender, food. Those read as discrimination
+     * under the Fair Housing Act. India has none. See docs/plans/us-market-audit-india-assumptions.md (item 13). */
+    hiddenFieldKeys: readonly string[];
     /** Search engines may index this market's pages. False until the market is launched. */
     indexable: boolean;
 }
@@ -85,3 +89,5 @@ export declare function phoneErrorMessage(id: MarketId): string;
 export declare function marketAreaUnits(id: MarketId, units?: readonly AreaUnit[]): AreaUnit[];
 /** Whether listings of this category can be posted in the market. */
 export declare function isMarketCategory(id: MarketId, category: ListingCategory): boolean;
+/** Whether a listing or requirement field is offered in the market. */
+export declare function isMarketField(id: MarketId, key: string): boolean;

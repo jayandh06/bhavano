@@ -1,4 +1,6 @@
 import { goLiveTimeText } from '@bhavano/types/goLive';
+import { CATEGORY_FIELD_CONFIG, fieldIsVisible, listingAttributeIssues, pruneHiddenAttributes } from '@bhavano/types/categoryFields';
+import { REQUIREMENT_ATTRIBUTE_QUESTIONS, requirementQuestionsFor, sanitizeRequirementAttributes } from '@bhavano/types/requirementQuestions';
 import { POST_CATEGORY_GROUPS, marketPostCategoryGroups } from '@bhavano/types/postCategories';
 import { formatInrInWords, formatInrRangeWithWords, formatInrWithWords, groupInr, perUnitTotalPrice, priceWordsNote } from '@bhavano/types/priceWords';
 import {
@@ -8,6 +10,7 @@ import {
   groupAmount,
   getMarket,
   isMarketCategory,
+  isMarketField,
   isValidNationalPhone,
   marketAreaUnits,
   nationalPhoneDigits,
@@ -222,5 +225,60 @@ describe('market categories and area units', () => {
     expect(marketPostCategoryGroups('us').every((g) => g.options.length > 0)).toBe(true);
     expect(marketAreaUnits('us', ['sqft', 'acre', 'cent', 'hectare', 'sqm'])).toEqual(['sqft', 'acre']);
     expect(marketAreaUnits('us', ['cent'])).toEqual(['sqft']);
+  });
+});
+
+describe('Fair Housing fields', () => {
+  const HIDDEN = ['preferredTenantTypes', 'vegetariansOnly', 'gender', 'foodType'];
+
+  it('hides nothing in India and the preference fields in the US', () => {
+    expect(MARKETS.in.hiddenFieldKeys).toEqual([]);
+    expect(MARKETS.us.hiddenFieldKeys).toEqual(HIDDEN);
+    for (const k of HIDDEN) {
+      expect(isMarketField('in', k)).toBe(true);
+      expect(isMarketField('us', k)).toBe(false);
+    }
+  });
+
+  it('keeps every field visible for India, with or without the market named', () => {
+    for (const category of Object.keys(CATEGORY_FIELD_CONFIG) as (keyof typeof CATEGORY_FIELD_CONFIG)[]) {
+      for (const field of CATEGORY_FIELD_CONFIG[category]) {
+        for (const tx of ['buy', 'sell', 'rent', 'lease'] as const) {
+          expect(fieldIsVisible(field, tx, {}, 'in')).toBe(fieldIsVisible(field, tx, {}));
+        }
+      }
+    }
+  });
+
+  it('hides the tenant-preference fields on US rentals and strips their stale answers', () => {
+    const apartment = CATEGORY_FIELD_CONFIG.apartment;
+    const tenantType = apartment.find((f) => f.key === 'preferredTenantTypes')!;
+    const veg = apartment.find((f) => f.key === 'vegetariansOnly')!;
+    expect(fieldIsVisible(tenantType, 'rent', {})).toBe(true);
+    expect(fieldIsVisible(tenantType, 'rent', {}, 'in')).toBe(true);
+    expect(fieldIsVisible(tenantType, 'rent', {}, 'us')).toBe(false);
+    expect(fieldIsVisible(veg, 'rent', {}, 'us')).toBe(false);
+    const attrs = { preferredTenantTypes: ['bachelor'], vegetariansOnly: 'yes', furnished: 'furnished' } as Record<string, string | string[]>;
+    expect(pruneHiddenAttributes('apartment', 'rent', attrs)).toEqual(attrs);
+    expect(pruneHiddenAttributes('apartment', 'rent', attrs, 'us')).toEqual({ furnished: 'furnished' });
+  });
+
+  it('does not require a hidden field in the US', () => {
+    const issues = listingAttributeIssues('pg', 'rent', {}, null, 'us').map((i) => i.key);
+    expect(issues).not.toContain('gender');
+    expect(listingAttributeIssues('pg', 'rent', {}, null).map((i) => i.key)).toContain('gender');
+  });
+
+  it('leaves India requirement questions whole and drops the tenant-type question in the US', () => {
+    for (const c of Object.keys(REQUIREMENT_ATTRIBUTE_QUESTIONS) as (keyof typeof REQUIREMENT_ATTRIBUTE_QUESTIONS)[]) {
+      expect(requirementQuestionsFor(c, 'in')).toEqual(REQUIREMENT_ATTRIBUTE_QUESTIONS[c]);
+      expect(requirementQuestionsFor(c)).toEqual(REQUIREMENT_ATTRIBUTE_QUESTIONS[c]);
+    }
+    expect(requirementQuestionsFor('apartment', 'us').map((q) => q.key)).not.toContain('preferredTenantTypes');
+    const india = sanitizeRequirementAttributes('apartment', 'rent', { preferredTenantTypes: ['family'] }, 'in');
+    expect(india.errors).toEqual([]);
+    expect(india.attributes.preferredTenantTypes).toEqual(['family']);
+    const us = sanitizeRequirementAttributes('apartment', 'rent', { preferredTenantTypes: ['family'] }, 'us');
+    expect(us.errors.length).toBeGreaterThan(0);
   });
 });

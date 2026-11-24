@@ -18,6 +18,7 @@ exports.brokerageFeeNote = brokerageFeeNote;
 exports.inferBrokerageFeeType = inferBrokerageFeeType;
 exports.amenityFieldsFor = amenityFieldsFor;
 const priceWords_1 = require("./priceWords");
+const market_1 = require("./market");
 exports.SECTION_LABELS = {
     basics: "Property details",
     pricing: "Pricing & fees",
@@ -59,9 +60,10 @@ function gateMatches(stored, expected) {
 /** Single source of truth for whether a field should be shown, given the current transaction
  * type and in-progress attribute values — used by the posting wizard, the edit form, and the
  * listing detail page so all three agree on what's visible. */
-function fieldIsVisible(field, transactionType, attributes) {
-    return ((!field.transactionTypes ||
-        field.transactionTypes.includes(transactionType)) &&
+function fieldIsVisible(field, transactionType, attributes, marketId) {
+    return ((!marketId || (0, market_1.isMarketField)(marketId, field.key)) &&
+        (!field.transactionTypes ||
+            field.transactionTypes.includes(transactionType)) &&
         (!field.dependsOn ||
             gateMatches(attributes[field.dependsOn.key], field.dependsOn.value)) &&
         (!field.alsoDependsOn ||
@@ -220,7 +222,7 @@ function groupSectionFields(section, fields) {
  * possibly several links back in a chain) — run after every attribute/transaction-type change
  * so a hidden field's stale value can't linger and reappear if a descendant field depends on
  * it. Iterates to a fixpoint since hiding one field can cascade to hide the next. */
-function pruneHiddenAttributes(category, transactionType, attributes) {
+function pruneHiddenAttributes(category, transactionType, attributes, marketId) {
     const next = { ...attributes };
     const fields = exports.CATEGORY_FIELD_CONFIG[category];
     let removedAny = true;
@@ -228,7 +230,7 @@ function pruneHiddenAttributes(category, transactionType, attributes) {
         removedAny = false;
         for (const field of fields) {
             if (field.key in next &&
-                !fieldIsVisible(field, transactionType, next)) {
+                !fieldIsVisible(field, transactionType, next, marketId)) {
                 delete next[field.key];
                 // `type: "area"` fields carry a second, sibling attribute key for the chosen unit —
                 // see FieldDef.units's own doc comment. No area field is conditional today, but a
@@ -280,19 +282,19 @@ const CONDITIONAL_FEE_KEYS = ["maintenanceFeeApplicable"];
  * the monthly rent) adds the brokerage-against-price limits. Keep in step with
  * ListingsService.assertValidAttributes / assertConditionalFee / assertBrokerageFitsPrice.
  */
-function listingAttributesIssue(category, transactionType, attributes, price) {
-    return listingAttributeIssues(category, transactionType, attributes, price)[0]?.text ?? null;
+function listingAttributesIssue(category, transactionType, attributes, price, marketId) {
+    return listingAttributeIssues(category, transactionType, attributes, price, marketId)[0]?.text ?? null;
 }
 /**
  * Every problem `listingAttributesIssue` would report, in the same order, instead of only the first. The first
  * entry's text is exactly what `listingAttributesIssue` returns. Lets the post forms say how many things are
  * left and jump to each one.
  */
-function listingAttributeIssues(category, transactionType, attributes, price) {
+function listingAttributeIssues(category, transactionType, attributes, price, marketId) {
     const issues = [];
     const fields = exports.CATEGORY_FIELD_CONFIG[category];
     for (const field of fields) {
-        if (!fieldIsVisible(field, transactionType, attributes))
+        if (!fieldIsVisible(field, transactionType, attributes, marketId))
             continue;
         const value = attributes[field.key];
         if (value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) {
@@ -336,11 +338,11 @@ function listingAttributeIssues(category, transactionType, attributes, price) {
  * pre-filled counts, brokerage terms, the website and amenities/furnishing inventories. What is
  * left is the specifics a buyer actually filters and decides on.
  */
-function listingCompleteness(category, transactionType, attributes) {
+function listingCompleteness(category, transactionType, attributes, marketId) {
     const counted = exports.CATEGORY_FIELD_CONFIG[category].filter((field) => {
         if (field.required || field.defaultValue !== undefined)
             return false;
-        if (!fieldIsVisible(field, transactionType, attributes))
+        if (!fieldIsVisible(field, transactionType, attributes, marketId))
             return false;
         if (field.section === "amenities" || field.section === "furnishing")
             return false;

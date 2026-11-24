@@ -17,7 +17,7 @@ import {
 import {
   INTENT_CATEGORIES,
   INTENT_TRANSACTION_CHOICES,
-  REQUIREMENT_ATTRIBUTE_QUESTIONS,
+  requirementQuestionsFor,
   REQUIREMENT_BEDROOM_OPTIONS,
   REQUIREMENT_CATEGORY_LABELS,
   REQUIREMENT_INTENTS,
@@ -35,6 +35,7 @@ import { Footer } from "./Footer";
 import { PageHeader } from "./PageHeader";
 import { RequireLoginPrompt } from "./RequireLoginPrompt";
 import { RequirementsRoleQuestion } from "./RequirementsRoleQuestion";
+import { SERVER_MARKET } from "@/lib/serverMarket";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -270,7 +271,7 @@ function FeedFilters({
   const showBudget = Boolean(intent && (!transactionChoices || filters.transactionType));
   const size = category ? sizeQuestionFor(category) : undefined;
   const questions = category
-    ? REQUIREMENT_ATTRIBUTE_QUESTIONS[category].filter((q) => !q.transactionTypes || (transaction && q.transactionTypes.includes(transaction)))
+    ? requirementQuestionsFor(category, SERVER_MARKET.id).filter((q) => !q.transactionTypes || (transaction && q.transactionTypes.includes(transaction)))
     : [];
   const amenities = category ? amenityOptionsFor(category) : [];
   const hasFilters = Object.keys(encodeRequirementFeedQuery(filters, false)).length > 0;

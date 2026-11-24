@@ -50,6 +50,10 @@ export interface MarketConfig {
   phoneLoginPrimary: boolean;
   /** Categories that exist in this market. */
   categories: ListingCategory[];
+  /** Listing and requirement field keys this market does not offer. The US drops the fields that state a preference for
+   * (or against) a kind of tenant: family or bachelor, vegetarians only, gender, food. Those read as discrimination
+   * under the Fair Housing Act. India has none. See docs/plans/us-market-audit-india-assumptions.md (item 13). */
+  hiddenFieldKeys: readonly string[];
   /** Search engines may index this market's pages. False until the market is launched. */
   indexable: boolean;
 }
@@ -74,6 +78,7 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
     phonePlaceholder: "10-digit mobile number",
     phoneLoginPrimary: true,
     categories: ["house", "apartment", "villa", "pg", "storage", "coworking", "furniture", "interiors", "plot", "commercial"],
+    hiddenFieldKeys: [],
     indexable: true,
   },
   us: {
@@ -97,6 +102,7 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
     phoneLoginPrimary: false,
     // Starting set; the wedge decision in the plan may change it. No PG, coworking, plots or furniture/interiors.
     categories: ["house", "apartment", "villa", "storage", "commercial"],
+    hiddenFieldKeys: ["preferredTenantTypes", "vegetariansOnly", "gender", "foodType"],
     indexable: false,
   },
 };
@@ -198,4 +204,9 @@ export function marketAreaUnits(id: MarketId, units?: readonly AreaUnit[]): Area
 /** Whether listings of this category can be posted in the market. */
 export function isMarketCategory(id: MarketId, category: ListingCategory): boolean {
   return MARKETS[id].categories.includes(category);
+}
+
+/** Whether a listing or requirement field is offered in the market. */
+export function isMarketField(id: MarketId, key: string): boolean {
+  return !MARKETS[id].hiddenFieldKeys.includes(key);
 }

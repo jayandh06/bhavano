@@ -3,6 +3,7 @@ import { CATEGORY_FIELD_CONFIG, amenityFieldsFor, type FieldOption } from "./cat
 import { POSTABLE_TRANSACTION_TYPES } from "./postingRules";
 import { MAX_BEDROOMS, bedroomLabel } from "./bedrooms";
 import { convertArea, formatArea, type AreaUnit } from "./areaUnit";
+import { isMarketField, type MarketId } from "./market";
 
 /**
  * The questions asked after "Yes, find this for me", and the vocabulary a refined requirement is
@@ -232,10 +233,11 @@ export function sanitizeRequirementAttributes(
   category: ListingCategory,
   transactionType: TransactionType | undefined,
   attributes: RequirementAttributes,
+  marketId?: MarketId,
 ): { attributes: RequirementAttributes; errors: string[] } {
   const out: RequirementAttributes = {};
   const errors: string[] = [];
-  const questions = new Map(REQUIREMENT_ATTRIBUTE_QUESTIONS[category].map((q) => [q.key, q]));
+  const questions = new Map(requirementQuestionsFor(category, marketId).map((q) => [q.key, q]));
   const amenityKeys = new Set(amenityOptionsFor(category).map((o) => o.value));
 
   for (const [key, raw] of Object.entries(attributes)) {
@@ -689,4 +691,11 @@ export function requirementCriteriaFromBrowse(f: BrowseFiltersForRequirement): R
     maxPrice: f.maxPrice,
     attributes: Object.keys(attributes).length ? attributes : undefined,
   };
+}
+
+/** The attribute questions asked for a category in a market: the market's hidden fields (tenant type, vegetarians only,
+ * gender, food in the US) are left out. India gets the full list. */
+export function requirementQuestionsFor(category: ListingCategory, marketId?: MarketId): RequirementAttributeQuestion[] {
+  const all = REQUIREMENT_ATTRIBUTE_QUESTIONS[category];
+  return marketId ? all.filter((q) => isMarketField(marketId, q.key)) : all;
 }

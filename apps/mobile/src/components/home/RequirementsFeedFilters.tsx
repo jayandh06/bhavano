@@ -11,7 +11,7 @@ import {
 import {
   INTENT_CATEGORIES,
   INTENT_TRANSACTION_CHOICES,
-  REQUIREMENT_ATTRIBUTE_QUESTIONS,
+  requirementQuestionsFor,
   REQUIREMENT_BEDROOM_OPTIONS,
   REQUIREMENT_CATEGORY_LABELS,
   REQUIREMENT_INTENTS,
@@ -21,6 +21,7 @@ import {
   type RequirementIntent,
 } from "@bhavano/types/requirementQuestions";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { getCurrentMarketId } from "../../lib/market";
 
 /** Plot / commercial / storage size bands — not exported from the shared package (web keeps its
  * own copy inline in RequirementsFeedPage.tsx too), so this is this file's own copy of the same
@@ -130,7 +131,7 @@ export const RequirementsFeedFilters = forwardRef<
   const showBudget = Boolean(intent && (!transactionChoices || staged.transactionType));
   const size = category ? sizeQuestionFor(category) : undefined;
   const questions = category
-    ? REQUIREMENT_ATTRIBUTE_QUESTIONS[category].filter((q) => !q.transactionTypes || (transaction && q.transactionTypes.includes(transaction)))
+    ? requirementQuestionsFor(category, getCurrentMarketId()).filter((q) => !q.transactionTypes || (transaction && q.transactionTypes.includes(transaction)))
     : [];
   const amenities = category ? amenityOptionsFor(category) : [];
 

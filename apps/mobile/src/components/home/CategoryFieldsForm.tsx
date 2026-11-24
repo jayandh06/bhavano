@@ -93,7 +93,7 @@ export function CategoryFieldsForm({
   const [openField, setOpenField] = useState<FieldConfig | null>(null);
 
   const visibleFields = CATEGORY_FIELD_CONFIG[category].filter((field) =>
-    fieldIsVisible(field, transactionType, attributes),
+    fieldIsVisible(field, transactionType, attributes, market.id),
   );
   const fieldSections = groupFieldsBySection(visibleFields);
   // A category can have no field of its own in a given section (e.g. pg/coworking have no
@@ -283,7 +283,7 @@ export function CategoryFieldsForm({
     return cells;
   }
 
-  const completeness = listingCompleteness(category, transactionType, attributes);
+  const completeness = listingCompleteness(category, transactionType, attributes, market.id);
 
   return (
     <>

@@ -76,6 +76,16 @@ Visitors are never redirected by location; someone on the wrong market gets a vi
 
 ## Plan
 
+**Built 2026-11-24 (Fair Housing fields per market):** `MarketConfig.hiddenFieldKeys` (India none; US `preferredTenantTypes`,
+`vegetariansOnly`, `gender`, `foodType`) and `isMarketField`. `fieldIsVisible`, `pruneHiddenAttributes`,
+`listingAttributeIssues`/`listingAttributesIssue`, `listingCompleteness` and `sanitizeRequirementAttributes` take an optional market;
+`requirementQuestionsFor(category, market)` drops the hidden questions. The web and mobile post, edit, detail and requirement
+screens and the BFF's listing and requirement validation pass the market, so the US neither shows nor accepts those fields
+(the BFF answers "is not applicable"). India output is identical (tests cover every field, transaction type and question list).
+**Not done, needs legal review:** screening free text (listing titles and descriptions, messages) for protected-class wording;
+the search hint words and AI-search prompt examples ("bachelors", "girls", "family"); any browse filter or SEO page built on
+these fields; admin forms; and the exact list of keys, which should be confirmed with counsel before the US launch.
+
 **Built 2026-11-24 (categories and area units per market):** `market.ts` gains `marketAreaUnits` and `isMarketCategory`;
 `postCategories.ts` gains `marketPostCategoryGroups`. The web and mobile posting wizards offer only the market's categories,
 and the area-unit pickers (web accordion, mobile forms and wizard) only the market's units. The BFF's write-side validators

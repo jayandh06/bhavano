@@ -1299,7 +1299,7 @@ export function PostAdWizard({
    * fields at once and showed them even when "Has brokerage fee" was No. */
   const visibleFields =
     category && transactionType
-      ? CATEGORY_FIELD_CONFIG[category].filter((field) => fieldIsVisible(field, transactionType, attributes))
+      ? CATEGORY_FIELD_CONFIG[category].filter((field) => fieldIsVisible(field, transactionType, attributes, market.id))
       : [];
 
   // "Whole price vs price per unit" is only offered for a sell/lease listing whose category has
@@ -1856,7 +1856,7 @@ export function PostAdWizard({
           description: description.trim(),
           photos: uploadedPhotos,
           videos: uploadedVideos.length > 0 ? uploadedVideos : undefined,
-          attributes: pruneHiddenAttributes(category, transactionType, attributes),
+          attributes: pruneHiddenAttributes(category, transactionType, attributes, market.id),
           lat: pin?.lat,
           lng: pin?.lng,
           postedAs: profile?.sellerType ? undefined : (sellerTypeFromBroker(attributes.fromBroker) ?? postedAs ?? undefined),
@@ -2382,7 +2382,7 @@ export function PostAdWizard({
               {POST_CATEGORIES.find((c) => c.value === category)?.label} details
             </Text>
             {category && transactionType && (
-              <CompletenessMeter completeness={listingCompleteness(category, transactionType, attributes)} />
+              <CompletenessMeter completeness={listingCompleteness(category, transactionType, attributes, market.id)} />
             )}
             {/* Grouped into the config's own sections (pricing, basics, preferences, …) in
                 SECTION_ORDER, the same helper the desktop wizard uses and the same order it now

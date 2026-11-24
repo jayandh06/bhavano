@@ -706,10 +706,11 @@ export function CategoryFieldsAccordion({
   /** Messages, highlight and blur callback for the Details step. Omitted by the edit form. */
   feedback?: FieldFeedback;
 }) {
+  const market = useMarket();
   const visibleFields = CATEGORY_FIELD_CONFIG[category].filter(
-    (field) => fieldIsVisible(field, transactionType, attributes),
+    (field) => fieldIsVisible(field, transactionType, attributes, market.id),
   );
-  const completeness = listingCompleteness(category, transactionType, attributes);
+  const completeness = listingCompleteness(category, transactionType, attributes, market.id);
   const fieldSections = groupFieldsBySection(visibleFields);
   // A category can have no field of its own in a given section (e.g. pg/coworking have no
   // category-specific "pricing" field — no maintenance fee, no brokerage) while a caller still
@@ -731,7 +732,7 @@ export function CategoryFieldsAccordion({
       pruneHiddenAttributes(category, transactionType, {
         ...prev,
         [field.key]: value,
-      }),
+      }, market.id),
     );
   }
 
@@ -740,7 +741,7 @@ export function CategoryFieldsAccordion({
       pruneHiddenAttributes(category, transactionType, {
         ...prev,
         [`${field.key}Unit`]: unit,
-      }),
+      }, market.id),
     );
   }
 
