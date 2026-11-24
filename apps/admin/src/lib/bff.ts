@@ -760,6 +760,8 @@ export interface PaymentsQuery {
   listingId?: string;
   purpose?: PaymentPurpose;
   status?: PaymentStatus;
+  /** Razorpay (web, Android) or Apple (iOS In-App Purchase). */
+  provider?: "razorpay" | "apple";
   listingTitle?: string;
   source?: PurchaseSource;
   sort?: AdminPaymentSort;
