@@ -297,6 +297,10 @@
       "types": "./dist/whatsapp.d.ts",
       "default": "./dist/whatsapp.js"
     },
+    "./market": {
+      "types": "./dist/market.d.ts",
+      "default": "./dist/market.js"
+    },
     "./listingStatusInfo": {
       "types": "./dist/listingStatusInfo.d.ts",
       "default": "./dist/listingStatusInfo.js"
