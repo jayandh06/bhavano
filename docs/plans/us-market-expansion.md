@@ -76,6 +76,16 @@ Visitors are never redirected by location; someone on the wrong market gets a vi
 
 ## Plan
 
+**Built 2026-11-24 (categories and area units per market):** `market.ts` gains `marketAreaUnits` and `isMarketCategory`;
+`postCategories.ts` gains `marketPostCategoryGroups`. The web and mobile posting wizards offer only the market's categories,
+and the area-unit pickers (web accordion, mobile forms and wizard) only the market's units. The BFF's write-side validators
+(create/update listing, create requirement, create saved search) accept the market's categories and units (India: the same ten
+categories and five units as before; tests assert the lists are identical). US set for now: house, apartment, villa, storage,
+commercial; sq ft and acre. **Not done:** the browse side (home category tabs and `HomeCategoryFilter`, nav and footer links,
+SEO category URL segments in `seoRoute`/`browseRoute`, web saved-search options, admin forms), read-side filter DTOs,
+bedroom/bathroom fields instead of BHK, and removing the Fair Housing fields. The US category list is a starting point until
+the wedge (rentals, sale-by-owner or both) is decided.
+
 **Built 2026-11-24 (mobile UI for phone and currency; ships with the next app release):** `apps/mobile/src/lib/market.ts` holds the
 app's market (India by default, persisted in storage as `bhavano.market`, `useMarket()` re-renders on change,
 `setCurrentMarket` for the future switch) and `components/home/Currency.tsx` renders its symbol. The login sheet, account

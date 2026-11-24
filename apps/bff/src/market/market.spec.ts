@@ -1,4 +1,5 @@
 import { goLiveTimeText } from '@bhavano/types/goLive';
+import { POST_CATEGORY_GROUPS, marketPostCategoryGroups } from '@bhavano/types/postCategories';
 import { formatInrInWords, formatInrRangeWithWords, formatInrWithWords, groupInr, perUnitTotalPrice, priceWordsNote } from '@bhavano/types/priceWords';
 import {
   DEFAULT_MARKET_ID,
@@ -6,7 +7,9 @@ import {
   formatMoney,
   groupAmount,
   getMarket,
+  isMarketCategory,
   isValidNationalPhone,
+  marketAreaUnits,
   nationalPhoneDigits,
   phoneErrorMessage,
   toE164,
@@ -187,5 +190,37 @@ describe('money formatting', () => {
     expect(formatInrWithWords(3_500_000, 'us')).toBe('$3,500,000');
     expect(formatInrRangeWithWords(1500, 2500, 'us')).toBe('$1,500 – $2,500');
     expect(perUnitTotalPrice(600_000, 1200, 'sqft', 'us').price).toBe('$600,000');
+  });
+});
+
+describe('market categories and area units', () => {
+  const INDIA_CATEGORIES = ['house', 'apartment', 'villa', 'pg', 'storage', 'coworking', 'furniture', 'interiors', 'plot', 'commercial'];
+  const INDIA_UNITS = ['sqft', 'sqm', 'acre', 'hectare', 'cent'];
+
+  it("keeps India's category and unit lists exactly as the DTOs had them", () => {
+    expect(MARKETS.in.categories).toEqual(INDIA_CATEGORIES);
+    expect(MARKETS.in.areaUnits).toEqual(INDIA_UNITS);
+  });
+
+  it('leaves the posting wizard groups unchanged for India', () => {
+    expect(marketPostCategoryGroups('in')).toEqual(POST_CATEGORY_GROUPS);
+  });
+
+  it('keeps every India unit list a field names, in order', () => {
+    expect(marketAreaUnits('in')).toEqual(['sqft']);
+    expect(marketAreaUnits('in', ['sqft', 'acre', 'cent', 'hectare', 'sqm'])).toEqual(['sqft', 'acre', 'cent', 'hectare', 'sqm']);
+  });
+
+  it('limits the US to the categories and units it offers', () => {
+    const offered = marketPostCategoryGroups('us').flatMap((g) => g.options.map((o) => o.value));
+    expect(offered).toEqual(expect.arrayContaining(['house', 'apartment', 'villa', 'commercial', 'storage']));
+    expect(offered).not.toEqual(expect.arrayContaining(['pg']));
+    for (const c of ['pg', 'coworking', 'plot', 'furniture', 'interiors'] as const) {
+      expect(isMarketCategory('us', c)).toBe(false);
+      expect(offered).not.toContain(c);
+    }
+    expect(marketPostCategoryGroups('us').every((g) => g.options.length > 0)).toBe(true);
+    expect(marketAreaUnits('us', ['sqft', 'acre', 'cent', 'hectare', 'sqm'])).toEqual(['sqft', 'acre']);
+    expect(marketAreaUnits('us', ['cent'])).toEqual(['sqft']);
   });
 });

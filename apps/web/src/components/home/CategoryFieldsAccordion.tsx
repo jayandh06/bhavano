@@ -20,6 +20,8 @@ import type { RequiredState } from "@/lib/requiredFieldState";
 import { SelectField } from "./SelectField";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { Icon, isIconName } from "./Icon";
+import { useMarket } from "@/lib/useMarket";
+import { marketAreaUnits } from "@bhavano/types/market";
 
 /** Half of the stacked arrow column beside a counter's value — no border or radius of its own,
  * since the wrapper supplies the frame. */
@@ -490,6 +492,7 @@ function FieldRunBlock({
   fieldNote?: { key: string; text: string } | null;
   feedback?: FieldFeedback;
 }) {
+  const market = useMarket();
   // A chain keeps its order (the question, then what it opens), so its switches stay in the one grid with its other fields; a run of
   // unrelated fields puts its switches together first, which reads as a tidy checklist.
   const toggleFields = run.kind === "chain" ? [] : run.fields.filter(isYesNoField);
@@ -514,7 +517,7 @@ function FieldRunBlock({
           {otherFields.map((field) => {
             // The unit dropdown (Plot/Commercial's Area field only) gets its own adjacent grid
             // cell — see AreaUnitField — instead of being paired inline inside this one.
-            const isMultiUnitArea = field.type === "area" && (field.units?.length ?? 1) > 1;
+            const isMultiUnitArea = field.type === "area" && marketAreaUnits(market.id, field.units).length > 1;
             return (
               <Fragment key={field.key}>
                 <FieldFrame
@@ -617,7 +620,8 @@ function AreaUnitField({
   unit: AreaUnit;
   onChange: (unit: string) => void;
 }) {
-  const units = field.units ?? ["sqft"];
+  const market = useMarket();
+  const units = marketAreaUnits(market.id, field.units);
   return (
     <div>
       <label className={`${labelClass} truncate`} title="Unit">

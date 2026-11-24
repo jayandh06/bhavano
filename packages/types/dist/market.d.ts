@@ -80,3 +80,8 @@ export declare function nationalPhoneDigits(id: MarketId, raw: string | null | u
 export declare function toE164(id: MarketId, raw: string | null | undefined): string | null;
 /** Validation message for a bad phone: "phone must be a 10-digit Indian mobile number" for India. */
 export declare function phoneErrorMessage(id: MarketId): string;
+/** The units a field's own list allows (`FieldDef.units`, sq ft when it names none), limited to what the market offers.
+ * India offers every unit, so its lists come back unchanged; if none are left the market's default unit stands alone. */
+export declare function marketAreaUnits(id: MarketId, units?: readonly AreaUnit[]): AreaUnit[];
+/** Whether listings of this category can be posted in the market. */
+export declare function isMarketCategory(id: MarketId, category: ListingCategory): boolean;

@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.POST_CATEGORIES = exports.POST_CATEGORY_GROUPS = void 0;
+exports.marketPostCategoryGroups = marketPostCategoryGroups;
+const market_1 = require("./market");
 /**
  * The posting wizard's first step, grouped.
  *
@@ -44,3 +46,8 @@ exports.POST_CATEGORY_GROUPS = [
 ];
 /** Flat list, for anywhere that needs to look a category up rather than offer a choice. */
 exports.POST_CATEGORIES = exports.POST_CATEGORY_GROUPS.flatMap((g) => g.options);
+/** The category groups offered in the posting wizard in this market: only categories the market has, and no empty group.
+ * India's list is the full `POST_CATEGORY_GROUPS`, unchanged. */
+function marketPostCategoryGroups(id) {
+    return exports.POST_CATEGORY_GROUPS.map((g) => ({ ...g, options: g.options.filter((o) => (0, market_1.isMarketCategory)(id, o.value)) })).filter((g) => g.options.length > 0);
+}

@@ -186,3 +186,16 @@ export function toE164(id: MarketId, raw: string | null | undefined): string | n
 export function phoneErrorMessage(id: MarketId): string {
   return `phone must be a ${MARKETS[id].phoneLabel}`;
 }
+
+/** The units a field's own list allows (`FieldDef.units`, sq ft when it names none), limited to what the market offers.
+ * India offers every unit, so its lists come back unchanged; if none are left the market's default unit stands alone. */
+export function marketAreaUnits(id: MarketId, units?: readonly AreaUnit[]): AreaUnit[] {
+  const offered = MARKETS[id].areaUnits;
+  const allowed = (units ?? ["sqft"]).filter((u) => offered.includes(u));
+  return allowed.length > 0 ? allowed : [offered[0]];
+}
+
+/** Whether listings of this category can be posted in the market. */
+export function isMarketCategory(id: MarketId, category: ListingCategory): boolean {
+  return MARKETS[id].categories.includes(category);
+}
