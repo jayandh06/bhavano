@@ -12,12 +12,14 @@ import {
   renewMyRequirement,
   updateMyRequirement,
 } from "../../lib/bffClient";
+import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
+import { getCurrentMarketId } from "../../lib/market";
 
 /** How far ahead of expiry the Renew affordance appears — same 7-day window as a listing's, so
  * the two pages behave alike. */
 const RENEW_WINDOW_DAYS = 7;
 
-const dateFormatter = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
+const dateFormatter = (id: MarketId) => marketDateFormatter(id, { day: "numeric", month: "short", year: "numeric" });
 
 function daysUntil(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
@@ -77,7 +79,7 @@ export function MyRequirementCard({
           : "Closed"
     : current.isExpired
       ? "Expired — renew to start it again"
-      : `Active until ${dateFormatter.format(new Date(current.expiresAt))}`;
+      : `Active until ${dateFormatter(getCurrentMarketId()).format(new Date(current.expiresAt))}`;
 
   const meta = [
     current.areaNames.length ? current.areaNames.join(", ") : current.cityName,

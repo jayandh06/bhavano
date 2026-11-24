@@ -4,6 +4,7 @@ exports.AREA_UNIT_TO_SQM = exports.AREA_UNIT_LABELS = void 0;
 exports.areaUnitShortLabel = areaUnitShortLabel;
 exports.formatArea = formatArea;
 exports.convertArea = convertArea;
+const market_1 = require("./market");
 exports.AREA_UNIT_LABELS = {
     sqft: "Square feet",
     sqm: "Square metres",
@@ -26,8 +27,8 @@ function areaUnitShortLabel(unit, value) {
 }
 /** `"1,200 sq ft"` / `"2.5 acres"` — value formatted with Indian grouping, no decimals beyond
  * what's actually present (an integer area doesn't grow a trailing ".00"). */
-function formatArea(value, unit) {
-    const formatted = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value);
+function formatArea(value, unit, marketId = "in") {
+    const formatted = new Intl.NumberFormat(market_1.MARKETS[marketId].locale, { maximumFractionDigits: 2 }).format(value);
     return `${formatted} ${areaUnitShortLabel(unit, value)}`;
 }
 /** Canonical base is square metres (the one exact SI unit) — every other factor is derived from

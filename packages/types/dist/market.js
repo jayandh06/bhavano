@@ -15,6 +15,7 @@ exports.phoneErrorMessage = phoneErrorMessage;
 exports.marketAreaUnits = marketAreaUnits;
 exports.isMarketCategory = isMarketCategory;
 exports.isMarketField = isMarketField;
+exports.marketDateFormatter = marketDateFormatter;
 exports.MARKETS = {
     in: {
         id: "in",
@@ -156,4 +157,16 @@ function isMarketCategory(id, category) {
 /** Whether a listing or requirement field is offered in the market. */
 function isMarketField(id, key) {
     return !exports.MARKETS[id].hiddenFieldKeys.includes(key);
+}
+const dateFormatters = new Map();
+/** An `Intl.DateTimeFormat` in the market's locale ("en-IN" → "24 Nov 2026", "en-US" → "Nov 24, 2026"), cached by options so
+ * module-level helpers can ask for it per call instead of fixing the locale at import. */
+function marketDateFormatter(id, options) {
+    const key = `${id}|${JSON.stringify(options)}`;
+    let fmt = dateFormatters.get(key);
+    if (!fmt) {
+        fmt = new Intl.DateTimeFormat(exports.MARKETS[id].locale, options);
+        dateFormatters.set(key, fmt);
+    }
+    return fmt;
 }

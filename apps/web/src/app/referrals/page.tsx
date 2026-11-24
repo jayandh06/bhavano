@@ -10,6 +10,8 @@ import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { ReferralInviteActions } from "@/components/home/ReferralInviteActions";
 import { Icon } from "@/components/home/Icon";
+import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
+import { SERVER_MARKET } from "@/lib/serverMarket";
 
 // A signed-in dashboard: nothing here for a crawler. Set per page rather than in robots.txt.
 export const metadata: Metadata = {
@@ -26,7 +28,7 @@ const STATUS_LABELS: Record<ReferralStatus, { label: string; className: string }
   reversed: { label: "Not counted", className: "text-muted" },
 };
 
-const dateFormatter = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
+const dateFormatter = (id: MarketId) => marketDateFormatter(id, { day: "numeric", month: "short", year: "numeric" });
 
 export default async function ReferralsPage({
   searchParams,
@@ -92,7 +94,7 @@ async function ReferralsDashboard({ accessToken }: { accessToken: string }) {
         </div>
         {soonest ? (
           <p className="text-[13px] text-text-soft m-0">
-            Next one expires on {dateFormatter.format(new Date(soonest.expiresAt))}. Use it from{" "}
+            Next one expires on {dateFormatter(SERVER_MARKET.id).format(new Date(soonest.expiresAt))}. Use it from{" "}
             <Link href="/my-listings" className="font-bold text-green">
               My listings
             </Link>{" "}
@@ -148,7 +150,7 @@ async function ReferralsDashboard({ accessToken }: { accessToken: string }) {
                 >
                   <div className="min-w-0">
                     <div className="text-[13.5px] font-bold">{item.firstName ?? "A friend"}</div>
-                    <div className="text-[12px] text-muted">Joined {dateFormatter.format(new Date(item.signedUpAt))}</div>
+                    <div className="text-[12px] text-muted">Joined {dateFormatter(SERVER_MARKET.id).format(new Date(item.signedUpAt))}</div>
                   </div>
                   <span className={`text-[12.5px] font-bold ${status.className}`}>{status.label}</span>
                 </li>

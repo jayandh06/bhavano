@@ -738,7 +738,7 @@ export function RequirementRefineWizard({
         {timeline === null && current.moveInBy && (
           <Hint colors={colors}>
             Currently: needed by{" "}
-            {new Date(current.moveInBy).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+            {new Date(current.moveInBy).toLocaleDateString(market.locale, { day: "numeric", month: "short" })}
           </Hint>
         )}
         <View style={{ gap: 6 }}>

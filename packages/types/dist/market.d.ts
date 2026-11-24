@@ -91,3 +91,6 @@ export declare function marketAreaUnits(id: MarketId, units?: readonly AreaUnit[
 export declare function isMarketCategory(id: MarketId, category: ListingCategory): boolean;
 /** Whether a listing or requirement field is offered in the market. */
 export declare function isMarketField(id: MarketId, key: string): boolean;
+/** An `Intl.DateTimeFormat` in the market's locale ("en-IN" → "24 Nov 2026", "en-US" → "Nov 24, 2026"), cached by options so
+ * module-level helpers can ask for it per call instead of fixing the locale at import. */
+export declare function marketDateFormatter(id: MarketId, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat;

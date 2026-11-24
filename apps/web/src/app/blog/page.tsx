@@ -4,6 +4,7 @@ import { StaticPageLayout } from "@/components/home/StaticPageLayout";
 import { JsonLd } from "@/components/JsonLd";
 import { BlogCover } from "@/components/blog/BlogCover";
 import { bylineFor, sortedPosts } from "@/lib/blog/posts";
+import { SERVER_MARKET } from "@/lib/serverMarket";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 const TITLE = "Bhavano Blog";
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 function formatDate(iso: string): string {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-IN", {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString(SERVER_MARKET.locale, {
     day: "numeric",
     month: "long",
     year: "numeric",

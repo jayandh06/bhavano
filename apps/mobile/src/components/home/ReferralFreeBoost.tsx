@@ -4,10 +4,12 @@ import type { BoostPricingPreviewDto } from "@bhavano/types";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { redeemReferralBoost } from "../../lib/bffClient";
+import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
+import { getCurrentMarketId } from "../../lib/market";
 
 type ReferralCredit = NonNullable<BoostPricingPreviewDto["referralCredit"]>;
 
-const expiryFormatter = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" });
+const expiryFormatter = (id: MarketId) => marketDateFormatter(id, { day: "numeric", month: "short" });
 
 /** "Use free boost" for a user holding a referral credit — the app's twin of the green block in
  * apps/web's BoostBundlePicker. Activates server-side straight away, no checkout. */
@@ -61,7 +63,7 @@ export function ReferralFreeBoost({
           {credit.available === 1 ? "You have a free Feature" : `You have ${credit.available} free Features`}
         </Text>{" "}
         from referring friends. Use one now for {credit.days} days, free.{" "}
-        <Text style={{ color: colors.muted }}>Expires {expiryFormatter.format(new Date(credit.expiresAt))}.</Text>
+        <Text style={{ color: colors.muted }}>Expires {expiryFormatter(getCurrentMarketId()).format(new Date(credit.expiresAt))}.</Text>
       </Text>
       <Pressable
         onPress={onUse}

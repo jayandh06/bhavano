@@ -210,3 +210,17 @@ export function isMarketCategory(id: MarketId, category: ListingCategory): boole
 export function isMarketField(id: MarketId, key: string): boolean {
   return !MARKETS[id].hiddenFieldKeys.includes(key);
 }
+
+const dateFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/** An `Intl.DateTimeFormat` in the market's locale ("en-IN" → "24 Nov 2026", "en-US" → "Nov 24, 2026"), cached by options so
+ * module-level helpers can ask for it per call instead of fixing the locale at import. */
+export function marketDateFormatter(id: MarketId, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = `${id}|${JSON.stringify(options)}`;
+  let fmt = dateFormatters.get(key);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat(MARKETS[id].locale, options);
+    dateFormatters.set(key, fmt);
+  }
+  return fmt;
+}

@@ -5,9 +5,11 @@ import { useAppTheme } from "../../src/theme/ThemeContext";
 import { BlogBody } from "../../src/components/home/BlogBody";
 import { BlogCover } from "../../src/components/home/BlogCover";
 import { P, StaticPageLayout } from "../../src/components/home/StaticPageLayout";
+import { getCurrentMarketId } from "../../src/lib/market";
+import { getMarket } from "@bhavano/types/market";
 
 function formatDate(iso: string): string {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-IN", {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString(getMarket(getCurrentMarketId()).locale, {
     day: "numeric",
     month: "long",
     year: "numeric",

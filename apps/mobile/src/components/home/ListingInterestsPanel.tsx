@@ -12,8 +12,9 @@ import {
 } from "../../lib/bffClient";
 import { appWebUrl } from "../../lib/appWebUrl";
 import { useMarket } from "../../lib/market";
+import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
 
-const timeFormatter = new Intl.DateTimeFormat("en-IN", {
+const timeFormatter = (id: MarketId) => marketDateFormatter(id, {
   day: "numeric",
   month: "short",
   hour: "numeric",
@@ -166,7 +167,7 @@ export function ListingInterestsPanel({
                       <Text style={{ fontSize: 11.5, fontWeight: "700", color: colors.green }}>Unlocked your number</Text>
                     ) : null}
                     <Text style={{ fontSize: 11.5, color: colors.muted }}>
-                      Interested {timeFormatter.format(new Date(row.lastSeenAt))}
+                      Interested {timeFormatter(market.id).format(new Date(row.lastSeenAt))}
                     </Text>
                     {row.contact === "available" && row.phone ? (
                       <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginTop: 2 }}>{row.phone}</Text>

@@ -2614,7 +2614,7 @@ export function PostAdWizard({
           {draftSavedAt !== null && (
             <p className="m-0 -mt-2 text-xs text-muted max-w-[720px]" aria-live="polite">
               Draft saved on this device at{" "}
-              {new Date(draftSavedAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}
+              {new Date(draftSavedAt).toLocaleTimeString(market.locale, { hour: "numeric", minute: "2-digit" })}
             </p>
           )}
           {lastAdPreview && lastAdPreview.copiedKeys.length > 0 && (
@@ -2780,7 +2780,7 @@ export function PostAdWizard({
                           suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
                         />
                         {pricedPerUnit && (
-                          <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit) : null} />
+                          <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit, market.id) : null} />
                         )}
                         {priceIssue && <p className="text-xs text-[#b3413a] mt-1.5 m-0">{priceIssue}</p>}
                         {!priceIssue && fieldMessage("price")}

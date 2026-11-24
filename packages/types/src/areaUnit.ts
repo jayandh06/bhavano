@@ -1,3 +1,4 @@
+import { MARKETS, type MarketId } from "./market";
 /** Shared area-unit vocabulary — originally lived only in `apps/web/src/lib/calculatorFormulas.ts`
  * for the standalone `/tools/area-unit-converter` page. Promoted here so the BFF, web, and mobile
  * can all use the same units for a listing's own area field (Plot/Commercial's expanded unit
@@ -30,8 +31,8 @@ export function areaUnitShortLabel(unit: AreaUnit, value: number): string {
 
 /** `"1,200 sq ft"` / `"2.5 acres"` — value formatted with Indian grouping, no decimals beyond
  * what's actually present (an integer area doesn't grow a trailing ".00"). */
-export function formatArea(value: number, unit: AreaUnit): string {
-  const formatted = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value);
+export function formatArea(value: number, unit: AreaUnit, marketId: MarketId = "in"): string {
+  const formatted = new Intl.NumberFormat(MARKETS[marketId].locale, { maximumFractionDigits: 2 }).format(value);
   return `${formatted} ${areaUnitShortLabel(unit, value)}`;
 }
 

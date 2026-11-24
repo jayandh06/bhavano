@@ -279,8 +279,8 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
             {listing.featuredPerformance.active ? "Your Featured ad so far" : "Your last Featured period"}
           </Text>
           <Text style={{ fontSize: 12, color: colors.muted }}>
-            {new Date(listing.featuredPerformance.since).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} –{" "}
-            {new Date(listing.featuredPerformance.until).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+            {new Date(listing.featuredPerformance.since).toLocaleDateString(market.locale, { day: "numeric", month: "short" })} –{" "}
+            {new Date(listing.featuredPerformance.until).toLocaleDateString(market.locale, { day: "numeric", month: "short" })}
             {listing.featuredPerformance.active ? " · running now" : ""}
           </Text>
           <View style={{ flexDirection: "row", marginTop: 6 }}>
@@ -419,7 +419,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
                       suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
                     />
                     {priceMode === "perUnit" && priceUnitAreaField && (
-                      <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit) : null} />
+                      <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit, market.id) : null} />
                     )}
                   </View>
                   <View style={{ flex: 1 }}>

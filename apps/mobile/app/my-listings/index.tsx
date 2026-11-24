@@ -16,12 +16,14 @@ import { ListingInterestsPanel } from "../../src/components/home/ListingInterest
 import { Icon } from "../../src/components/Icon";
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import { appWebUrl } from "../../src/lib/appWebUrl";
+import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
+import { getCurrentMarketId } from "../../src/lib/market";
 
 function statusColor(status: ListingStatus, colors: { green: string; muted: string }): string {
   return status === "active" ? colors.green : status === "deactivated" ? "#b3413a" : colors.muted;
 }
 
-const renewedAtFormatter = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
+const renewedAtFormatter = (id: MarketId) => marketDateFormatter(id, { day: "numeric", month: "short", year: "numeric" });
 
 /** Full parity with web's /my-listings row (MyListingRow in apps/web/src/app/my-listings/
  * page.tsx): status/featured badges, Renew/Boost/View/Edit. Photo/video management stays on the
@@ -170,7 +172,7 @@ export default function MyListingsScreen() {
                 {item.renewCount > 0 && (
                   <Text style={{ fontSize: 11.5, color: colors.muted, marginTop: 2 }}>
                     Renewed {item.renewCount} time{item.renewCount === 1 ? "" : "s"}
-                    {lastRenewedAt && ` · last on ${renewedAtFormatter.format(new Date(lastRenewedAt))}`}
+                    {lastRenewedAt && ` · last on ${renewedAtFormatter(getCurrentMarketId()).format(new Date(lastRenewedAt))}`}
                   </Text>
                 )}
                 {accessToken && (

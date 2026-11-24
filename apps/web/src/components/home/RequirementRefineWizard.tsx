@@ -652,7 +652,7 @@ export function RequirementRefineWizard({
         </ChipRow>
         {timeline === null && current.moveInBy && (
           <p className="m-0 text-[12.5px] text-muted">
-            Currently: needed by {new Date(current.moveInBy).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+            Currently: needed by {new Date(current.moveInBy).toLocaleDateString(market.locale, { day: "numeric", month: "short" })}
           </p>
         )}
         <label className="flex flex-col gap-1.5">

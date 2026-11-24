@@ -311,7 +311,7 @@ export function EditListingForm({
                       suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
                     />
                     {priceMode === "perUnit" && priceUnitAreaField && (
-                      <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit) : null} />
+                      <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit, market.id) : null} />
                     )}
                   </div>
                   <div className="flex-1">

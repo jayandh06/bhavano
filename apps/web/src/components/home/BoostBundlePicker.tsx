@@ -19,6 +19,7 @@ import { previewBoostPricingAction, redeemReferralBoostAction } from "@/app/acti
 import { startBoostCheckout } from "@/lib/boostCheckout";
 import { Icon } from "./Icon";
 import { Currency } from "./Currency";
+import { useMarket } from "@/lib/useMarket";
 
 /** The Boost picker on the post-ad success screen and My Listings. Fetches every duration's price
  * up front (via PaymentsService.previewBoostPricing, which also auto-applies the current promo code
@@ -71,6 +72,7 @@ export function BoostBundlePicker({
    * first run, or while either cohort is still below MIN_SAMPLE_SIZE. */
   effectiveness?: BoostEffectivenessDto | null;
 }) {
+  const market = useMarket();
   const router = useRouter();
   const [pricing, setPricing] = useState<BoostPricingPreviewDto | null>(initialPricing ?? null);
   // The middle option is pre-selected: a 7-day default was taken by 13 of 19 buyers, and the longer
@@ -216,7 +218,7 @@ export function BoostBundlePicker({
         </span>{" "}
         from referring friends. Use one now for {referralCredit.days} days, free.{" "}
         <span className="text-muted" suppressHydrationWarning>
-          Expires {new Date(referralCredit.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}.
+          Expires {new Date(referralCredit.expiresAt).toLocaleDateString(market.locale, { day: "numeric", month: "short" })}.
         </span>
       </div>
       <button
