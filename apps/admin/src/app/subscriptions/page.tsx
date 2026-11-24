@@ -53,6 +53,19 @@ const STATUS_OPTIONS: { value: PaymentStatus | "any"; label: string }[] = [
   { value: "refunded", label: "Refunded" },
 ];
 
+type PaymentProvider = "razorpay" | "apple";
+
+const PROVIDER_LABELS: Record<PaymentProvider, string> = {
+  razorpay: "Razorpay",
+  apple: "Apple (iOS)",
+};
+
+const PROVIDER_OPTIONS: { value: PaymentProvider | "any"; label: string }[] = [
+  { value: "any", label: "All providers" },
+  { value: "razorpay", label: PROVIDER_LABELS.razorpay },
+  { value: "apple", label: PROVIDER_LABELS.apple },
+];
+
 const STATUS_COLORS: Record<PaymentStatus, string> = {
   paid: "var(--green)",
   created: "var(--gold, #b8860b)",
@@ -90,6 +103,8 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
   const purpose = purposeRaw && purposeRaw !== "any" ? (purposeRaw as PaymentPurpose) : undefined;
   const statusRaw = str(sp.status);
   const status = statusRaw && statusRaw !== "any" ? (statusRaw as PaymentStatus) : undefined;
+  const providerRaw = str(sp.provider);
+  const provider = providerRaw === "razorpay" || providerRaw === "apple" ? providerRaw : undefined;
   const from = str(sp.from);
   const to = str(sp.to);
   const listingTitle = str(sp.listingTitle);
@@ -103,6 +118,7 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
     userId,
     purpose,
     status,
+    provider,
     listingTitle,
     source,
     sort,
@@ -161,6 +177,16 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
             <Field label="Status">
               <SelectField name="status" defaultValue={status ?? "any"} style={selectStyle}>
                 {STATUS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectField>
+            </Field>
+
+            <Field label="Provider">
+              <SelectField name="provider" defaultValue={provider ?? "any"} style={selectStyle}>
+                {PROVIDER_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -227,6 +253,7 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
                   <th style={thStyle}>
                     <SortableHeader label="Status" href={sortHref("status")} direction={sortDir("status")} />
                   </th>
+                  <th style={thStyle}>Provider</th>
                   {/* Resolved from whichever of four different purpose-specific audit-trail
                       rows this payment created — not a column on Payment itself, so it can't
                       be an orderBy target. See AdminPaymentDto's own doc comment. */}
@@ -247,6 +274,7 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
                       style={headerInputStyle}
                     />
                   </th>
+                  <th style={filterThStyle} />
                   <th style={filterThStyle} />
                   <th style={filterThStyle} />
                   <th style={filterThStyle} />
@@ -281,6 +309,7 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
                     <td style={tdStyle}>
                       <span style={{ color: STATUS_COLORS[p.status], fontWeight: 700 }}>{STATUS_LABELS[p.status]}</span>
                     </td>
+                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{PROVIDER_LABELS[p.provider] ?? p.provider}</td>
                     <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{p.expiresAt ? formatDate(p.expiresAt) : dash}</td>
                     <td style={tdStyle}>{p.discountCode ?? dash}</td>
                     <td style={tdStyle}>{sourceLabel(p.source) ?? dash}</td>
@@ -297,7 +326,7 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
                 ))}
                 {result.items.length === 0 && (
                   <tr style={{ borderTop: "1px solid var(--border)" }}>
-                    <td colSpan={10} style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}>
+                    <td colSpan={11} style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}>
                       No purchases match these filters.
                     </td>
                   </tr>

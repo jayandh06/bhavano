@@ -166,3 +166,17 @@ day of work, and it avoids sitting in rejection for the weeks IAP takes. Not dec
 - Drop multi-unit Agent Pro and discount codes on iOS?
 - `expo-iap` (direct StoreKit 2, our own server verification) or RevenueCat?
 - Do the interim "hide purchasing" release first?
+
+## Admin Subscriptions page: Provider column and filter (2026-11-24)
+
+The admin Subscriptions page lists every `Payment` row, Apple included (the iOS verify step writes a paid
+row with `provider = apple`), but nothing on the page said which processor took the money, so an iOS boost
+looked like any other "Feature" row and the Source filter (checkout origin) could not isolate iOS. The page
+now has a **Provider** column (Razorpay / Apple (iOS)) and a **Provider** filter, backed by
+`provider` on `GET /admin/payments` (`ListPaymentsDto`) and `AdminPaymentDto.provider`.
+
+Checked in production on 2026-11-24: three Apple payments recorded and fulfilled (two 7-day property
+boosts on 22 and 24 Nov, one sandbox Plus subscription on 18 Nov). `POST /payments/apple/notifications` has
+**never** been called: App Store Server Notifications (V2, Production and Sandbox URLs in App Store Connect)
+are not configured, so subscription renewals, cancellations and refunds do not reach the server. The 18 Nov
+sandbox plan lapsed after a day and was never extended. This is step 4 under "What only you can do".

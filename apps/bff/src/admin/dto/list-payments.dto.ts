@@ -20,6 +20,11 @@ const ADMIN_PAYMENT_STATUS_VALUES = ['created', 'paid', 'failed', 'refunded'] as
 
 export type AdminPaymentStatusFilter = (typeof ADMIN_PAYMENT_STATUS_VALUES)[number];
 
+/** Mirrors Payment.provider (schema.prisma's PaymentProvider): which processor took the money. */
+const ADMIN_PAYMENT_PROVIDER_VALUES = ['razorpay', 'apple'] as const;
+
+export type AdminPaymentProviderFilter = (typeof ADMIN_PAYMENT_PROVIDER_VALUES)[number];
+
 /** `expiresAt` is deliberately absent — see AdminPaymentDto's own doc comment on why it can't be
  * an orderBy target (it's resolved from whichever of four different related tables this
  * payment's purpose populated, not a column on Payment itself). `paidAt` sorts nulls last in
@@ -44,7 +49,7 @@ const ADMIN_PAYMENT_SORT_VALUES = [
 
 export type AdminPaymentSort = (typeof ADMIN_PAYMENT_SORT_VALUES)[number];
 
-export { ADMIN_PAYMENT_PURPOSE_VALUES, ADMIN_PAYMENT_STATUS_VALUES, ADMIN_PAYMENT_SORT_VALUES };
+export { ADMIN_PAYMENT_PURPOSE_VALUES, ADMIN_PAYMENT_STATUS_VALUES, ADMIN_PAYMENT_PROVIDER_VALUES, ADMIN_PAYMENT_SORT_VALUES };
 
 /** `listingTitle` uses the same text-filter DSL as ListPageVisitsDto's free-text columns (parsed
  * by `parseTextFilter` in admin.service.ts): plain text is a case-insensitive `contains`,
@@ -80,6 +85,11 @@ export class ListPaymentsDto {
   @IsOptional()
   @IsIn(ADMIN_PAYMENT_STATUS_VALUES)
   status?: AdminPaymentStatusFilter;
+
+  /** Razorpay (web, Android) or Apple (the iOS app's In-App Purchase). */
+  @IsOptional()
+  @IsIn(ADMIN_PAYMENT_PROVIDER_VALUES)
+  provider?: AdminPaymentProviderFilter;
 
   @IsOptional()
   @IsString()

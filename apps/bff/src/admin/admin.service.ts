@@ -2862,7 +2862,7 @@ export class AdminService {
    * purpose-specific audit-trail rows this payment actually created (see AdminPaymentDto's own
    * doc comment), so it's resolved here per-row rather than in the query itself. */
   async listPayments(query: ListPaymentsDto): Promise<AdminPaymentsPage> {
-    const { offset, from, to, userId, listingId, purpose, status, listingTitle, source, sort, limit } = query;
+    const { offset, from, to, userId, listingId, purpose, status, provider, listingTitle, source, sort, limit } = query;
 
     const where: Prisma.PaymentWhereInput = {
       ...(from || to
@@ -2872,6 +2872,7 @@ export class AdminService {
       ...(listingId ? { listingId } : {}),
       ...(purpose ? { purpose } : {}),
       ...(status ? { status } : {}),
+      ...(provider ? { provider } : {}),
       ...(source ? { source } : {}),
     };
     const listingTitleClause = parseTextFilter(listingTitle);
@@ -2915,6 +2916,7 @@ export class AdminService {
           amount: p.amount,
           currency: p.currency,
           status: p.status,
+          provider: p.provider,
           createdAt: p.createdAt.toISOString(),
           paidAt: p.paidAt?.toISOString() ?? null,
           expiresAt: expiresAt?.toISOString() ?? null,

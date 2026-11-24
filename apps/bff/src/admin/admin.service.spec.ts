@@ -1810,3 +1810,53 @@ describe('AdminService in-app message logging', () => {
     expect(findMany).not.toHaveBeenCalled();
   });
 });
+
+describe('AdminService.listPayments provider', () => {
+  const row = (provider: 'razorpay' | 'apple') => ({
+    id: `p-${provider}`,
+    purpose: 'listing_boost',
+    amount: 19900,
+    currency: 'INR',
+    status: 'paid',
+    provider,
+    createdAt: new Date('2026-11-24T06:13:00Z'),
+    paidAt: new Date('2026-11-24T06:13:00Z'),
+    userId: 'u1',
+    user: { name: 'Test User', phone: '+919876543210', email: null },
+    listingId: null,
+    listing: null,
+    boostDays: 7,
+    boostIncludesInstantAlerts: false,
+    subscriptionMonths: null,
+    agentProUnits: null,
+    creditPackSize: null,
+    discountCode: null,
+    source: null,
+    listingBoost: null,
+    listingInstantAlert: null,
+    subscription: null,
+    contactRevealCreditBatch: null,
+  });
+
+  it('returns each payment with the provider that took the money', async () => {
+    const findMany = jest.fn().mockResolvedValue([row('apple'), row('razorpay')]);
+    const { service } = makeService({ payment: { findMany, count: jest.fn().mockResolvedValue(2) } });
+
+    const page = await service.listPayments({ limit: 25 } as never);
+
+    expect(page.items.map((p) => p.provider)).toEqual(['apple', 'razorpay']);
+  });
+
+  it('filters by provider only when one is asked for', async () => {
+    const findMany = jest.fn().mockResolvedValue([row('apple')]);
+    const count = jest.fn().mockResolvedValue(1);
+    const { service } = makeService({ payment: { findMany, count } });
+
+    await service.listPayments({ provider: 'apple', limit: 25 } as never);
+    expect(findMany.mock.calls[0][0].where).toMatchObject({ provider: 'apple' });
+    expect(count.mock.calls[0][0].where).toMatchObject({ provider: 'apple' });
+
+    await service.listPayments({ limit: 25 } as never);
+    expect(findMany.mock.calls[1][0].where).not.toHaveProperty('provider');
+  });
+});

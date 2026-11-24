@@ -1648,6 +1648,8 @@ export interface AdminPaymentDto {
     amount: number;
     currency: string;
     status: PaymentStatus;
+    /** Which processor took the money: Razorpay (web, Android) or Apple (the iOS app's In-App Purchase). */
+    provider: 'razorpay' | 'apple';
     createdAt: string;
     paidAt: string | null;
     expiresAt: string | null;
