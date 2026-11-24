@@ -1804,7 +1804,7 @@ export function PostAdWizard({
   const showRequiredBorders = formVariant === "v2";
   const requiredKeys =
     showRequiredBorders && category && transactionType
-      ? CATEGORY_FIELD_CONFIG[category].filter((f) => f.required && fieldIsVisible(f, transactionType, attributes)).map((f) => f.key)
+      ? CATEGORY_FIELD_CONFIG[category].filter((f) => f.required && fieldIsVisible(f, transactionType, attributes, market.id)).map((f) => f.key)
       : [];
   const attributeStates = showRequiredBorders ? requiredAttributeStates(requiredKeys, issues, shownMessages) : undefined;
   const stateOf = (target: string) => (showRequiredBorders ? requiredState(issueForTarget(issues, target), target in shownMessages) : undefined);
@@ -2302,7 +2302,7 @@ export function PostAdWizard({
       description: description.trim(),
       photos: uploadedPhotos,
       videos: uploadedVideos.length > 0 ? uploadedVideos : undefined,
-      attributes: pruneHiddenAttributes(category, transactionType, attributes),
+      attributes: pruneHiddenAttributes(category, transactionType, attributes, market.id),
       lat: pin?.lat,
       lng: pin?.lng,
       postedAs: profileSellerType ? undefined : (sellerTypeFromBroker(attributes.fromBroker) ?? postedAs ?? undefined),
@@ -3030,7 +3030,7 @@ export function PostAdWizard({
               </ul>
             )}
             {(() => {
-              const completeness = listingCompleteness(category, transactionType, attributes);
+              const completeness = listingCompleteness(category, transactionType, attributes, market.id);
               return completeness.total > 0 ? (
                 <p className="m-0 mt-3 text-xs text-muted">
                   {completeness.missing.length === 0

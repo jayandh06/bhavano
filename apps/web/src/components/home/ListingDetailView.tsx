@@ -25,6 +25,7 @@ import { ViewTracker } from "./ViewTracker";
 import { ListingLoginNudge } from "./ListingLoginNudge";
 import { fetchLoginNudgeSettings } from "@/lib/bff";
 import { Icon, isIconName } from "./Icon";
+import { SERVER_MARKET } from "@/lib/serverMarket";
 
 /** Mirrors the map in my-listings/page.tsx — kept local rather than shared/exported since it's a
  * 4-value lookup, not worth coupling the two components over. */
@@ -97,7 +98,7 @@ export async function ListingDetailView({
   // the posting/edit forms where every amenity needs to stay editable either way.
   const visibleFields = CATEGORY_FIELD_CONFIG[listing.category].filter((field) => {
     if (!(field.key in attributes)) return false;
-    if (!fieldIsVisible(field, listing.transactionType, attributes)) return false;
+    if (!fieldIsVisible(field, listing.transactionType, attributes, SERVER_MARKET.id)) return false;
     if (field.section === "amenities" && attributes[field.key] !== "yes") return false;
     // The amount's own label ("Brokerage Fee (%)") already says which type was picked.
     if (field.key === "brokerageFeeType") return false;

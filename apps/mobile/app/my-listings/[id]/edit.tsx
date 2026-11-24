@@ -114,7 +114,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
   const [mediaError, setMediaError] = useState<string | null>(null);
 
   const fieldConfig = CATEGORY_FIELD_CONFIG[listing.category];
-  const visibleFields = fieldConfig.filter((field) => fieldIsVisible(field, listing.transactionType, attributes));
+  const visibleFields = fieldConfig.filter((field) => fieldIsVisible(field, listing.transactionType, attributes, market.id));
   const priceUnitAreaField =
     listing.transactionType === "sell" || listing.transactionType === "lease"
       ? fieldConfig.find((field) => field.type === "area")

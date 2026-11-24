@@ -1,6 +1,7 @@
 import type { ListingCategory, TransactionType } from "./index";
 import type { AreaUnit } from "./areaUnit";
 import { groupInr } from "./priceWords";
+import { isMarketField, type MarketId } from "./market";
 
 export interface FieldOption {
   value: string;
@@ -140,8 +141,10 @@ export function fieldIsVisible(
   field: FieldDef,
   transactionType: TransactionType,
   attributes: Record<string, unknown>,
+  marketId?: MarketId,
 ): boolean {
   return (
+    (!marketId || isMarketField(marketId, field.key)) &&
     (!field.transactionTypes ||
       field.transactionTypes.includes(transactionType)) &&
     (!field.dependsOn ||
@@ -323,6 +326,7 @@ export function pruneHiddenAttributes(
   category: ListingCategory,
   transactionType: TransactionType,
   attributes: Record<string, string | string[]>,
+  marketId?: MarketId,
 ): Record<string, string | string[]> {
   const next = { ...attributes };
   const fields = CATEGORY_FIELD_CONFIG[category];
@@ -332,7 +336,7 @@ export function pruneHiddenAttributes(
     for (const field of fields) {
       if (
         field.key in next &&
-        !fieldIsVisible(field, transactionType, next)
+        !fieldIsVisible(field, transactionType, next, marketId)
       ) {
         delete next[field.key];
         // `type: "area"` fields carry a second, sibling attribute key for the chosen unit —
@@ -393,8 +397,9 @@ export function listingAttributesIssue(
   transactionType: TransactionType,
   attributes: Record<string, string | string[]>,
   price?: number | null,
+  marketId?: MarketId,
 ): string | null {
-  return listingAttributeIssues(category, transactionType, attributes, price)[0]?.text ?? null;
+  return listingAttributeIssues(category, transactionType, attributes, price, marketId)[0]?.text ?? null;
 }
 
 /** One problem with the attributes, and which field it belongs to (null for the brokerage-against-price check,
@@ -414,11 +419,12 @@ export function listingAttributeIssues(
   transactionType: TransactionType,
   attributes: Record<string, string | string[]>,
   price?: number | null,
+  marketId?: MarketId,
 ): AttributeIssue[] {
   const issues: AttributeIssue[] = [];
   const fields = CATEGORY_FIELD_CONFIG[category];
   for (const field of fields) {
-    if (!fieldIsVisible(field, transactionType, attributes)) continue;
+    if (!fieldIsVisible(field, transactionType, attributes, marketId)) continue;
     const value = attributes[field.key];
     if (value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) {
       if (field.required) issues.push({ key: field.key, text: `${field.label} is required` });
@@ -470,10 +476,11 @@ export function listingCompleteness(
   category: ListingCategory,
   transactionType: TransactionType,
   attributes: Record<string, string | string[]>,
+  marketId?: MarketId,
 ): ListingCompleteness {
   const counted = CATEGORY_FIELD_CONFIG[category].filter((field) => {
     if (field.required || field.defaultValue !== undefined) return false;
-    if (!fieldIsVisible(field, transactionType, attributes)) return false;
+    if (!fieldIsVisible(field, transactionType, attributes, marketId)) return false;
     if (field.section === "amenities" || field.section === "furnishing") return false;
     if (field.key === "website" || field.key === "fromBroker" || field.key.startsWith("brokerage")) return false;
     const yesNo = field.type === "select" && field.options?.length === 2 && field.options.every((o) => o.value === "yes" || o.value === "no");

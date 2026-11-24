@@ -3858,7 +3858,7 @@ export class ListingsService {
   ): void {
     for (const field of CATEGORY_FIELD_CONFIG[category]) {
       const value = attributes[field.key];
-      if (!fieldIsVisible(field, transactionType, attributes)) {
+      if (!fieldIsVisible(field, transactionType, attributes, MARKET.id)) {
         if (value !== undefined)
           throw new BadRequestException(`${field.label} is not applicable`);
         continue;

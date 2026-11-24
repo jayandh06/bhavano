@@ -10,6 +10,7 @@ import {
 import { websiteUrl } from "@bhavano/types/websiteUrl";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon, isIconName } from "../Icon";
+import { useMarket } from "../../lib/market";
 
 
 /**
@@ -28,11 +29,12 @@ export function ListingAttributeSections({
   transactionType: TransactionType;
   attributes: Record<string, unknown>;
 }) {
+  const market = useMarket();
   const { colors } = useAppTheme();
   const attrs = attributes as Record<string, string | string[]>;
   const visibleFields = CATEGORY_FIELD_CONFIG[category].filter((field) => {
     if (!(field.key in attrs)) return false;
-    if (!fieldIsVisible(field, transactionType, attrs)) return false;
+    if (!fieldIsVisible(field, transactionType, attrs, market.id)) return false;
     if (field.section === "amenities" && attrs[field.key] !== "yes") return false;
     // The amount's own label ("Brokerage Fee (%)") already says which type was picked.
     if (field.key === "brokerageFeeType") return false;

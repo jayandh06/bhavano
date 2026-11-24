@@ -14,6 +14,7 @@ exports.toE164 = toE164;
 exports.phoneErrorMessage = phoneErrorMessage;
 exports.marketAreaUnits = marketAreaUnits;
 exports.isMarketCategory = isMarketCategory;
+exports.isMarketField = isMarketField;
 exports.MARKETS = {
     in: {
         id: "in",
@@ -34,6 +35,7 @@ exports.MARKETS = {
         phonePlaceholder: "10-digit mobile number",
         phoneLoginPrimary: true,
         categories: ["house", "apartment", "villa", "pg", "storage", "coworking", "furniture", "interiors", "plot", "commercial"],
+        hiddenFieldKeys: [],
         indexable: true,
     },
     us: {
@@ -57,6 +59,7 @@ exports.MARKETS = {
         phoneLoginPrimary: false,
         // Starting set; the wedge decision in the plan may change it. No PG, coworking, plots or furniture/interiors.
         categories: ["house", "apartment", "villa", "storage", "commercial"],
+        hiddenFieldKeys: ["preferredTenantTypes", "vegetariansOnly", "gender", "foodType"],
         indexable: false,
     },
 };
@@ -149,4 +152,8 @@ function marketAreaUnits(id, units) {
 /** Whether listings of this category can be posted in the market. */
 function isMarketCategory(id, category) {
     return exports.MARKETS[id].categories.includes(category);
+}
+/** Whether a listing or requirement field is offered in the market. */
+function isMarketField(id, key) {
+    return !exports.MARKETS[id].hiddenFieldKeys.includes(key);
 }

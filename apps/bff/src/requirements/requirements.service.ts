@@ -21,6 +21,7 @@ import { SavedSearchesService } from '../saved-searches/saved-searches.service';
 import { CreateRequirementDto } from './dto/create-requirement.dto';
 import { RefineRequirementDto } from './dto/refine-requirement.dto';
 import { UpdateMyRequirementDto } from './dto/update-my-requirement.dto';
+import { MARKET } from '../market/market-config';
 
 /** Same 30-day life as a listing (DEFAULT_LISTING_DURATION_DAYS in listings.service.ts), and
  * renewable the same way. Requirements have to age out: an owner who wastes a call on someone
@@ -226,7 +227,7 @@ export class RequirementsService {
       if (budgetIssue) throw new BadRequestException(budgetIssue);
     }
     const attributes = category && dto.attributes
-      ? sanitizeRequirementAttributes(category, transactionType, dto.attributes).attributes
+      ? sanitizeRequirementAttributes(category, transactionType, dto.attributes, MARKET.id).attributes
       : {};
 
     const criteria: RequirementCriteria = {
@@ -428,7 +429,7 @@ export class RequirementsService {
 
     let attributes: RequirementAttributes = {};
     if (category) {
-      const result = sanitizeRequirementAttributes(category, transactionType ?? undefined, dto.attributes ?? attributesOf(existing));
+      const result = sanitizeRequirementAttributes(category, transactionType ?? undefined, dto.attributes ?? attributesOf(existing), MARKET.id);
       // Only what this request sent can be wrong; stale keys from before a category change are
       // simply dropped by the sanitizer.
       if (dto.attributes && result.errors.length > 0) throw new BadRequestException(result.errors.join('; '));

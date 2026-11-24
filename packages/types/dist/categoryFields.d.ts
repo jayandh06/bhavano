@@ -1,5 +1,6 @@
 import type { ListingCategory, TransactionType } from "./index";
 import type { AreaUnit } from "./areaUnit";
+import { type MarketId } from "./market";
 export interface FieldOption {
     value: string;
     label: string;
@@ -91,7 +92,7 @@ export interface FieldDef {
 /** Single source of truth for whether a field should be shown, given the current transaction
  * type and in-progress attribute values — used by the posting wizard, the edit form, and the
  * listing detail page so all three agree on what's visible. */
-export declare function fieldIsVisible(field: FieldDef, transactionType: TransactionType, attributes: Record<string, unknown>): boolean;
+export declare function fieldIsVisible(field: FieldDef, transactionType: TransactionType, attributes: Record<string, unknown>, marketId?: MarketId): boolean;
 /** A stored attribute as the listing page prints it: the option's label for a select ("North-East"
  * rather than "north-east"), "Yes"/"No", rupees grouped the Indian way, a unit suffix. Shared by
  * the web and mobile detail pages so they cannot word the same value differently. */
@@ -138,7 +139,7 @@ export declare function groupSectionFields<F extends {
  * possibly several links back in a chain) — run after every attribute/transaction-type change
  * so a hidden field's stale value can't linger and reappear if a descendant field depends on
  * it. Iterates to a fixpoint since hiding one field can cascade to hide the next. */
-export declare function pruneHiddenAttributes(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>): Record<string, string | string[]>;
+export declare function pruneHiddenAttributes(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>, marketId?: MarketId): Record<string, string | string[]>;
 /**
  * Why a filled-in `number` / `area` value is invalid, or null. Shared by the BFF's
  * `assertValidAttributes` and `listingAttributesIssue` so the forms and the server word and draw
@@ -153,7 +154,7 @@ export declare function numberFieldIssue(field: FieldDef, value: unknown): strin
  * the monthly rent) adds the brokerage-against-price limits. Keep in step with
  * ListingsService.assertValidAttributes / assertConditionalFee / assertBrokerageFitsPrice.
  */
-export declare function listingAttributesIssue(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>, price?: number | null): string | null;
+export declare function listingAttributesIssue(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>, price?: number | null, marketId?: MarketId): string | null;
 /** One problem with the attributes, and which field it belongs to (null for the brokerage-against-price check,
  * which is about the price rather than one field). */
 export interface AttributeIssue {
@@ -165,7 +166,7 @@ export interface AttributeIssue {
  * entry's text is exactly what `listingAttributesIssue` returns. Lets the post forms say how many things are
  * left and jump to each one.
  */
-export declare function listingAttributeIssues(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>, price?: number | null): AttributeIssue[];
+export declare function listingAttributeIssues(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>, price?: number | null, marketId?: MarketId): AttributeIssue[];
 export interface ListingCompleteness {
     filled: number;
     total: number;
@@ -181,7 +182,7 @@ export interface ListingCompleteness {
  * pre-filled counts, brokerage terms, the website and amenities/furnishing inventories. What is
  * left is the specifics a buyer actually filters and decides on.
  */
-export declare function listingCompleteness(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>): ListingCompleteness;
+export declare function listingCompleteness(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>, marketId?: MarketId): ListingCompleteness;
 /** The attributes a freshly-chosen category starts with — the counts, at zero. Called instead
  * of resetting to an empty object so a stepper has a number to increment from and the form opens
  * with honest answers rather than blanks the poster has to fill in to say "none". */

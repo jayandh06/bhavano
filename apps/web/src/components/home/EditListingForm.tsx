@@ -127,7 +127,7 @@ export function EditListingForm({
   // as the BFF's applyUpdate.
   const priceChanged = price !== initialPrice || priceMode !== initialPriceMode;
   const attributesIssue = attributesChanged
-    ? listingAttributesIssue(listing.category, listing.transactionType, attributes, totalPrice)
+    ? listingAttributesIssue(listing.category, listing.transactionType, attributes, totalPrice, market.id)
     : priceChanged
       ? brokerageFeeIssue(listing.transactionType, totalPrice, attributes)
       : null;

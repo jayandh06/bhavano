@@ -23,7 +23,7 @@ import {
   INTENT_CATEGORIES,
   INTENT_TRANSACTION_CHOICES,
   MAX_REQUIREMENT_AREAS,
-  REQUIREMENT_ATTRIBUTE_QUESTIONS,
+  requirementQuestionsFor,
   REQUIREMENT_BEDROOM_OPTIONS,
   REQUIREMENT_CATEGORY_LABELS,
   REQUIREMENT_INTENTS,
@@ -49,6 +49,7 @@ import { useAreasQuery } from "../../lib/queries";
 import { useTabBarHeight } from "../../lib/tabBarHeight";
 import { RequirementCityPicker, type PickedCity } from "./RequirementCityPicker";
 import { Currency } from "./Currency";
+import { useMarket } from "../../lib/market";
 
 type WizardStep = RequirementStep | "review";
 type Colors = ReturnType<typeof useAppTheme>["colors"];
@@ -183,6 +184,7 @@ export function RequirementRefineWizard({
   /** Called with the saved requirement after the review step. */
   onFinished: (requirement: RequirementDto) => void;
 }) {
+  const market = useMarket();
   const { colors } = useAppTheme();
   const [current, setCurrent] = useState<RequirementWizardSubject>(requirement);
   const [draft, setDraft] = useState<RequirementCriteria>(() => criteriaOf(requirement));
@@ -468,7 +470,7 @@ export function RequirementRefineWizard({
   function renderDetails() {
     if (!draft.category) return null;
     const size = sizeQuestionFor(draft.category);
-    const questions = REQUIREMENT_ATTRIBUTE_QUESTIONS[draft.category].filter(
+    const questions = requirementQuestionsFor(draft.category, market.id).filter(
       (q) => !q.transactionTypes || (draft.transactionType && q.transactionTypes.includes(draft.transactionType)),
     );
     return (

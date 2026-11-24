@@ -10,7 +10,7 @@ import {
   INTENT_CATEGORIES,
   INTENT_TRANSACTION_CHOICES,
   MAX_REQUIREMENT_AREAS,
-  REQUIREMENT_ATTRIBUTE_QUESTIONS,
+  requirementQuestionsFor,
   REQUIREMENT_BEDROOM_OPTIONS,
   REQUIREMENT_CATEGORY_LABELS,
   REQUIREMENT_INTENTS,
@@ -34,6 +34,7 @@ import { refineRequirementAction } from "@/app/actions/requirements";
 import { listAllAreasAction } from "@/app/actions/locations";
 import { RequirementCityPicker, type PickedCity } from "./RequirementCityPicker";
 import { Currency } from "./Currency";
+import { useMarket } from "@/lib/useMarket";
 
 type WizardStep = RequirementStep | "review";
 
@@ -150,6 +151,7 @@ export function RequirementRefineWizard({
   /** Called when the seeker stops early. */
   onClose: () => void;
 }) {
+  const market = useMarket();
   const [current, setCurrent] = useState<RequirementWizardSubject>(requirement);
   const [draft, setDraft] = useState<RequirementCriteria>(() => criteriaOf(requirement));
   const skipped = useMemo(() => answeredSteps(criteriaOf(requirement)), [requirement]);
@@ -421,7 +423,7 @@ export function RequirementRefineWizard({
   function DetailsStep() {
     if (!draft.category) return null;
     const size = sizeQuestionFor(draft.category);
-    const questions = REQUIREMENT_ATTRIBUTE_QUESTIONS[draft.category].filter(
+    const questions = requirementQuestionsFor(draft.category, market.id).filter(
       (q) => !q.transactionTypes || (draft.transactionType && q.transactionTypes.includes(draft.transactionType)),
     );
     return (

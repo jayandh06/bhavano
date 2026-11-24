@@ -1,6 +1,7 @@
 import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, TransactionType } from "./index";
 import { type FieldOption } from "./categoryFields";
 import { type AreaUnit } from "./areaUnit";
+import { type MarketId } from "./market";
 /**
  * The questions asked after "Yes, find this for me", and the vocabulary a refined requirement is
  * stored in — see docs/plans/requirement-refinement-questions.md.
@@ -94,7 +95,7 @@ export declare function amenityOptionsFor(category: ListingCategory): FieldOptio
  * error (a client sending it is broken), while a question gated off by the transaction type is
  * silently dropped, because switching rent to buy legitimately strands a tenant-type answer.
  */
-export declare function sanitizeRequirementAttributes(category: ListingCategory, transactionType: TransactionType | undefined, attributes: RequirementAttributes): {
+export declare function sanitizeRequirementAttributes(category: ListingCategory, transactionType: TransactionType | undefined, attributes: RequirementAttributes, marketId?: MarketId): {
     attributes: RequirementAttributes;
     errors: string[];
 };
@@ -225,3 +226,6 @@ export declare function requirementCriteriaFromBrowse(f: BrowseFiltersForRequire
     areaId?: string;
     bedrooms?: number;
 };
+/** The attribute questions asked for a category in a market: the market's hidden fields (tenant type, vegetarians only,
+ * gender, food in the US) are left out. India gets the full list. */
+export declare function requirementQuestionsFor(category: ListingCategory, marketId?: MarketId): RequirementAttributeQuestion[];

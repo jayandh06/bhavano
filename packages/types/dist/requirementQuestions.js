@@ -18,10 +18,12 @@ exports.isLeadReady = isLeadReady;
 exports.describeRequirementGaps = describeRequirementGaps;
 exports.formatRequirementLabel = formatRequirementLabel;
 exports.requirementCriteriaFromBrowse = requirementCriteriaFromBrowse;
+exports.requirementQuestionsFor = requirementQuestionsFor;
 const categoryFields_1 = require("./categoryFields");
 const postingRules_1 = require("./postingRules");
 const bedrooms_1 = require("./bedrooms");
 const areaUnit_1 = require("./areaUnit");
+const market_1 = require("./market");
 /**
  * The questions asked after "Yes, find this for me", and the vocabulary a refined requirement is
  * stored in — see docs/plans/requirement-refinement-questions.md.
@@ -175,10 +177,10 @@ function amenityOptionsFor(category) {
  * error (a client sending it is broken), while a question gated off by the transaction type is
  * silently dropped, because switching rent to buy legitimately strands a tenant-type answer.
  */
-function sanitizeRequirementAttributes(category, transactionType, attributes) {
+function sanitizeRequirementAttributes(category, transactionType, attributes, marketId) {
     const out = {};
     const errors = [];
-    const questions = new Map(exports.REQUIREMENT_ATTRIBUTE_QUESTIONS[category].map((q) => [q.key, q]));
+    const questions = new Map(requirementQuestionsFor(category, marketId).map((q) => [q.key, q]));
     const amenityKeys = new Set(amenityOptionsFor(category).map((o) => o.value));
     for (const [key, raw] of Object.entries(attributes)) {
         if (!Array.isArray(raw) || raw.some((v) => typeof v !== "string")) {
@@ -584,4 +586,10 @@ function requirementCriteriaFromBrowse(f) {
         maxPrice: f.maxPrice,
         attributes: Object.keys(attributes).length ? attributes : undefined,
     };
+}
+/** The attribute questions asked for a category in a market: the market's hidden fields (tenant type, vegetarians only,
+ * gender, food in the US) are left out. India gets the full list. */
+function requirementQuestionsFor(category, marketId) {
+    const all = exports.REQUIREMENT_ATTRIBUTE_QUESTIONS[category];
+    return marketId ? all.filter((q) => (0, market_1.isMarketField)(marketId, q.key)) : all;
 }
