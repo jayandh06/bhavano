@@ -10,6 +10,7 @@ import { Msg91Provider } from './providers/msg91.provider';
 import { FacebookProvider } from './providers/facebook.provider';
 import { renderEmail } from './emailLayout';
 import { loadTemplate, renderTemplate } from './templateLoader';
+import { MARKET } from '../market/market-config';
 
 interface NotifiableUser {
   email: string | null;
@@ -160,7 +161,7 @@ export class NotificationsService {
    * `buyer_premium` branch. No WhatsApp template exists yet — see `notifyListingFlagged`'s
    * comment. */
   async notifyBuyerPremiumActivated(user: NotifiableUser, endsAt: Date): Promise<'email' | 'whatsapp' | null> {
-    const vars = { endsAt: endsAt.toLocaleDateString('en-IN') };
+    const vars = { endsAt: endsAt.toLocaleDateString(MARKET.locale) };
     const { subject, text, html } = this.renderPurchaseEmail('email/buyer-premium-activated', vars, '/premium');
 
     return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
@@ -173,7 +174,7 @@ export class NotificationsService {
     endsAt: Date,
     totalSlots: number,
   ): Promise<'email' | 'whatsapp' | null> {
-    const vars = { endsAt: endsAt.toLocaleDateString('en-IN'), slots: String(totalSlots) };
+    const vars = { endsAt: endsAt.toLocaleDateString(MARKET.locale), slots: String(totalSlots) };
     const { subject, text, html } = this.renderPurchaseEmail('email/seller-slot-pack-activated', vars);
 
     return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
@@ -183,7 +184,7 @@ export class NotificationsService {
    * branch. `slots` is the total this purchase grants (units × the per-unit slot count), not the
    * unit count itself, to match what the seller actually sees on `/premium`. */
   async notifyAgentProActivated(user: NotifiableUser, endsAt: Date, slots: number): Promise<'email' | 'whatsapp' | null> {
-    const vars = { endsAt: endsAt.toLocaleDateString('en-IN'), slots: String(slots) };
+    const vars = { endsAt: endsAt.toLocaleDateString(MARKET.locale), slots: String(slots) };
     const { subject, text, html } = this.renderPurchaseEmail('email/agent-pro-activated', vars);
 
     return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
@@ -196,7 +197,7 @@ export class NotificationsService {
     creditsGranted: number,
     expiresAt: Date,
   ): Promise<'email' | 'whatsapp' | null> {
-    const vars = { credits: String(creditsGranted), expiresAt: expiresAt.toLocaleDateString('en-IN') };
+    const vars = { credits: String(creditsGranted), expiresAt: expiresAt.toLocaleDateString(MARKET.locale) };
     const { subject, text, html } = this.renderPurchaseEmail('email/contact-reveal-credits-activated', vars, '/');
 
     return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
@@ -218,7 +219,7 @@ export class NotificationsService {
     user: NotifiableUser,
     params: { boostDays: number; expiresAt: Date },
   ): Promise<'email' | 'whatsapp' | null> {
-    const vars = { days: pluralDays(params.boostDays), expiresAt: params.expiresAt.toLocaleDateString('en-IN') };
+    const vars = { days: pluralDays(params.boostDays), expiresAt: params.expiresAt.toLocaleDateString(MARKET.locale) };
     const { subject, text, html } = this.renderPurchaseEmail('email/referral-reward', vars, '/my-listings');
     return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
@@ -227,7 +228,7 @@ export class NotificationsService {
     user: NotifiableUser,
     params: { boostDays: number; expiresAt: Date },
   ): Promise<'email' | 'whatsapp' | null> {
-    const vars = { days: pluralDays(params.boostDays), expiresAt: params.expiresAt.toLocaleDateString('en-IN') };
+    const vars = { days: pluralDays(params.boostDays), expiresAt: params.expiresAt.toLocaleDateString(MARKET.locale) };
     const { subject, text, html } = this.renderPurchaseEmail('email/referral-credit-expiring', vars, '/my-listings');
     return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }

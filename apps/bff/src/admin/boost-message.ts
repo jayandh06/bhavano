@@ -1,5 +1,9 @@
 import type { BoostOfferMessageCardDto, ListingCategory } from '@bhavano/types';
 import { PURCHASE_SOURCE_PARAM, type PurchaseSource } from '@bhavano/types/purchaseSource';
+import { MARKET } from '../market/market-config';
+
+/** The deployment's currency symbol (₹ for India); the amounts come from the pricing settings. */
+const CURRENCY = MARKET.currencySymbol;
 
 const ADMIN_BOOST_MESSAGE_SOURCE: PurchaseSource = 'admin_boost_message';
 const FEATURED_EXPIRY_SOURCE: PurchaseSource = 'featured_expiry_message';
@@ -43,7 +47,7 @@ function bodyParagraphs({ location, longer }: BoostMessageInput): string[] {
     `Ads without Feature get very few views in their first week. A Featured ad is shown above ` +
       `other listings in ${location}, with a Featured badge, and Instant Alerts is included, so you ` +
       `hear the moment someone messages you about it.`,
-    ...(longer ? [`Want it to run longer? ${longer.days} days is ₹${longer.price}, a lower price per day.`] : []),
+    ...(longer ? [`Want it to run longer? ${longer.days} days is ${CURRENCY}${longer.price}, a lower price per day.`] : []),
     `One-time payment, no subscription. Your ad stays live and free either way.`,
   ];
 }
@@ -52,9 +56,9 @@ export function buildBoostMessageBody(input: BoostMessageInput): string {
   const { title, boostPrice, boostDays, offer, boostLink } = input;
 
   const opening = offer
-    ? `Get more views on "${title}": feature it for ${boostDays} days at ₹${boostPrice} (was ₹${offer.boostBasePrice}). ` +
+    ? `Get more views on "${title}": feature it for ${boostDays} days at ${CURRENCY}${boostPrice} (was ${CURRENCY}${offer.boostBasePrice}). ` +
       `${offer.discountPercent}% off until ${offer.endsOn}, applied for you, no code needed.`
-    : `Get more views on "${title}": feature it for ${boostDays} days for ₹${boostPrice}.`;
+    : `Get more views on "${title}": feature it for ${boostDays} days for ${CURRENCY}${boostPrice}.`;
 
   return [opening, ...bodyParagraphs(input), `Feature my ad: ${boostLink}`].join('\n\n');
 }
@@ -71,12 +75,12 @@ export function buildBoostMessageCard(
     title,
     location,
     imageUrl: listing.imageUrl,
-    headline: `Feature it for ${boostDays} days ${offer ? 'at' : 'for'} ₹${boostPrice}`,
+    headline: `Feature it for ${boostDays} days ${offer ? 'at' : 'for'} ${CURRENCY}${boostPrice}`,
     offerNote: offer
-      ? `${offer.discountPercent}% off until ${offer.endsOn} · was ₹${offer.boostBasePrice} · applied for you, no code needed`
+      ? `${offer.discountPercent}% off until ${offer.endsOn} · was ${CURRENCY}${offer.boostBasePrice} · applied for you, no code needed`
       : null,
     paragraphs: bodyParagraphs(input),
-    ctaLabel: `Feature my ad · ₹${boostPrice}`,
+    ctaLabel: `Feature my ad · ${CURRENCY}${boostPrice}`,
     ctaPath: boostMessagePath(listing.id),
   };
 }
@@ -111,7 +115,7 @@ function endsPhrase(daysLeft: number): string {
 function expiryParagraphs({ renewDays, renewPrice }: ExpiryReminderInput): string[] {
   return [
     `After that it goes back to the normal order and loses the Featured badge. Your ad stays live and free either way.`,
-    `Renew for ${renewDays} days at ₹${renewPrice}. The days you have left are kept: the new period starts when this one ends.`,
+    `Renew for ${renewDays} days at ${CURRENCY}${renewPrice}. The days you have left are kept: the new period starts when this one ends.`,
     `One-time payment, no subscription.`,
   ];
 }
@@ -135,7 +139,7 @@ export function buildExpiryReminderCard(
     headline: `Your Featured ad ends ${endsPhrase(input.daysLeft)}`,
     offerNote: `Ends ${input.endsOn} · renewing adds to the days you have left`,
     paragraphs: expiryParagraphs(input),
-    ctaLabel: `Renew Feature · ₹${input.renewPrice}`,
+    ctaLabel: `Renew Feature · ${CURRENCY}${input.renewPrice}`,
     ctaPath: boostMessagePath(listing.id, FEATURED_EXPIRY_SOURCE),
   };
 }

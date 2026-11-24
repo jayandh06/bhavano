@@ -131,10 +131,24 @@ export function stripMarketPrefix(pathname: string): string {
   return rest === "" ? "/" : rest;
 }
 
-/** Formats an amount in the market's currency and locale, whole units (no paise or cents). */
+/** Whole-unit digits grouped the way the market writes them: "12,50,000" in India (lakh/crore), "1,250,000" in the US.
+ * Hand-rolled rather than `toLocaleString` so Node, browsers and Hermes all print the same thing. Negative keeps its sign. */
+export function groupAmount(id: MarketId, amount: number): string {
+  const rounded = Math.round(Math.abs(amount));
+  const sign = amount < 0 && rounded > 0 ? "-" : "";
+  const digits = String(rounded);
+  if (digits.length <= 3) return sign + digits;
+  const tail = digits.slice(-3);
+  const head = digits.slice(0, -3);
+  const grouped = MARKETS[id].priceInIndianWords ? head.replace(/\B(?=(\d{2})+(?!\d))/g, ",") : head.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  // The US groups the tail too: 1250000 -> head "1250" -> "1,250" + ",000".
+  return `${sign}${grouped},${tail}`;
+}
+
+/** The market's currency symbol and whole-unit amount: "₹12,50,000", "$1,250". Negative: "-$1,250". */
 export function formatMoney(id: MarketId, amount: number): string {
-  const m = MARKETS[id];
-  return new Intl.NumberFormat(m.locale, { style: "currency", currency: m.currency, maximumFractionDigits: 0 }).format(amount);
+  const grouped = groupAmount(id, amount);
+  return grouped.startsWith("-") ? `-${MARKETS[id].currencySymbol}${grouped.slice(1)}` : `${MARKETS[id].currencySymbol}${grouped}`;
 }
 
 /** Whether a national phone number (digits only, no dial code) is valid in the market. */

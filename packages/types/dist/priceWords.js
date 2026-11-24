@@ -18,6 +18,7 @@ exports.listingPriceText = listingPriceText;
 exports.formatInrWithWords = formatInrWithWords;
 exports.formatInrRangeWithWords = formatInrRangeWithWords;
 const areaUnit_1 = require("./areaUnit");
+const market_1 = require("./market");
 const SCALES = [
     { value: 10_000_000, word: "Crore" },
     { value: 100_000, word: "Lakh" },
@@ -30,8 +31,12 @@ function scaled(amount, scale) {
     const hundredths = Math.floor((amount * 100) / scale + 1e-9);
     return String(hundredths / 100);
 }
-function formatInrInWords(amount) {
+/** Lakh/crore words for India (the default). Markets without them (the US) get the plain amount, which callers treat as
+ * "no words" because it equals the price. */
+function formatInrInWords(amount, marketId = "in") {
     const rounded = Math.round(amount);
+    if (!market_1.MARKETS[marketId].priceInIndianWords)
+        return (0, market_1.formatMoney)(marketId, rounded);
     for (const { value, word } of SCALES) {
         if (rounded >= value)
             return `₹${scaled(rounded, value)} ${word}`;
@@ -54,7 +59,7 @@ function groupInr(amount) {
 function priceWordsNote(price, priceInWords) {
     if (!priceInWords || priceInWords === price)
         return null;
-    return priceInWords.replace(/^₹/, "");
+    return priceInWords.replace(/^[₹$]/, "");
 }
 /** "₹35,00,000 (35 Lakh)" from a listing DTO's `price` + `priceInWords` pair. */
 function priceWithWords(price, priceInWords) {
@@ -70,8 +75,8 @@ function compactPrice(price, priceInWords) {
 }
 /** A per-unit listing's `totalPrice` — the whole-rupee total and the area it was multiplied out
  * over. Built the same way by the BFF and by the post wizard's preview card. */
-function perUnitTotalPrice(total, area, unit) {
-    return { price: `₹${groupInr(total)}`, priceInWords: formatInrInWords(total), area: (0, areaUnit_1.formatArea)(area, unit) };
+function perUnitTotalPrice(total, area, unit, marketId = "in") {
+    return { price: (0, market_1.formatMoney)(marketId, total), priceInWords: formatInrInWords(total, marketId), area: (0, areaUnit_1.formatArea)(area, unit) };
 }
 /** The price a listing leads with. A per-unit price leads with the whole listing's total and keeps
  * the rate as a second line — { price: "₹60,00,000", priceInWords: "₹60 Lakh",
@@ -95,22 +100,22 @@ function listingPriceText(item, style) {
     return headline.rate ? `${main} · ${headline.rate}` : main;
 }
 /** "₹35,00,000 (35 Lakh)"; below ₹1,000 there is no word form, so just "₹500". */
-function formatInrWithWords(amount) {
-    return priceWithWords(`₹${groupInr(amount)}`, formatInrInWords(amount));
+function formatInrWithWords(amount, marketId = "in") {
+    return priceWithWords((0, market_1.formatMoney)(marketId, amount), formatInrInWords(amount, marketId));
 }
 /** A budget range, number + words — "₹30,00,000 – ₹60,00,000 (30 Lakh – 60 Lakh)",
  * "up to ₹60,00,000 (60 Lakh)", "from ₹15,000 (15 Thousand)". Undefined when neither bound is set. */
-function formatInrRangeWithWords(min, max) {
+function formatInrRangeWithWords(min, max, marketId = "in") {
     const hasMin = min !== undefined && min !== null && min > 0;
     const hasMax = max !== undefined && max !== null && max > 0;
     if (hasMin && hasMax) {
-        const words = [min, max].map((n) => priceWordsNote(`₹${groupInr(n)}`, formatInrInWords(n)) ?? `₹${groupInr(n)}`);
-        const numbers = `₹${groupInr(min)} – ₹${groupInr(max)}`;
-        return max >= 1_000 ? `${numbers} (${words[0]} – ${words[1]})` : numbers;
+        const words = [min, max].map((n) => priceWordsNote((0, market_1.formatMoney)(marketId, n), formatInrInWords(n, marketId)) ?? (0, market_1.formatMoney)(marketId, n));
+        const numbers = `${(0, market_1.formatMoney)(marketId, min)} – ${(0, market_1.formatMoney)(marketId, max)}`;
+        return max >= 1_000 && market_1.MARKETS[marketId].priceInIndianWords ? `${numbers} (${words[0]} – ${words[1]})` : numbers;
     }
     if (hasMax)
-        return `up to ${formatInrWithWords(max)}`;
+        return `up to ${formatInrWithWords(max, marketId)}`;
     if (hasMin)
-        return `from ${formatInrWithWords(min)}`;
+        return `from ${formatInrWithWords(min, marketId)}`;
     return undefined;
 }

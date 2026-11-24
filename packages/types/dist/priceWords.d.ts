@@ -7,7 +7,10 @@
  * See docs/plans/listing-price-in-words.md. */
 import type { ListingTotalPriceDto } from "./index";
 import { type AreaUnit } from "./areaUnit";
-export declare function formatInrInWords(amount: number): string;
+import { type MarketId } from "./market";
+/** Lakh/crore words for India (the default). Markets without them (the US) get the plain amount, which callers treat as
+ * "no words" because it equals the price. */
+export declare function formatInrInWords(amount: number, marketId?: MarketId): string;
 /** "3500000" → "35,00,000". Hand-rolled rather than `toLocaleString("en-IN")` so the grouping is
  * identical on Node, browsers and Hermes regardless of which Intl data each one ships. */
 export declare function groupInr(amount: number): string;
@@ -24,7 +27,7 @@ export declare function priceWithWords(price: string, priceInWords?: string | nu
 export declare function compactPrice(price: string, priceInWords?: string | null): string;
 /** A per-unit listing's `totalPrice` — the whole-rupee total and the area it was multiplied out
  * over. Built the same way by the BFF and by the post wizard's preview card. */
-export declare function perUnitTotalPrice(total: number, area: number, unit: AreaUnit): ListingTotalPriceDto;
+export declare function perUnitTotalPrice(total: number, area: number, unit: AreaUnit, marketId?: MarketId): ListingTotalPriceDto;
 export interface ListingPriceFields {
     price: string;
     priceInWords?: string | null;
@@ -42,7 +45,7 @@ export declare function listingHeadlinePrice(item: ListingPriceFields): {
  * for lists and tables ("₹60,00,000 (60 Lakh)"), each followed by the rate for a per-unit price. */
 export declare function listingPriceText(item: ListingPriceFields, style: "compact" | "full"): string;
 /** "₹35,00,000 (35 Lakh)"; below ₹1,000 there is no word form, so just "₹500". */
-export declare function formatInrWithWords(amount: number): string;
+export declare function formatInrWithWords(amount: number, marketId?: MarketId): string;
 /** A budget range, number + words — "₹30,00,000 – ₹60,00,000 (30 Lakh – 60 Lakh)",
  * "up to ₹60,00,000 (60 Lakh)", "from ₹15,000 (15 Thousand)". Undefined when neither bound is set. */
-export declare function formatInrRangeWithWords(min?: number | null, max?: number | null): string | undefined;
+export declare function formatInrRangeWithWords(min?: number | null, max?: number | null, marketId?: MarketId): string | undefined;
