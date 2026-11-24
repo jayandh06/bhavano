@@ -52,7 +52,27 @@ declare module "next-auth" {
 // version in this workspace — avoid importing it and just extend the token shape locally.
 type TokenWithAccessToken = { sub?: string; accessToken?: string; isNewUser?: boolean; provider?: string };
 
+/** The US build shares the host www.bhavano.com with India, so its sign-in cookies get their own names; otherwise signing in on one
+ * would be sent to (and rejected by) the other. India keeps Auth.js's defaults. Set AUTH_URL to the /us auth route for the US build. */
+const US_COOKIES =
+  process.env.NEXT_PUBLIC_MARKET === "us"
+    ? (() => {
+        const secure = process.env.NODE_ENV === "production";
+        const options = { httpOnly: true, sameSite: "lax" as const, path: "/", secure };
+        const named = (name: string) => ({ name: `${secure ? "__Secure-" : ""}authjs.us.${name}`, options });
+        return {
+          sessionToken: named("session-token"),
+          callbackUrl: named("callback-url"),
+          csrfToken: named("csrf-token"),
+          pkceCodeVerifier: named("pkce.code_verifier"),
+          state: named("state"),
+          nonce: named("nonce"),
+        };
+      })()
+    : undefined;
+
 export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
+  ...(US_COOKIES ? { cookies: US_COOKIES } : {}),
   session: { strategy: "jwt" },
   providers: [
     Credentials({

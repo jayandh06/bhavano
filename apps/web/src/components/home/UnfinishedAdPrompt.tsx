@@ -8,6 +8,7 @@ import { POST_CATEGORIES } from "@bhavano/types/postCategories";
 import { peekPostAdDraft } from "@/lib/postAdDraft";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { Icon } from "./Icon";
+import { withBasePath } from "@/lib/basePath";
 
 const DISMISSED_KEY = "bhavano:finish-ad-dismissed";
 const SHOWN_KEY = "bhavano:finish-ad-shown";
@@ -28,7 +29,7 @@ function describe(category: ListingCategory, transactionType: TransactionType | 
 /** Same synthetic-pageview trick as the post-ad wizard's events, so admin's Page visits shows when this was seen and used. */
 function record(event: "shown" | "clicked" | "dismissed") {
   pushDataLayerEvent("finish_ad_prompt", { event });
-  void fetch("/api/analytics/pageview", {
+  void fetch(withBasePath("/api/analytics/pageview"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: `/post/finish-prompt?event=${event}` }),

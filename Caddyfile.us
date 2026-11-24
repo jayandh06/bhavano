@@ -1,0 +1,20 @@
+# Caddy for the US host (docker-compose.us.yml). Two names, both set in .env:
+#   US_ORIGIN_DOMAIN  where India's Caddy sends www.bhavano.com/us/* (caddy/market-routes/us.caddy); visitors never use it directly.
+#   US_API_DOMAIN     the US API (NEXT_PUBLIC_BFF_URL of the US web image).
+# Same HSTS rule as India's Caddyfile: one year, no includeSubDomains or preload.
+(hsts) {
+	header Strict-Transport-Security "max-age=31536000"
+}
+
+{$US_ORIGIN_DOMAIN} {
+	import hsts
+	# The US web app is built with basePath /us, so it expects the /us prefix India's Caddy forwards as is.
+	reverse_proxy web:3000
+}
+
+{$US_API_DOMAIN} {
+	request_body {
+		max_size 210MB
+	}
+	reverse_proxy bff:4000
+}

@@ -46,6 +46,7 @@ import {
 } from "@/lib/bff";
 import { isAccessTokenValid } from "@/lib/session";
 import { NEEDS_LOGIN_ERROR } from "@/lib/postAdErrors";
+import { cookieName } from "@/lib/cookieNames";
 
 export type CreateListingResult =
   | { success: true; listing: ListingDetailDto }
@@ -62,7 +63,7 @@ export async function createListingAction(input: CreateListingInput): Promise<Cr
   // See CreateListingInput.sessionId's own doc comment: this lets the BFF record the
   // /post/success trail entry itself once the listing actually goes live, instead of trusting a
   // client-side fire-and-forget request (StepTracker used to send one; it no longer does).
-  const sessionId = (await cookies()).get("bhavano_sid")?.value;
+  const sessionId = (await cookies()).get(cookieName("bhavano_sid"))?.value;
 
   try {
     const listing = await createListing({ ...input, sessionId }, session.accessToken);

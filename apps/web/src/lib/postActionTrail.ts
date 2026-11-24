@@ -1,3 +1,4 @@
+import { withBasePath } from "@/lib/basePath";
 /** One click on the post flow's Featured-offer screen or its "Your ad is live!" screen, written as
  * a synthetic page visit so the admin's Page visits trail shows it next to the steps around it
  * (same trick as the wizard's `/post/error`, `/post/boost-recovery` and `/post/login-required`
@@ -16,7 +17,7 @@ export type PostActionScreen = "offer" | "live" | "boost" | "upsell" | "slotcap"
 
 export function reportPostAction(screen: PostActionScreen, event: string, detail?: { days?: number; surface?: string }) {
   const days = (detail?.days != null ? `&days=${detail.days}` : "") + (detail?.surface ? `&surface=${encodeURIComponent(detail.surface)}` : "");
-  void fetch("/api/analytics/pageview", {
+  void fetch(withBasePath("/api/analytics/pageview"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: `/post/action?screen=${screen}&event=${encodeURIComponent(event)}${days}` }),

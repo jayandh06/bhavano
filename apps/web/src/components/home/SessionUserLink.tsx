@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { withBasePath } from "@/lib/basePath";
 
 /**
  * Tells the server which user (if any) this browser session belongs to — see
@@ -27,7 +28,7 @@ export function SessionUserLink() {
       // (linkVisitToUser only ever fills an empty userId), so a duplicate is harmless.
     }
 
-    void fetch("/api/analytics/link-session", { method: "POST", keepalive: true })
+    void fetch(withBasePath("/api/analytics/link-session"), { method: "POST", keepalive: true })
       .then(() => {
         try {
           window.sessionStorage.setItem(STORAGE_KEY, "1");

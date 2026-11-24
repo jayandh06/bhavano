@@ -1,4 +1,5 @@
 import { pushDataLayerEvent } from "./gtm";
+import { withBasePath } from "@/lib/basePath";
 
 export type GetAppPlacement =
   | "strip"
@@ -23,7 +24,7 @@ export function reportGetAppEvent(event: "click" | "dismiss", placement: GetAppP
   });
   const params = new URLSearchParams({ event, placement });
   if (appPath !== undefined) params.set("to", appPath || "/");
-  void fetch("/api/analytics/pageview", {
+  void fetch(withBasePath("/api/analytics/pageview"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: `/get-app?${params.toString()}` }),

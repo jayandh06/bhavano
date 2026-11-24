@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { recordInterestAction, trackViewAction } from "@/app/actions/listings";
+import { cookieName } from "@/lib/cookieNames";
 
 const STORAGE_KEY = "bhavano.viewerKey";
 // Mirrors the localStorage value into a cookie of the same name (see lib/bff.ts's
@@ -10,7 +11,7 @@ const STORAGE_KEY = "bhavano.viewerKey";
 // isn't visible to server-side code. Six months, refreshed on every view (unlike localStorage,
 // which never expires on its own) — an active visitor's cookie never lapses; only someone who
 // stays away for 6+ months loses the link-at-signup ability, not their view-tracking itself.
-const VIEWER_KEY_COOKIE = "bhavano_vk";
+const VIEWER_KEY_COOKIE = cookieName("bhavano_vk");
 const VIEWER_KEY_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 182;
 
 function getOrCreateViewerKey(): string {

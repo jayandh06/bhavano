@@ -4,6 +4,7 @@ import Link from "next/link";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { AD_LANDING_INTENTS, adLandingPostHref, type AdLandingIntentKey } from "@/lib/adLandingCard";
 import { Icon } from "./Icon";
+import { withBasePath } from "@/lib/basePath";
 
 /** Anchor the "Browse listings" link scrolls to — rendered by the homepage just above its grid. */
 export const LISTINGS_ANCHOR_ID = "listings";
@@ -17,7 +18,7 @@ export const LISTINGS_ANCHOR_ID = "listings";
 function recordClick(action: "post" | "browse", intent: AdLandingIntentKey, preview: boolean) {
   if (preview) return;
   pushDataLayerEvent("ad_card_click", { action, intent });
-  void fetch("/api/analytics/pageview", {
+  void fetch(withBasePath("/api/analytics/pageview"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: `/ad-card/${action}?intent=${intent}` }),

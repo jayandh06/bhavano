@@ -1,11 +1,12 @@
 import { cookies } from "next/headers";
 import type { City } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
+import { cookieName } from "@/lib/cookieNames";
 
 /** Written by `middleware.ts` from whichever city the visitor last looked at — see the comment
  * there for why the capture lives in middleware rather than in a page. Holds the slug, never the
  * id: a cuid is invalidated by a reseed, and this cookie outlives one. */
-export const CITY_COOKIE = "bhavano_city";
+export const CITY_COOKIE = cookieName("bhavano_city");
 
 /** The city to show when the URL itself does not name one — the homepage with no `?city=`, and
  * every account/static page that has no city in scope. In order:

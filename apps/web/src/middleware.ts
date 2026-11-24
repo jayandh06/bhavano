@@ -5,11 +5,12 @@ import { sanitizePageViewQuery } from "@bhavano/types/pageViewQuery";
 import { citySlugForRoute } from "@/lib/cityFromRoute";
 import { shouldReplaceAcquisition } from "@/lib/acquisitionCookie";
 import { sessionCookieOptions } from "@/lib/sessionCookie";
+import { cookieName } from "@/lib/cookieNames";
 
-const ACQUISITION_COOKIE = "bhavano_acq";
-const SESSION_COOKIE = "bhavano_sid";
-const CITY_COOKIE = "bhavano_city";
-const REFERRAL_COOKIE = "bhavano_ref";
+const ACQUISITION_COOKIE = cookieName("bhavano_acq");
+const SESSION_COOKIE = cookieName("bhavano_sid");
+const CITY_COOKIE = cookieName("bhavano_city");
+const REFERRAL_COOKIE = cookieName("bhavano_ref");
 // 30 days — long enough to still attribute a signup that happens a few visits after the user's
 // first-ever landing, without pinning the cookie down indefinitely.
 const ACQUISITION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;

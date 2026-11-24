@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
+import { withBasePath } from "@/lib/basePath";
 
 export interface SearchCriteria {
   path: string;
@@ -43,7 +44,7 @@ export function SearchTracker({ criteria }: { criteria: SearchCriteria }) {
     if (lastSent.current === key) return;
     lastSent.current = key;
 
-    void fetch("/api/analytics/search", {
+    void fetch(withBasePath("/api/analytics/search"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: key,

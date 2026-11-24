@@ -12,6 +12,7 @@ import {
   updateMyRequirement,
 } from "@/lib/bff";
 import { isAccessTokenValid } from "@/lib/session";
+import { cookieName } from "@/lib/cookieNames";
 
 /** `needsLogin` is distinct from a plain error on purpose: the caller opens the login gate and
  * retries, rather than showing "you must be logged in" as a failure the visitor has to act on
@@ -29,7 +30,7 @@ export async function createRequirementAction(input: CreateRequirementInput): Pr
 
   // See CreateRequirementInput.sessionId's own doc comment: lets the BFF record a
   // /requirement/success trail entry itself once this is actually saved.
-  const sessionId = (await cookies()).get("bhavano_sid")?.value;
+  const sessionId = (await cookies()).get(cookieName("bhavano_sid"))?.value;
   try {
     return { success: true, requirement: await createRequirement(session.accessToken, { ...input, sessionId }) };
   } catch (error) {

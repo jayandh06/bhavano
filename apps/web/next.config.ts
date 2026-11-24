@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
+// The US build is this same app served under /us (docs/plans/us-stack-setup.md): the image is built with NEXT_PUBLIC_BASE_PATH=/us, and Next then
+// prefixes its links, assets and redirects. Unset (India, www.bhavano.com) leaves the app at the root, exactly as before.
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || undefined;
+
 const nextConfig: NextConfig = {
+  ...(basePath ? { basePath } : {}),
   // Produces a self-contained .next/standalone server (only the deps actually
   // used at runtime) — keeps the production Docker image small.
   output: "standalone",

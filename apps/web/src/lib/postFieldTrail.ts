@@ -1,4 +1,5 @@
 import { postFieldEventPath, type PostFieldEvent } from "@bhavano/types/postFieldEvents";
+import { withBasePath } from "@/lib/basePath";
 
 /** One field-level event on the wizard's Details step, written as a synthetic page visit so admin's Page visits
  * trail and the post-funnel "blocked at Preview" table can read it (same trick as `postActionTrail.ts`). Carries a
@@ -8,7 +9,7 @@ export function reportPostFieldEvent(
   event: PostFieldEvent,
   detail?: { field?: string | null; category?: string | null; ms?: number; left?: number },
 ) {
-  void fetch("/api/analytics/pageview", {
+  void fetch(withBasePath("/api/analytics/pageview"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: postFieldEventPath(event, detail) }),

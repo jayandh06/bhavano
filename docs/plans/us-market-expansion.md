@@ -299,3 +299,11 @@ file on that host, which is an app release.
 **Sequencing:** web US pages can launch first. Gate the US launch (ads, store availability) on the app release with the
 market switch and API selection, so a US user who installs the current app is not sent to the India backend.
 **Open:** one binary for both markets (recommended) or separate listings; per-account or per-install market.
+
+## US stack in the repo (built 2026-11-24)
+
+The repo now contains everything needed to build and run a separate US stack under `www.bhavano.com/us/`, switched off by default; see
+[us-stack-setup.md](us-stack-setup.md) for what it contains, the one-time setup and what is not verified. In short: the web app builds
+with a `/us` base path, its own cookie names and market; `docker-compose.us.yml`, `Caddyfile.us` and `.env.us.example` define the US host; India's
+Caddy has an optional import hook (`caddy/market-routes/us.caddy.example`); CI builds a `web-us` image when the US variables exist; and
+`deploy-from-registry.ps1 -Stack us` deploys it. Nothing is provisioned or deployed.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { withBasePath } from "@/lib/basePath";
 
 /** Marks this browsing session as one where JavaScript actually ran — see `Visit.jsConfirmedAt`.
  *
@@ -32,7 +33,7 @@ export function JsConfirmation() {
       // the first confirmation (COALESCE) and the whole call is idempotent.
     }
 
-    void fetch("/api/analytics/confirm", { method: "POST", keepalive: true })
+    void fetch(withBasePath("/api/analytics/confirm"), { method: "POST", keepalive: true })
       .then(() => {
         try {
           window.sessionStorage.setItem(STORAGE_KEY, "1");

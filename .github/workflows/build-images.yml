@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       services:
-        description: "Comma-separated: bff, web, admin"
+        description: "Comma-separated: bff, web, admin, web-us (web-us needs the US_NEXT_PUBLIC_* repository variables)"
         default: "bff,web,admin"
         required: true
 
@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [bff, web, admin]
+        service: [bff, web, admin, web-us]
     steps:
       - name: Skip services that were not asked for
         id: want
@@ -48,7 +48,11 @@ jobs:
           EVENT: ${{ github.event_name }}
           ASKED: ${{ inputs.services }}
         run: |
-          if [ "$EVENT" = "push" ] || echo ",${ASKED// /}," | grep -q ",${{ matrix.service }},"; then
+          # web-us is the same app built for the US market: only built once its repository variables exist, so pushes keep building
+          # exactly the three images they did before until the US stack is set up (docs/plans/us-stack-setup.md).
+          if [ "${{ matrix.service }}" = "web-us" ] && [ -z "${{ vars.US_NEXT_PUBLIC_SITE_URL }}" ]; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT" = "push" ] || echo ",${ASKED// /}," | grep -q ",${{ matrix.service }},"; then
             echo "build=true" >> "$GITHUB_OUTPUT"
           else
             echo "build=false" >> "$GITHUB_OUTPUT"
@@ -75,7 +79,7 @@ jobs:
           echo "list=${image}:sha-${GITHUB_SHA::8},${image}:latest" >> "$GITHUB_OUTPUT"
 
       - uses: docker/build-push-action@v6
-        if: steps.want.outputs.build == 'true'
+        if: steps.want.outputs.build == 'true' && matrix.service != 'web-us'
         with:
           context: .
           file: apps/${{ matrix.service }}/Dockerfile
@@ -93,3 +97,25 @@ jobs:
             NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY=${{ vars.NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      # The US web image: apps/web built with the US build variables, served under /us. The API address, site address and keys are the US stack's
+      # own (set as US_NEXT_PUBLIC_* repository variables), never India's.
+      - uses: docker/build-push-action@v6
+        if: steps.want.outputs.build == 'true' && matrix.service == 'web-us'
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.list }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          build-args: |
+            NEXT_PUBLIC_MARKET=us
+            NEXT_PUBLIC_BASE_PATH=/us
+            NEXT_PUBLIC_BFF_URL=${{ vars.US_NEXT_PUBLIC_BFF_URL }}
+            NEXT_PUBLIC_SITE_URL=${{ vars.US_NEXT_PUBLIC_SITE_URL }}
+            NEXT_PUBLIC_GTM_ID=${{ vars.US_NEXT_PUBLIC_GTM_ID }}
+            NEXT_PUBLIC_META_PIXEL_ID=${{ vars.US_NEXT_PUBLIC_META_PIXEL_ID }}
+            NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY=${{ vars.US_NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY }}
+          cache-from: type=gha,scope=web-us
+          cache-to: type=gha,mode=max,scope=web-us
