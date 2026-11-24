@@ -39,8 +39,10 @@ US DB instance (its own EC2, same region and VPC)
 
 1. **AWS**: two EC2 instances in one US region and VPC, as India does (`docs/deployment.md`, "app instance + db instance"; plan: `us-east-1`, ARM,
    since the images are `linux/arm64`).
-   - **App instance**: 40-60 GB gp3, an Elastic IP, a security group (80/443 open, SSH from your address only), Docker, the repo at `~/bhavano`.
-   - **DB instance**: its own gp3 volume with daily snapshots, no public access: a security group that allows 5432 only from the app instance's group (and
+   - **Sizing (decided 2026-11-24): both `t4g.medium`** (2 vCPU, 4 GB, burstable), about $25 a month each. Watch CPU credits and the app's memory
+     once there is traffic; resizing within `t4g` is a stop, change type, start. Add a 2 GB swap file on the app instance. Not measured against the real containers.
+   - **App instance**: 40 GB gp3, an Elastic IP, a security group (80/443 open, SSH from your address only), Docker, the repo at `~/bhavano`.
+   - **DB instance**: its own 40 GB gp3 volume with daily snapshots, no public access: a security group that allows 5432 only from the app instance's group (and
      SSH from your address). Install PostgreSQL 16, create the `bhavano` role and database, set `listen_addresses` and `pg_hba.conf` for the VPC range
      (`docs/deployment.md` steps 1-4). Put its private IP in the app instance's `DATABASE_URL`. Never run the app containers on the DB instance.
 2. **DNS**: A records to the US host for `US_ORIGIN_DOMAIN` (for example `us-origin.bhavano.com`) and `US_API_DOMAIN` (for example
