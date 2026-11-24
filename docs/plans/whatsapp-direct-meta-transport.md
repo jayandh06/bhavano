@@ -61,3 +61,43 @@ Rollback: unset `WHATSAPP_TRANSPORT` (but MSG91 cannot send WhatsApp until a par
 - Display name is pending review: the daily conversation limit is low until Meta approves it.
 - Utility/authentication templates are charged by Meta to the payment method on the account.
 - Templates with a fixed (non-dynamic) second URL button need no component for it; only dynamic buttons are sent.
+
+## Recovery 2026-11-24: the number works in the WhatsApp Business app AND the Cloud API (coexistence)
+
+**Status: working.** A login code requested with `channel: whatsapp` was accepted by Meta and the webhook reported
+`sent` then `delivered` (pricing category `authentication`) within about a second; the owner confirmed it arrived in
+WhatsApp. `OTP_DEFAULT_CHANNEL=whatsapp` again (SMS stays the fallback when a WhatsApp send fails).
+
+**What the earlier "both" setup actually was.** Not MSG91 and not a partner: Meta's own coexistence, done from
+business.facebook.com and the WhatsApp Business app on the phone. The number lives in the WhatsApp Business app and
+the Cloud API at once, and our own system-user token sends through it. The earlier plan note that coexistence needs a
+Solution Partner or Tech Provider was wrong for this case: it describes partner onboarding via Embedded Signup, not
+Meta's own screens.
+
+**What broke it (17 Nov):** the number was moved to a new phone, and verifying WhatsApp Business there created a fresh
+app account on the number, which cut the Cloud API link (sends then failed; MSG91 reported "not integrated"). Detaching
+the MSG91/Interakt partner on 18 Nov and later removing the number from the portfolio made it worse; do **not** remove
+the account from the business portfolio again (the delete option does not exist for app-created accounts anyway).
+
+**The sequence that restored it (current ids: messaging account `1178368684598444`, Phone Number ID
+`1501538356367152`, number +91 86674 96339; the 16 templates survived and were still APPROVED):**
+1. WhatsApp Business installed and logged in on the phone with the number.
+2. business.facebook.com > Business Settings > WhatsApp accounts > Add > **Link a WhatsApp Business account**: enter
+   the number, then the 5-digit code that WhatsApp sends *inside the app*. Result: "WhatsApp Business account linked".
+3. System user `BhavanoServer` assigned to the account (it showed "Already assigned" on the WhatsApp account entry and
+   gained MANAGE on the messaging account).
+4. developers.facebook.com > Bhavano Integrations > WhatsApp > API Setup > **Generate access token** (opens a popup,
+   must be clicked by a person): pick the Bhavano account. The temporary token it shows is not needed.
+5. In the WhatsApp Business app: **connect to the business platform by scanning the QR code** shown on the computer.
+   Meta then reported the number `CONNECTED`, `platform_type = CLOUD_API`.
+Verify with `GET /<phone_id>?fields=status,platform_type` (want CONNECTED / CLOUD_API) and one test send; delivery
+reports arrive at `/webhooks/whatsapp-meta` and are stored in `WhatsappWebhookEvent`.
+
+**Failure signatures seen on the way (for next time):** `(#133010) Account not registered` = the number is on the app
+only (`platform_type = ON_PREMISE`); `Register endpoint is not available for SMB businesses` = same cause; `request_code`
+"wait 1 hour" = Meta's lock after repeated verification attempts; `131042 Business eligibility payment issue` = the
+account's billing, which did not recur on the recreated account.
+
+**Rules to keep it working:** never verify the number in a second phone/app install without redoing steps 2 and 5; keep
+WhatsApp Business on the phone; keep `WHATSAPP_PHONE_NUMBER_ID` equal to the id above (it changes if the account is
+recreated).
