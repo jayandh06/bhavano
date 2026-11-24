@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { withBasePath } from "@/lib/basePath";
 
 /** Reports the pages whose real-visitor layout shift is bad, with the elements that moved.
  *
@@ -52,7 +53,7 @@ export function LayoutShiftReporter() {
         shifts: worst,
       });
       try {
-        navigator.sendBeacon("/api/web-vitals/cls", new Blob([body], { type: "application/json" }));
+        navigator.sendBeacon(withBasePath("/api/web-vitals/cls"), new Blob([body], { type: "application/json" }));
       } catch {
         // A dropped report is fine.
       }

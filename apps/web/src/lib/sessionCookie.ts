@@ -1,3 +1,4 @@
+import { cookieName } from "@/lib/cookieNames";
 /** The `bhavano_sid` analytics session cookie: how long a session survives without activity.
  *
  * It used to be a browser-session cookie (no expiry, gone when the browser closes). On Android a link tapped from another app (an
@@ -5,7 +6,7 @@
  * person tapping the same link twice three minutes apart became two sessions and two Page visits rows. Now the cookie lives
  * 30 minutes and is pushed forward by every page view, like a Google Analytics session, so a return inside that window continues the
  * same session and the same page trail. See docs/plans/session-cookie-rolling-expiry.md. */
-export const SESSION_COOKIE_NAME = "bhavano_sid";
+export const SESSION_COOKIE_NAME = cookieName("bhavano_sid");
 
 export const SESSION_IDLE_SECONDS = 30 * 60;
 

@@ -349,11 +349,14 @@ services:
       APEX_DOMAIN: ${APEX_DOMAIN}
       ADMIN_DOMAIN: ${ADMIN_DOMAIN}
       LOGS_DOMAIN: ${LOGS_DOMAIN}
+      # Only used by caddy/market-routes/us.caddy, once copied into place (docs/plans/us-stack-setup.md).
+      US_ORIGIN_DOMAIN: ${US_ORIGIN_DOMAIN:-}
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/market-routes:/etc/caddy/market-routes:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:

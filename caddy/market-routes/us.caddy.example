@@ -1,0 +1,12 @@
+# Sends the US market's pages (www.bhavano.com/us/...) to the US stack. India's Caddy imports every *.caddy file in this folder (see the
+# Caddyfile); this one is an example, so nothing is routed until it is copied to us.caddy on the India host and Caddy reloaded:
+#   cp caddy/market-routes/us.caddy.example caddy/market-routes/us.caddy
+# US_ORIGIN_DOMAIN is the US host's own name (for example us-origin.bhavano.com), set in the India host's .env. Setup: docs/plans/us-stack-setup.md.
+#
+# Every request to /us and /us/... goes to the US web container; nothing under any other path changes. The Host header is the US origin's, so
+# the US Caddy can find its site block. The visitor's own address is passed along for geolocation and rate limits.
+@us path /us /us/*
+reverse_proxy @us https://{$US_ORIGIN_DOMAIN} {
+	header_up Host {$US_ORIGIN_DOMAIN}
+	header_up X-Forwarded-Host {host}
+}

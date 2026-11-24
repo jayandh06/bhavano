@@ -140,6 +140,7 @@ import { Icon, isIconName } from "./Icon";
 import { AlertChannelPicker, type AlertChannelChoice } from "./AlertChannelPicker";
 import { UploadZone } from "./UploadZone";
 import { useMarket } from "@/lib/useMarket";
+import { withBasePath } from "@/lib/basePath";
 
 
 // Same fallback BrowseListingsView.tsx uses — buildListingPath is relative, and the "Feedback"
@@ -262,7 +263,7 @@ function reportPostError(stage: string, message: string) {
   }).catch(() => {
     // Best-effort — a failed error report must never surface as a second error.
   });
-  void fetch("/api/analytics/pageview", {
+  void fetch(withBasePath("/api/analytics/pageview"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: `/post/error?stage=${encodeURIComponent(stage)}&reason=${encodeURIComponent(reason)}` }),
@@ -281,7 +282,7 @@ function reportBoostRecoveryEvent(
   trigger?: "idle" | "submit" | "skip" | "cancelled",
 ) {
   const query = trigger ? `event=${event}&trigger=${trigger}` : `event=${event}`;
-  void fetch("/api/analytics/pageview", {
+  void fetch(withBasePath("/api/analytics/pageview"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: `/post/boost-recovery?${query}` }),
@@ -295,7 +296,7 @@ function reportBoostRecoveryEvent(
  * sites below) — until now only visible in GTM/GA4, invisible to the admin trail like
  * category/transactionType/details were before this doc. */
 function reportLoginRequired(step: Step) {
-  void fetch("/api/analytics/pageview", {
+  void fetch(withBasePath("/api/analytics/pageview"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: `/post/login-required?step=${encodeURIComponent(step)}` }),
@@ -352,7 +353,7 @@ function StepTracker({ step, entry, loggedIn, form }: { step: Step; entry: strin
     // `loggedIn` rides along too — whether the login wall (post_login_required) correlates with
     // entry point/platform is as much a funnel question as the step reached, and this is cheaper
     // than a second join against LoginEvent timestamps to approximate the same thing.
-    void fetch("/api/analytics/pageview", {
+    void fetch(withBasePath("/api/analytics/pageview"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       // `form` is which Details form the visitor was given (v1 or v2), so the admin funnel can compare the two.

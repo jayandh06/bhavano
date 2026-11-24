@@ -1,0 +1,134 @@
+# The US stack, for its own host (docs/plans/us-stack-setup.md): the same app as India, running with MARKET=us and its own database, photo bucket,
+# keys, cookies and API address. Nothing here is shared with docker-compose.prod.yml: a different host, project name (bhavano-us), images and .env.
+#   docker compose -p bhavano-us -f docker-compose.us.yml --env-file .env up -d --no-build
+# Images come from the registry (scripts/deploy-from-registry.ps1 -Stack us): web is the web-us image (built for /us), bff is the same image as India's.
+# India-only channels (MSG91, WhatsApp, Razorpay, DLT) are deliberately absent: with no keys they stay switched off.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      POSTGRES_USER: bhavano
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: bhavano
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bhavano -d bhavano"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  bff:
+    image: bhavano-us-bff:latest
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      PORT: 4000
+      MARKET: us
+      DATABASE_URL: postgresql://bhavano:${POSTGRES_PASSWORD}@postgres:5432/bhavano
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_IOS_CLIENT_ID: ${GOOGLE_IOS_CLIENT_ID:-}
+      GOOGLE_ANDROID_CLIENT_ID: ${GOOGLE_ANDROID_CLIENT_ID:-}
+      APPLE_BUNDLE_ID: ${APPLE_BUNDLE_ID:-}
+      ADMIN_PHONES: ${ADMIN_PHONES:-}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      EXPO_PUSH_ENABLED: ${EXPO_PUSH_ENABLED:-}
+      EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
+      # The US photo bucket and CDN: never India's.
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET: ${R2_BUCKET:-}
+      CDN_BASE_URL: ${CDN_BASE_URL:-}
+      GOOGLE_MAPS_SERVER_KEY: ${GOOGLE_MAPS_SERVER_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AI_LISTING_COPY_PROVIDER: ${AI_LISTING_COPY_PROVIDER:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
+    volumes:
+      - bff_logs:/app/apps/bff/logs
+      - bff_video_tmp:/app/apps/bff/uploads
+      - ./apps/bff/notification-templates:/app/apps/bff/notification-templates:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "4000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  web:
+    image: bhavano-us-web:latest
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      MARKET: us
+      BFF_INTERNAL_URL: http://bff:4000
+      # NEXT_PUBLIC_* are baked into the image at build time (US_NEXT_PUBLIC_* repository variables); these runtime copies are for server code.
+      NEXT_PUBLIC_BFF_URL: ${NEXT_PUBLIC_BFF_URL}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      NEXT_PUBLIC_MARKET: us
+      NEXT_PUBLIC_BASE_PATH: /us
+      # The public address of the US sign-in route, under the shared host: https://www.bhavano.com/us/api/auth
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      AUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    depends_on:
+      bff:
+        condition: service_healthy
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      US_ORIGIN_DOMAIN: ${US_ORIGIN_DOMAIN}
+      US_API_DOMAIN: ${US_API_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.us:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+      - bff
+
+volumes:
+  pgdata:
+  caddy-data:
+  caddy-config:
+  bff_logs:
+  bff_video_tmp:

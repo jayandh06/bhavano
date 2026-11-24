@@ -9,6 +9,7 @@ import { pushDataLayerEvent } from "@/lib/gtm";
 import { recordVisitEntry } from "@/lib/visitEntry";
 import { useAuthGate } from "./AuthGateProvider";
 import { useEmailLoginMode } from "@/lib/useLoginMethods";
+import { withBasePath } from "@/lib/basePath";
 
 const DETAIL_VIEWS_KEY = "bhavano.nudge.detailViews";
 const SHOWN_KEY = "bhavano.nudge.shown";
@@ -34,7 +35,7 @@ interface GoogleIdentity {
  * via pushDataLayerEvent at each call site below, but that's a separate system from the admin's
  * own Page visits trail, which only reads PageView rows. Decoded by the admin app's trailEntry(). */
 function reportLoginNudgeEvent(event: "shown" | "login" | "dismissed", surface: "web_prompt" | "one_tap") {
-  void fetch("/api/analytics/pageview", {
+  void fetch(withBasePath("/api/analytics/pageview"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: `/login-nudge?event=${event}&surface=${surface}` }),

@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { cookieName } from "@/lib/cookieNames";
 
-const SESSION_COOKIE = "bhavano_sid";
+const SESSION_COOKIE = cookieName("bhavano_sid");
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
 
 /**

@@ -12,6 +12,7 @@ import { reportPostAction } from "@/lib/postActionTrail";
 import { Icon } from "./Icon";
 import { WhatsAppIcon } from "./WhatsAppIcon";
 import { OwnerFacebookShare } from "./OwnerFacebookShare";
+import { withBasePath } from "@/lib/basePath";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bhavano.com";
 
@@ -62,7 +63,7 @@ export function OwnerWhatsAppShare({
     if (placement === "post_success") reportPostAction("live", "share_poster");
     setPosterBusy(true);
     try {
-      const response = await fetch(`/listings/${listing.id}/poster`);
+      const response = await fetch(withBasePath(`/listings/${listing.id}/poster`));
       if (!response.ok) throw new Error("poster unavailable");
       const blob = await response.blob();
       const file = new File([blob], `bhavano-ad-${listing.id}.png`, { type: "image/png" });

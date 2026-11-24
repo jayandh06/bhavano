@@ -7,6 +7,9 @@
 
 {$SITE_DOMAIN} {
 	import hsts
+	# Other markets served from their own stacks under a path (the US at /us, see docs/plans/us-stack-setup.md). Empty unless a
+	# *.caddy file has been copied into caddy/market-routes on this host, so India routes exactly as before.
+	import market-routes/*.caddy
 	reverse_proxy web:3000
 }
 

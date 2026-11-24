@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { sanitizePageViewQuery } from "@bhavano/types/pageViewQuery";
+import { withBasePath } from "@/lib/basePath";
 
 /** Quiet time a filter change must have before it is logged. */
 const QUERY_SETTLE_MS = 1500;
@@ -50,7 +51,7 @@ export function SoftNavPageViews() {
 
     const send = () => {
       lastRecorded.current = here;
-      void fetch("/api/analytics/pageview", {
+      void fetch(withBasePath("/api/analytics/pageview"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path: pathname, query: query ?? undefined }),

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { POST_FOR_ME_PATH } from "@bhavano/types/support";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { Icon } from "./Icon";
+import { withBasePath } from "@/lib/basePath";
 
 export type ExitReason = "location" | "photos" | "fields" | "browsing" | "other";
 type Trigger = "leave" | "idle";
@@ -44,7 +45,7 @@ function markAsked() {
 
 /** Same synthetic-pageview trick as the wizard's other events (reportBoostRecoveryEvent), read back by admin's Page visits. */
 function record(query: string) {
-  void fetch("/api/analytics/pageview", {
+  void fetch(withBasePath("/api/analytics/pageview"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: `/post/exit-reason?${query}` }),

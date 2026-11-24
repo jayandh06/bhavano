@@ -74,6 +74,7 @@ import type { RequirementFeedDto, RequirementFeedSummaryDto } from "@bhavano/typ
 import type { LinkIdentifierResult } from "@bhavano/types";
 import { isListingSlotCapErrorBody, ListingSlotCapError } from "@/lib/listingSlotErrors";
 import { isDuplicatePhotoErrorBody, DuplicatePhotoError } from "@/lib/duplicatePhotoErrors";
+import { cookieName } from "@/lib/cookieNames";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
 
@@ -737,18 +738,18 @@ export function snoozeProfileNudge(accessToken: string): Promise<{ success: true
   return authedBffFetch(accessToken, "/users/me/profile-nudge/snooze", { method: "POST" });
 }
 
-const ACQUISITION_COOKIE = "bhavano_acq";
-const SESSION_COOKIE = "bhavano_sid";
+const ACQUISITION_COOKIE = cookieName("bhavano_acq");
+const SESSION_COOKIE = cookieName("bhavano_sid");
 /** Mirrors ViewTracker.tsx's `bhavano.viewerKey` localStorage value into a cookie of the same
  * name, set client-side (see ViewTracker.tsx) rather than by middleware.ts. Reading it here is
  * what lets a Google sign-in link pre-signup ListingView rows to the new account — the OAuth
  * redirect round trip has no client-JS moment to hand this value to the `jwt()` callback the way
  * a plain client → server-action call could, so unlike sessionId (already a cookie from the
  * start) this one has to be promoted into a cookie deliberately, purely to survive that redirect. */
-const VIEWER_KEY_COOKIE = "bhavano_vk";
+const VIEWER_KEY_COOKIE = cookieName("bhavano_vk");
 /** middleware.ts's latest-wins referral cookie — see getVisitContext below and
  * docs/plans/bhavano-referral-program-implementation.md's Phase 1. */
-const REFERRAL_COOKIE = "bhavano_ref";
+const REFERRAL_COOKIE = cookieName("bhavano_ref");
 
 export interface VisitContext {
   acquisitionSource?: string;

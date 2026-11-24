@@ -29,6 +29,10 @@ param(
   [string] $Tag,
   [switch] $NoBuild,
   [switch] $SkipMigrate,
+  # Which stack: "india" (docker-compose.prod.yml, project bhavano) or "us" (docker-compose.us.yml, project bhavano-us, images web-us and bff).
+  # Run it against the US host: BHAVANO_EC2_HOST pointing at it. See docs/plans/us-stack-setup.md.
+  [ValidateSet("india", "us")]
+  [string] $Stack = "india",
   [string] $ProjectName = "bhavano",
   # Releases of each image left on the server after a deploy: the live one plus a rollback.
   [ValidateRange(1, 10)]
@@ -42,8 +46,13 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $RepoRoot
 
+if ($Stack -eq "us") {
+  if (-not $PSBoundParameters.ContainsKey("Services")) { $Services = @("web", "bff") }
+  if (-not $PSBoundParameters.ContainsKey("ProjectName")) { $ProjectName = "bhavano-us" }
+}
+$composeFile = if ($Stack -eq "us") { "docker-compose.us.yml" } else { "docker-compose.prod.yml" }
 $Services = $Services | ForEach-Object { $_ -split "," } | Where-Object { $_ }
-$validServices = @("web", "bff", "admin")
+$validServices = if ($Stack -eq "us") { @("web", "bff") } else { @("web", "bff", "admin") }
 foreach ($svc in $Services) {
   if ($validServices -notcontains $svc) { throw "Invalid -Services value '$svc'. Valid values: $($validServices -join ', ')" }
 }
@@ -78,7 +87,8 @@ if (-not $Tag) {
     if (-not $pushed) { throw "Commit $($sha.Substring(0, 8)) is not on GitHub. Push the branch first." }
     Write-Host "==> No build yet: starting 'Build images' on $branch for $($Services -join ', ')"
     $started = Get-Date
-    gh workflow run build-images.yml --ref $branch -f services=($Services -join ",")
+    $buildServices = ($Services | ForEach-Object { if ($Stack -eq "us" -and $_ -eq "web") { "web-us" } else { $_ } }) -join ","
+    gh workflow run build-images.yml --ref $branch -f services=$buildServices
     if ($LASTEXITCODE -ne 0) { throw "Could not start the build workflow (is it on the default branch yet?)" }
     $runId = $null
     for ($i = 0; $i -lt 30 -and -not $runId; $i++) {
@@ -110,12 +120,19 @@ TAG='$Tag'
 DEPLOY_ID='$deployId'
 REGISTRY='$registry'
 PROJECT='$ProjectName'
+STACK='$Stack'
+COMPOSE_FILE='$composeFile'
 REMOTE_DIR='$RemoteDir'
 REMOTE_DIR="`${REMOTE_DIR/#\~/`$HOME}"
 SERVICES='$svcList'
 DO_MIGRATE='$migrate'
 KEEP_RELEASES=$KeepReleases
 MIN_FREE_KB=$($MinFreeGB * 1024 * 1024)
+
+# The registry name of a service's image: bhavano-<service>, except the US web image, which is bhavano-web-us (built for /us).
+reg_name() {
+  if [[ "`$STACK" == "us" && "`$1" == "web" ]]; then echo "bhavano-web-us"; else echo "bhavano-`$1"; fi
+}
 
 # Drops all but the newest KEEP_RELEASES timestamped tags of every app image (same naming as the old tar deploy, so rollback tags stay compatible).
 prune_old_releases() {
@@ -143,35 +160,36 @@ fi
 
 for svc in `$SERVICES; do
   echo "==> docker pull `${svc}"
-  docker pull "`${REGISTRY}/`${PROJECT}-`${svc}:`${TAG}"
-  arch=`$(docker image inspect "`${REGISTRY}/`${PROJECT}-`${svc}:`${TAG}" --format '{{.Os}}/{{.Architecture}}')
+  SRC="`${REGISTRY}/`$(reg_name `$svc):`${TAG}"
+  docker pull "`$SRC"
+  arch=`$(docker image inspect "`$SRC" --format '{{.Os}}/{{.Architecture}}')
   if [[ "`$arch" != "linux/arm64" ]]; then echo "Image for `$svc is `$arch, expected linux/arm64. Not deploying." >&2; exit 1; fi
   # Creating a container needs every layer unpacked, so this catches a partial pull before :latest moves.
-  probe=`$(docker create "`${REGISTRY}/`${PROJECT}-`${svc}:`${TAG}")
+  probe=`$(docker create "`$SRC")
   docker rm "`$probe" >/dev/null
-  docker tag "`${REGISTRY}/`${PROJECT}-`${svc}:`${TAG}" "`${PROJECT}-`${svc}:`${DEPLOY_ID}"
-  docker tag "`${REGISTRY}/`${PROJECT}-`${svc}:`${TAG}" "`${PROJECT}-`${svc}:latest"
+  docker tag "`$SRC" "`${PROJECT}-`${svc}:`${DEPLOY_ID}"
+  docker tag "`$SRC" "`${PROJECT}-`${svc}:latest"
 done
 
 echo '==> compose up --no-build'
 export COMPOSE_PROJECT_NAME=`$PROJECT
-docker compose -f docker-compose.prod.yml --env-file .env up -d --no-build `$SERVICES
+docker compose -f "`$COMPOSE_FILE" --env-file .env up -d --no-build `$SERVICES
 
 if [[ "`$DO_MIGRATE" == "true" ]] && echo "`$SERVICES" | grep -qw bff; then
   echo '==> prisma migrate deploy'
   # </dev/null: this script arrives on stdin, and the container would otherwise swallow the rest of it.
-  docker compose -f docker-compose.prod.yml --env-file .env exec -T bff npx prisma migrate deploy </dev/null
+  docker compose -f "`$COMPOSE_FILE" --env-file .env exec -T bff npx prisma migrate deploy </dev/null
 fi
 
 # The registry-tagged copies only duplicate names for the same layers; drop them so the next prune sees just the app tags.
-for svc in `$SERVICES; do docker rmi "`${REGISTRY}/`${PROJECT}-`${svc}:`${TAG}" >/dev/null || true; done
+for svc in `$SERVICES; do docker rmi "`${REGISTRY}/`$(reg_name `$svc):`${TAG}" >/dev/null || true; done
 
 echo "==> keeping the newest `$KEEP_RELEASES releases of each image"
 prune_old_releases
 df -h / | tail -1
 
 echo '==> done'
-docker compose -f docker-compose.prod.yml ps
+docker compose -f "`$COMPOSE_FILE" ps
 "@
 
 # Sent as base64 of an LF-only script (a CRLF checkout would leave bash reading "pipefail\r").
