@@ -4,6 +4,7 @@ import { useGuestSaves } from "@/lib/guestSaves";
 import { useAuthGate } from "./AuthGateProvider";
 import { ListingCard } from "./ListingCard";
 import { RequireLoginPrompt } from "./RequireLoginPrompt";
+import { spell } from "@/lib/marketCopy";
 
 /** Favourites for a logged-out visitor: whatever they saved on this device, with the login ask
  * that moves them to their account (GuestSavesSync runs once they're in). */
@@ -11,7 +12,7 @@ export function GuestFavourites() {
   const saves = useGuestSaves();
   const { requireLogin } = useAuthGate();
   if (saves.length === 0) {
-    return <RequireLoginPrompt message="Log in to see the listings you've favourited." />;
+    return <RequireLoginPrompt message={spell("Log in to see the listings you've favourited.")} />;
   }
   return (
     <>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 import { FaqGroup, type Faq } from "@/components/home/FaqGroup";
-import { marketCopy } from "@/lib/marketCopy";
+import { marketCopy, spell } from "@/lib/marketCopy";
 
 // Market wording (India's strings unchanged): lib/marketCopy.ts.
 const COPY = marketCopy();
@@ -27,7 +27,7 @@ const GETTING_STARTED: Faq[] = [
   },
   {
     q: "Do I need an account to browse listings?",
-    a: "No — browsing and searching listings is open to everyone. You only need to log in to post an ad, favourite a listing, or message a seller.",
+    a: spell("No — browsing and searching listings is open to everyone. You only need to log in to post an ad, favourite a listing, or message a seller."),
   },
   {
     q: "How do I create an account?",
@@ -95,10 +95,10 @@ const BUYING_RENTING: Faq[] = [
     q: "Can I save a listing to look at later?",
     a: (
       <>
-        Yes — tap the heart on any listing card to favourite it (requires login), then view everything you&apos;ve
+        Yes — tap the heart on any listing card to {spell("favourite")} it (requires login), then view everything you&apos;ve
         saved under{" "}
         <Link href="/favourites" className="text-green font-bold">
-          Favourites
+          {spell("Favourites")}
         </Link>
         .
       </>
@@ -141,7 +141,7 @@ const ACCOUNT: Faq[] = [
         <Link href="/my-listings" className="text-green font-bold">
           My listings
         </Link>{" "}
-        — it shows every ad you&apos;ve posted, its status (active/sold/rented/deactivated), and view/favourite
+        — it shows every ad you&apos;ve posted, its status (active/sold/rented/deactivated), and view/{spell("favourite")}
         counts.
       </>
     ),
@@ -186,7 +186,7 @@ const SAFETY: Faq[] = [
         <Link href="/privacy" className="text-green font-bold">
           Privacy Policy
         </Link>{" "}
-        for the full details — in short, your account info, anything you post, and your favourites/messages/views.
+        for the full details — in short, your account info, anything you post, and your {spell("favourites")}/messages/views.
       </>
     ),
   },

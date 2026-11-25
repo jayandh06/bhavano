@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { homeFaqs, homeSteps, HOME_STEPS } from "@bhavano/types/homeContent";
-import { marketCopy, type MarketCopy } from "./marketCopy";
+import { marketCopy, spell, type MarketCopy } from "./marketCopy";
 
 // Words that must not appear anywhere in the US copy: India, its units and categories, its festival, and the rupee.
 const INDIA_ONLY = /India|Indian|BHK|₹|lakh|crore|\bPG\b|\bplots?\b|coworking|Diwali|rupee|favourite|bachelor|\bveg\b/i;
@@ -109,6 +109,22 @@ describe("marketCopy: choosing the market", () => {
   it("follows the build's market when none is passed", () => {
     vi.stubEnv("NEXT_PUBLIC_MARKET", "us");
     expect(marketCopy().siteTitle).toBe("Bhavano — Homes for Rent and Sale");
+  });
+});
+
+describe("spell", () => {
+  it("leaves India's text exactly as written", () => {
+    expect(spell("Favourites", "in")).toBe("Favourites");
+    expect(spell("Log in to see the listings you've favourited.", "in")).toBe("Log in to see the listings you've favourited.");
+    expect(spell("No favourites yet", "zz")).toBe("No favourites yet");
+  });
+
+  it("gives the US spelling, keeping capitals and endings", () => {
+    expect(spell("Favourites", "us")).toBe("Favorites");
+    expect(spell("Your favourites", "us")).toBe("Your favorites");
+    expect(spell("you've favourited", "us")).toBe("you've favorited");
+    expect(spell("saved favourite(s)", "us")).toBe("saved favorite(s)");
+    expect(spell("Favourite", "us")).toBe("Favorite");
   });
 });
 

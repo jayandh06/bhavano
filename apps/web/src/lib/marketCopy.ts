@@ -136,6 +136,11 @@ const COPY: Record<MarketId, MarketCopy> = {
   },
 };
 
+/** The US spelling of the few visible "favourite" words (the site is written in British/Indian spelling): "Favourites" becomes "Favorites", "favourited" "favorited". India's text is returned as is. */
+export function spell(text: string, marketId?: MarketId | string): string {
+  return buildMarket(marketId).id === "us" ? text.replace(/avourite/g, "avorite") : text;
+}
+
 /** The wording for a market. With no argument it is the market this build serves (`NEXT_PUBLIC_MARKET`, else the runtime `MARKET`; India when neither is set). */
 export function marketCopy(marketId?: MarketId | string): MarketCopy {
   return COPY[buildMarket(marketId).id];
