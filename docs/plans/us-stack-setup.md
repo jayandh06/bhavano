@@ -118,9 +118,10 @@ address needs the rule updated. `DATABASE_URL` for the US `.env` uses the DB's p
   `US_NEXT_PUBLIC_SITE_URL=https://www.bhavano.com/us` set; GTM, Meta Pixel and the Maps browser key unset), then `scripts/deploy-from-registry.ps1 -Stack us -Ec2Host 52.45.78.97 -SshKey <pem> -Tag sha-<8>`
   on the build of master `a450cf7d`. Result: `bff` healthy, `web` up, 135 migrations applied (77 tables), Caddy up with Let's Encrypt certificates for both names, `/health` 200, `/us` 200 with
   `X-Robots-Tag: noindex, nofollow` and the noindex meta tag. India's `www.bhavano.com` still 200.
-  - **On an empty database the script cannot finish the first time:** it waits for `bff` to be healthy before migrating, and `bff` is unhealthy until the schema exists. Run the migrations first, once:
-    start `bff`, then `docker compose -f docker-compose.us.yml --env-file .env exec -T bff npx prisma migrate deploy` (project `bhavano-us`), then rerun the script with `-SkipMigrate`.
-  - **The script starts only `web` and `bff`, not Caddy** (nothing depends on it): start it once with `docker compose -f docker-compose.us.yml --env-file .env up -d --no-build caddy`.
+  - **First-run ordering, fixed in the script (2026-11-25):** the first deploy on an empty database stalled, because `web` waits for `bff` to be healthy and `bff` is unhealthy until the
+    schema exists, while the script only migrated afterwards. It now starts `bff` alone, runs `prisma migrate deploy`, then starts the rest, and for `-Stack us` also starts Caddy (nothing
+    depends on it, so it was never started before). Tested on the US host in a throwaway compose project against an empty scratch database: migrated (77 tables), then `web` started
+    healthy; the live stack was untouched. Not run against India's stack (the order is the same for it, but a failed migration now stops before web and admin are recreated).
   - `US_ROBOTS_TAG` is quoted in `.env.us.example` (`"noindex, nofollow"`) so the file can also be sourced by a shell.
   - Not yet working, by design: sign-in (Google OAuth, SMTP and the photo bucket keys are empty), the map picker (no US Maps browser key), and the site still shows India wording (title and copy).
 - **Still to do on the hosts:** a dump copy outside the region or account (an S3 bucket needs an
