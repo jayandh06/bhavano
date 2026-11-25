@@ -133,8 +133,11 @@ address needs the rule updated. `DATABASE_URL` for the US `.env` uses the DB's p
 - **Keys copied from India's `.env` (2026-11-25), as decided:** `GOOGLE_CLIENT_ID`/`SECRET`, `SMTP_*`, `GOOGLE_MAPS_SERVER_KEY`, `ADMIN_EMAILS`, plus `GOOGLE_IOS_CLIENT_ID`, `GOOGLE_ANDROID_CLIENT_ID` and `APPLE_BUNDLE_ID`
   (public identifiers of the same mobile app), copied host to host through the deploy machine without printing them (lengths match India's; the US `.env` before the copy is `.env.bak-before-india-keys`).
   The secrets (`AUTH_JWT_SECRET`, `NEXTAUTH_SECRET`, the database password, the R2 token) stay separate. Checked from the US host: SMTP login works (nothing sent). **The Maps server key is denied from
-  the US IP** (`REQUEST_DENIED`, "This IP ... is not authorized"): add `52.45.78.97` to that key's IP restrictions in Google Cloud Console (or make a US key). Google OAuth still needs the two US redirect URIs added
-  to India's client (`https://www.bhavano.com/us/api/auth/callback/google` and `https://us-origin.bhavano.com/us/api/auth/callback/google`).
+  the US IP** (`REQUEST_DENIED`, "This IP ... is not authorized"): add `52.45.78.97` to that key's IP restrictions in Google Cloud Console (or make a US key). Google OAuth: the two US redirect URIs were added to India's
+  client `Bhavano-Web` (2026-11-25; existing URIs untouched): `https://www.bhavano.com/us/api/auth/callback/google` and `https://us-origin.bhavano.com/us/api/auth/callback/google`. Verified: the US
+  site's `/us/auth/google` redirects to Google with `redirect_uri=https://www.bhavano.com/us/api/auth/callback/google` and Google shows its sign-in page (no `redirect_uri_mismatch`). A full sign-in cannot
+  finish yet: the app always sends the www address (`AUTH_URL`), so Google returns the user to `www.bhavano.com/us/...`, which India's Caddy does not route to the US host until the `/us` routing step (or
+  `NEXTAUTH_URL` is temporarily pointed at `us-origin` for a test).
 - **Sign-in route fix (2026-11-25):** `/us/api/auth/*` answered 400 (`UnknownAction: Cannot parse action at /api/auth/csrf`): Auth.js takes its base path from the pathname of `AUTH_URL`
   (`/us/api/auth`), but Next strips `/us` before the route handler runs. `apps/web/src/lib/authRequest.ts` restores the prefix on the incoming request (a no-op for India), used by the auth route. Unit-tested,
   and verified on the US host after deploying `sha-da3807b8` (2026-11-25): `/us/api/auth/providers`, `csrf` and `session` answer 200, and the providers list Google with the callback
