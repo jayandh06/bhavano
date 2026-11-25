@@ -7,6 +7,7 @@ import { useAuthGate } from "./AuthGateProvider";
 import { signOutAction } from "@/app/actions/auth";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { Icon } from "./Icon";
+import { spell } from "@/lib/marketCopy";
 import { MessagesNavItem, UnreadCountProvider } from "./MessagesNavItem";
 import { SessionKeepAlive } from "./SessionKeepAlive";
 import { GuestSavesSync } from "./GuestSavesSync";
@@ -50,7 +51,7 @@ export function HeaderAuthButtons({
           * row holds only identity. Both need an account anyway, so nothing is lost by putting
           * them behind one. */}
         <Link href={`/favourites${cityQuery}`} className="hidden sm:inline-block text-text text-sm font-bold whitespace-nowrap">
-          <Icon name="heart" /> Favourites
+          <Icon name="heart" /> {spell("Favourites")}
         </Link>
         <MessagesNavItem
           href={`/messages${cityQuery}`}
@@ -124,7 +125,7 @@ function AccountMenu({ userName, cityQuery }: { userName: string; cityQuery: str
             {/* Phone only — on desktop these are top-level links in the header row above, and
               * showing them in both places would be two routes to the same page a thumb apart. */}
             <Link href={`/favourites${cityQuery}`} onClick={() => setOpen(false)} className={`${menuItemClass} sm:hidden`}>
-              <Icon name="heart" className="text-muted" /> Favourites
+              <Icon name="heart" className="text-muted" /> {spell("Favourites")}
             </Link>
             <MessagesNavItem
               href={`/messages${cityQuery}`}

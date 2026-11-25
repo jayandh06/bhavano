@@ -189,7 +189,9 @@ and `<html lang>`/Open Graph locale, the structured data (country; the US markup
 blurb, the header and footer taglines, the search box placeholder and example chips, the Browse Cities page, the 404 page, the Help page's opening and "What can I list?", and the home page's
 category lists (US: only the market's categories) and FAQ and steps (`homeFaqs(cityNames, marketId)` and `homeSteps(marketId)` in `packages/types`, India the default, so mobile is unchanged).
 The calculators, blog and guides, the moving guide and the Diwali banner are not offered in the US: those routes answer 404 (a `layout.tsx` gate) and their links are hidden. The popular-search
-fallback offers only the market's categories and nothing in the US without a city. **Not done, needs a decision or legal text:** About, Trust, Terms and Privacy (India entity, GST and DLT text), the
+fallback offers only the market's categories and nothing in the US without a city. Deployed to the US stack as `sha-6b06fe15` and checked on the live pages (title, description, H1, locale, structured data, the four 404 gates). A second pass
+(2026-11-25) fixed what that check found: the requirement prompt's "anywhere in India" now uses the market's place name, and the visible "favourite" spellings (header and drawer nav, the Favorites page, listing
+button, guest prompt, Help text, profile merge prompt) use US spelling through `spell()` in `marketCopy.ts` (India unchanged). **Not done, needs a decision or legal text:** About, Trust, Terms and Privacy (India entity, GST and DLT text), the
 footer's legal-entity line and copyright, the Help page's FAQs about phone-OTP login and listing checks, the category tabs and menus (PG, plots, coworking, furniture, interiors), "BHK" in search
 and headings (bed and bath), the `/premium` plans page (INR), browse and city page copy, and the mobile app's wording.
 

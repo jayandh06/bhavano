@@ -10,6 +10,10 @@ import { useAuthGate } from "./AuthGateProvider";
 import { RequirementCityPicker, type PickedCity } from "./RequirementCityPicker";
 import { RequirementRefineDialog } from "./RequirementRefineDialog";
 import type { RequirementWizardSubject } from "./RequirementRefineWizard";
+import { marketCopy } from "@/lib/marketCopy";
+
+// Market wording (India's strings unchanged): lib/marketCopy.ts.
+const COPY = marketCopy();
 
 /**
  * Turns a dead-end search into a captured requirement — Phase 0 of
@@ -185,7 +189,7 @@ export function RequirementPrompt({
         <div className="mt-3.5">
           <div className="text-left text-[13px] font-bold text-text mb-1">Which city?</div>
           <p className="text-left text-[12px] text-muted m-0 mb-2">
-            Nobody can find you a place anywhere in India — start with the city, and we&apos;ll ask which areas next.
+            {`Nobody can find you a place anywhere in ${COPY.anywhere} — start with the city, and we'll ask which areas next.`}
           </p>
           <RequirementCityPicker value={city} onChange={setCity} disabled={state === "checking"} />
         </div>

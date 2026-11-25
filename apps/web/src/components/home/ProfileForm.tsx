@@ -14,6 +14,7 @@ import {
 } from "@/app/actions/users";
 import { linkPhoneAction, sendOtpAction, signOutAction } from "@/app/actions/auth";
 import { Icon } from "./Icon";
+import { spell } from "@/lib/marketCopy";
 import { useMarket } from "@/lib/useMarket";
 
 type PhoneStep = "idle" | "otpSent";
@@ -301,7 +302,7 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
               )}
               {mergePrompt.summary.payments > 0 && <li>{mergePrompt.summary.payments} payment(s)</li>}
               {mergePrompt.summary.favourites > 0 && (
-                <li>{mergePrompt.summary.favourites} saved favourite(s)</li>
+                <li>{mergePrompt.summary.favourites} saved {spell("favourite")}(s)</li>
               )}
             </ul>
             <p className="m-0 mb-3 text-[12.5px] text-muted">

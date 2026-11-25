@@ -5,6 +5,7 @@ import { slugify } from "@bhavano/types/slugify";
 import { useAuthGate } from "./AuthGateProvider";
 import { signOutAction } from "@/app/actions/auth";
 import { Icon } from "./Icon";
+import { spell } from "@/lib/marketCopy";
 
 /**
  * The account section of the mobile hamburger drawer — a flat list, not a nested dropdown.
@@ -49,7 +50,7 @@ export function HeaderDrawerAccount({ userName, cityName }: { userName?: string 
         <Icon name="user" className="text-muted" /> Profile
       </Link>
       <Link href={`/favourites${cityQuery}`} className={row}>
-        <Icon name="heart" className="text-muted" /> Favourites
+        <Icon name="heart" className="text-muted" /> {spell("Favourites")}
       </Link>
       <Link href={`/messages${cityQuery}`} className={row}>
         <Icon name="message" className="text-muted" /> Messages

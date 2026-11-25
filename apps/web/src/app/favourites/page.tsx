@@ -7,6 +7,7 @@ import { ListingCard } from "@/components/home/ListingCard";
 import { PageHeader } from "@/components/home/PageHeader";
 import { GuestFavourites } from "@/components/home/GuestFavourites";
 import { sessionAccessToken } from "@/lib/session";
+import { spell } from "@/lib/marketCopy";
 
 export default async function FavouritesPage({
   searchParams,
@@ -25,7 +26,7 @@ export default async function FavouritesPage({
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
         </Link>
-        <h1 className="font-lora text-[26px] font-semibold m-0 mb-5">Your favourites</h1>
+        <h1 className="font-lora text-[26px] font-semibold m-0 mb-5">{spell("Your favourites")}</h1>
 
         {accessToken ? <FavouritesGrid accessToken={accessToken} /> : <GuestFavourites />}
       </div>
@@ -44,7 +45,7 @@ async function FavouritesGrid({ accessToken }: { accessToken: string }) {
   }
 
   if (favourites.length === 0) {
-    return <p className="text-muted text-sm">No favourites yet — tap the heart on a listing to save it here.</p>;
+    return <p className="text-muted text-sm">{spell("No favourites yet — tap the heart on a listing to save it here.")}</p>;
   }
 
   return (
