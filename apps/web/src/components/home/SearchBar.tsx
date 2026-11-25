@@ -21,6 +21,10 @@ import {
 } from "@/lib/seoRoute";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { Icon } from "./Icon";
+import { marketCopy } from "@/lib/marketCopy";
+
+// Market wording (India's strings unchanged): lib/marketCopy.ts.
+const COPY = marketCopy();
 
 function removeCaseInsensitive(haystack: string, needle: string): string {
   const idx = haystack.toLowerCase().indexOf(needle.toLowerCase());
@@ -118,7 +122,7 @@ function describe(result: Interpretation): string[] {
   if (result.maxPrice !== undefined) tokens.push(`under ${formatINR(result.maxPrice)}`);
   // Display-only fallback — "India" here is never fed back into navigation (see `go()`), just
   // shown to the visitor so the preview doesn't read as "in undefined".
-  const cityLabel = result.targetCityName ?? "India";
+  const cityLabel = result.targetCityName ?? COPY.anywhere;
   const place = result.areaCandidate ? `${result.areaCandidate}, ${cityLabel}` : cityLabel;
   tokens.push(`in ${place}`);
   return tokens;
@@ -251,18 +255,11 @@ export function SearchBar({
     go(text);
   }
 
-  const cityLabel = cityName ?? "India";
-  const placeholder = areaName
-    ? `Search "2BHK in ${areaName}, ${cityLabel}", "villa for rent"…`
-    : `Search "2BHK in ${cityLabel}", "PG near IT park", "plot for sale"…`;
+  const cityLabel = cityName ?? COPY.anywhere;
+  const placeholder = COPY.searchPlaceholder(cityLabel, areaName);
 
   const place = areaName ?? cityLabel;
-  const exampleChips = [
-    `2 BHK in ${place}`,
-    `Villas for rent in ${cityLabel}`,
-    `PG in ${cityLabel}`,
-    `Coworking in ${cityLabel}`,
-  ];
+  const exampleChips = COPY.searchExampleChips(cityLabel, place);
 
   const trimmedValue = value.trim();
   const preview = open && trimmedValue ? describe(interpret(trimmedValue, cityName, cityNames)) : null;

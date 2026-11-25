@@ -19,6 +19,7 @@ import { SoftNavPageViews } from "@/components/home/SoftNavPageViews";
 import { SignupConversionTracker } from "@/components/home/SignupConversionTracker";
 import { siteMetaOther } from "@/lib/smartAppBanner";
 import { siteRobots } from "@/lib/marketRobots";
+import { marketCopy } from "@/lib/marketCopy";
 import { OpenInAppStrip } from "@/components/home/OpenInAppStrip";
 import { JsonLd } from "@/components/JsonLd";
 import "./globals.css";
@@ -43,16 +44,18 @@ const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 const GOOGLE_MAPS_JS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY;
 const SITE_NAME = "Bhavano";
 const ENTITY_ADDRESS_LINES = entityAddressLines();
+// Market wording (title, description, language, country): India's strings are unchanged; see lib/marketCopy.ts.
+const COPY = marketCopy();
+const SITE_TITLE = COPY.siteTitle;
+const SITE_DESCRIPTION = COPY.siteDescription;
 const SAME_AS = [
   "https://www.facebook.com/bhavano.facebook",
   "https://www.instagram.com/bhavano.app/",
   "https://www.linkedin.com/company/bhavano",
   "https://play.google.com/store/apps/details?id=com.finfolia.bhavano",
-  "https://apps.apple.com/in/app/bhavano/id6811878602",
+  // The India storefront link; the US listing is not confirmed, so the US markup leaves it out.
+  ...(COPY.indiaOrganization ? ["https://apps.apple.com/in/app/bhavano/id6811878602"] : []),
 ];
-const SITE_TITLE = "Bhavano — Buy, Rent, Plots, Coworking, PG & More";
-const SITE_DESCRIPTION =
-  "India's home for Buy, Rent, Villas, Plots, Commercial Spaces, Coworking and PG listings — browse without login. Every listing is checked before it goes live.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -63,7 +66,7 @@ export const metadata: Metadata = {
   openGraph: {
     siteName: SITE_NAME,
     type: "website",
-    locale: "en_IN",
+    locale: COPY.ogLocale,
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },
@@ -78,7 +81,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${lora.variable} ${manrope.variable}`} suppressHydrationWarning>
+    <html lang={COPY.htmlLang} className={`${lora.variable} ${manrope.variable}`} suppressHydrationWarning>
       <head>
         <JsonLd
           data={{
@@ -87,23 +90,24 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             // The name people type and say. Lets search and AI tools tie "Bhavano.com" and "Bhavano" to one brand.
             alternateName: ["Bhavano.com"],
             logo: `${SITE_URL}/logo.png`,
-            areaServed: { "@type": "Country", name: "India" },
+            areaServed: { "@type": "Country", name: COPY.areaServed },
             // Machine-readable brand → registered-entity link, for the automated scrapes that
-            // DLT/telco and payment-aggregator verification run against the homepage.
-            legalName: LEGAL_ENTITY.legalName,
+            // DLT/telco and payment-aggregator verification run against the homepage. India only: the US operating entity
+            // is not decided (docs/plans/us-market-expansion.md), so the US markup carries no legal name, address or phone.
+            ...(COPY.indiaOrganization && { legalName: LEGAL_ENTITY.legalName }),
             url: SITE_URL,
             description: SITE_DESCRIPTION,
             // The brand's own profiles elsewhere, so search and AI tools can tie them to this site.
             // Only profiles that are live and ours belong here.
             sameAs: SAME_AS,
-            ...(ENTITY_ADDRESS_LINES.length > 0 && {
+            ...(COPY.indiaOrganization && ENTITY_ADDRESS_LINES.length > 0 && {
               address: { "@type": "PostalAddress", streetAddress: ENTITY_ADDRESS_LINES.join(", ") },
             }),
             contactPoint: {
               "@type": "ContactPoint",
               contactType: "customer support",
               email: LEGAL_ENTITY.supportEmail,
-              ...(LEGAL_ENTITY.supportPhone && { telephone: LEGAL_ENTITY.supportPhone }),
+              ...(COPY.indiaOrganization && LEGAL_ENTITY.supportPhone && { telephone: LEGAL_ENTITY.supportPhone }),
             },
           }}
         />

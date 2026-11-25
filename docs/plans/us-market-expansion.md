@@ -64,7 +64,7 @@ The market comes from the URL path on web (`/us/...` is the US, everything else 
 | Listing types | House, apartment, villa, PG, storage, coworking, furniture, interiors, plot, commercial | House, apartment, villa, storage, commercial (starting set) | Config only; the post flow does not filter yet |
 | Area and bedrooms | sq ft, sq m, acre, hectare, cent; BHK | sq ft and acre; bed/bath | Units listed in config; forms not changed |
 | Fair Housing fields | "Bachelor", "Vegetarians only", PG gender | Removed in the US | Not built (needs legal review) |
-| Content | Blog, guides, land-record pages, India calculators | Hidden at launch | Not built |
+| Content | Blog, guides, land-record pages, India calculators | Hidden at launch | Hidden (404, links removed) in the US build 2026-11-25; the moving guide too |
 | Sign-in | Phone/WhatsApp OTP first, Google, Apple, email | Email, Google, Apple first; phone optional | Phone rules only; US flow not built |
 | Notifications | WhatsApp and MSG91 SMS | Email and push (SMS only with consent) | Not built |
 | Pricing and payments | Razorpay, Apple/Google INR tiers | Stripe or USD store tiers, new price numbers | Not built |
@@ -182,6 +182,16 @@ entry is `indexable: false`. Tests: `apps/bff/src/market/market.spec.ts`.
 7. **Mobile:** market-aware API base URL chosen from account/selection, US App Store/Play availability, USD store
    pricing. Needs an app release.
 8. **Soft launch** with one city and a small Google Ads budget; measure before expanding.
+
+**Built 2026-11-25 (US wording, front door):** `apps/web/src/lib/marketCopy.ts` holds the market-specific website wording (India's strings are the ones that were hardcoded, pinned by
+`marketCopy.test.ts` and checked against what production serves; the US strings name nothing India-only and make no claim the US cannot back yet). Covers the site title, description, social card
+and `<html lang>`/Open Graph locale, the structured data (country; the US markup carries no Indian legal name, address, phone or App Store storefront), the home page headline, intro and owner
+blurb, the header and footer taglines, the search box placeholder and example chips, the Browse Cities page, the 404 page, the Help page's opening and "What can I list?", and the home page's
+category lists (US: only the market's categories) and FAQ and steps (`homeFaqs(cityNames, marketId)` and `homeSteps(marketId)` in `packages/types`, India the default, so mobile is unchanged).
+The calculators, blog and guides, the moving guide and the Diwali banner are not offered in the US: those routes answer 404 (a `layout.tsx` gate) and their links are hidden. The popular-search
+fallback offers only the market's categories and nothing in the US without a city. **Not done, needs a decision or legal text:** About, Trust, Terms and Privacy (India entity, GST and DLT text), the
+footer's legal-entity line and copyright, the Help page's FAQs about phone-OTP login and listing checks, the category tabs and menus (PG, plots, coworking, furniture, interiors), "BHK" in search
+and headings (bed and bath), the `/premium` plans page (INR), browse and city page copy, and the mobile app's wording.
 
 ## Decisions needed from the owner
 

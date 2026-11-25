@@ -2,10 +2,14 @@ import Link from "next/link";
 import { StaticPageLayout } from "@/components/home/StaticPageLayout";
 import { fetchCities } from "@/lib/bff";
 import { buildBrowsePath } from "@/lib/listingPath";
+import { marketCopy } from "@/lib/marketCopy";
+
+// Market wording (India's strings unchanged): lib/marketCopy.ts.
+const COPY = marketCopy();
 
 export const metadata = {
   title: "Browse Cities",
-  description: "Every city Bhavano covers for buying, renting, and leasing property across India.",
+  description: COPY.citiesDescription,
 };
 
 /** Every served city — the counterpart to the footer's "Browse Cities" block (which only shows
@@ -29,8 +33,7 @@ export default async function CitiesPage() {
   return (
     <StaticPageLayout title="Browse cities">
       <p className="m-0">
-        {cities.length.toLocaleString()} cities across India — pick one to browse houses, apartments, villas, plots,
-        PG accommodation, coworking desks and commercial spaces there.
+        {COPY.citiesIntro(cities.length.toLocaleString())}
       </p>
       {topCities.length > 0 && (
         <div>

@@ -1,17 +1,24 @@
 import type { PopularSearchDto } from "@bhavano/types";
+import { isMarketCategory } from "@bhavano/types/market";
 import { fetchPopularSearches } from "@/lib/bff";
+import { buildMarket } from "@/lib/marketRobots";
 
 // Only used if the popular-searches query comes back empty for this city (e.g. a freshly-seeded
 // city with no view counts yet) — real data always wins once there's inventory to rank. Built
 // from the *current* city rather than a hardcoded one, since this is scoped per-city — showing
 // another city's searches here would be a confusing fallback.
-function fallbackSearchesFor(cityName: string): PopularSearchDto[] {
-  return [
+function fallbackSearchesFor(cityName: string, cityId?: string): PopularSearchDto[] {
+  const market = buildMarket();
+  // The national placeholder ("India") is a routing key, not a place the US has: with no city yet there is nothing honest to suggest.
+  if (market.id !== "in" && !cityId) return [];
+  const all: PopularSearchDto[] = [
     { cityName, category: "house", transactionType: "rent", count: 0 },
     { cityName, category: "apartment", transactionType: "sell", count: 0 },
     { cityName, category: "coworking", transactionType: "rent", count: 0 },
     { cityName, category: "pg", transactionType: "rent", count: 0 },
   ];
+  // Only categories the market offers (India offers all of these, so its list is unchanged).
+  return all.filter((s) => isMarketCategory(market.id, s.category));
 }
 
 /** Shared by every page that renders `<Header>`'s search bar with a "Popular searches" section —
@@ -19,5 +26,5 @@ function fallbackSearchesFor(cityName: string): PopularSearchDto[] {
  * a generic per-city set when there's no data yet. */
 export async function resolvePopularSearches(cityName: string, cityId?: string): Promise<PopularSearchDto[]> {
   const results = await fetchPopularSearches(cityId).catch(() => []);
-  return results.length > 0 ? results : fallbackSearchesFor(cityName);
+  return results.length > 0 ? results : fallbackSearchesFor(cityName, cityId);
 }
