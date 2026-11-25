@@ -4,10 +4,15 @@ import { buildBrowsePath, buildListingPath } from "@/lib/listingPath";
 import { transactionGroupFor } from "@/lib/seoRoute";
 import { POSTS } from "@/lib/blog/posts";
 import { isThinAreaPage } from "@/lib/seoIndexing";
+import { buildMarket } from "@/lib/marketRobots";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const market = buildMarket();
+  // Not launched (the US): nothing to list, so a stray fetch of /us/sitemap.xml does not advertise noindexed pages.
+  if (!market.indexable) return [];
+  const isIndia = market.id === "in";
   const [listings, cities] = await Promise.all([fetchListingsSitemap(), fetchCities(undefined, true).catch(() => [])]);
   // The cities the ads target (`isPopular`) go first and rank above the rest. Google ignores
   // `priority`, Bing reads it; see docs/plans/focus-on-ad-target-cities.md.
@@ -111,9 +116,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/tools/rent-affordability-calculator",
     "/tools/area-unit-converter",
     "/cities",
-  ].map((path) => ({ url: `${SITE_URL}${path}` }));
+  ]
+    // The calculators and the blog are India content (RERA, stamp duty, rupees); the US build lists neither.
+    .filter((path) => isIndia || !(path === "/blog" || path.startsWith("/tools") || path === "/moving-to-a-new-city" || path === "/premium"))
+    .map((path) => ({ url: `${SITE_URL}${path}` }));
 
-  const blogEntries: MetadataRoute.Sitemap = POSTS.map((post) => ({
+  const blogEntries: MetadataRoute.Sitemap = (isIndia ? POSTS : []).map((post) => ({
     url: `${SITE_URL}/blog/${post.slug}`,
     lastModified: new Date(post.updated ?? post.published),
   }));

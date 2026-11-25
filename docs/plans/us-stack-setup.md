@@ -60,10 +60,11 @@ US host (its own EC2, a US region)
 - **No end-to-end run.** The US-mode web build compiled here, but the stack has not been started: Docker was not running on this
   machine, so the Caddy files were not validated with `caddy validate`, and the compose file was only checked as YAML.
   Bring it up on a staging host first.
-- **US `robots`/`sitemap`**: `noindex` is wired (step 7), but the US build still contains `robots.ts` and `sitemap.ts`, which would be served at
-  `/us/robots.txt` and `/us/sitemap.xml`. Crawlers only read `robots.txt` at the host root (India's, untouched), so the US one is inert; the US
-  sitemap has to be listed in the root `robots.txt` or Search Console at launch, which needs your approval (CLAUDE.md). The noindex meta tag
-  and header are not tested against a running US build (only `siteRobots` is unit-tested); check `curl -I` and view-source on staging.
+- **US `robots`/`sitemap`** (built 2026-11-24): the US build's `/us/sitemap.xml` is empty and its `/us/robots.txt` disallows everything until the US is
+  indexable; once it is, the sitemap lists the home page, the browse pages, listings and the legal/company pages (no blog, calculators or
+  other India content). Crawlers only read `robots.txt` at the host root, so India's `robots.ts` adds `Sitemap: https://www.bhavano.com/us/sitemap.xml`
+  when `MARKETS.us.indexable` is true; until then India's robots.txt and sitemap are unchanged (tested for robots, `lib/marketRobots.ts`). Launch is the one
+  `indexable` flip, plus `US_ROBOTS_TAG=all`. Not tested against a running US build; check `/us/sitemap.xml` and the root `robots.txt` on staging.
 - **Latency**: India's Caddy proxying `/us/*` to the US host adds a hop for US visitors (US to India to US). The proper fix is to route
   `/us/*` at an edge (Cloudflare or a CDN) straight to the US origin; this setup works without it but is not the final shape.
 - **Admin for the US**: not included. US admin is the India admin pointed at the US API (a second login) or its own deployment; undecided.

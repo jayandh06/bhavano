@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { siteRobots } from "./marketRobots";
+import { robotsSitemaps, siteRobots } from "./marketRobots";
 
 describe("siteRobots", () => {
   it("keeps India indexable, as the layout always had it", () => {
@@ -14,5 +14,11 @@ describe("siteRobots", () => {
 
   it("noindexes the US until it is launched", () => {
     expect(siteRobots("us")).toEqual({ index: false, follow: false });
+  });
+});
+
+describe("robotsSitemaps", () => {
+  it("lists only India's sitemap while the US is not launched", () => {
+    expect(robotsSitemaps("https://www.bhavano.com", "in")).toEqual(["https://www.bhavano.com/sitemap.xml"]);
   });
 });
