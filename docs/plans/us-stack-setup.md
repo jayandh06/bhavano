@@ -136,8 +136,10 @@ address needs the rule updated. `DATABASE_URL` for the US `.env` uses the DB's p
   the US IP** (`REQUEST_DENIED`, "This IP ... is not authorized"): add `52.45.78.97` to that key's IP restrictions in Google Cloud Console (or make a US key). Google OAuth still needs the two US redirect URIs added
   to India's client (`https://www.bhavano.com/us/api/auth/callback/google` and `https://us-origin.bhavano.com/us/api/auth/callback/google`).
 - **Sign-in route fix (2026-11-25):** `/us/api/auth/*` answered 400 (`UnknownAction: Cannot parse action at /api/auth/csrf`): Auth.js takes its base path from the pathname of `AUTH_URL`
-  (`/us/api/auth`), but Next strips `/us` before the route handler runs. `apps/web/src/lib/authRequest.ts` restores the prefix on the incoming request (a no-op for India), used by the auth route. Unit-tested;
-  not yet verified on a running US build (needs a rebuild and redeploy).
+  (`/us/api/auth`), but Next strips `/us` before the route handler runs. `apps/web/src/lib/authRequest.ts` restores the prefix on the incoming request (a no-op for India), used by the auth route. Unit-tested,
+  and verified on the US host after deploying `sha-da3807b8` (2026-11-25): `/us/api/auth/providers`, `csrf` and `session` answer 200, and the providers list Google with the callback
+  `https://www.bhavano.com/us/api/auth/callback/google`. The Google sign-in flow itself is not tried yet (needs the US redirect URIs on the OAuth client). Note: Compose does not recreate a container whose image
+  has the same content, even when the registry digest differs (each build adds a provenance record), so `bff` stayed on the previous build while only `web` was recreated; that is correct.
 - **Still to do on the hosts:** a dump copy outside the region or account (an S3 bucket needs an
   instance role); the monthly OS-update routine (the DB's public address is for outbound access only). The `bhavano-us`
   CLI profile had a temporary inline policy `bhavano-us-ops` (DLM, SNS, one IAM role) for this; remove it from the IAM user when done.
