@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DEFAULT_SUBSCRIPTION_PLAN_SETTINGS = void 0;
+exports.US_SUBSCRIPTION_PLAN_SETTINGS = exports.DEFAULT_SUBSCRIPTION_PLAN_SETTINGS = void 0;
+exports.usdTierFromInr = usdTierFromInr;
+exports.defaultSubscriptionPlanSettings = defaultSubscriptionPlanSettings;
 exports.subscriptionPriceFor = subscriptionPriceFor;
 /** Bundled into this shared package (not just the BFF) since `subscriptionPriceFor`/
  * `listingSlotAllowance` are also called client-side for display, before any live-settings fetch
@@ -16,6 +18,25 @@ exports.DEFAULT_SUBSCRIPTION_PLAN_SETTINGS = {
     buyerPremiumPrice6Months: 549,
     buyerPremiumPrice12Months: 899,
 };
+/** The US price for a rupee price, by the owner's rule (2026-11-25): the rupee amount divided by 60, rounded UP to the next $5 (never below $5).
+ * It reproduces the owner's examples: Rs 199 is $5, Rs 799 is $15, Rs 1,200 is $20. The US tiers below are this rule applied to India's amounts;
+ * a test keeps them equal, so changing one without the other fails. US prices are separate tiers, not a conversion at runtime. */
+function usdTierFromInr(inr) {
+    return Math.max(5, Math.ceil(inr / 60 / 5) * 5);
+}
+/** The US market's plan prices (US dollars, in the same fields), from `usdTierFromInr` applied to the India defaults. The slot counts are the same. */
+exports.US_SUBSCRIPTION_PLAN_SETTINGS = {
+    ...exports.DEFAULT_SUBSCRIPTION_PLAN_SETTINGS,
+    sellerSlotPackMonthlyPrice: 5,
+    agentProMonthlyPricePerUnit: 10,
+    buyerPremiumPrice1Month: 5,
+    buyerPremiumPrice6Months: 10,
+    buyerPremiumPrice12Months: 15,
+};
+/** The default plan settings for a market (India unless another is named): what the BFF writes to a fresh database. */
+function defaultSubscriptionPlanSettings(marketId = "in") {
+    return marketId === "us" ? exports.US_SUBSCRIPTION_PLAN_SETTINGS : exports.DEFAULT_SUBSCRIPTION_PLAN_SETTINGS;
+}
 function subscriptionPriceFor(tier, months, agentProUnits = 1, settings = exports.DEFAULT_SUBSCRIPTION_PLAN_SETTINGS) {
     if (tier === "buyerPremium") {
         if (months === 1)

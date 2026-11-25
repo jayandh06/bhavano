@@ -150,6 +150,8 @@ address needs the rule updated. `DATABASE_URL` for the US `.env` uses the DB's p
   `US_NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY`, baked into the web image. Rebuilt (`sha-e88538f2`, `web-us` only) and deployed (`-Services web`): the served `/us/post` page carries the US key and not India's, and from the
   `https://us-origin.bhavano.com` origin the Maps JavaScript API loads and Places autocomplete returns predictions. The in-browser Geocoder is refused, as intended (the key has no Geocoding API; the app
   only uses the map, the marker and the Places Autocomplete widget in the browser, and reverse-geocodes on the server). The full map-picker screen has not been exercised (it sits behind the post flow).
+- **US plan prices (2026-11-25):** the two settings rows in the US database (`SubscriptionPlanSetting`, `ContactRevealSetting`, id `singleton`) hold the dollar tiers (seller pack $5, Agent Pro $10 per unit, Bhavano Plus $5 / $10 / $15,
+  credit pack $5), set with an `UPDATE` in one transaction; they were created with India's numbers when `/premium` was first loaded. A fresh US database gets the same values from the BFF defaults. See `us-market-expansion.md` for the rule.
 - **Still to do on the hosts:** a dump copy outside the region or account (an S3 bucket needs an
   instance role); the monthly OS-update routine (the DB's public address is for outbound access only). The `bhavano-us`
   CLI profile had a temporary inline policy `bhavano-us-ops` (DLM, SNS, one IAM role) for this; remove it from the IAM user when done.
