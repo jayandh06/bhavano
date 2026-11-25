@@ -171,14 +171,27 @@ for svc in `$SERVICES; do
   docker tag "`$SRC" "`${PROJECT}-`${svc}:latest"
 done
 
-echo '==> compose up --no-build'
 export COMPOSE_PROJECT_NAME=`$PROJECT
-docker compose -f "`$COMPOSE_FILE" --env-file .env up -d --no-build `$SERVICES
+COMPOSE=(docker compose -f "`$COMPOSE_FILE" --env-file .env)
 
+# Migrate before starting the rest: web (and admin) wait for bff to be healthy, and on an empty database (the first deploy of a stack) bff is not
+# healthy until the schema exists, so starting everything first stalls with "dependency failed to start". bff is started alone, migrated, then the rest follow.
+# A failed migration now also leaves the running web and admin untouched.
 if [[ "`$DO_MIGRATE" == "true" ]] && echo "`$SERVICES" | grep -qw bff; then
+  echo '==> compose up --no-build bff (alone, to migrate)'
+  "`${COMPOSE[@]}" up -d --no-build --no-deps bff
   echo '==> prisma migrate deploy'
   # </dev/null: this script arrives on stdin, and the container would otherwise swallow the rest of it.
-  docker compose -f "`$COMPOSE_FILE" --env-file .env exec -T bff npx prisma migrate deploy </dev/null
+  "`${COMPOSE[@]}" exec -T bff npx prisma migrate deploy </dev/null
+fi
+
+echo '==> compose up --no-build'
+"`${COMPOSE[@]}" up -d --no-build `$SERVICES
+
+# The US stack's Caddy is part of the same compose file and nothing depends on it, so it is not started by the services above (India's Caddy is managed separately).
+if [[ "`$STACK" == "us" ]]; then
+  echo '==> compose up --no-build caddy'
+  "`${COMPOSE[@]}" up -d --no-build caddy
 fi
 
 # The registry-tagged copies only duplicate names for the same layers; drop them so the next prune sees just the app tags.
