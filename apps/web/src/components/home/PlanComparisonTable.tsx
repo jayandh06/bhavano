@@ -4,7 +4,7 @@ import { HorizontalScroller } from "./HorizontalScroller";
 import type { ContactRevealSettingsDto, UserProfileDto } from "@bhavano/types";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import { Icon } from "./Icon";
-import { useMarket } from "@/lib/useMarket";
+import { buildMarket } from "@/lib/marketRobots";
 import { Currency } from "./Currency";
 
 type Cell = string | { type: "yes" } | { type: "no" } | { type: "dash" };
@@ -121,7 +121,8 @@ export function PlanComparisonTable({
   contactRevealSettings: ContactRevealSettingsDto;
   planPricing: SubscriptionPlanSettings;
 }) {
-  const market = useMarket();
+  // A server component (rendered by /premium): useMarket() is a client hook and throws here, so read the market this build serves.
+  const market = buildMarket();
   const sellerPlan = currentSellerPlan(profile);
   const isBuyerPlus =
     profile?.premiumUntil && new Date(profile.premiumUntil).getTime() > Date.now();
