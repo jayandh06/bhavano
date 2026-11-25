@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 import { FaqGroup, type Faq } from "@/components/home/FaqGroup";
+import { marketCopy } from "@/lib/marketCopy";
+
+// Market wording (India's strings unchanged): lib/marketCopy.ts.
+const COPY = marketCopy();
 
 export const metadata = {
   title: "Help Centre",
@@ -12,8 +16,7 @@ const GETTING_STARTED: Faq[] = [
     q: "What is Bhavano, and how is it different from other classifieds sites?",
     a: (
       <>
-        Bhavano is a property marketplace for homes, plots, PG accommodation, coworking desks, storage space and
-        commercial space across India, so a move or a small-business setup can be handled in one place. Listings are
+        {COPY.helpAbout} Listings are
         checked before they go live and our team can take down ones that break the rules. See{" "}
         <Link href="/trust" className="text-green font-bold">
           how we keep listings clean
@@ -50,7 +53,7 @@ const POSTING: Faq[] = [
   },
   {
     q: "What can I list?",
-    a: "Houses, apartments, villas, plots, PG/hostel accommodation, storage space, coworking desks and commercial spaces — each with its own set of relevant fields (bedrooms, sharing type, seat type, and so on).",
+    a: COPY.helpWhatCanIList,
   },
   {
     q: "How long does my ad stay live?",

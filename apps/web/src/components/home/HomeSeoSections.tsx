@@ -5,18 +5,25 @@ import { JsonLd } from "@/components/JsonLd";
 import { buildBrowsePath } from "@/lib/listingPath";
 import { CATEGORY_LABELS, type TransactionGroup } from "@/lib/seoRoute";
 import { sortedPosts } from "@/lib/blog/posts";
-import { HOME_STEPS, homeFaqs } from "@bhavano/types/homeContent";
+import { homeFaqs, homeSteps } from "@bhavano/types/homeContent";
+import { isMarketCategory } from "@bhavano/types/market";
+import { buildMarket } from "@/lib/marketRobots";
+import { marketCopy } from "@/lib/marketCopy";
+
+// Market wording and category set (India's strings and lists unchanged): lib/marketCopy.ts.
+const COPY = marketCopy();
+const MARKET = buildMarket();
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 
-const BUY: { group: TransactionGroup; category: ListingCategory }[] = [
+const ALL_BUY: { group: TransactionGroup; category: ListingCategory }[] = [
   { group: "buy", category: "apartment" },
   { group: "buy", category: "house" },
   { group: "buy", category: "villa" },
   { group: "buy", category: "plot" },
   { group: "buy", category: "commercial" },
 ];
-const RENT: { group: TransactionGroup; category: ListingCategory }[] = [
+const ALL_RENT: { group: TransactionGroup; category: ListingCategory }[] = [
   { group: "rent-lease", category: "apartment" },
   { group: "rent-lease", category: "house" },
   { group: "rent-lease", category: "villa" },
@@ -25,6 +32,10 @@ const RENT: { group: TransactionGroup; category: ListingCategory }[] = [
   { group: "rent-lease", category: "coworking" },
   { group: "rent-lease", category: "storage" },
 ];
+
+// Only the categories the market offers: India lists all of them, the US drops plots, PG and coworking.
+const BUY = ALL_BUY.filter(({ category }) => isMarketCategory(MARKET.id, category));
+const RENT = ALL_RENT.filter(({ category }) => isMarketCategory(MARKET.id, category));
 
 const TOOLS = [
   { href: "/tools/emi-calculator", label: "EMI calculator" },
@@ -46,7 +57,7 @@ export function HomeSeoSections({
   /** Areas with a published overview, busiest first. The block is left out while there are none. */
   popularAreas?: PublishedAreaOverviewLink[];
 }) {
-  const faqs = homeFaqs(popularCities.map((c) => c.name));
+  const faqs = homeFaqs(popularCities.map((c) => c.name), MARKET.id);
 
   const guides = sortedPosts().slice(0, 4);
   // py-1.5 + block gives a finger-sized tap target on a phone without changing the desktop look much.
@@ -148,7 +159,7 @@ export function HomeSeoSections({
       <section aria-label="How Bhavano works">
         <h2 className={h2}>How Bhavano works</h2>
         <ol className="m-0 p-0 list-none grid gap-4 sm:grid-cols-3">
-          {HOME_STEPS.map((step, i) => (
+          {homeSteps(MARKET.id).map((step, i) => (
             <li key={step.title} className="border border-border rounded-xl p-4 bg-surface">
               <div className="text-[12px] font-bold text-muted mb-1">STEP {i + 1}</div>
               <div className="text-[15px] font-bold text-text mb-1">{step.title}</div>
@@ -156,20 +167,21 @@ export function HomeSeoSections({
             </li>
           ))}
         </ol>
-        <p className="mt-3 mb-0 text-[13.5px] text-text-soft">
-          Every listing is checked before it goes live. Read what we check and what we do not in{" "}
-          <Link href="/trust" className="text-green font-bold">
-            Trust and Safety
-          </Link>
-          .
-        </p>
+        {COPY.listingsCheckedClaim && (
+          <p className="mt-3 mb-0 text-[13.5px] text-text-soft">
+            Every listing is checked before it goes live. Read what we check and what we do not in{" "}
+            <Link href="/trust" className="text-green font-bold">
+              Trust and Safety
+            </Link>
+            .
+          </p>
+        )}
       </section>
 
       <section aria-label="For owners and agents">
         <h2 className={h2}>Own or manage a property?</h2>
         <p className="m-0 mb-3 text-[14px] text-text-soft max-w-[720px] leading-relaxed">
-          List a house, flat, plot, PG, coworking desk or commercial space and reach people searching in your city. You
-          deal directly with seekers.
+          {COPY.ownerBlurb}
         </p>
         <Link
           href="/post"
@@ -179,34 +191,36 @@ export function HomeSeoSections({
         </Link>
       </section>
 
-      <section aria-label="Tools and guides">
-        <h2 className={h2}>Free tools and guides</h2>
-        <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
-          <ul className="m-0 p-0 list-none flex flex-col gap-1.5">
-            {TOOLS.map((tool) => (
-              <li key={tool.href}>
-                <Link href={tool.href} className={linkClass}>
-                  {tool.label}
+      {COPY.indiaContent && (
+        <section aria-label="Tools and guides">
+          <h2 className={h2}>Free tools and guides</h2>
+          <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+            <ul className="m-0 p-0 list-none flex flex-col gap-1.5">
+              {TOOLS.map((tool) => (
+                <li key={tool.href}>
+                  <Link href={tool.href} className={linkClass}>
+                    {tool.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <ul className="m-0 p-0 list-none flex flex-col gap-1.5">
+              {guides.map((post) => (
+                <li key={post.slug}>
+                  <Link href={`/blog/${post.slug}`} className={linkClass}>
+                    {post.title}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <Link href="/blog" className="block py-1.5 text-[14px] font-bold text-green no-underline">
+                  All guides
                 </Link>
               </li>
-            ))}
-          </ul>
-          <ul className="m-0 p-0 list-none flex flex-col gap-1.5">
-            {guides.map((post) => (
-              <li key={post.slug}>
-                <Link href={`/blog/${post.slug}`} className={linkClass}>
-                  {post.title}
-                </Link>
-              </li>
-            ))}
-            <li>
-              <Link href="/blog" className="block py-1.5 text-[14px] font-bold text-green no-underline">
-                All guides
-              </Link>
-            </li>
-          </ul>
-        </div>
-      </section>
+            </ul>
+          </div>
+        </section>
+      )}
 
       <section aria-label="Frequently asked questions">
         <h2 className={h2}>Frequently asked questions</h2>

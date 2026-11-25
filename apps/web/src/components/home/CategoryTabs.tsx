@@ -11,6 +11,10 @@ import { useClickOutside } from "@/lib/useClickOutside";
 import { HorizontalScroller } from "./HorizontalScroller";
 import { MegaMenu } from "./MegaMenu";
 import { Icon } from "./Icon";
+import { marketCopy } from "@/lib/marketCopy";
+
+// Market wording (India's strings unchanged): lib/marketCopy.ts.
+const COPY = marketCopy();
 
 export function CategoryTabs({
   active,
@@ -134,26 +138,30 @@ export function CategoryTabs({
           <Icon name="requirements" />
           Requirements
         </Link>
-        <Link
-          href="/tools"
-          prefetch={false}
-          className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold whitespace-nowrap ${
-            toolsActive ? "bg-green text-on-green border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
-          }`}
-        >
-          <Icon name="calculator" />
-          Tools
-        </Link>
-        <Link
-          href="/blog"
-          prefetch={false}
-          className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold whitespace-nowrap ${
-            blogActive ? "bg-green text-on-green border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
-          }`}
-        >
-          <Icon name="blog" />
-          Blog
-        </Link>
+        {COPY.indiaContent && (
+          <>
+            <Link
+              href="/tools"
+              prefetch={false}
+              className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold whitespace-nowrap ${
+                toolsActive ? "bg-green text-on-green border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
+              }`}
+            >
+              <Icon name="calculator" />
+              Tools
+            </Link>
+            <Link
+              href="/blog"
+              prefetch={false}
+              className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold whitespace-nowrap ${
+                blogActive ? "bg-green text-on-green border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
+              }`}
+            >
+              <Icon name="blog" />
+              Blog
+            </Link>
+          </>
+        )}
         <Link
           href={plansHref}
           prefetch={false}

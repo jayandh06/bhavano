@@ -6,6 +6,10 @@ import { buildBrowsePath } from "@/lib/listingPath";
 import { postHref } from "@/lib/postHref";
 import { GooglePlayBadge } from "./GooglePlayBadge";
 import { AppStoreBadge } from "./AppStoreBadge";
+import { marketCopy } from "@/lib/marketCopy";
+
+// Market wording (India's strings unchanged): lib/marketCopy.ts.
+const COPY = marketCopy();
 
 // Today's largest seeded city has 20 curated areas — this is a defensive ceiling against a
 // future city accumulating far more user-added areas, not an active truncation. Cities are a
@@ -151,8 +155,7 @@ export async function Footer({
               docs/plans/finfolia-entity-disclosure.md. */}
           <p className="text-[12.5px] text-on-green/85 leading-[1.6] m-0 mb-1.5">{ENTITY_TAGLINE}</p>
           <p className="text-[13px] text-on-green/85 leading-[1.6] m-0">
-            Verified listings to buy, rent or lease houses, apartments, villas, plots, coworking desks, commercial
-            spaces and PG accommodation across India — no login needed to browse.
+            {COPY.footerBlurb}
           </p>
         </div>
         {currentCityName && <LocationBlock heading={`Areas in ${currentCityName}`} items={areaItems} />}
@@ -168,7 +171,7 @@ export async function Footer({
             <Link href={postHref(currentCityName, "footer")} prefetch={false}>
               Post an ad
             </Link>
-            <Link href="/tools" prefetch={false}>Tools</Link>
+            {COPY.indiaContent && <Link href="/tools" prefetch={false}>Tools</Link>}
             <Link href="/help" prefetch={false}>Help centre</Link>
             <Link href="/about" prefetch={false}>About us</Link>
           </div>
@@ -202,7 +205,7 @@ export async function Footer({
         <div className="flex gap-5 text-xs">
           <Link href="/about" prefetch={false}>About Us</Link>
           <Link href="/trust" prefetch={false}>Trust &amp; Safety</Link>
-          <Link href="/blog" prefetch={false}>Blog</Link>
+          {COPY.indiaContent && <Link href="/blog" prefetch={false}>Blog</Link>}
           <Link href="/terms" prefetch={false}>Terms of Service</Link>
           <Link href="/privacy" prefetch={false}>Privacy Policy</Link>
           <Link href="/contact" prefetch={false}>Contact Us</Link>

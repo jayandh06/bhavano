@@ -11,6 +11,10 @@ import { LocationPicker } from "./LocationPicker";
 import { HeaderDrawerAccount } from "./HeaderDrawerAccount";
 import { ThemeToggle } from "./ThemeToggle";
 import { Icon } from "./Icon";
+import { marketCopy } from "@/lib/marketCopy";
+
+// Market wording (India's strings unchanged): lib/marketCopy.ts.
+const COPY = marketCopy();
 
 /**
  * Contents of the mobile header's hamburger drawer (see `MobileHeaderCollapse`). Plain Server
@@ -73,12 +77,16 @@ export function HeaderDrawer({
           </Link>
         );
       })}
-      <Link href="/tools" prefetch={false} className={rowClass}>
-        <Icon name="calculator" className="text-muted" /> Tools
-      </Link>
-      <Link href="/blog" prefetch={false} className={rowClass}>
-        <Icon name="blog" className="text-muted" /> Blog
-      </Link>
+      {COPY.indiaContent && (
+        <>
+          <Link href="/tools" prefetch={false} className={rowClass}>
+            <Icon name="calculator" className="text-muted" /> Tools
+          </Link>
+          <Link href="/blog" prefetch={false} className={rowClass}>
+            <Icon name="blog" className="text-muted" /> Blog
+          </Link>
+        </>
+      )}
       <Link href={cityName ? `/premium?city=${slugify(cityName)}` : "/premium"} prefetch={false} className={rowClass}>
         <Icon name="sparkles" className="text-gold" /> Plans
       </Link>

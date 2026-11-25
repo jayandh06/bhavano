@@ -18,6 +18,7 @@ import { AD_LANDING_INTENTS, resolveAdLandingIntent } from "@/lib/adLandingCard"
 import { AdLandingCard, LISTINGS_ANCHOR_ID } from "@/components/home/AdLandingCard";
 import { DiwaliBanner } from "@/components/home/DiwaliBanner";
 import { showDiwali } from "@/lib/festive";
+import { marketCopy } from "@/lib/marketCopy";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
 import { Header } from "@/components/home/Header";
 import { segmentsForHomeCategory } from "@/lib/seoRoute";
@@ -70,6 +71,9 @@ function parseCategory(value: string | string[] | undefined): HomeTabValue {
 // separately per combination the way the dedicated /{city}/... pages are — every variant
 // canonicalizes back to the plain root.
 export const metadata: Metadata = { alternates: { canonical: "/" } };
+
+// Market wording for the home page (India's strings unchanged): lib/marketCopy.ts.
+const COPY = marketCopy();
 
 export default async function HomePage({
   searchParams,
@@ -229,7 +233,7 @@ export default async function HomePage({
           : activeTab.label,
     // "India" when no city is selected, so the H1 reads "Rent & Lease in India" rather than
     // dropping the location and leaving a bare category.
-    cityName: cityName ?? "India",
+    cityName: cityName ?? COPY.anywhere,
     propertyType,
     bedrooms: singleBedroom,
     listingCategory,
@@ -263,7 +267,7 @@ export default async function HomePage({
     !noAreaSelected;
   // Only the plain homepage shows the block, so only it pays for the lookup.
   const popularAreas = isPlainRoot ? await fetchPublishedAreaOverviewLinks(12) : [];
-  const displayHeading = isPlainRoot ? "Buy, rent and list property across India" : heading;
+  const displayHeading = isPlainRoot ? COPY.homeHeading : heading;
 
   function buildPageHref(nextPage: number): string {
     const params = new URLSearchParams();
@@ -311,15 +315,12 @@ export default async function HomePage({
           * line — it clips gracefully on the narrowest phones instead of wrapping if the exact
           * copy ever runs long. */}
         <p className="hidden sm:block text-[14px] text-text-soft mb-5">
-          Bhavano is India&apos;s classifieds marketplace for buying, selling, renting and leasing
-          homes, plots, commercial space, coworking desks, PG stays and furniture. Sign in with
-          Google or your phone number only when you want to post a listing, save a favourite, or
-          message a seller — we use your account solely to power those features.
+          {COPY.homeIntro}
         </p>
         <p className="sm:hidden truncate text-[13px] text-text-soft mb-5">
-          Buy, rent, sell & lease — free, no brokerage, message sellers directly.
+          {COPY.homeIntroShort}
         </p>
-        {showDiwali(new Date(), sp.festive) && <DiwaliBanner />}
+        {COPY.indiaContent && showDiwali(new Date(), sp.festive) && <DiwaliBanner />}
         {adLanding && (
           <AdLandingCard intent={adLanding.intent} preview={adLanding.preview} freeToPost={freeToPost} />
         )}

@@ -15,6 +15,10 @@ import { MobileHeaderCollapse } from "./MobileHeaderCollapse";
 import { MobileInlineSearch } from "./MobileInlineSearch";
 import { HeaderDrawer } from "./HeaderDrawer";
 import { Icon } from "./Icon";
+import { marketCopy } from "@/lib/marketCopy";
+
+// Market wording (India's strings unchanged): lib/marketCopy.ts.
+const COPY = marketCopy();
 
 export function Header({
   cityName,
@@ -115,7 +119,7 @@ export function Header({
             * removed: `display:none` still leaves it in the HTML, so it remains the earliest
             * crawlable statement of what the site is, which is the only reason it exists. */}
           <span className="hidden sm:block opacity-[0.85] truncate max-w-full">
-            India&apos;s home for Buy · Rent · Villas · Plots · Coworking · PG · Commercial
+            {COPY.headerTagline}
           </span>
           {/* Pushed right on a phone. The tagline that used to sit to their left is hidden
             * there, so left-aligned links ended up alone against the edge with the whole bar
@@ -131,9 +135,11 @@ export function Header({
             <Link href={postHref(cityName, "utility_bar")} prefetch={false} className="text-inherit transition-colors hover:text-[color:var(--gold)]">
               For Owners
             </Link>
-            <Link href="/tools" prefetch={false} className="text-inherit transition-colors hover:text-[color:var(--gold)]">
-              Tools
-            </Link>
+            {COPY.indiaContent && (
+              <Link href="/tools" prefetch={false} className="text-inherit transition-colors hover:text-[color:var(--gold)]">
+                Tools
+              </Link>
+            )}
             <Link href={cityName ? `/premium?city=${slugify(cityName)}` : "/premium"} prefetch={false} className="text-inherit transition-colors hover:text-[color:var(--gold)]">
               Plans
             </Link>
