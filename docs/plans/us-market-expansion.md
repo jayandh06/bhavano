@@ -67,7 +67,7 @@ The market comes from the URL path on web (`/us/...` is the US, everything else 
 | Content | Blog, guides, land-record pages, India calculators | Hidden at launch | Hidden (404, links removed) in the US build 2026-11-25; the moving guide too |
 | Sign-in | Phone/WhatsApp OTP first, Google, Apple, email | Email, Google, Apple first; phone optional | Phone rules only; US flow not built |
 | Notifications | WhatsApp and MSG91 SMS | Email and push (SMS only with consent) | Not built |
-| Pricing and payments | Razorpay, Apple/Google INR tiers | Stripe or USD store tiers, new price numbers | Not built |
+| Pricing and payments | Razorpay, Apple/Google INR tiers | Stripe or USD store tiers, new price numbers | Plan and contact-credit prices set in dollars 2026-11-25 (rule below); payments, boost, instant-alert and platform-fee prices not built |
 | Legal | Finfolia Technologies LLP texts, DLT | US entity, CCPA, Fair Housing notice | Not built |
 | Mobile app | One app, India API, India storefront link | Same app, US API, US storefront link | Market store and UI done; switch, US API and release not built |
 | Search and ads | Existing pages and rankings untouched | New Google Ads setup, housing-ad rules | Not built |
@@ -194,6 +194,12 @@ fallback offers only the market's categories and nothing in the US without a cit
 button, guest prompt, Help text, profile merge prompt) use US spelling through `spell()` in `marketCopy.ts` (India unchanged). **Not done, needs a decision or legal text:** About, Trust, Terms and Privacy (India entity, GST and DLT text), the
 footer's legal-entity line and copyright, the Help page's FAQs about phone-OTP login and listing checks, the category tabs and menus (PG, plots, coworking, furniture, interiors), "BHK" in search
 and headings (bed and bath), the `/premium` plans page (INR), browse and city page copy, and the mobile app's wording.
+
+**Built 2026-11-25 (US plan prices):** the owner's rule for US prices is the rupee amount divided by 60, rounded up to the next $5 (never below $5), which gives the owner's examples (Rs 199 = $5, Rs 799 = $15, Rs 1,200 = $20). `usdTierFromInr` in
+`packages/types/src/subscriptionPricing.ts` is that rule; `US_SUBSCRIPTION_PLAN_SETTINGS` and the US contact-credit default are it applied to India's amounts (a test keeps them equal). Result: seller slot pack Rs 149 = $5 a month, Agent Pro Rs 499 = $10 a
+month per unit, Bhavano Plus Rs 99 / 549 / 899 = $5 / $10 / $15 for 1 / 6 / 12 months, contact-credit pack (5 reveals) Rs 125 = $5. The BFF writes these defaults on a US stack (`defaultSubscriptionPlanSettings(MARKET.id)` and
+`DEFAULT_CONTACT_REVEAL_SETTINGS`; India's values are unchanged and tested). The US database's two settings rows were also updated directly (they already existed with India's numbers), so `/us/premium` shows the dollar prices now.
+**Not done:** buying is not possible in the US (no payment provider: the Subscribe and credit buttons would fail), and the boost, instant-alert and listing-publish (platform fee) prices are still India's rupee numbers shown with a `$`.
 
 ## Decisions needed from the owner
 
