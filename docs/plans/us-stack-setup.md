@@ -39,8 +39,16 @@ US DB instance (its own EC2, same region and VPC)
 
 1. **AWS**: two EC2 instances in one US region and VPC, as India does (`docs/deployment.md`, "app instance + db instance"; plan: `us-east-1`, ARM,
    since the images are `linux/arm64`).
-   - **Sizing (decided 2026-11-24): both `t4g.medium`** (2 vCPU, 4 GB, burstable), about $25 a month each. Watch CPU credits and the app's memory
-     once there is traffic; resizing within `t4g` is a stop, change type, start. Add a 2 GB swap file on the app instance. Not measured against the real containers.
+   - **Sizing (decided 2026-11-24): both `t4g.medium`** (2 vCPU, 4 GB, burstable), about $25 a month each, the same type as India's app and DB
+     instances. Add a 2 GB swap file on the app instance and a `CPUCreditBalance` alarm on both; keep the default unlimited credit mode.
+     Resizing within `t4g` is a stop, change type, start.
+     - **Evidence (India, read with a read-only IAM profile on 2026-11-25; CloudWatch, last 30 days):** the app instance averaged 7.8% CPU (hourly
+       peaks about 17%, one hour at 76%) and the DB instance 1.0% (one hour at 47%). The CPU credit balance never fell below 570.7 of 576 (app) and
+       575 of 576 (DB), and no surplus credits were charged, so unlimited mode cost nothing extra. Both are in unlimited mode.
+     - **Why not `m7g.medium` (dedicated CPU, about $30):** it has one vCPU, and India's 76% peak is about 1.5 vCPUs busy for an hour, so it would
+       have saturated where the two `t4g` cores did not. **`t2.medium`** was rejected: x86 (the images are arm64), older, slower and dearer.
+     - **Not measured:** memory (CloudWatch does not record it; India's app host has 4 GB and no swap, and a build ran it out of memory on 2026-09-28),
+       and anything beyond 30 days. India's load is not a forecast of US load. Revisit the size once the US has real traffic.
    - **App instance**: 40 GB gp3, an Elastic IP, a security group (80/443 open, SSH from your address only), Docker, the repo at `~/bhavano`.
    - **DB instance**: its own 40 GB gp3 volume with daily snapshots, no public access: a security group that allows 5432 only from the app instance's group (and
      SSH from your address). Install PostgreSQL 16, create the `bhavano` role and database, set `listen_addresses` and `pg_hba.conf` for the VPC range
