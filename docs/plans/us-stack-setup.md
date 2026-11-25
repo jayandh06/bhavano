@@ -99,8 +99,15 @@ address needs the rule updated. `DATABASE_URL` for the US `.env` uses the DB's p
   `bhavano-us-{app,db}-status-check-failed`, all sending to the SNS topic `bhavano-us-alerts` (email subscription to support@bhavano.com; it must be confirmed from
   the AWS email or nothing is delivered). A new unlimited-mode `t4g` instance starts near 0 credits and earns 24 an hour, so the credit alarms read ALARM for
   the first few hours and then clear; heavy CPU in that window can bill small surplus charges.
-- **Still to do on the hosts:** clone the repo, write `.env`, log in to ghcr.io, and deploy; the nightly
-  dump for the DB; the monthly OS-update routine (the DB's public address is for outbound access only). The `bhavano-us`
+- **Nightly dump (2026-11-25):** on the DB instance, `bhavano-pg-dump.timer` runs `/usr/local/bin/bhavano-pg-dump-us.sh` at 06:00 UTC (about 01:00 US Eastern,
+  before the 07:00 UTC snapshot): `sudo -u postgres pg_dump -Fc` (no password in the script), checked with `pg_restore --list`, kept 3 deep in `/var/backups/bhavano-local`, and
+  copied over the VPC to the app instance (`bhavano-backup@10.20.1.20:/var/backups/bhavano`, newest 3). The push uses a root key on the DB host
+  (`/root/.ssh/us_app_backup`) authorized on the app instance only from `10.20.1.10` with `restrict`; the app security group allows SSH from the DB group for it.
+  India's script copies to Finfolia instead; the US has no equivalent, so this off-box copy is a second host in the same VPC and AZ, not a different region or
+  account. Run now: `sudo systemctl start bhavano-pg-dump.service`. Verified once: dump, copy, prune and a restore into a scratch database all succeeded
+  (on an empty database, 1.3 KB, so it proves the plumbing, not a real restore).
+- **Still to do on the hosts:** clone the repo, write `.env`, log in to ghcr.io, and deploy; a dump copy outside the region or account (an S3 bucket needs an
+  instance role); the monthly OS-update routine (the DB's public address is for outbound access only). The `bhavano-us`
   CLI profile had a temporary inline policy `bhavano-us-ops` (DLM, SNS, one IAM role) for this; remove it from the IAM user when done.
 
 ## Not done / not verified
