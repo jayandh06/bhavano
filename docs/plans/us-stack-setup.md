@@ -71,6 +71,38 @@ US DB instance (its own EC2, same region and VPC)
    three parts: set `US_ROBOTS_TAG=all`, flip `indexable: true` for the US in `packages/types/src/market.ts` and rebuild the US image, then add the
    US sitemap (see "Not done").
 
+## Provisioned 2026-11-25 (AWS account 122610498860, `us-east-1`)
+
+Created with the `bhavano-us` CLI profile; everything is tagged `Project=bhavano-us-prod`.
+
+| What | Id / value |
+|---|---|
+| VPC `10.20.0.0/16` (one public subnet `10.20.1.0/24`, `us-east-1a`, internet gateway, route table) | `vpc-0acf57880b442652f`, `subnet-08117abd980ddaed0`, `igw-08eb77bfa619dd7ac`, `rtb-0013cb3a054bc6d64` |
+| App instance `bhavano-us-app`, `t4g.medium`, Ubuntu 26.04.1 arm64, 40 GB gp3 (encrypted), private `10.20.1.20` | `i-047708290a12ef7f3`, Elastic IP `52.45.78.97` |
+| DB instance `bhavano-us-db`, same type and disk, private `10.20.1.10` | `i-09f2a023062a82394` (auto-assigned public IP, outbound installs only; it changes on stop/start) |
+| Security groups | app `sg-016973e53df92f019` (80/443 open, SSH from the admin IP), db `sg-0d89b9e299a6898ba` (5432 from the app group only, SSH from the admin IP) |
+| Key pair `bhavano-us-prod` | private key at `~/.ssh/bhavano-us-prod.pem` on the machine that created it; not in the repo |
+
+Both instances are in unlimited credit mode with termination protection on and IMDSv2 required. The SSH rule allows one admin address only, so a changed
+address needs the rule updated. `DATABASE_URL` for the US `.env` uses the DB's private address `10.20.1.10`.
+
+**Installed on the hosts (2026-11-25):**
+- **DB instance:** PostgreSQL 16.16 from PGDG (it supports Ubuntu 26.04), role and database `bhavano`, `listen_addresses = '*'` and a `pg_hba.conf`
+  line for `10.20.0.0/16` with `scram-sha-256` (the security group allows 5432 from the app group only), service enabled. Default tuning, not adjusted.
+- **App instance:** a 2 GB swap file (`vm.swappiness=10`), Docker 29.10 with the compose and buildx plugins (Docker has a repo for 26.04), the `ubuntu` user in the
+  `docker` group, and the `psql` client (18.6). The generated database password is in `~/.us-db-password` (mode 600) on the app instance only;
+  it goes into `DATABASE_URL` in the US `.env` and is not stored anywhere else. Checked: the app instance logs in to the DB at `10.20.1.10` and
+  `CREATE EXTENSION pg_trgm` works as the `bhavano` role.
+- **Snapshots (2026-11-25):** Data Lifecycle Manager policy `policy-00793204c3843f791`: daily at 07:00 UTC, keep 7, for volumes tagged
+  `Project=bhavano-us-prod` (both US volumes), run by the AWS-defined role `AWSDataLifecycleManagerDefaultRole`. Restore by creating a volume from a snapshot.
+- **Alarms and alerts (2026-11-25):** CloudWatch alarms `bhavano-us-{app,db}-cpu-credits-low` (`CPUCreditBalance` under 100 of 576 for 15 minutes) and
+  `bhavano-us-{app,db}-status-check-failed`, all sending to the SNS topic `bhavano-us-alerts` (email subscription to support@bhavano.com; it must be confirmed from
+  the AWS email or nothing is delivered). A new unlimited-mode `t4g` instance starts near 0 credits and earns 24 an hour, so the credit alarms read ALARM for
+  the first few hours and then clear; heavy CPU in that window can bill small surplus charges.
+- **Still to do on the hosts:** clone the repo, write `.env`, log in to ghcr.io, and deploy; the nightly
+  dump for the DB; the monthly OS-update routine (the DB's public address is for outbound access only). The `bhavano-us`
+  CLI profile had a temporary inline policy `bhavano-us-ops` (DLM, SNS, one IAM role) for this; remove it from the IAM user when done.
+
 ## Not done / not verified
 
 - **No end-to-end run.** The US-mode web build compiled here, but the stack has not been started: Docker was not running on this

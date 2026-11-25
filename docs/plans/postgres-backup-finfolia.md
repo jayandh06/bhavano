@@ -1,7 +1,10 @@
 # Postgres backups (Finfolia dump store)
 
-Status: **deployed** for nightly `pg_dump` → Finfolia (3-day retention). EBS snapshot policy and
-restore dry-run remain recommended follow-ups. Operator runbook lives in
+Status: **deployed** for nightly `pg_dump` → Finfolia (3-day retention). **EBS snapshots added 2026-11-25:** Data Lifecycle Manager
+policy `policy-0c455046ddae6e02a` in `ap-south-1`, daily at 22:00 UTC (about 03:30 IST, after the 21:00 UTC dump), keep 7, for the two Bhavano volumes
+(`vol-0cff7fc719cd0370c` app 40 GB, `vol-046b184a044c7c1c4` DB 8 GB), selected by the tag `Project=bhavano-india-prod` (added to both volumes). Restore dry-run
+remains a recommended follow-up. Before this there were no snapshot policies, alarms or SNS topics in `ap-south-1`; CloudWatch alarms
+`bhavano-india-{app,db}-{cpu-credits-low,status-check-failed}` now exist and send to the SNS topic `bhavano-india-alerts` (`ap-south-1`, email subscription to support@bhavano.com; it must be confirmed from the AWS email or nothing is delivered). Operator runbook lives in
 [`docs/deployment.md`](../deployment.md) → **Postgres backups (nightly dump → Finfolia EC2)**.
 
 ## Decision
