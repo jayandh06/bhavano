@@ -140,6 +140,13 @@ address needs the rule updated. `DATABASE_URL` for the US `.env` uses the DB's p
   and verified on the US host after deploying `sha-da3807b8` (2026-11-25): `/us/api/auth/providers`, `csrf` and `session` answer 200, and the providers list Google with the callback
   `https://www.bhavano.com/us/api/auth/callback/google`. The Google sign-in flow itself is not tried yet (needs the US redirect URIs on the OAuth client). Note: Compose does not recreate a container whose image
   has the same content, even when the registry digest differs (each build adds a provenance record), so `bff` stayed on the previous build while only `web` was recreated; that is correct.
+- **US Maps keys (2026-11-25):** two new keys in the same Google Cloud project as India's (`Bhavano`), so billing and quota are shared with India but the keys are separate and India's were not edited.
+  `Bhavano-US-Server`: restricted to the US app IP `52.45.78.97` and to the Geocoding API, Places API and Places API (New); it replaced the copied India key in the US `.env` (`GOOGLE_MAPS_SERVER_KEY`; the
+  previous file is `.env.bak-before-us-maps-key`) and `bff` was recreated. Verified from the US host: geocode, reverse geocode, Places autocomplete (US) and Places nearby search all succeed.
+  `Bhavano-US-Web`: restricted to the Maps JavaScript API, Places API and Places API (New) and to the referrers `https://www.bhavano.com/us/*` and `https://us-origin.bhavano.com/*`; it is the GitHub variable
+  `US_NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY`, baked into the web image. Rebuilt (`sha-e88538f2`, `web-us` only) and deployed (`-Services web`): the served `/us/post` page carries the US key and not India's, and from the
+  `https://us-origin.bhavano.com` origin the Maps JavaScript API loads and Places autocomplete returns predictions. The in-browser Geocoder is refused, as intended (the key has no Geocoding API; the app
+  only uses the map, the marker and the Places Autocomplete widget in the browser, and reverse-geocodes on the server). The full map-picker screen has not been exercised (it sits behind the post flow).
 - **Still to do on the hosts:** a dump copy outside the region or account (an S3 bucket needs an
   instance role); the monthly OS-update routine (the DB's public address is for outbound access only). The `bhavano-us`
   CLI profile had a temporary inline policy `bhavano-us-ops` (DLM, SNS, one IAM role) for this; remove it from the IAM user when done.
