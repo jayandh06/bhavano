@@ -106,7 +106,24 @@ address needs the rule updated. `DATABASE_URL` for the US `.env` uses the DB's p
   India's script copies to Finfolia instead; the US has no equivalent, so this off-box copy is a second host in the same VPC and AZ, not a different region or
   account. Run now: `sudo systemctl start bhavano-pg-dump.service`. Verified once: dump, copy, prune and a restore into a scratch database all succeeded
   (on an empty database, 1.3 KB, so it proves the plumbing, not a real restore).
-- **Still to do on the hosts:** clone the repo, write `.env`, log in to ghcr.io, and deploy; a dump copy outside the region or account (an S3 bucket needs an
+- **Repo and `.env` (2026-11-25):** the repo is cloned at `~/bhavano` on the app instance through a read-only GitHub deploy key (`bhavano-us-app (read-only)`, repo Settings
+  > Deploy keys; its private half is `~/.ssh/id_ed25519_github` on the instance), so `git pull --ff-only` in the deploy script works. `~/bhavano/.env` (mode 600) was made from
+  `.env.us.example` with the database URL (private IP `10.20.1.10`) and two fresh random secrets (`AUTH_JWT_SECRET`, `NEXTAUTH_SECRET`); `docker compose config` parses it. The domain
+  names are the template defaults (`us-origin.bhavano.com`, `api.us.bhavano.com`). Still empty: Google OAuth, Maps server key, SMTP, the `R2_*` photo bucket and `CDN_BASE_URL`,
+  admin emails, and the optional keys.
+- **DNS (2026-11-25):** in the Cloudflare `bhavano.com` zone, two A records to the app instance's Elastic IP `52.45.78.97`, both **DNS only** (not proxied, so Caddy can get its
+  certificates): `us-origin.bhavano.com` and `api.us.bhavano.com` (TTL Auto, resolving from Cloudflare, 1.1.1.1 and 8.8.8.8). India's records were not touched. Nothing answers on 80/443 until
+  the first deploy.
+- **First deploy (2026-11-25):** images built with `gh workflow run build-images.yml -f services=web-us,bff` (repo variables `US_NEXT_PUBLIC_BFF_URL=https://api.us.bhavano.com` and
+  `US_NEXT_PUBLIC_SITE_URL=https://www.bhavano.com/us` set; GTM, Meta Pixel and the Maps browser key unset), then `scripts/deploy-from-registry.ps1 -Stack us -Ec2Host 52.45.78.97 -SshKey <pem> -Tag sha-<8>`
+  on the build of master `a450cf7d`. Result: `bff` healthy, `web` up, 135 migrations applied (77 tables), Caddy up with Let's Encrypt certificates for both names, `/health` 200, `/us` 200 with
+  `X-Robots-Tag: noindex, nofollow` and the noindex meta tag. India's `www.bhavano.com` still 200.
+  - **On an empty database the script cannot finish the first time:** it waits for `bff` to be healthy before migrating, and `bff` is unhealthy until the schema exists. Run the migrations first, once:
+    start `bff`, then `docker compose -f docker-compose.us.yml --env-file .env exec -T bff npx prisma migrate deploy` (project `bhavano-us`), then rerun the script with `-SkipMigrate`.
+  - **The script starts only `web` and `bff`, not Caddy** (nothing depends on it): start it once with `docker compose -f docker-compose.us.yml --env-file .env up -d --no-build caddy`.
+  - `US_ROBOTS_TAG` is quoted in `.env.us.example` (`"noindex, nofollow"`) so the file can also be sourced by a shell.
+  - Not yet working, by design: sign-in (Google OAuth, SMTP and the photo bucket keys are empty), the map picker (no US Maps browser key), and the site still shows India wording (title and copy).
+- **Still to do on the hosts:** a dump copy outside the region or account (an S3 bucket needs an
   instance role); the monthly OS-update routine (the DB's public address is for outbound access only). The `bhavano-us`
   CLI profile had a temporary inline policy `bhavano-us-ops` (DLM, SNS, one IAM role) for this; remove it from the IAM user when done.
 
