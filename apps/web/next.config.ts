@@ -28,7 +28,11 @@ const nextConfig: NextConfig = {
     // Hardcoded rather than read from an env var here — next.config.ts's `images` option is
     // resolved at build time, and this app's Docker build doesn't currently pass NEXT_PUBLIC_*
     // vars in as build args, so an env-var lookup here wouldn't reliably take effect anyway.
-    remotePatterns: [{ protocol: "https", hostname: "cdn.bhavano.com" }],
+    // cdn-us is the US market's own bucket and CDN host (docs/plans/us-stack-setup.md); a second allowed host changes nothing for India.
+    remotePatterns: [
+      { protocol: "https", hostname: "cdn.bhavano.com" },
+      { protocol: "https", hostname: "cdn-us.bhavano.com" },
+    ],
     // Next 16 only serves the qualities listed here. 60 is used for listing-card photos (Lighthouse flagged the
     // default 75 as over-compressed for small thumbnails); 75 stays for anything that doesn't ask.
     qualities: [60, 75],
