@@ -130,6 +130,14 @@ address needs the rule updated. `DATABASE_URL` for the US `.env` uses the DB's p
   `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET=bhavano-photos-us`, `CDN_BASE_URL=https://cdn-us.bhavano.com`; the previous file is `.env.bak-before-r2`) and `bff` was recreated.
   Verified from the US host: upload to the bucket, fetch through the CDN (`200`), delete. Uploads go through the API with `PutObject`, so no CORS rule is set. Not yet verified: a real photo
   upload through the app (needs sign-in), and `apps/web/next.config.ts` now allows the `cdn-us.bhavano.com` image host, which takes effect after the US web image is rebuilt and redeployed.
+- **Keys copied from India's `.env` (2026-11-25), as decided:** `GOOGLE_CLIENT_ID`/`SECRET`, `SMTP_*`, `GOOGLE_MAPS_SERVER_KEY`, `ADMIN_EMAILS`, plus `GOOGLE_IOS_CLIENT_ID`, `GOOGLE_ANDROID_CLIENT_ID` and `APPLE_BUNDLE_ID`
+  (public identifiers of the same mobile app), copied host to host through the deploy machine without printing them (lengths match India's; the US `.env` before the copy is `.env.bak-before-india-keys`).
+  The secrets (`AUTH_JWT_SECRET`, `NEXTAUTH_SECRET`, the database password, the R2 token) stay separate. Checked from the US host: SMTP login works (nothing sent). **The Maps server key is denied from
+  the US IP** (`REQUEST_DENIED`, "This IP ... is not authorized"): add `52.45.78.97` to that key's IP restrictions in Google Cloud Console (or make a US key). Google OAuth still needs the two US redirect URIs added
+  to India's client (`https://www.bhavano.com/us/api/auth/callback/google` and `https://us-origin.bhavano.com/us/api/auth/callback/google`).
+- **Sign-in route fix (2026-11-25):** `/us/api/auth/*` answered 400 (`UnknownAction: Cannot parse action at /api/auth/csrf`): Auth.js takes its base path from the pathname of `AUTH_URL`
+  (`/us/api/auth`), but Next strips `/us` before the route handler runs. `apps/web/src/lib/authRequest.ts` restores the prefix on the incoming request (a no-op for India), used by the auth route. Unit-tested;
+  not yet verified on a running US build (needs a rebuild and redeploy).
 - **Still to do on the hosts:** a dump copy outside the region or account (an S3 bucket needs an
   instance role); the monthly OS-update routine (the DB's public address is for outbound access only). The `bhavano-us`
   CLI profile had a temporary inline policy `bhavano-us-ops` (DLM, SNS, one IAM role) for this; remove it from the IAM user when done.
