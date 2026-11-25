@@ -124,6 +124,12 @@ address needs the rule updated. `DATABASE_URL` for the US `.env` uses the DB's p
     healthy; the live stack was untouched. Not run against India's stack (the order is the same for it, but a failed migration now stops before web and admin are recreated).
   - `US_ROBOTS_TAG` is quoted in `.env.us.example` (`"noindex, nofollow"`) so the file can also be sourced by a shell.
   - Not yet working, by design: sign-in (Google OAuth, SMTP and the photo bucket keys are empty), the map picker (no US Maps browser key), and the site still shows India wording (title and copy).
+- **Photo bucket and CDN (2026-11-25):** a separate R2 bucket `bhavano-photos-us` (location hint ENAM, in the same Cloudflare account as India's `bhavano-photos`), public through the custom domain
+  **`cdn-us.bhavano.com`** (one subdomain level, because Cloudflare's free certificate covers `*.bhavano.com` only; the CNAME was added by the R2 custom-domain flow), and an account API
+  token `bhavano-us-photos` with Object Read & Write on that bucket only, restricted to the US app instance's IP `52.45.78.97`. The five values are in `~/bhavano/.env` (`R2_ACCOUNT_ID`,
+  `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET=bhavano-photos-us`, `CDN_BASE_URL=https://cdn-us.bhavano.com`; the previous file is `.env.bak-before-r2`) and `bff` was recreated.
+  Verified from the US host: upload to the bucket, fetch through the CDN (`200`), delete. Uploads go through the API with `PutObject`, so no CORS rule is set. Not yet verified: a real photo
+  upload through the app (needs sign-in), and `apps/web/next.config.ts` now allows the `cdn-us.bhavano.com` image host, which takes effect after the US web image is rebuilt and redeployed.
 - **Still to do on the hosts:** a dump copy outside the region or account (an S3 bucket needs an
   instance role); the monthly OS-update routine (the DB's public address is for outbound access only). The `bhavano-us`
   CLI profile had a temporary inline policy `bhavano-us-ops` (DLM, SNS, one IAM role) for this; remove it from the IAM user when done.
