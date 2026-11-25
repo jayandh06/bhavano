@@ -16,6 +16,10 @@ import { MobileInlineSearch } from "./MobileInlineSearch";
 import { HeaderDrawer } from "./HeaderDrawer";
 import { Icon } from "./Icon";
 import { marketCopy } from "@/lib/marketCopy";
+import { withBasePath } from "@/lib/basePath";
+
+// next/image needs a local path to carry the build's base path (it is not added for you): "/us/logo.png" in the US build, "/logo.png" for India.
+const LOGO_SRC = withBasePath("/logo.png");
 
 // Market wording (India's strings unchanged): lib/marketCopy.ts.
 const COPY = marketCopy();
@@ -91,7 +95,7 @@ export function Header({
               * already names it) would leave this link with no accessible name for an image-alt
               * crawl to find, despite the link's own aria-label already covering real screen
               * readers. */}
-            <Image src="/logo.png" alt="Bhavano" width={30} height={30} className="rounded-lg w-[30px] h-[30px]" />
+            <Image src={LOGO_SRC} alt="Bhavano" width={30} height={30} className="rounded-lg w-[30px] h-[30px]" />
           </Link>
           <span className="flex-1" />
           <Link
@@ -169,7 +173,7 @@ export function Header({
             * shrink-0, so the button can never be pushed past the screen edge and clipped. */}
           <div className="flex items-center gap-2 sm:gap-3 py-2.5 sm:py-3">
             <Link href="/" className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-              <Image src="/logo.png" alt="" width={38} height={38} className="rounded-[10px] w-8 h-8 sm:w-[38px] sm:h-[38px] shrink-0" priority />
+              <Image src={LOGO_SRC} alt="" width={38} height={38} className="rounded-[10px] w-8 h-8 sm:w-[38px] sm:h-[38px] shrink-0" priority />
               <span className="font-lora font-bold text-xl sm:text-2xl tracking-[-0.01em] text-green truncate">Bhavano</span>
             </Link>
             <HeaderAuthButtons userName={userName} cityName={cityName} accessToken={accessToken} />
