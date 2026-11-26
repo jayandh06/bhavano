@@ -8,6 +8,8 @@ import { Icon } from "../Icon";
 import { homeTabs, type HomeTabValue } from "./categories";
 import { COLLAPSED_BAR_HEIGHT } from "./CollapsedHeaderBar";
 import { useMarket } from "../../lib/market";
+import { openCountryPicker } from "../../lib/countryPicker";
+import { CountryRow } from "../CountryRow";
 import { spell } from "../../lib/marketText";
 
 const DRAWER_WIDTH = 300;
@@ -244,6 +246,12 @@ export function HomeDrawer({
           )}
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <CountryRow
+            onPress={() => {
+              onClose();
+              openCountryPicker();
+            }}
+          />
           <View style={styles.appearanceRow}>
             <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Appearance</Text>
             <Pressable

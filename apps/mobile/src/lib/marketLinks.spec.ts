@@ -1,7 +1,6 @@
 jest.mock("@react-native-async-storage/async-storage", () => ({ getItem: jest.fn(), setItem: jest.fn(), multiSet: jest.fn() }));
 
 import {
-  MARKET_SWITCH_ENABLED,
   appRouteFor,
   parseMarketLink,
   routeSystemPath,
@@ -98,9 +97,5 @@ describe("a link followed into another market", () => {
     setPendingLink(US_LISTING);
     expect(takePendingLink()).toBe(US_LISTING);
     expect(takePendingLink()).toBeNull();
-  });
-
-  it("cannot switch the app yet: the switch ships with the Country setting", () => {
-    expect(MARKET_SWITCH_ENABLED).toBe(false);
   });
 });

@@ -2,6 +2,7 @@ import { useEffect, useMemo, type ReactNode } from "react";
 import { View } from "react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { applyMarketSwitch, hydrateMarket, useMarket, useMarketPhase } from "../lib/market";
+import { FirstMarketChooser } from "./FirstMarketChooser";
 
 /** The brand green of the splash screen and status bar, shown for the moment there is no market to draw. */
 const HOLD_COLOUR = "#11523C";
@@ -24,6 +25,7 @@ export function MarketRoot({ children }: { children: ReactNode }) {
     if (phase === "switching") applyMarketSwitch();
   }, [phase]);
 
+  if (phase === "choosing") return <FirstMarketChooser />;
   if (phase !== "ready") return <View style={{ flex: 1, backgroundColor: HOLD_COLOUR }} />;
 
   return (

@@ -19,6 +19,7 @@ import { BottomTabBar } from "../src/components/home/BottomTabBar";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { UpdateGate } from "../src/components/UpdateGate";
 import { MarketRoot } from "../src/components/MarketRoot";
+import { CountryPicker } from "../src/components/CountryPicker";
 import { useMarket } from "../src/lib/market";
 import { SoftNavAppPageViews } from "../src/components/home/SoftNavAppPageViews";
 import { ReferralLinkBridge } from "../src/components/home/ReferralLinkBridge";
@@ -178,6 +179,8 @@ function AppNavigation() {
               to live here rather than inside the (tabs) group to stay visible on every screen. */}
           <BottomTabBar />
         </SafeAreaView>
+        {/* Over everything, so the drawer and the Account screen can both open it. */}
+        <CountryPicker />
       </AppCrashBoundary>
     </HomeSheetsProvider>
   );

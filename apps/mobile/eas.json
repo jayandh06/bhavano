@@ -9,6 +9,7 @@
       "distribution": "internal",
       "channel": "development",
       "env": {
+        "EXPO_PUBLIC_US_ENABLED": "1",
         "EXPO_PUBLIC_USE_RN_FETCH": "1",
         "SHARP_IGNORE_GLOBAL_LIBVIPS": "1"
       }
@@ -23,6 +24,7 @@
       "distribution": "internal",
       "channel": "preview",
       "env": {
+        "EXPO_PUBLIC_US_ENABLED": "1",
         "EXPO_PUBLIC_USE_RN_FETCH": "1",
         "SHARP_IGNORE_GLOBAL_LIBVIPS": "1"
       }
