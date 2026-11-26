@@ -236,7 +236,7 @@ describe('market categories and area units', () => {
 });
 
 describe('Fair Housing fields', () => {
-  const HIDDEN = ['preferredTenantTypes', 'vegetariansOnly', 'gender', 'foodType'];
+  const HIDDEN = ['preferredTenantTypes', 'vegetariansOnly', 'gender', 'foodType', 'entranceFacing'];
 
   it('hides nothing in India and the preference fields in the US', () => {
     expect(MARKETS.in.hiddenFieldKeys).toEqual([]);

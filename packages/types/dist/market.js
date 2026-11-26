@@ -61,7 +61,8 @@ exports.MARKETS = {
         // Starting set plus condo, townhouse and room for rent (docs/plans/us-categories-condo-townhouse-room.md); the wedge decision in the plan may change it.
         // No PG, coworking, plots or furniture/interiors.
         categories: ["house", "apartment", "villa", "storage", "commercial", "condo", "townhouse", "room"],
-        hiddenFieldKeys: ["preferredTenantTypes", "vegetariansOnly", "gender", "foodType"],
+        // The first four are Fair Housing; "entranceFacing" is Vastu (an India convention) and is a required field, so leaving it visible would force every US poster to pick a compass direction.
+        hiddenFieldKeys: ["preferredTenantTypes", "vegetariansOnly", "gender", "foodType", "entranceFacing"],
         indexable: false,
     },
 };

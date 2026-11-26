@@ -86,7 +86,9 @@ the US prints "Nov 24, 2026"). **Not done:** the admin app (IST by design for an
 times in the viewer's own US time zone (`marketDateFormatter` takes the zone from the caller's options).
 
 **Built 2026-11-24 (Fair Housing fields per market):** `MarketConfig.hiddenFieldKeys` (India none; US `preferredTenantTypes`,
-`vegetariansOnly`, `gender`, `foodType`) and `isMarketField`. `fieldIsVisible`, `pruneHiddenAttributes`,
+`vegetariansOnly`, `gender`, `foodType`, and since 2026-11-26 `entranceFacing`: a Vastu field that is *required* on house, apartment,
+villa, condo and townhouse, so without hiding it no US listing could be posted; found when testing condo posting on the live US stack)
+and `isMarketField`. `fieldIsVisible`, `pruneHiddenAttributes`,
 `listingAttributeIssues`/`listingAttributesIssue`, `listingCompleteness` and `sanitizeRequirementAttributes` take an optional market;
 `requirementQuestionsFor(category, market)` drops the hidden questions. The web and mobile post, edit, detail and requirement
 screens and the BFF's listing and requirement validation pass the market, so the US neither shows nor accepts those fields

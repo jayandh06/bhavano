@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { marketPostCategoryGroups } from "@bhavano/types/postCategories";
 import { intentCategories, INTENT_CATEGORIES } from "@bhavano/types/requirementQuestions";
 import { MARKETS, isMarketCategory } from "@bhavano/types/market";
-import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
+import { CATEGORY_FIELD_CONFIG, fieldIsVisible } from "@bhavano/types/categoryFields";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 
 // Condo, townhouse and room for rent are US-only (docs/plans/us-categories-condo-townhouse-room.md). These pin that India sees none of them and the US sees all three.
@@ -60,6 +60,15 @@ describe("posting rules and fields", () => {
   it("gives condo and townhouse the residential fields", () => {
     expect(CATEGORY_FIELD_CONFIG.condo).toBe(CATEGORY_FIELD_CONFIG.apartment);
     expect(CATEGORY_FIELD_CONFIG.townhouse).toBe(CATEGORY_FIELD_CONFIG.house);
+  });
+
+  it("does not make a US poster pick the Vastu 'entrance facing' (a required field), while India still asks for it", () => {
+    for (const category of ["house", "apartment", "villa", "condo", "townhouse"] as const) {
+      const field = CATEGORY_FIELD_CONFIG[category].find((f) => f.key === "entranceFacing");
+      expect(field?.required, category).toBe(true);
+      expect(fieldIsVisible(field!, "rent", {}, "us"), `${category} US`).toBe(false);
+      expect(fieldIsVisible(field!, "rent", {}, "in"), `${category} India`).toBe(true);
+    }
   });
 
   it("gives the room a short set with no field about who may rent (Fair Housing)", () => {
