@@ -20,6 +20,7 @@ import { ListingAttributeSections } from "../../src/components/home/ListingAttri
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import { ListingPrice } from "../../src/components/home/PriceWithWords";
 import { ReportSheet } from "../../src/components/home/ReportSheet";
+import { useMarket } from "../../src/lib/market";
 
 /** Same URL shape as the website's ListingDetailView.tsx — no origin, so Google Maps prompts for
  * the visitor's own location instead. `lat`/`lng` are already a server-side jittered
@@ -41,6 +42,7 @@ const STATUS_LABELS: Record<string, string> = {
 // Listing details stay open without login; useListingLoginNudge asks, with a Skip.
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const market = useMarket();
   const { colors } = useAppTheme();
   const { requireLogin, accessToken } = useHomeSheets();
   const router = useRouter();
@@ -312,7 +314,10 @@ export default function ListingDetailScreen() {
             </Text>
           )}
           {revealError && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{revealError}</Text>}
-          {insufficientCredits && Platform.OS === "ios" && (
+          {insufficientCredits && !market.paymentsEnabled && (
+            <Text style={{ color: colors.muted, fontSize: 13, marginTop: 8 }}>You&rsquo;ve used your free reveals.</Text>
+          )}
+          {market.paymentsEnabled && insufficientCredits && Platform.OS === "ios" && (
             // iOS sells credits through the App Store, and never points to the website to buy
             // them (App Review Guideline 3.1.1).
             <View style={{ marginTop: 8, gap: 8 }}>
@@ -325,12 +330,12 @@ export default function ListingDetailScreen() {
               </Pressable>
             </View>
           )}
-          {insufficientCredits && Platform.OS !== "ios" && (
+          {market.paymentsEnabled && insufficientCredits && Platform.OS !== "ios" && (
             <Text style={{ color: colors.muted, fontSize: 13, marginTop: 8 }}>
               You&rsquo;ve used your free reveals. Buy contact-reveal credits at bhavano.com to unlock more.
             </Text>
           )}
-          {Platform.OS === "ios" && (
+          {market.paymentsEnabled && Platform.OS === "ios" && (
             <IosCreditsSheet
               visible={creditsSheetOpen}
               onClose={() => setCreditsSheetOpen(false)}

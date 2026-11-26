@@ -163,7 +163,9 @@ function ProfileFields({
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const emailMissing = !profile.email;
-  const canSave = !!profile.phone && !emailMissing;
+  // A phone is only asked for where a code can be sent to verify it.
+  const phoneMissing = market.phoneOtpAvailable && !profile.phone;
+  const canSave = !phoneMissing && !emailMissing;
 
   async function onSendEmailCode() {
     setEmailPending(true);
@@ -480,6 +482,8 @@ function ProfileFields({
             placeholderTextColor={colors.muted}
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
           />
+          {market.indiaContent && (
+          <>
           <Text style={[styles.label, { color: colors.muted }]}>RERA number (optional)</Text>
           <TextInput
             value={reraNumber}
@@ -494,6 +498,8 @@ function ProfileFields({
               ? "✓ Verified by Bhavano — shown on your listings. Changing it removes the badge until we check again."
               : "We check RERA numbers and add a “RERA verified” badge to your listings."}
           </Text>
+          </>
+          )}
         </>
       )}
 
@@ -617,14 +623,16 @@ function ProfileFields({
         </>
       )}
 
+      {(market.phoneOtpAvailable || !!profile.phone) && (
       <Text style={[styles.label, { color: colors.muted }]}>
         Phone{!profile.phone ? " *" : ""}
       </Text>
+      )}
       {profile.phone ? (
         <View style={[styles.readOnly, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
           <Text style={{ color: colors.textSoft, fontSize: 14 }}>{profile.phone}</Text>
         </View>
-      ) : (
+      ) : !market.phoneOtpAvailable ? null : (
         <>
           <Text style={[styles.hint, { color: colors.muted }]}>
             You signed in with Google — add and verify a phone number so buyers/sellers can reach you.
@@ -704,9 +712,9 @@ function ProfileFields({
 
       {!canSave && (
         <Text style={[styles.hint, { color: colors.muted, marginTop: 14 }]}>
-          {!profile.phone && emailMissing
+          {phoneMissing && emailMissing
             ? "Add your email above and verify your phone number above before saving."
-            : !profile.phone
+            : phoneMissing
               ? "Verify your phone number above before saving."
               : "Add your email above before saving."}
         </Text>
@@ -750,9 +758,10 @@ function ProfileFields({
           </>
         ) : (
           <Text style={{ color: colors.muted, fontSize: 12.5 }}>
-            No reveals left. Buy a credit pack from any listing&rsquo;s &ldquo;View Contact&rdquo; button.
+            {market.paymentsEnabled ? "No reveals left. Buy a credit pack from any listing’s “View Contact” button." : "No reveals left."}
           </Text>
         )}
+        {market.paymentsEnabled && (
         <Pressable
           onPress={() =>
             Platform.OS === "ios"
@@ -770,7 +779,8 @@ function ProfileFields({
           </Text>
           <Icon name="chevronRight" size={11} color={colors.green} />
         </Pressable>
-        {Platform.OS === "ios" && (
+        )}
+        {market.paymentsEnabled && Platform.OS === "ios" && (
           <IosCreditsSheet
             visible={creditsSheetOpen}
             onClose={() => setCreditsSheetOpen(false)}
@@ -793,13 +803,17 @@ function ProfileFields({
         <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Saved searches &amp; alerts</Text>
       </Pressable>
 
-      <Pressable onPress={onOpenPurchases} style={[styles.outlineButton, { borderColor: colors.green }]}>
-        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>View your purchase history</Text>
-      </Pressable>
+      {market.paymentsEnabled && (
+        <>
+          <Pressable onPress={onOpenPurchases} style={[styles.outlineButton, { borderColor: colors.green }]}>
+            <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>View your purchase history</Text>
+          </Pressable>
 
-      <Pressable onPress={() => router.push("/referrals")} style={[styles.outlineButton, { borderColor: colors.green }]}>
-        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Referrals &amp; free boosts</Text>
-      </Pressable>
+          <Pressable onPress={() => router.push("/referrals")} style={[styles.outlineButton, { borderColor: colors.green }]}>
+            <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Referrals &amp; free boosts</Text>
+          </Pressable>
+        </>
+      )}
 
       {/* Below Save, above the legal footer: reachable but not adjacent to the primary action,
           so it can't be hit by mistake while editing the profile. */}

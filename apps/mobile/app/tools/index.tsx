@@ -3,9 +3,11 @@ import { useRouter } from "expo-router";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { P, StaticPageLayout } from "../../src/components/home/StaticPageLayout";
 import { TOOLS } from "../../src/components/tools/toolsRegistry";
+import { useMarket } from "../../src/lib/market";
+import { Redirect } from "expo-router";
 
 // Mirrors apps/web/src/app/tools/page.tsx.
-export default function ToolsIndexScreen() {
+function ToolsIndexContent() {
   const { colors } = useAppTheme();
   const router = useRouter();
   return (
@@ -26,4 +28,9 @@ export default function ToolsIndexScreen() {
       ))}
     </StaticPageLayout>
   );
+}
+
+export default function ToolsIndexScreen() {
+  if (!useMarket().indiaContent) return <Redirect href="/" />;
+  return <ToolsIndexContent />;
 }

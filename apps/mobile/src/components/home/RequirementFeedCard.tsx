@@ -2,12 +2,11 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import type { RequirementFeedCardDto } from "@bhavano/types/requirementFeed";
 import { convertArea, formatArea } from "@bhavano/types/areaUnit";
-import { bedroomLabel } from "@bhavano/types/bedrooms";
-import { formatCompactInr } from "@bhavano/types/requirementQuestions";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
 import { getCurrentMarketId } from "../../lib/market";
+import { bedroomListText, compactMoney } from "../../lib/marketText";
 
 const dateFormatter = (id: MarketId) => marketDateFormatter(id, { day: "numeric", month: "short" });
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -21,9 +20,10 @@ function postedAgo(iso: string): string {
 
 function budgetText(card: RequirementFeedCardDto): string | null {
   const { minPrice, maxPrice } = card;
-  if (minPrice && maxPrice) return `${formatCompactInr(minPrice)}–${formatCompactInr(maxPrice)} ${card.budgetUnit}`;
-  if (maxPrice) return `Up to ${formatCompactInr(maxPrice)} ${card.budgetUnit}`;
-  if (minPrice) return `From ${formatCompactInr(minPrice)} ${card.budgetUnit}`;
+  const money = (amount: number) => compactMoney(amount, getCurrentMarketId());
+  if (minPrice && maxPrice) return `${money(minPrice)}–${money(maxPrice)} ${card.budgetUnit}`;
+  if (maxPrice) return `Up to ${money(maxPrice)} ${card.budgetUnit}`;
+  if (minPrice) return `From ${money(minPrice)} ${card.budgetUnit}`;
   return null;
 }
 
@@ -54,7 +54,7 @@ export function RequirementFeedCard({ card }: { card: RequirementFeedCardDto }) 
   const router = useRouter();
 
   const facts = [
-    card.bedroomOptions.length ? `${card.bedroomOptions.map(bedroomLabel).join(", ")} BHK` : null,
+    card.bedroomOptions.length ? bedroomListText(card.bedroomOptions, ", ", getCurrentMarketId()) : null,
     budgetText(card),
     sizeText(card),
     moveInText(card.moveInBy),

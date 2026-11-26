@@ -3,6 +3,8 @@ import { LEGAL_ENTITY, entityAddressLines, entityOperatorSentence } from "@bhava
 import { useAppTheme } from "../src/theme/ThemeContext";
 import { useSeekerContactSettings } from "../src/lib/useSeekerContactSettings";
 import { P, PageLink, PageSection, StaticPageLayout } from "../src/components/home/StaticPageLayout";
+import { useMarket } from "../src/lib/market";
+import { MarketWebPage } from "../src/components/home/MarketWebPage";
 
 function Bullet({ children, indent = false }: { children: React.ReactNode; indent?: boolean }) {
   const { colors } = useAppTheme();
@@ -16,7 +18,7 @@ function Bullet({ children, indent = false }: { children: React.ReactNode; inden
 
 // Mirrors apps/web/src/app/privacy/page.tsx — see StaticPageLayout's own note on why this is
 // duplicated rather than loaded from the live page. Keep both in sync.
-export default function PrivacyScreen() {
+function PrivacyContent() {
   const { colors } = useAppTheme();
   // The paragraph about owners seeing a verified number is shown only while it is true (Admin -> Settings -> Seeker contact).
   const seekerContact = useSeekerContactSettings();
@@ -287,4 +289,9 @@ export default function PrivacyScreen() {
       </PageSection>
     </StaticPageLayout>
   );
+}
+
+export default function PrivacyScreen() {
+  if (!useMarket().indiaContent) return <MarketWebPage title="Privacy Policy" path="/privacy" />;
+  return <PrivacyContent />;
 }

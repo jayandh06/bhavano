@@ -18,6 +18,7 @@ import { startBoostCheckout } from "../../lib/boostCheckout";
 import { Icon } from "../Icon";
 import { ReferralFreeBoost } from "./ReferralFreeBoost";
 import { Currency } from "./Currency";
+import { useMarket } from "../../lib/market";
 
 // Temporary September promo — same constant as the website's own copy in
 // app/actions/payments.ts. Auto-applied so the price shown is just what checkout will actually
@@ -37,7 +38,7 @@ import { Currency } from "./Currency";
  * checkout for a paid feature is exactly what Apple's Guideline 3.1.1 forbids there, same
  * reasoning BoostModal/InstantAlertsModal already documented.
  */
-export function BoostBundleCard({
+function BoostBundleCardInner({
   listingId,
   category,
   transactionType,
@@ -269,3 +270,9 @@ const styles = StyleSheet.create({
   optionButton: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1.5, borderRadius: 10, padding: 14 },
   submitButton: { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 28, alignItems: "center" },
 });
+
+/** Nothing in a market without payments. */
+export function BoostBundleCard(props: Parameters<typeof BoostBundleCardInner>[0]) {
+  if (!useMarket().paymentsEnabled) return null;
+  return <BoostBundleCardInner {...props} />;
+}

@@ -6,6 +6,8 @@ import { useHomeSheets } from "../src/context/HomeSheetsProvider";
 import { useInfinitePaymentHistoryQuery } from "../src/lib/queries";
 import { ScreenHeader } from "../src/components/home/ScreenHeader";
 import { Currency } from "../src/components/home/Currency";
+import { useMarket } from "../src/lib/market";
+import { Redirect } from "expo-router";
 
 const PURPOSE_LABELS: Record<PaymentPurpose, string> = {
   listing_boost: "Listing boost",
@@ -44,7 +46,7 @@ function detailFor(item: PaymentHistoryItemDto): string {
   }
 }
 
-export default function PurchasesScreen() {
+function PurchasesContent() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const { accessToken } = useHomeSheets();
@@ -108,3 +110,8 @@ export default function PurchasesScreen() {
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 10, padding: 14, gap: 10 },
 });
+
+export default function PurchasesScreen() {
+  if (!useMarket().paymentsEnabled) return <Redirect href="/" />;
+  return <PurchasesContent />;
+}

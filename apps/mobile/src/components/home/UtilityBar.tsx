@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { useMarket } from "../../lib/market";
 
 /**
  * Mirrors the web app's green utility strip above the main header (For Owners / Tools / Plans /
@@ -16,19 +17,24 @@ import { useAppTheme } from "../../theme/ThemeContext";
 export function UtilityBar() {
   const { colors } = useAppTheme();
   const router = useRouter();
+  const market = useMarket();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.green }]}>
       <Pressable onPress={() => router.push("/post?from=utility_bar")}>
         <Text style={[styles.link, { color: colors.onGreen }]}>For Owners</Text>
       </Pressable>
-      <Pressable onPress={() => router.push("/tools")}>
-        <Text style={[styles.link, { color: colors.onGreen }]}>Tools</Text>
-      </Pressable>
+      {market.indiaContent && (
+        <Pressable onPress={() => router.push("/tools")}>
+          <Text style={[styles.link, { color: colors.onGreen }]}>Tools</Text>
+        </Pressable>
+      )}
       {/* Native (app/plans.tsx) — see docs/plans/ios-app-store-release.md for why Plans earned a native screen. */}
-      <Pressable onPress={() => router.push("/plans")}>
-        <Text style={[styles.link, { color: colors.onGreen }]}>Plans</Text>
-      </Pressable>
+      {market.paymentsEnabled && (
+        <Pressable onPress={() => router.push("/plans")}>
+          <Text style={[styles.link, { color: colors.onGreen }]}>Plans</Text>
+        </Pressable>
+      )}
       <Pressable onPress={() => router.push("/help")}>
         <Text style={[styles.link, { color: colors.onGreen }]}>Help</Text>
       </Pressable>

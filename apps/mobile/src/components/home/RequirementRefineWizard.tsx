@@ -16,24 +16,20 @@ import {
 } from "react-native-keyboard-controller";
 import type { Area, RefineRequirementInput, RequirementAnswers, RequirementDto } from "@bhavano/types";
 import { areaUnitShortLabel, convertArea, type AreaUnit } from "@bhavano/types/areaUnit";
-import { bedroomLabel } from "@bhavano/types/bedrooms";
 import { formatInrWithWords } from "@bhavano/types/priceWords";
 import { requirementBudgetIssue } from "@bhavano/types/priceBounds";
 import {
-  INTENT_CATEGORIES,
   INTENT_TRANSACTION_CHOICES,
   MAX_REQUIREMENT_AREAS,
   requirementQuestionsFor,
   REQUIREMENT_BEDROOM_OPTIONS,
   REQUIREMENT_CATEGORY_LABELS,
-  REQUIREMENT_INTENTS,
   REQUIREMENT_TIMELINE_OPTIONS,
   REQUIRED_REQUIREMENT_STEPS,
   amenityOptionsFor,
   answeredSteps,
   applicableSteps,
   applyIntent,
-  budgetPresetsFor,
   canLeaveStep,
   formatRequirementLabel,
   intentOf,
@@ -50,6 +46,7 @@ import { useTabBarHeight } from "../../lib/tabBarHeight";
 import { RequirementCityPicker, type PickedCity } from "./RequirementCityPicker";
 import { Currency } from "./Currency";
 import { useMarket } from "../../lib/market";
+import { bedroomText, budgetChoices, requirementCategoriesFor, requirementIntentsFor } from "../../lib/marketText";
 
 type WizardStep = RequirementStep | "review";
 type Colors = ReturnType<typeof useAppTheme>["colors"];
@@ -420,7 +417,7 @@ export function RequirementRefineWizard({
     return (
       <>
         <ChipRow>
-          {REQUIREMENT_INTENTS.map((option) => (
+          {requirementIntentsFor(market.id).map((option) => (
             <Chip
               key={option.value}
               colors={colors}
@@ -451,7 +448,7 @@ export function RequirementRefineWizard({
   }
 
   function renderCategory() {
-    const options = intent ? INTENT_CATEGORIES[intent] : [];
+    const options = intent ? requirementCategoriesFor(intent, market.id) : [];
     return (
       <ChipRow>
         {options.map((category) => (
@@ -492,7 +489,7 @@ export function RequirementRefineWizard({
                       bedroomOptions: toggleIn(d.bedroomOptions?.map(String), String(n), true).map(Number),
                     }))
                   }
-                  label={`${bedroomLabel(n)} BHK`}
+                  label={bedroomText(n, market.id)}
                 />
               ))}
             </ChipRow>
@@ -657,12 +654,12 @@ export function RequirementRefineWizard({
   }
 
   function renderBudget() {
-    const { unit, presets } = budgetPresetsFor(draft.category, draft.transactionType);
+    const { unit, presets } = budgetChoices(draft.category, draft.transactionType, market.id);
     const min = parseAmount(budgetMin);
     const max = parseAmount(budgetMax);
     return (
       <View style={{ gap: 14 }}>
-        <Hint colors={colors}>In rupees, {unit}.</Hint>
+        <Hint colors={colors}>In {market.id === "us" ? "dollars" : "rupees"}, {unit}.</Hint>
         <ChipRow>
           {presets.map((p) => (
             <Chip
@@ -686,7 +683,7 @@ export function RequirementRefineWizard({
               keyboardType="numeric"
               style={[styles.input, inputColors(colors)]}
             />
-            {min !== undefined && <Hint colors={colors}>{formatInrWithWords(min)}</Hint>}
+            {min !== undefined && <Hint colors={colors}>{formatInrWithWords(min, market.id)}</Hint>}
           </View>
           <View style={{ flex: 1, gap: 4 }}>
             <FieldLabel colors={colors}>Up to <Currency /></FieldLabel>
@@ -696,7 +693,7 @@ export function RequirementRefineWizard({
               keyboardType="numeric"
               style={[styles.input, inputColors(colors)]}
             />
-            {max !== undefined && <Hint colors={colors}>{formatInrWithWords(max)}</Hint>}
+            {max !== undefined && <Hint colors={colors}>{formatInrWithWords(max, market.id)}</Hint>}
           </View>
         </View>
         {budgetIssue && <Text style={{ color: "#c0554b", fontSize: 12.5 }}>{budgetIssue}</Text>}
@@ -776,7 +773,7 @@ export function RequirementRefineWizard({
         <Hint colors={colors}>
           {current.contactConsent
             ? "Owners and agents with a matching property may call or message you."
-            : "Only Bhavano will contact you — your number stays with us."}
+            : market.phoneOtpAvailable ? "Only Bhavano will contact you — your number stays with us." : "Only Bhavano will contact you."}
         </Hint>
       </View>
     );

@@ -27,10 +27,11 @@ import { BrandHeader } from "../../src/components/home/BrandHeader";
 import { RequirementPrompt } from "../../src/components/home/RequirementPrompt";
 import { FilterSheet, EMPTY_FILTERS, activeFilterCount, type AppliedFilters } from "../../src/components/home/FilterSheet";
 import { SortSheet, SORT_OPTIONS, type SortValue } from "../../src/components/home/SortSheet";
-import { HOME_TABS, type HomeTabValue } from "../../src/components/home/categories";
+import { homeTabs, type HomeTabValue } from "../../src/components/home/categories";
 
 import { HeaderSearchInput } from "../../src/components/home/HeaderSearchInput";
 import { SaveSearchButton } from "../../src/components/home/SaveSearchButton";
+import { useMarket } from "../../src/lib/market";
 /** Below this width, `FlatList` renders one column; at/above it, two — comfortably below every
  * iPad's portrait width (744pt+) and above every phone's, including large phones in portrait. */
 const WIDE_SCREEN_BREAKPOINT = 700;
@@ -39,6 +40,7 @@ export default function HomeScreen() {
   const { colors, theme, toggleTheme } = useAppTheme();
   const { city, openLocationPicker, requireLogin, accessToken, isLoggedIn, profile, logout } = useHomeSheets();
   const router = useRouter();
+  const market = useMarket();
   const { width } = useWindowDimensions();
   const numColumns = width >= WIDE_SCREEN_BREAKPOINT ? 2 : 1;
 
@@ -47,7 +49,7 @@ export default function HomeScreen() {
   // their own screens. `t` changes on every tap so choosing the same category again still lands.
   const { category: categoryParam, t: categoryTap } = useLocalSearchParams<{ category?: string; t?: string }>();
   useEffect(() => {
-    const next = HOME_TABS.find((tab) => tab.value === categoryParam)?.value;
+    const next = homeTabs(market.id).find((tab) => tab.value === categoryParam)?.value;
     if (next) {
       setCategory(next);
       setFilters(EMPTY_FILTERS);
@@ -107,7 +109,7 @@ export default function HomeScreen() {
   );
   const items = data?.pages.flatMap((p) => p.items) ?? [];
   const total = data?.pages[0]?.total ?? 0;
-  const categoryLabel = HOME_TABS.find((t) => t.value === category)?.label ?? "All";
+  const categoryLabel = homeTabs(market.id).find((t) => t.value === category)?.label ?? "All";
   const sortLabel = SORT_OPTIONS.find((s) => s.value === sort)?.label ?? "Auto";
   const filterCount = activeFilterCount(filters);
 

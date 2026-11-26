@@ -1,6 +1,7 @@
 import type { HomeCategoryFilter } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 import type { IconName } from "../Icon";
+import type { MarketId } from "@bhavano/types/market";
 
 /** The chip row's vocabulary: the five real category filters plus "all".
  *
@@ -71,3 +72,28 @@ export const HOME_TABS: HomeTab[] = [
   // Furniture/Interiors deliberately hidden for now — see web's homeCategories.ts comment and
   // docs/plans/furniture-interiors-paused.md.
 ];
+
+type PropertyOption = HomeTab["subFilter"]["options"][number];
+const option = (value: string, label: string): PropertyOption => ({ value, label });
+const HOUSE = option("house", "House");
+const APARTMENT = option("apartment", "Apartment");
+const CONDO = option("condo", "Condo");
+const TOWNHOUSE = option("townhouse", "Townhouse");
+const VILLA = option("villa", "Villa");
+const COMMERCIAL = option("commercial", "Commercial");
+
+/** The US lists: condo, townhouse and room for rent, and no plots, PG or coworking (as on the website). */
+const US_OPTIONS: Partial<Record<HomeTabValue, PropertyOption[]>> = {
+  buy: [HOUSE, APARTMENT, CONDO, TOWNHOUSE, VILLA, COMMERCIAL],
+  rentLease: [HOUSE, APARTMENT, CONDO, TOWNHOUSE, option("room", "Room for rent"), VILLA, option("storage", "Storage"), COMMERCIAL],
+};
+
+const US_HOME_TABS: HomeTab[] = HOME_TABS.filter((tab) => tab.value !== "pg" && tab.value !== "coworking").map((tab) => {
+  const options = US_OPTIONS[tab.value];
+  return options ? { ...tab, subFilter: { ...tab.subFilter, options } } : tab;
+});
+
+/** The market's category tabs. India gets `HOME_TABS` itself. */
+export function homeTabs(marketId: MarketId): HomeTab[] {
+  return marketId === "us" ? US_HOME_TABS : HOME_TABS;
+}

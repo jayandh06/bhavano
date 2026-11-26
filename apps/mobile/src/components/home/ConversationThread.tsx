@@ -21,6 +21,7 @@ import { BoostOfferMessageCard } from "./BoostOfferMessageCard";
 import { FeedbackRequestMessageCard } from "./FeedbackRequestMessageCard";
 import { ScreenHeader } from "./ScreenHeader";
 import { ReportSheet } from "./ReportSheet";
+import { useMarket } from "../../lib/market";
 
 /** The thread body shared by an existing conversation ([id].tsx) and a not-yet-created one
  * (new/[listingId].tsx) — see docs/plans/message-delete-and-lazy-conversation-creation.md.
@@ -59,6 +60,7 @@ export function ConversationThread({
   userId: string | null;
   initialMessages: MessageDto[];
 }) {
+  const market = useMarket();
   const { colors } = useAppTheme();
   const router = useRouter();
   const reportSheetRef = useRef<BottomSheetModal>(null);
@@ -245,7 +247,8 @@ export function ConversationThread({
         renderItem={({ item }) => {
           const isMine = item.senderId === userId;
           const isDeleted = item.deletedAt != null;
-          if (!isDeleted && item.card?.kind === "boost_offer") {
+          // Without payments the card cannot be used, so its plain-text body shows instead.
+          if (!isDeleted && item.card?.kind === "boost_offer" && market.paymentsEnabled) {
             return <BoostOfferMessageCard card={item.card} accessToken={accessToken} />;
           }
           if (!isDeleted && item.card?.kind === "feedback_request") {

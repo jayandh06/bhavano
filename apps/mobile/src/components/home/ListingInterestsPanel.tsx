@@ -198,7 +198,7 @@ export function ListingInterestsPanel({
               </View>
             );
           })}
-          {summary?.enabled && !summary.featured && items?.some((r) => r.contact === "unlockable") ? (
+          {market.paymentsEnabled && summary?.enabled && !summary.featured && items?.some((r) => r.contact === "unlockable") ? (
             <Pressable onPress={() => void Linking.openURL(appWebUrl(`/my-listings?openBoost=${listingId}`)).catch(() => undefined)}>
               <Text style={{ fontSize: 12, color: colors.muted }}>
                 A Featured ad shows every interested person&apos;s number free. <Text style={{ fontWeight: "700", color: colors.green, textDecorationLine: "underline" }}>Make it Featured</Text>

@@ -9,6 +9,8 @@ import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import { Icon } from "../../src/components/Icon";
 import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
 import { getCurrentMarketId } from "../../src/lib/market";
+import { useMarket } from "../../src/lib/market";
+import { Redirect } from "expo-router";
 
 const INVITE_TEXT = "I use Bhavano to buy, sell and rent property. Post your own ad here:";
 
@@ -26,7 +28,7 @@ const dateFormatter = (id: MarketId) => marketDateFormatter(id, { day: "numeric"
 
 /** The app's twin of apps/web/src/app/referrals/page.tsx — balance, invite link, counts and the
  * people referred. Reached from Account and from every referral push (`data.path`). */
-export default function ReferralsScreen() {
+function ReferralsContent() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const { accessToken, requireLogin } = useHomeSheets();
@@ -221,3 +223,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 });
+
+export default function ReferralsScreen() {
+  if (!useMarket().paymentsEnabled) return <Redirect href="/" />;
+  return <ReferralsContent />;
+}

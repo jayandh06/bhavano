@@ -718,7 +718,8 @@ export function PostAdWizard({
   }, [step, accessToken, postAccessToken]);
 
   const previewBoostDisplay = useMemo(() => {
-    if (!category || !planPricingSettings) return null;
+    // No payments, no Featured offer anywhere in the flow.
+    if (!market.paymentsEnabled || !category || !planPricingSettings) return null;
     // Only once the seller has actually entered a number — see web PostAdWizard's identical
     // comment on this same guard.
     const value = Number(price);
@@ -730,9 +731,10 @@ export function PostAdWizard({
       planPricingSettings.activeDiscountPercent,
       priceContext,
     );
-  }, [category, planPricingSettings, transactionType, price]);
+  }, [category, planPricingSettings, transactionType, price, market.paymentsEnabled]);
 
   const showPublishPanelOnReview = !!(
+    market.paymentsEnabled &&
     category &&
     planPricingSettings &&
     (platformFeeApplies(category, planPricingSettings.platformFee) || previewBoostDisplay?.showSelectorOnPreview)
@@ -1885,7 +1887,7 @@ export function PostAdWizard({
       void logPostAdSuccess({ category: listing.category, transactionType: listing.transactionType });
       // The ad is live and free here. With the Preview-step selector off (and always on iOS, whose offer is the
       // App Store sheet) the optional Featured offer gets its own screen before the confirmation.
-      setStep(Platform.OS === "ios" || !previewBoostDisplay?.showSelectorOnPreview ? "offer" : "success");
+      setStep(market.paymentsEnabled && (Platform.OS === "ios" || !previewBoostDisplay?.showSelectorOnPreview) ? "offer" : "success");
     } catch (e) {
       // Same "bounce back to Details with something to actually do about it" reasoning as
       // web's identical check — Review (if this app has one) has no photo-add/remove UI of its
@@ -2486,6 +2488,7 @@ export function PostAdWizard({
           {/* Governs the combined AI Generate button below. Replaces English (unlike the
               Featured-regenerate banner's own picker further down, which is additive) — see
               generationLanguage's own comment above. */}
+          {market.indiaContent && (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <Text style={{ fontSize: 13, fontWeight: "700", color: colors.textSoft }}>✨ AI-generate in:</Text>
             <Pressable
@@ -2497,6 +2500,7 @@ export function PostAdWizard({
               </Text>
             </Pressable>
           </View>
+          )}
           {generationLanguagePickerOpen && (
             <View style={[styles.readOnlyRow, { flexDirection: "column", alignItems: "stretch", borderColor: colors.border, backgroundColor: colors.surface }]}>
               <Pressable onPress={() => { setGenerationLanguage(""); setGenerationLanguagePickerOpen(false); }} style={{ paddingVertical: 8 }}>
@@ -2949,7 +2953,7 @@ export function PostAdWizard({
               <Icon name="boost" size={16} color={colors.green} />
               <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Featuring…</Text>
             </View>
-          ) : !showRegenerateBanner && !iosBoostDone ? (
+          ) : market.paymentsEnabled && !showRegenerateBanner && !iosBoostDone ? (
             <Pressable
               onPress={() => setStep("offer")}
               style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3, paddingVertical: 6 }}
@@ -2985,6 +2989,7 @@ export function PostAdWizard({
               </Text>
 
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                {market.indiaContent && (
                 <Pressable
                   onPress={() => setLanguagePickerOpen((open) => !open)}
                   style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surface, marginBottom: 0 }]}
@@ -2993,6 +2998,7 @@ export function PostAdWizard({
                     {secondLanguageChoice ? `+ ${INDIAN_LANGUAGE_LABELS[secondLanguageChoice]}` : "English only"}
                   </Text>
                 </Pressable>
+                )}
                 <Pressable
                   onPress={() =>
                     void handleGenerateCopy("description", {

@@ -15,6 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAlertPreferencesQuery } from "../../lib/queries";
 import { Icon } from "../Icon";
 import { AddEmailForAlerts } from "./AddEmailForAlerts";
+import { useMarket } from "../../lib/market";
 
 export interface AlertChannelChoice {
   /** False blocks posting: no channel can reach the owner for this ad and they have not said they will check Messages themselves. */
@@ -33,7 +34,7 @@ const UNAVAILABLE_HINT: Record<OwnerAlertChannel, string> = {
  * and unlock when a Featured plan is picked on this page. Pre-filled with the best free channel, so it is a confirmation rather than a chore; it blocks
  * posting only when nothing can reach the owner until they say they will check Messages themselves, add an email, or go Featured. Mirrors the web
  * wizard's AlertChannelPicker. */
-export function AlertChannelPicker({
+function AlertChannelPickerInner({
   accessToken,
   featured,
   featuredSelectable,
@@ -164,3 +165,9 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 12, padding: 14 },
   option: { borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, marginTop: 4 },
 });
+
+/** Nothing in a market without payments. */
+export function AlertChannelPicker(props: Parameters<typeof AlertChannelPickerInner>[0]) {
+  if (!useMarket().paymentsEnabled) return null;
+  return <AlertChannelPickerInner {...props} />;
+}

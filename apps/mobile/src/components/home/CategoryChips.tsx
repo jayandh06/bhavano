@@ -4,7 +4,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
-import { HOME_TABS, type HomeTabValue } from "./categories";
+import { homeTabs, type HomeTabValue } from "./categories";
+import { useMarket } from "../../lib/market";
 
 
 /** A horizontally scrolling row that says so.
@@ -137,6 +138,7 @@ export function CategoryChips({
   /** Omit on Requirements/Blog: picking a listing category there goes back to Home with it set. */
   onSelect?: (value: HomeTabValue) => void;
 }) {
+  const market = useMarket();
   const { colors } = useAppTheme();
   const router = useRouter();
   const select = (value: HomeTabValue) => {
@@ -162,7 +164,7 @@ export function CategoryChips({
        * reads clearly against this, the way it wouldn't sitting directly on the page background. */}
       <View style={[styles.tabStrip, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
         <ScrollableRow colors={colors} contentContainerStyle={styles.row} arrowBackground={colors.surfaceAlt} focusX={chipX[active]} focusKey={active}>
-          {HOME_TABS.map((tab) => {
+          {homeTabs(market.id).map((tab) => {
             const isActive = tab.value === active;
             return (
               <Pressable
@@ -199,14 +201,16 @@ export function CategoryChips({
           </Pressable>
           {/* Same idea as Requirements: leaves the feed rather than filtering it. Also reachable
             * from the drawer, but that is easy to miss on a phone. */}
-          <Pressable
-            onLayout={trackX("blog")}
-            onPress={() => active !== "blog" && router.navigate("/blog")}
-            style={[styles.chip, chipStyle(active === "blog")]}
-          >
-            <Icon name="blog" size={15} color={active === "blog" ? colors.onGreen : colors.textSoft} />
-            <Text style={chipText(active === "blog")}>Blog</Text>
-          </Pressable>
+          {market.indiaContent && (
+            <Pressable
+              onLayout={trackX("blog")}
+              onPress={() => active !== "blog" && router.navigate("/blog")}
+              style={[styles.chip, chipStyle(active === "blog")]}
+            >
+              <Icon name="blog" size={15} color={active === "blog" ? colors.onGreen : colors.textSoft} />
+              <Text style={chipText(active === "blog")}>Blog</Text>
+            </Pressable>
+          )}
         </ScrollableRow>
       </View>
     </View>

@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import type { SavedSearchAllowanceDto, SavedSearchDto } from "@bhavano/types";
-import { bedroomLabel } from "@bhavano/types/bedrooms";
 import { useAppTheme } from "../src/theme/ThemeContext";
 import { useHomeSheets } from "../src/context/HomeSheetsProvider";
 import {
@@ -13,22 +12,17 @@ import {
 } from "../src/lib/bffClient";
 import { ScreenHeader } from "../src/components/home/ScreenHeader";
 import { Icon } from "../src/components/Icon";
+import { useMarket } from "../src/lib/market";
+import type { MarketId } from "@bhavano/types/market";
+import { bedroomListText, savedSearchMoney } from "../src/lib/marketText";
 
-/** Compact price for a criteria line: 4500000 -> "₹45L", 1200000000 -> "₹120Cr". */
-function shortInr(n: number): string {
-  if (n >= 10_000_000) return `₹${+(n / 10_000_000).toFixed(2)}Cr`;
-  if (n >= 100_000) return `₹${+(n / 100_000).toFixed(2)}L`;
-  if (n >= 1_000) return `₹${+(n / 1_000).toFixed(1)}K`;
-  return `₹${n}`;
-}
-
-function criteriaLine(s: SavedSearchDto): string {
+function criteriaLine(s: SavedSearchDto, id: MarketId): string {
   const parts: string[] = [];
   if (s.areaNames.length) parts.push(s.areaNames.join(", "));
   else if (s.cityName) parts.push(`All of ${s.cityName}`);
-  if (s.bedroomOptions.length) parts.push(`${s.bedroomOptions.map(bedroomLabel).join(", ")} BHK`);
+  if (s.bedroomOptions.length) parts.push(bedroomListText(s.bedroomOptions, ", ", id));
   if (s.minPrice !== undefined || s.maxPrice !== undefined) {
-    parts.push(`${s.minPrice !== undefined ? shortInr(s.minPrice) : "Any"} – ${s.maxPrice !== undefined ? shortInr(s.maxPrice) : "Any"}`);
+    parts.push(`${s.minPrice !== undefined ? savedSearchMoney(s.minPrice, id) : "Any"} – ${s.maxPrice !== undefined ? savedSearchMoney(s.maxPrice, id) : "Any"}`);
   }
   return parts.join(" · ");
 }
@@ -40,6 +34,7 @@ function criteriaLine(s: SavedSearchDto): string {
  */
 export default function SavedSearchesScreen() {
   const { colors } = useAppTheme();
+  const market = useMarket();
   const router = useRouter();
   const { accessToken, isLoggedIn, requireLogin } = useHomeSheets();
   const [searches, setSearches] = useState<SavedSearchDto[] | null>(null);
@@ -150,11 +145,13 @@ export default function SavedSearchesScreen() {
               {allowance && !allowance.canCreate && (
                 <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface, marginTop: 12 }]}>
                   <Text style={{ color: colors.text, fontSize: 13.5, lineHeight: 19 }}>
-                    You&rsquo;ve used your free saved search alerts. Subscribe to Bhavano Plus for unlimited alerts.
+                    You&rsquo;ve used your free saved search alerts.{market.paymentsEnabled ? " Subscribe to Bhavano Plus for unlimited alerts." : ""}
                   </Text>
-                  <Pressable onPress={() => router.push("/plans")} style={{ marginTop: 10 }}>
-                    <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13.5 }}>Get Bhavano Plus →</Text>
-                  </Pressable>
+                  {market.paymentsEnabled && (
+                    <Pressable onPress={() => router.push("/plans")} style={{ marginTop: 10 }}>
+                      <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13.5 }}>Get Bhavano Plus →</Text>
+                    </Pressable>
+                  )}
                 </View>
               )}
               {allowance?.canCreate && allowance.source === "free" && (
@@ -184,7 +181,7 @@ export default function SavedSearchesScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.text, fontWeight: "700", fontSize: 15 }}>{item.name}</Text>
                   <Text style={{ color: colors.muted, fontSize: 13, marginTop: 4, lineHeight: 18 }}>
-                    {criteriaLine(item) || "Any listing"}
+                    {criteriaLine(item, market.id) || "Any listing"}
                   </Text>
                 </View>
                 <Pressable

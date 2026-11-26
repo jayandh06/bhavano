@@ -5,10 +5,11 @@ import { useAppTheme } from "../../src/theme/ThemeContext";
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import { CALCULATORS } from "../../src/components/tools/Calculators";
 import { TOOLS } from "../../src/components/tools/toolsRegistry";
+import { useMarket } from "../../src/lib/market";
 
 // One screen for all six calculators, keyed by the website path's last segment, so
 // bhavano.com/tools/emi-calculator opens the matching screen via App Links.
-export default function ToolScreen() {
+function ToolContent() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -29,4 +30,9 @@ export default function ToolScreen() {
       </KeyboardAwareScrollView>
     </View>
   );
+}
+
+export default function ToolScreen() {
+  if (!useMarket().indiaContent) return <Redirect href="/" />;
+  return <ToolContent />;
 }
