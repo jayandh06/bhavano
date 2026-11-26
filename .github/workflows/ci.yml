@@ -139,7 +139,7 @@ jobs:
             if [ "$bff" = "200" ] && [ "$web" = "200" ]; then echo "up after $((i*4))s"; exit 0; fi
             sleep 4
           done
-          echo "servers did not start (bff=$bff web=$web)"; tail -40 "$RUNNER_TEMP/bff.log" "$RUNNER_TEMP/web.log"; exit 1
+          echo "servers did not start (bff=$bff web=$web)"; for f in bff web; do echo "== $f.log"; tail -n 60 "$RUNNER_TEMP/$f.log"; done; exit 1
 
       # The dev server compiles each page the first time it is requested, and on a fresh machine that takes long enough to time out the first
       # tests that open it (seen in a clean-checkout run: 3 header/footer tests failed cold and passed warm). Visit every page the suite uses first.
