@@ -52,5 +52,17 @@ Safe to repeat (upserts). It refuses to run unless `MARKET=us`.
 - The US site is **noindexed**, so these pages are not in search yet; they start counting for SEO when the owner lifts
   noindex and submits the US sitemap.
 - No ads were set up. US ad campaigns and budget are the owner's decision (open item in us-market-expansion.md).
-- Not built: city and area overview text for the US (India has `CityOverview`/`AreaOverview` content), which is what would
-  make these pages distinct for search.
+## City overview drafts (2026-11-26)
+
+`apps/bff/scripts/us-city-overview-drafts.ts` holds a draft for each of the 15 cities (About, Getting around, FAQs), in the
+same format and with the same validator as India's ([area-overview-pages.md](area-overview-pages.md)); the validator now
+also rejects dollar amounts. `us-city-overviews.spec.ts` additionally rejects wording about who lives somewhere, safety or
+schools (Fair Housing). They are **written from general knowledge and not reviewed**.
+
+- Load as drafts on the US host (invisible to visitors):
+  `docker exec -w /app/apps/bff bhavano-us-bff-1 npx tsx scripts/seed-area-overview-drafts.ts`
+- **Publishing is not possible yet from the US stack:** review and publish happen in the admin app, which is not deployed
+  there. Either deploy admin to the US stack, or publish by script after the owner approves the text.
+- Reviewer should check each fact (transit lines, neighbouring cities, the New York co-op, San Francisco rent ordinance and
+  Boston lease-date notes) against a current source.
+- No US area (neighbourhood) overviews are drafted.

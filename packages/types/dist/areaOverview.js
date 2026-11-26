@@ -16,7 +16,7 @@ exports.AREA_OVERVIEW_REVIEW_CHECKLIST = [
     "The wording is fair to every community and is not copied from another website.",
     "It says something specific to this area, and each FAQ answers a real question.",
 ];
-const BANNED_NUMBERS = /₹|\bRs\.?\s?\d|\d\s?%|\blakh|\bcrore/i;
+const BANNED_NUMBERS = /₹|\bRs\.?\s?\d|\$\s?\d|\d\s?%|\blakh|\bcrore/i;
 const BANNED_LINKS = /https?:\/\/|www\.|@\w+\.\w+/i;
 /** Problems with the text that no reviewer should have to spot by eye. An empty array means the
  * content passes. The same rules run in the editor (live) and in the BFF (before saving). */
