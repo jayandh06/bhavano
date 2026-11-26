@@ -8,6 +8,7 @@ import { sharedWebUrl } from "../../lib/appWebUrl";
 import { recordAppPageView } from "../../lib/analyticsSession";
 import { Icon } from "../Icon";
 import { WhatsAppIcon } from "../WhatsAppIcon";
+import { useMarket } from "../../lib/market";
 
 /**
  * The owner sending their own ad to WhatsApp with the message already written — the app's twin of
@@ -18,7 +19,7 @@ import { WhatsAppIcon } from "../WhatsAppIcon";
  *
  * The link carries the owner's id as `ref`, crediting them under the referral programme.
  */
-export function OwnerWhatsAppShare({
+function OwnerWhatsAppShareInner({
   listing,
 }: {
   listing: Pick<
@@ -119,4 +120,10 @@ export function OwnerWhatsAppShare({
       )}
     </View>
   );
+}
+
+/** Nothing in a market without this feature. */
+export function OwnerWhatsAppShare(props: Parameters<typeof OwnerWhatsAppShareInner>[0]) {
+  if (!useMarket().indiaContent) return null;
+  return <OwnerWhatsAppShareInner {...props} />;
 }

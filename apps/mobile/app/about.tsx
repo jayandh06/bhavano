@@ -2,10 +2,12 @@ import { Linking, Text, View } from "react-native";
 import { LEGAL_ENTITY, entityAddressLines, entityOperatorSentence } from "@bhavano/types/legalEntity";
 import { useAppTheme } from "../src/theme/ThemeContext";
 import { P, PageLink, PageSection, StaticPageLayout } from "../src/components/home/StaticPageLayout";
+import { useMarket } from "../src/lib/market";
+import { MarketWebPage } from "../src/components/home/MarketWebPage";
 
 // Mirrors apps/web/src/app/about/page.tsx — see StaticPageLayout's own note on why this is
 // duplicated rather than loaded from the live page.
-export default function AboutScreen() {
+function AboutContent() {
   const { colors } = useAppTheme();
   const addressLines = entityAddressLines();
 
@@ -87,4 +89,9 @@ export default function AboutScreen() {
       </PageSection>
     </StaticPageLayout>
   );
+}
+
+export default function AboutScreen() {
+  if (!useMarket().indiaContent) return <MarketWebPage title="About us" path="/about" />;
+  return <AboutContent />;
 }

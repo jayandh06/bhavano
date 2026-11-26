@@ -3,10 +3,12 @@ import { Keyboard, Pressable, StyleSheet, Text, View } from "react-native";
 import { BottomSheetModal, BottomSheetScrollView, BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import type { BottomSheetScrollViewMethods } from "@gorhom/bottom-sheet";
 import type { Area, PropertyTypeFilter } from "@bhavano/types";
-import { MAX_BEDROOMS, bedroomLabel } from "@bhavano/types/bedrooms";
+import { MAX_BEDROOMS } from "@bhavano/types/bedrooms";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { parseAmount } from "../../lib/priceInput";
-import { HOME_TABS, type HomeTabValue, type SubFilterParam } from "./categories";
+import { homeTabs, type HomeTabValue, type SubFilterParam } from "./categories";
+import { useMarket } from "../../lib/market";
+import { bedroomText } from "../../lib/marketText";
 
 export interface AppliedFilters {
   /** Empty = no area filter, i.e. the whole city. Note this differs from how the sheet now
@@ -72,6 +74,7 @@ export const FilterSheet = forwardRef<
     onApply: (next: AppliedFilters) => void;
   }
 >(function FilterSheet({ cityAreas, category, applied, onApply }, ref) {
+  const market = useMarket();
   const { colors } = useAppTheme();
   const [staged, setStaged] = useState<AppliedFilters>(applied);
 
@@ -110,7 +113,7 @@ export const FilterSheet = forwardRef<
 
   // Reuses HOME_TABS' own option list rather than a second copy — the same source CategoryChips'
   // now-removed sub-chip row read from. "All" has no options, so the section doesn't render.
-  const subFilter = HOME_TABS.find((t) => t.value === category)?.subFilter;
+  const subFilter = homeTabs(market.id).find((t) => t.value === category)?.subFilter;
   const subFilterParam = subFilter && subFilter.options.length > 0 ? subFilter.paramKey : undefined;
   const subFilterValue = subFilterParam ? staged[subFilterParam] : undefined;
 
@@ -119,7 +122,7 @@ export const FilterSheet = forwardRef<
     setStaged((prev) => ({ ...prev, [subFilterParam]: value }) as AppliedFilters);
   }
 
-  const showBhkAndFurnished = staged.propertyType === "house" || staged.propertyType === "apartment";
+  const showBhkAndFurnished = ["house", "apartment", "condo", "townhouse"].includes(staged.propertyType ?? "");
   const showOwnersOnly = category === "buy" || category === "rentLease";
 
   // Free min/max entry, not fixed brackets — matches web's own price filter (BrowseFilterBar.tsx's
@@ -402,7 +405,7 @@ export const FilterSheet = forwardRef<
             <View style={styles.wrapRow}>
               {BEDROOM_BUCKETS.map((n) => (
                 <Pressable key={n} onPress={() => toggleBedroom(n)} style={chipStyle(selectedBedrooms.has(n), colors)}>
-                  <Text style={{ fontSize: 13, color: selectedBedrooms.has(n) ? colors.green : colors.text }}>{bedroomLabel(n)} BHK</Text>
+                  <Text style={{ fontSize: 13, color: selectedBedrooms.has(n) ? colors.green : colors.text }}>{bedroomText(n, market.id)}</Text>
                 </Pressable>
               ))}
             </View>
@@ -414,7 +417,7 @@ export const FilterSheet = forwardRef<
         <View style={styles.section} onLayout={(e) => { priceSectionY.current = e.nativeEvent.layout.y; }}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionLabel, { color: colors.muted }]}>PRICE</Text>
-            {(minText || maxText) && (
+            {!!(minText || maxText) && (
               <Pressable onPress={clearPrice}>
                 <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>Clear</Text>
               </Pressable>

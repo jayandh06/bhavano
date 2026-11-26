@@ -989,9 +989,11 @@ export function HomeSheetsProvider({
               {skipReason && (
                 <Text style={{ fontSize: 13, color: colors.textSoft, marginBottom: 16, lineHeight: 19 }}>{skipReason}</Text>
               )}
-              <Pressable onPress={() => setLoginStep("phone")} style={[styles.primaryButton, { backgroundColor: colors.green }]}>
-                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Continue with WhatsApp OTP</Text>
-              </Pressable>
+              {market.phoneOtpAvailable && (
+                <Pressable onPress={() => setLoginStep("phone")} style={[styles.primaryButton, { backgroundColor: colors.green }]}>
+                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Continue with WhatsApp OTP</Text>
+                </Pressable>
+              )}
               {/* iOS-only, and still shown above Google even though Phone OTP now leads —
                 * Apple requires Sign in with Apple to have equal or greater prominence than any
                 * other *third-party* login offered (Guideline 4.8); Phone OTP is this app's own
@@ -1019,7 +1021,7 @@ export function HomeSheetsProvider({
                   Google sign-in is for existing accounts. New here? Continue with your mobile number.
                 </Text>
               )}
-              {seekerContact.enabled && seekerContact.consentMode === "notice" && (
+              {market.phoneOtpAvailable && seekerContact.enabled && seekerContact.consentMode === "notice" && (
                 <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
                   If you show interest in an ad, its owner may be able to see your mobile number and call you. You can turn this off in your account.
                 </Text>

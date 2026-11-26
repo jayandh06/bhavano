@@ -4,11 +4,13 @@ import { LEGAL_ENTITY, entityAddressLines } from "@bhavano/types/legalEntity";
 import { useAppTheme } from "../src/theme/ThemeContext";
 import { P, PageLink, PageSection, StaticPageLayout } from "../src/components/home/StaticPageLayout";
 import { siteUrl } from "../src/lib/marketEndpoints";
+import { useMarket } from "../src/lib/market";
+import { MarketWebPage } from "../src/components/home/MarketWebPage";
 
 // Mirrors apps/web/src/app/contact/page.tsx's static sections — the actual support-ticket form
 // (attachments, spam honeypot, topic routing) isn't ported here; it's a real submission feature
 // in its own right, not static content, so "Send us a message" opens the website's form instead.
-export default function ContactScreen() {
+function ContactContent() {
   const { colors } = useAppTheme();
   const addressLines = entityAddressLines();
 
@@ -83,4 +85,9 @@ export default function ContactScreen() {
       </PageSection>
     </StaticPageLayout>
   );
+}
+
+export default function ContactScreen() {
+  if (!useMarket().indiaContent) return <MarketWebPage title="Contact us" path="/contact" />;
+  return <ContactContent />;
 }

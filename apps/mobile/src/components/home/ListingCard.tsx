@@ -13,6 +13,7 @@ import { useGuestSaveHeart } from "../../lib/useGuestSaveHeart";
 import { Icon } from "../Icon";
 import { ListingPrice } from "./PriceWithWords";
 import { PHOTO_CYCLE_MS } from "../../lib/photoCycle";
+import { useMarket } from "../../lib/market";
 
 export function ListingCard({
   item,
@@ -29,6 +30,7 @@ export function ListingCard({
   isVisible?: boolean;
 }) {
   const { colors } = useAppTheme();
+  const market = useMarket();
   const { requireLogin, accessToken, userId } = useHomeSheets();
   const router = useRouter();
   const [accountFavourited, setIsFavourited] = useState(item.isFavourited);
@@ -122,7 +124,11 @@ export function ListingCard({
       setOwnerEmail(contact.ownerEmail);
     } catch (e) {
       if (e instanceof BffError && e.status === 402) {
-        setContactError("You've used your free reveals. Buy contact-reveal credits at bhavano.com to unlock more.");
+        setContactError(
+          market.paymentsEnabled
+            ? "You've used your free reveals. Buy contact-reveal credits at bhavano.com to unlock more."
+            : "You've used your free reveals.",
+        );
       } else {
         setContactError(e instanceof Error ? e.message : "Failed to unlock contact");
       }

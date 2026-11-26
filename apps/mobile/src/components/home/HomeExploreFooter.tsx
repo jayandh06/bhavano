@@ -1,10 +1,11 @@
 import { Pressable, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
-import { HOME_STEPS, homeFaqs } from "@bhavano/types/homeContent";
+import { homeFaqs, homeSteps } from "@bhavano/types/homeContent";
 import { sortedPosts } from "@bhavano/types/blogPosts";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 import { FaqGroup } from "./FaqGroup";
+import { useMarket } from "../../lib/market";
 
 const TOOLS = [
   { path: "/tools/emi-calculator", label: "EMI calculator" },
@@ -20,8 +21,9 @@ const TOOLS = [
 export function HomeExploreFooter() {
   const { colors } = useAppTheme();
   const router = useRouter();
+  const market = useMarket();
   const guides = sortedPosts().slice(0, 4);
-  const faqs = homeFaqs([]).map((f) => ({ q: f.question, a: f.answer }));
+  const faqs = homeFaqs([], market.id).map((f) => ({ q: f.question, a: f.answer }));
 
   const heading = { fontSize: 16, fontWeight: "700" as const, color: colors.text, marginBottom: 10 };
   const row = { flexDirection: "row" as const, alignItems: "center" as const, gap: 8, paddingVertical: 11, minHeight: 44 };
@@ -31,7 +33,7 @@ export function HomeExploreFooter() {
       <View>
         <Text style={heading}>How Bhavano works</Text>
         <View style={{ gap: 10 }}>
-          {HOME_STEPS.map((step, i) => (
+          {homeSteps(market.id).map((step, i) => (
             <View
               key={step.title}
               style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, backgroundColor: colors.surface }}
@@ -47,7 +49,9 @@ export function HomeExploreFooter() {
       <View>
         <Text style={heading}>Own or manage a property?</Text>
         <Text style={{ fontSize: 13.5, lineHeight: 20, color: colors.textSoft, marginBottom: 10 }}>
-          List a house, flat, plot, PG, coworking desk or commercial space and reach people searching in your city.
+          {market.id === "us"
+            ? "List a house, apartment, condo, townhouse, room or commercial space and reach people searching in your city."
+            : "List a house, flat, plot, PG, coworking desk or commercial space and reach people searching in your city."}
         </Text>
         <Pressable
           onPress={() => router.push("/post")}
@@ -58,6 +62,7 @@ export function HomeExploreFooter() {
         </Pressable>
       </View>
 
+      {market.indiaContent && (
       <View>
         <Text style={heading}>Free guides</Text>
         {guides.map((post) => (
@@ -70,7 +75,9 @@ export function HomeExploreFooter() {
           <Text style={{ fontSize: 14, fontWeight: "700", color: colors.green }}>All guides</Text>
         </Pressable>
       </View>
+      )}
 
+      {market.indiaContent && (
       <View>
         <Text style={heading}>Free tools</Text>
         {TOOLS.map((tool) => (
@@ -80,6 +87,7 @@ export function HomeExploreFooter() {
           </Pressable>
         ))}
       </View>
+      )}
 
       <FaqGroup title="Frequently asked questions" items={faqs} />
     </View>

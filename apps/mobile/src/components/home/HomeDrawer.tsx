@@ -5,8 +5,10 @@ import { useRouter } from "expo-router";
 import type { City } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
-import { HOME_TABS, type HomeTabValue } from "./categories";
+import { homeTabs, type HomeTabValue } from "./categories";
 import { COLLAPSED_BAR_HEIGHT } from "./CollapsedHeaderBar";
+import { useMarket } from "../../lib/market";
+import { spell } from "../../lib/marketText";
 
 const DRAWER_WIDTH = 300;
 
@@ -62,6 +64,7 @@ export function HomeDrawer({
 }) {
   const { colors } = useAppTheme();
   const router = useRouter();
+  const market = useMarket();
   const { height: windowHeight } = useWindowDimensions();
   // `Modal` renders as its own top-level native overlay, entirely outside the app's own
   // `SafeAreaView` (app/_layout.tsx) — the collapsed bar it opens from sits below that inset
@@ -138,7 +141,7 @@ export function HomeDrawer({
           )}
 
           <Text style={[styles.sectionLabel, { color: colors.muted }]}>Browse</Text>
-          {HOME_TABS.map((tab) => (
+          {homeTabs(market.id).map((tab) => (
             <Pressable
               key={tab.value}
               onPress={() => selectCategory(tab.value)}
@@ -157,14 +160,18 @@ export function HomeDrawer({
             </Pressable>
           ))}
 
-          <Pressable onPress={() => go("/tools")} style={styles.navRow}>
-            <Icon name="calculator" size={17} color={colors.text} />
-            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Tools</Text>
-          </Pressable>
-          <Pressable onPress={() => go("/plans")} style={styles.navRow}>
-            <Icon name="sparkles" size={17} color={colors.gold} />
-            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Plans</Text>
-          </Pressable>
+          {market.indiaContent && (
+            <Pressable onPress={() => go("/tools")} style={styles.navRow}>
+              <Icon name="calculator" size={17} color={colors.text} />
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Tools</Text>
+            </Pressable>
+          )}
+          {market.paymentsEnabled && (
+            <Pressable onPress={() => go("/plans")} style={styles.navRow}>
+              <Icon name="sparkles" size={17} color={colors.gold} />
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Plans</Text>
+            </Pressable>
+          )}
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
@@ -172,10 +179,12 @@ export function HomeDrawer({
             <Icon name="list" size={17} color={colors.text} />
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>For Owners</Text>
           </Pressable>
-          <Pressable onPress={() => go("/blog")} style={styles.navRow}>
-            <Icon name="blog" size={17} color={colors.text} />
-            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Blog</Text>
-          </Pressable>
+          {market.indiaContent && (
+            <Pressable onPress={() => go("/blog")} style={styles.navRow}>
+              <Icon name="blog" size={17} color={colors.text} />
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Blog</Text>
+            </Pressable>
+          )}
           <Pressable onPress={() => go("/help")} style={styles.navRow}>
             <Icon name="help" size={17} color={colors.text} />
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Help</Text>
@@ -201,7 +210,7 @@ export function HomeDrawer({
               </Pressable>
               <Pressable onPress={() => go("/saved")} style={styles.navRow}>
                 <Icon name="heart" size={17} color={colors.text} />
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Favourites</Text>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>{spell("Favourites", market.id)}</Text>
               </Pressable>
               <Pressable onPress={() => go("/my-listings")} style={styles.navRow}>
                 <Icon name="building" size={17} color={colors.text} />
@@ -215,10 +224,12 @@ export function HomeDrawer({
                 <Icon name="message" size={17} color={colors.text} />
                 <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Messages</Text>
               </Pressable>
-              <Pressable onPress={() => go("/purchases")} style={styles.navRow}>
-                <Icon name="pack" size={17} color={colors.text} />
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Purchase history</Text>
-              </Pressable>
+              {market.paymentsEnabled && (
+                <Pressable onPress={() => go("/purchases")} style={styles.navRow}>
+                  <Icon name="pack" size={17} color={colors.text} />
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Purchase history</Text>
+                </Pressable>
+              )}
               <Pressable
                 onPress={() => {
                   onClose();

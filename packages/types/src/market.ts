@@ -50,6 +50,14 @@ export interface MarketConfig {
   phoneLoginPrimary: boolean;
   /** Publishing an ad needs a phone number proven by a one-time code. False where no code can be sent: the US has no SMS provider yet. */
   publishRequiresVerifiedPhone: boolean;
+  /** One-time codes can be sent to a phone here: phone sign-in and adding a phone to an account. */
+  phoneOtpAvailable: boolean;
+  /** Anything can be bought here (Featured ads, plans, contact credits). */
+  paymentsEnabled: boolean;
+  /** India-only content is offered: calculators, blog and guides, RERA, Indian languages, in-app legal text. */
+  indiaContent: boolean;
+  /** The "owners and agents may call or message me" box starts ticked. Off where a ticked box may not count as consent to calls and texts. */
+  contactConsentPreTicked: boolean;
   /** Categories that exist in this market. */
   categories: ListingCategory[];
   /** Listing and requirement field keys this market does not offer. The US drops the fields that state a preference for
@@ -80,6 +88,10 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
     phonePlaceholder: "10-digit mobile number",
     phoneLoginPrimary: true,
     publishRequiresVerifiedPhone: true,
+    phoneOtpAvailable: true,
+    paymentsEnabled: true,
+    indiaContent: true,
+    contactConsentPreTicked: true,
     categories: ["house", "apartment", "villa", "pg", "storage", "coworking", "furniture", "interiors", "plot", "commercial"],
     hiddenFieldKeys: [],
     indexable: true,
@@ -104,6 +116,10 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
     phonePlaceholder: "10-digit phone number",
     phoneLoginPrimary: false,
     publishRequiresVerifiedPhone: false,
+    phoneOtpAvailable: false,
+    paymentsEnabled: false,
+    indiaContent: false,
+    contactConsentPreTicked: false,
     // Starting set plus condo, townhouse and room for rent (docs/plans/us-categories-condo-townhouse-room.md); the wedge decision in the plan may change it.
     // No PG, coworking, plots or furniture/interiors.
     categories: ["house", "apartment", "villa", "storage", "commercial", "condo", "townhouse", "room"],

@@ -8,6 +8,7 @@ import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { startRequirementDraft, takeCreatedRequirement } from "../../lib/requirementDraft";
 import { Icon } from "../Icon";
 import { RequirementCityPicker, type PickedCity } from "./RequirementCityPicker";
+import { useMarket } from "../../lib/market";
 
 /**
  * Mobile counterpart to the web wizard's `RequirementPrompt` (`apps/web/src/components/home/
@@ -50,10 +51,11 @@ export function RequirementPrompt({
       if (created) setSaved(created);
     }, []),
   );
-  /** On by default, same as web: someone asking us to go and find a house generally does want the
-   * person who has one to ring them, and the toggle is right there. */
-  const [allowContact, setAllowContact] = useState(true);
-  /** A requirement for "anywhere in India" is not one anybody can act on — same rule as web. */
+  const market = useMarket();
+  /** As on the web: on by default in India (someone asking us to find a house generally does want the
+   * person who has one to ring them), off in the US, where a ticked box may not count as consent. */
+  const [allowContact, setAllowContact] = useState(market.contactConsentPreTicked);
+  /** A requirement for a whole country is not one anybody can act on — same rule as web. */
   const needsCity = !criteria.cityId;
   const [city, setCity] = useState<PickedCity | undefined>(undefined);
   const cityId = criteria.cityId ?? city?.id;
@@ -98,7 +100,7 @@ export function RequirementPrompt({
         <Text style={{ color: colors.muted, fontSize: 12.5, textAlign: "center", marginTop: 6 }}>
           {saved.contactConsent
             ? "Owners and agents with a matching property can get in touch with you directly."
-            : "Only Bhavano will contact you — your number stays with us."}
+            : market.phoneOtpAvailable ? "Only Bhavano will contact you — your number stays with us." : "Only Bhavano will contact you."}
         </Text>
         <Pressable
           onPress={() => router.push("/my-requirements")}
@@ -133,7 +135,7 @@ export function RequirementPrompt({
         <View style={{ marginTop: 14, gap: 4 }}>
           <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>Which city?</Text>
           <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 6 }}>
-            Nobody can find you a place anywhere in India — start with the city, and we'll ask which areas next.
+            Nobody can find you a place anywhere in {market.id === "us" ? "the United States" : market.name} — start with the city, and we'll ask which areas next.
           </Text>
           <RequirementCityPicker value={city} onChange={setCity} />
         </View>
@@ -145,7 +147,7 @@ export function RequirementPrompt({
             Owners and agents with a matching property may call or message me.
           </Text>
           <Text style={{ color: colors.muted, fontSize: 12 }}>
-            Turn this off and only Bhavano will contact you.
+            {market.contactConsentPreTicked ? "Turn this off" : "Leave this off"} and only Bhavano will contact you.
           </Text>
         </View>
       </View>

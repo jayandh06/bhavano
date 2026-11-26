@@ -15,6 +15,7 @@ import { saveAlertPreferences } from "../../lib/bffClient";
 import { useAlertPreferencesQuery } from "../../lib/queries";
 import { Icon } from "../Icon";
 import { AddEmailForAlerts } from "./AddEmailForAlerts";
+import { useMarket } from "../../lib/market";
 
 const UNAVAILABLE_HINT: Record<OwnerAlertChannel, string> = {
   push: "Turn on notifications for Bhavano to use this",
@@ -25,7 +26,7 @@ const UNAVAILABLE_HINT: Record<OwnerAlertChannel, string> = {
 
 /** Where the advertiser says how to reach them when a seeker messages, shows interest or views their number. One primary channel is the whole question;
  * the rest follow in order as fallbacks. WhatsApp and SMS are tagged Featured: they are used for Featured ads only. */
-export function AlertPreferenceCard({ accessToken }: { accessToken: string }) {
+function AlertPreferenceCardInner({ accessToken }: { accessToken: string }) {
   const { colors } = useAppTheme();
   const queryClient = useQueryClient();
   const { data: preference } = useAlertPreferencesQuery(accessToken);
@@ -107,3 +108,9 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 4 },
   option: { borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, marginTop: 4 },
 });
+
+/** Nothing in a market without payments. */
+export function AlertPreferenceCard(props: Parameters<typeof AlertPreferenceCardInner>[0]) {
+  if (!useMarket().paymentsEnabled) return null;
+  return <AlertPreferenceCardInner {...props} />;
+}

@@ -1,7 +1,7 @@
 # Mobile app market switch (India and US in one app)
 
-Status: **approved 2026-11-26** with the recommendations below. Phase 1 built the same day; nothing user-visible
-yet, and no app release made. Follows [us-market-expansion.md](us-market-expansion.md) ("Mobile apps").
+Status: **approved 2026-11-26** with the recommendations below. Phases 1 and 2 built the same day; nothing can switch
+to the US yet, and no app release made. Follows [us-market-expansion.md](us-market-expansion.md) ("Mobile apps").
 
 ## Goal
 
@@ -99,19 +99,32 @@ Not done through `Updates.reloadAsync`, which does not work in development build
 - Web change: the US site's `bhavano://` links ("Open app") carry no market today; add `market=us`.
 - Share links: with the US site address they become `/us/listings/{id}`; confirm that route resolves.
 
-### 6. Content and rules still India-only
-- Home category chips, tab bar and menus (PG, coworking, plots).
-- Saved searches and price inputs (k / Lakh / Crore), `PriceWithWords`, `formatInr`.
-- `RequirementPrompt` ticks contact consent by default; **US must start unticked**, as on the web.
-- Posting wizard: the publish step already skips the phone in the US (`publishRequiresVerifiedPhone`).
-- Wording that names India or bhavano.com purchases (a search for India, ₹, +91, Lakh, PG and the like matches 35
-  files under `app/` and `src/`, tests included; review each).
-- US cities come from the US server; nothing to seed in the app.
+### 6. Content and rules (built in phase 2)
+Four flags on the market config drive it: `phoneOtpAvailable`, `paymentsEnabled`, `indiaContent`,
+`contactConsentPreTicked` (India all `true`, US all `false`). The app's own wording and lists are in
+`src/lib/marketText.ts` and `categories.ts` (`homeTabs`).
 
-### 7. Payments (decision 4)
-A `paymentsEnabled` flag on the market config (India true, US false) hides Boost, plans, subscriptions, contact-reveal
-credits, instant alerts, pending-payment cards and their message-card buttons. The server should refuse payment orders
-in the US as well.
+| US change | Where |
+|---|---|
+| No PG, coworking or plots; condo, townhouse and room for rent | Home tabs, filters, requirement questions |
+| "bed" instead of "BHK", dollars, "Favorites" | Filters, requirement cards, saved searches, tab bar, saved screen |
+| No preset budget bands (the shared ones are rupees); the seeker types amounts | Requirement questions and feed filters |
+| Consent box starts unticked; "the United States" | "Find this for me" prompt |
+| Google and Apple sign-in only; no phone field, phone prompts or phone requirement to save the profile | Login sheet, account, completion prompt |
+| About, Help, Terms, Privacy and Contact open the website | `MarketWebPage` |
+| Blog, calculators, RERA, Indian languages and the WhatsApp ad-share card hidden | Menus and screens (blog and tool screens redirect Home) |
+
+### 7. Payments (decision 4, app side built in phase 2)
+With `paymentsEnabled` false the app hides Featured ads, plans, purchases, referrals, contact credits, alert-channel
+settings and the Boost message card (its plain text shows instead); Plans, Purchases and Referrals redirect Home.
+Apple purchases get no session outside India (phase 1). **Still to do (phase 0): the server should refuse payment
+orders in the US.**
+
+### Still India-flavoured in the US
+- The shared requirement label (written by the server as `searchLabel` and previewed in the app and on the web) says
+  "BHK" and rupees. It needs a market argument in `@bhavano/types/requirementQuestions`.
+- The store link in `UpdateGate` (release phase).
+- Wording was checked by text search and a few screens in a browser preview, not screen by screen on a phone.
 
 ### 8. Release, stores and operations
 - Adding `expo-localization` is a native change: bump the app version (for example 1.7.0). `runtimeVersion` follows the
@@ -130,7 +143,7 @@ in the US as well.
 |---|---|---|
 | 0 | Server: publishing rule (done 2026-11-26), US push, refuse US payments | Unchanged |
 | 1 | `marketEndpoints`, `marketKey`, hydrate before first screen, reset hooks, the switch itself (**done 2026-11-26**) | Unchanged; tests pin addresses and key names |
-| 2 | US content, consent default, hidden payments and India-only screens | Unchanged |
+| 2 | US content, consent default, hidden payments and India-only screens (**done 2026-11-26**) | Unchanged |
 | 3 | Link handling and the web `market=us` change | India links as today |
 | 4 | First-run chooser and Country row (**last**, so earlier India releases cannot reach US). Suggested, to confirm then: tapping the header flag opens the switch | Chooser never shown to upgrades |
 | 5 | Version bump, builds, TestFlight and Play internal testing, store listings, release | |
@@ -147,8 +160,15 @@ in the US as well.
   US server; the choice survived a reload; switching back worked. The preview needed temporary stand-ins for two
   native-only modules that already fail on web (`expo-tracking-transparency`, Firebase analytics).
 
+## Verified for phase 2 (2026-11-26)
+- App tests (126), type checks, and server and website tests pass.
+- Browser preview with stand-in servers, logged out: US home, tabs, filters, prompt (unticked), login sheet
+  (Google only), posting categories, Help (website link), Plans and Tools redirecting Home; India's home and filters
+  as before.
+
 ## Not verified
 - Nothing has run on a phone or simulator: sign-in, push, sockets and secure storage across a switch are untested.
+- Signed-in screens (account, my listings, posting past the first step, messages) were not seen in either market.
 - No device or signed-in test against the US server.
 - US storefront availability, and whether Apple review needs anything extra for a US release.
 - The list of India-only wording comes from a text search, not a screen-by-screen review.

@@ -7,6 +7,8 @@ import { BlogCover } from "../../src/components/home/BlogCover";
 import { P, StaticPageLayout } from "../../src/components/home/StaticPageLayout";
 import { getCurrentMarketId } from "../../src/lib/market";
 import { getMarket } from "@bhavano/types/market";
+import { useMarket } from "../../src/lib/market";
+import { Redirect } from "expo-router";
 
 function formatDate(iso: string): string {
   return new Date(`${iso}T00:00:00Z`).toLocaleDateString(getMarket(getCurrentMarketId()).locale, {
@@ -24,7 +26,7 @@ function reviewersLine(reviewers: { name: string; role?: string }[]): string {
 }
 
 // Mirrors apps/web/src/app/blog/[slug]/page.tsx.
-export default function BlogPostScreen() {
+function BlogPostContent() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -67,4 +69,9 @@ export default function BlogPostScreen() {
       )}
     </StaticPageLayout>
   );
+}
+
+export default function BlogPostScreen() {
+  if (!useMarket().indiaContent) return <Redirect href="/" />;
+  return <BlogPostContent />;
 }

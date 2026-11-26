@@ -2,7 +2,6 @@ import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import type { RequirementDto } from "@bhavano/types";
-import { bedroomLabel } from "@bhavano/types/bedrooms";
 import { describeRequirementGaps, missingForLead } from "@bhavano/types/requirementQuestions";
 import { formatInrRangeWithWords } from "@bhavano/types/priceWords";
 import { useAppTheme } from "../../theme/ThemeContext";
@@ -14,6 +13,7 @@ import {
 } from "../../lib/bffClient";
 import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
 import { getCurrentMarketId } from "../../lib/market";
+import { bedroomListText } from "../../lib/marketText";
 
 /** How far ahead of expiry the Renew affordance appears — same 7-day window as a listing's, so
  * the two pages behave alike. */
@@ -26,7 +26,7 @@ function daysUntil(iso: string): number {
 }
 
 function budgetText(r: RequirementDto): string | null {
-  return formatInrRangeWithWords(r.minPrice, r.maxPrice) ?? null;
+  return formatInrRangeWithWords(r.minPrice, r.maxPrice, getCurrentMarketId()) ?? null;
 }
 
 /**
@@ -83,7 +83,7 @@ export function MyRequirementCard({
 
   const meta = [
     current.areaNames.length ? current.areaNames.join(", ") : current.cityName,
-    current.bedroomOptions.length ? `${current.bedroomOptions.map(bedroomLabel).join(" or ")} BHK` : null,
+    current.bedroomOptions.length ? bedroomListText(current.bedroomOptions, " or ", getCurrentMarketId()) : null,
     budgetText(current),
   ]
     .filter(Boolean)

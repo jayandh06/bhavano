@@ -19,6 +19,7 @@ import { appleSubscriptionsFor } from "@bhavano/types/appleProducts";
 import { iosPurchases } from "../src/lib/iosPurchasesClient";
 import { useMarket } from "../src/lib/market";
 import { Currency } from "../src/components/home/Currency";
+import { Redirect } from "expo-router";
 
 interface PlanCard {
   tier: SubscriptionTier;
@@ -81,7 +82,7 @@ const PLAN_CARDS: PlanCard[] = [
  * App Store's own price for each plan (never the web price) and never mounts the Razorpay modal.
  * See docs/plans/ios-in-app-purchase.md.
  */
-export default function PlansScreen() {
+function PlansContent() {
   const market = useMarket();
   const { colors } = useAppTheme();
   const router = useRouter();
@@ -299,3 +300,8 @@ const styles = StyleSheet.create({
   ctaRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   filledCta: { borderRadius: 10, paddingVertical: 12, alignItems: "center", marginTop: 14 },
 });
+
+export default function PlansScreen() {
+  if (!useMarket().paymentsEnabled) return <Redirect href="/" />;
+  return <PlansContent />;
+}

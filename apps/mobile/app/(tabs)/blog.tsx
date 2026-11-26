@@ -5,9 +5,11 @@ import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useTabHeader } from "../../src/components/home/useTabHeader";
 import { P, StaticPageLayout } from "../../src/components/home/StaticPageLayout";
 import { BlogCover } from "../../src/components/home/BlogCover";
+import { useMarket } from "../../src/lib/market";
+import { Redirect } from "expo-router";
 
 // Mirrors apps/web/src/app/blog/page.tsx. The posts themselves are shared, in @bhavano/types.
-export default function BlogIndexScreen() {
+function BlogIndexContent() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const tab = useTabHeader("blog");
@@ -30,4 +32,9 @@ export default function BlogIndexScreen() {
       ))}
     </StaticPageLayout>
   );
+}
+
+export default function BlogIndexScreen() {
+  if (!useMarket().indiaContent) return <Redirect href="/" />;
+  return <BlogIndexContent />;
 }

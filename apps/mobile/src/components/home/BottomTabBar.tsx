@@ -7,6 +7,8 @@ import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { useUnreadCountQuery } from "../../lib/queries";
 import { Icon, type IconName } from "../Icon";
 import { setTabBarHeight } from "../../lib/tabBarHeight";
+import { useMarket } from "../../lib/market";
+import { spell } from "../../lib/marketText";
 
 interface TabDef {
   key: string;
@@ -66,6 +68,7 @@ export function BottomTabBar() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const market = useMarket();
   const { isLoggedIn, requireLogin, accessToken, profile } = useHomeSheets();
   const { data: unreadCount = 0 } = useUnreadCountQuery(accessToken);
   // `activeListingCount` is already loaded app-wide via `profile` — no second request just to
@@ -75,7 +78,7 @@ export function BottomTabBar() {
   const tabs = TABS.map((tab) =>
     tab.key === "myListings" && hasListings
       ? { ...tab, path: "/my-listings" as Href, label: "My Listings", icon: "list" as IconName, alsoActiveOn: ["/saved"] }
-      : tab,
+      : { ...tab, label: spell(tab.label, market.id) },
   );
 
   return (

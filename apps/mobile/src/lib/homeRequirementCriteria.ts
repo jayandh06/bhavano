@@ -1,6 +1,7 @@
 import type { PropertyTypeFilter, RequirementCaptureCriteria } from "@bhavano/types";
 import { requirementCriteriaFromBrowse } from "@bhavano/types/requirementQuestions";
-import { HOME_TABS, type HomeTabValue } from "../components/home/categories";
+import { homeTabs, type HomeTabValue } from "../components/home/categories";
+import { getCurrentMarketId } from "./marketState";
 
 /**
  * Derives the `RequirementPrompt` props from the home screen's own filter state — extracted out
@@ -44,10 +45,11 @@ export function deriveHomeRequirementCriteria(input: {
     serviceType: input.serviceType,
   });
 
-  const categoryLabel = HOME_TABS.find((t) => t.value === category)?.label ?? "All";
+  const tabs = homeTabs(getCurrentMarketId());
+  const categoryLabel = tabs.find((t) => t.value === category)?.label ?? "All";
   const propertyTypeLabel =
     category === "buy" || category === "rentLease"
-      ? HOME_TABS.find((t) => t.value === category)?.subFilter.options.find((o) => o.value === propertyType)?.label
+      ? tabs.find((t) => t.value === category)?.subFilter.options.find((o) => o.value === propertyType)?.label
       : undefined;
   const label = [propertyTypeLabel ?? categoryLabel, cityName].filter(Boolean).join(" in ");
 

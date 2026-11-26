@@ -65,7 +65,8 @@ export function ProfileCompletionDialog() {
 
   // A mandatory prompt does not wait for a second screen, a return login or the once-per-launch gate: it shows as soon as the app opens for that account.
   useEffect(() => {
-    if (!isLoggedIn || !accessToken) return;
+    // Nothing here can be completed where no code can be sent to a phone.
+    if (!isLoggedIn || !accessToken || !market.phoneOtpAvailable) return;
     let cancelled = false;
     void fetchProfileNudge(accessToken)
       .then((nudge) => {
@@ -80,7 +81,7 @@ export function ProfileCompletionDialog() {
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn, accessToken]);
+  }, [isLoggedIn, accessToken, market.phoneOtpAvailable]);
 
   const initialPath = useRef(pathname);
   const checkedRef = useRef(false);
@@ -91,9 +92,10 @@ export function ProfileCompletionDialog() {
     let cancelled = false;
     (async () => {
       const nudge = await fetchProfileNudge(accessToken).catch((): ProfileNudgeDto => ({ show: false, missing: [] }));
-      if (cancelled || !nudge.show || nudge.missing.length === 0) return;
+      const missing = market.phoneOtpAvailable ? nudge.missing : nudge.missing.filter((m) => m !== "phone");
+      if (cancelled || !nudge.show || missing.length === 0) return;
       shownThisLaunch = true;
-      const target = nudge.missing.includes("phone") ? "phone" : "email";
+      const target = missing.includes("phone") ? "phone" : "email";
       setMovingToMobile(target === "phone" && !nudge.blocking);
       setWant(target);
       setStep(target === "phone" ? "askPhone" : "askEmail");

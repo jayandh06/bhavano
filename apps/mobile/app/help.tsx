@@ -3,6 +3,8 @@ import { Text } from "react-native";
 import { useAppTheme } from "../src/theme/ThemeContext";
 import { FaqGroup, type Faq } from "../src/components/home/FaqGroup";
 import { P, PageLink, PageSection, StaticPageLayout } from "../src/components/home/StaticPageLayout";
+import { useMarket } from "../src/lib/market";
+import { MarketWebPage } from "../src/components/home/MarketWebPage";
 
 function Bold({ children }: { children: ReactNode }) {
   return <Text style={{ fontWeight: "700" }}>{children}</Text>;
@@ -103,7 +105,7 @@ const SAFETY: Faq[] = [
 // Mirrors apps/web/src/app/help/page.tsx, with copy adjusted where the mobile app's own
 // navigation differs (tabs instead of a top nav, no in-app listing editor yet) — see
 // StaticPageLayout's own note on why this is duplicated rather than loaded from the live page.
-export default function HelpScreen() {
+function HelpContent() {
   return (
     <StaticPageLayout title="Help centre">
       <FaqGroup title="Getting started" items={GETTING_STARTED} />
@@ -120,4 +122,9 @@ export default function HelpScreen() {
       </PageSection>
     </StaticPageLayout>
   );
+}
+
+export default function HelpScreen() {
+  if (!useMarket().indiaContent) return <MarketWebPage title="Help" path="/help" />;
+  return <HelpContent />;
 }

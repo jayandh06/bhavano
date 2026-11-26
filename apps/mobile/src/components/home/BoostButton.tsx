@@ -5,6 +5,7 @@ import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 import { BoostModal } from "./BoostModal";
 import { IosBoostSheet } from "./IosPurchaseSheets";
+import { useMarket } from "../../lib/market";
 
 /** "Boost Ad" trigger — mirrors web's BoostButton.tsx (outline pill, same copy). Owns the same
  * iOS/Android split PostAdWizard's own success-screen boost button does: a boost is exactly the
@@ -14,7 +15,7 @@ import { IosBoostSheet } from "./IosPurchaseSheets";
  * docs/plans/ios-in-app-purchase.md. Not shared with PostAdWizard's own button (that one sits
  * inside a differently styled celebration card, not a plain pill) — if this branch ever needs to
  * change, check both. */
-export function BoostButton({
+function BoostButtonInner({
   listingId,
   category,
   accessToken,
@@ -88,3 +89,9 @@ const styles = StyleSheet.create({
   },
   pending: { fontSize: 12.5, fontWeight: "700" },
 });
+
+/** Nothing in a market without payments. */
+export function BoostButton(props: Parameters<typeof BoostButtonInner>[0]) {
+  if (!useMarket().paymentsEnabled) return null;
+  return <BoostButtonInner {...props} />;
+}

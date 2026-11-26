@@ -1,9 +1,11 @@
 import { LEGAL_ENTITY, entityOperatorSentence } from "@bhavano/types/legalEntity";
 import { P, PageLink, PageSection, StaticPageLayout } from "../src/components/home/StaticPageLayout";
+import { useMarket } from "../src/lib/market";
+import { MarketWebPage } from "../src/components/home/MarketWebPage";
 
 // Mirrors apps/web/src/app/terms/page.tsx — see StaticPageLayout's own note on why this is
 // duplicated rather than loaded from the live page.
-export default function TermsScreen() {
+function TermsContent() {
   return (
     <StaticPageLayout title="Terms of Service" updated="26 August 2026">
       <PageSection heading="1. Acceptance of these terms">
@@ -95,4 +97,9 @@ export default function TermsScreen() {
       </PageSection>
     </StaticPageLayout>
   );
+}
+
+export default function TermsScreen() {
+  if (!useMarket().indiaContent) return <MarketWebPage title="Terms of Service" path="/terms" />;
+  return <TermsContent />;
 }

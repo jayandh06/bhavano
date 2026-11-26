@@ -3,10 +3,11 @@ import { Pressable, Text, View } from "react-native";
 import type { ContactSharePreferenceDto } from "@bhavano/types/seekerContact";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { fetchContactShare, saveContactShare } from "../../lib/bffClient";
+import { useMarket } from "../../lib/market";
 
 /** Account card: may owners of Featured ads this person shows interest in see their number. Only shown while an admin has the feature on. In notice mode it starts on
  * (and this is how to opt out); in opt-in mode it starts off. See docs/plans/featured-seeker-contact-for-owners.md. */
-export function ContactShareCard({ accessToken }: { accessToken: string }) {
+function ContactShareCardInner({ accessToken }: { accessToken: string }) {
   const { colors } = useAppTheme();
   const [preference, setPreference] = useState<ContactSharePreferenceDto | null>(null);
   const [saving, setSaving] = useState(false);
@@ -65,4 +66,10 @@ export function ContactShareCard({ accessToken }: { accessToken: string }) {
       {error ? <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{error}</Text> : null}
     </View>
   );
+}
+
+/** Nothing in a market without this feature. */
+export function ContactShareCard(props: Parameters<typeof ContactShareCardInner>[0]) {
+  if (!useMarket().phoneOtpAvailable) return null;
+  return <ContactShareCardInner {...props} />;
 }

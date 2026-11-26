@@ -36,6 +36,10 @@ exports.MARKETS = {
         phonePlaceholder: "10-digit mobile number",
         phoneLoginPrimary: true,
         publishRequiresVerifiedPhone: true,
+        phoneOtpAvailable: true,
+        paymentsEnabled: true,
+        indiaContent: true,
+        contactConsentPreTicked: true,
         categories: ["house", "apartment", "villa", "pg", "storage", "coworking", "furniture", "interiors", "plot", "commercial"],
         hiddenFieldKeys: [],
         indexable: true,
@@ -60,6 +64,10 @@ exports.MARKETS = {
         phonePlaceholder: "10-digit phone number",
         phoneLoginPrimary: false,
         publishRequiresVerifiedPhone: false,
+        phoneOtpAvailable: false,
+        paymentsEnabled: false,
+        indiaContent: false,
+        contactConsentPreTicked: false,
         // Starting set plus condo, townhouse and room for rent (docs/plans/us-categories-condo-townhouse-room.md); the wedge decision in the plan may change it.
         // No PG, coworking, plots or furniture/interiors.
         categories: ["house", "apartment", "villa", "storage", "commercial", "condo", "townhouse", "room"],

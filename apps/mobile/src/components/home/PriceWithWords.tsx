@@ -7,6 +7,7 @@ import {
   type ListingPriceFields,
 } from "@bhavano/types/priceWords";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { useMarket } from "../../lib/market";
 
 /** "₹35,00,000 (35 Lakh)" — the exact figure at `fontSize`, the words smaller and muted after it.
  * `compact` (browse cards) shows just "₹35 Lakh" from ₹1 lakh up. `rate` is a per-unit listing's
@@ -62,11 +63,12 @@ export function ListingPrice({
  * before saving. Nothing below ₹1,000, where there are no words. */
 export function PriceWordsHint({ value, suffix = "" }: { value: string; suffix?: string }) {
   const { colors } = useAppTheme();
+  const market = useMarket();
   const amount = Number(value);
   if (!Number.isFinite(amount) || amount < 1_000) return null;
   return (
     <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
-      {formatInrWithWords(amount)}
+      {formatInrWithWords(amount, market.id)}
       {suffix}
     </Text>
   );
@@ -76,10 +78,11 @@ export function PriceWordsHint({ value, suffix = "" }: { value: string; suffix?:
  * 1,200 sq ft". Nothing until both the rate and the area are filled in. */
 export function PerUnitTotalHint({ total, area }: { total: number | null; area: string | null }) {
   const { colors } = useAppTheme();
+  const market = useMarket();
   if (total === null || !(total > 0) || !area) return null;
   return (
     <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textSoft, marginTop: 2 }}>
-      = {formatInrWithWords(total)} for {area}
+      = {formatInrWithWords(total, market.id)} for {area}
     </Text>
   );
 }

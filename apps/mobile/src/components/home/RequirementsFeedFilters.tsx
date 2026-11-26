@@ -2,19 +2,16 @@ import { forwardRef, useEffect, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
-import { bedroomLabel } from "@bhavano/types/bedrooms";
 import {
   type RequirementFeedDto,
   type RequirementFeedFilters as Filters,
   type RequirementFeedMoveIn,
 } from "@bhavano/types/requirementFeed";
 import {
-  INTENT_CATEGORIES,
   INTENT_TRANSACTION_CHOICES,
   requirementQuestionsFor,
   REQUIREMENT_BEDROOM_OPTIONS,
   REQUIREMENT_CATEGORY_LABELS,
-  REQUIREMENT_INTENTS,
   amenityOptionsFor,
   budgetPresetsFor,
   sizeQuestionFor,
@@ -22,6 +19,7 @@ import {
 } from "@bhavano/types/requirementQuestions";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { getCurrentMarketId } from "../../lib/market";
+import { bedroomText, budgetChoices, requirementCategoriesFor, requirementIntentsFor } from "../../lib/marketText";
 
 /** Plot / commercial / storage size bands — not exported from the shared package (web keeps its
  * own copy inline in RequirementsFeedPage.tsx too), so this is this file's own copy of the same
@@ -126,7 +124,7 @@ export const RequirementsFeedFilters = forwardRef<
   const intent = staged.intent;
   const transactionChoices = intent ? INTENT_TRANSACTION_CHOICES[intent] : undefined;
   const transaction = staged.transactionType ?? (intent === "buy" ? "sell" : intent === "pg" ? "rent" : undefined);
-  const categories = intent ? INTENT_CATEGORIES[intent] : [];
+  const categories = intent ? requirementCategoriesFor(intent, getCurrentMarketId()) : [];
   const category = staged.category ?? (categories.length === 1 ? categories[0] : undefined);
   const showBudget = Boolean(intent && (!transactionChoices || staged.transactionType));
   const size = category ? sizeQuestionFor(category) : undefined;
@@ -175,7 +173,7 @@ export const RequirementsFeedFilters = forwardRef<
 
         <Section title="LOOKING TO">
           <Chip label="Any" active={!intent} onPress={() => setStaged(withIntent(staged, undefined))} />
-          {REQUIREMENT_INTENTS.map((i) => (
+          {requirementIntentsFor(getCurrentMarketId()).map((i) => (
             <Chip
               key={i.value}
               label={`${i.label} (${facets.intents[i.value] ?? 0})`}
@@ -213,9 +211,9 @@ export const RequirementsFeedFilters = forwardRef<
           </Section>
         )}
 
-        {showBudget && (
+        {showBudget && getCurrentMarketId() !== "us" && (
           <Section title={`BUDGET (${budgetPresetsFor(category, transaction).unit.toUpperCase()})`}>
-            {budgetPresetsFor(category, transaction).presets.map((p) => {
+            {budgetChoices(category, transaction, getCurrentMarketId()).presets.map((p) => {
               const active = staged.minBudget === p.min && staged.maxBudget === p.max;
               return (
                 <Chip
@@ -236,11 +234,11 @@ export const RequirementsFeedFilters = forwardRef<
         )}
 
         {size?.kind === "bedrooms" && (
-          <Section title="BHK">
+          <Section title={getCurrentMarketId() === "us" ? "BEDROOMS" : "BHK"}>
             {REQUIREMENT_BEDROOM_OPTIONS.map((n) => (
               <Chip
                 key={n}
-                label={`${bedroomLabel(n)} BHK`}
+                label={bedroomText(n, getCurrentMarketId())}
                 active={Boolean(staged.bedrooms?.includes(n))}
                 onPress={() => setStaged((p) => ({ ...p, bedrooms: toggleItem(p.bedrooms, n) }))}
               />
