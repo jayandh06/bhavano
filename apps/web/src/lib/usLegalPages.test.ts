@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 // The real layout pulls in the site header and footer (server-only code); only the page text is under test.
 vi.mock("@/components/home/StaticPageLayout", () => ({
@@ -35,5 +35,33 @@ describe("US legal pages", () => {
 
   it("names the operator entity", () => {
     for (const Page of [UsTerms, UsPrivacy, UsAbout]) expect(strip(renderToStaticMarkup(createElement(Page)))).toContain("Finfolia Technologies LLP");
+  });
+});
+
+describe("Help page FAQs", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  async function helpText(market: string): Promise<string> {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_MARKET", market);
+    const { default: HelpPage } = await import("@/app/help/page");
+    return strip(renderToStaticMarkup(createElement(HelpPage)));
+  }
+
+  it("US: Google-only sign-in and no listing-check claims", async () => {
+    const text = await helpText("us");
+    expect(text).toContain("Continue with Google");
+    expect(text).not.toMatch(/Phone\s+OTP|one-time code|automated checks|checked before they go live|duplicate-photo/i);
+    expect(text).toContain("not checked before they appear");
+  });
+
+  it("India: unchanged, with Phone OTP and the automated-checks answer", async () => {
+    const text = await helpText("");
+    expect(text).toMatch(/Phone\s+OTP/);
+    expect(text).toContain("Listings are checked before they go live");
+    expect(text).toContain("Every listing goes through automated checks before it goes live");
   });
 });

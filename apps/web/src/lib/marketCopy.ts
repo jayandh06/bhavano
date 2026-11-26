@@ -46,6 +46,8 @@ export interface MarketCopy {
   searchExampleChips: (cityLabel: string, place: string) => string[];
   /** The site says every listing is checked before it goes live (true of India's moderation; the US has no moderation set up yet, so it makes no such claim). */
   listingsCheckedClaim: boolean;
+  /** "Phone OTP" is offered as a way to log in (the Help page says so). India's primary login; the US signs in with Google and only verifies a phone before posting. */
+  phoneOtpLogin: boolean;
   /** India-only content is offered: the calculators, blog and guides, the moving guide, and the Diwali banner. Off in the US. */
   indiaContent: boolean;
   /** Link to the India app store listing in structured data (`sameAs`) and the legal-entity fields in the Organization markup. */
@@ -91,6 +93,7 @@ const COPY: Record<MarketId, MarketCopy> = {
       `Coworking in ${cityLabel}`,
     ],
     listingsCheckedClaim: true,
+    phoneOtpLogin: true,
     indiaContent: true,
     indiaOrganization: true,
   },
@@ -131,6 +134,7 @@ const COPY: Record<MarketId, MarketCopy> = {
       `Rooms for rent in ${cityLabel}`,
     ],
     listingsCheckedClaim: false,
+    phoneOtpLogin: false,
     indiaContent: false,
     indiaOrganization: false,
   },
