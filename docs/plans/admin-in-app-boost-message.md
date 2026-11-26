@@ -97,8 +97,13 @@ order: send a handful by hand from the Listings page first, read them in the app
 ## Not done / caveats
 
 - **Replies:** an owner can reply in the thread; the reply goes to the sending admin's own inbox (same
-  as moderation threads). Nobody is watching that inbox for these, so a reply is currently unanswered.
-  Worth deciding: make announcement threads read-only, or route replies to support.
+  as moderation threads). Worth deciding: make announcement threads read-only, or route replies to support.
+- **The sender's inbox (changed 2026-11-26):** all automatic messages go out under one admin account
+  (`BOOST_NUDGE_SENDER_USER_ID`, else the oldest admin), whose consumer inbox listed every one of them as
+  if received from "Bhavano Admin" (812 threads on India, burying the replies). The admin who sent a staff
+  thread (announcement or moderation, automatic or typed by hand) now sees it in `listConversations` only
+  once someone else has sent a message in it (17 of those 812), and sees the advertiser's name on it, not
+  "Bhavano Admin". The advertiser's view, the unread total and the admin Messages screen are unchanged.
 - **Unread badge:** these messages count toward the owner's unread total (like any message) and clear
   when the thread is opened.
 - **Mobile app:** the inbox tag needs the next mobile build/OTA. The "Bhavano Admin" label itself is
