@@ -25,10 +25,9 @@ import { AlertPreferenceCard } from "../../src/components/home/AlertPreferenceCa
 import { ContactShareCard } from "../../src/components/home/ContactShareCard";
 import { IosCreditsSheet } from "../../src/components/home/IosPurchaseSheets";
 import { useMarket } from "../../src/lib/market";
+import { siteUrl } from "../../src/lib/marketEndpoints";
 
 type PhoneStep = "idle" | "otpSent";
-
-const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
 
 export default function AccountScreen() {
   const { colors } = useAppTheme();
@@ -758,7 +757,7 @@ function ProfileFields({
           onPress={() =>
             Platform.OS === "ios"
               ? setCreditsSheetOpen(true)
-              : WebBrowser.openBrowserAsync(`${SITE_URL}/premium#contact-reveal-credits`)
+              : WebBrowser.openBrowserAsync(`${siteUrl()}/premium#contact-reveal-credits`)
           }
           style={{ marginTop: 8, flexDirection: "row", alignItems: "center", gap: 3 }}
         >

@@ -51,16 +51,18 @@ import { Icon } from "../components/Icon";
 import { GoogleIcon } from "../components/GoogleIcon";
 import { ProfileBasicsStep, basicsFromProfile, canDismissBasics, profileNeedsBasics, profileNeedsMandatoryBasics, type ProfileBasicsValues } from "../components/home/ProfileBasicsStep";
 import { appWebUrl } from "../lib/appWebUrl";
-import { getCurrentMarketId, useMarket } from "../lib/market";
+import { getCurrentMarketId, marketKey, useMarket } from "../lib/market";
+import { beforeMarketLeave } from "../lib/marketState";
 import { getMarket } from "@bhavano/types/market";
 
 // Exported so PostAdWizard can re-read the just-written token directly after a login it
 // triggered mid-submit — see its own onSubmit for why a fresh read beats the accessToken prop.
-export const TOKEN_KEY = "bhavano.accessToken";
+/** Where this market's session token is kept: each market has its own accounts. */
+export const tokenKey = () => marketKey("bhavano.accessToken");
 /** The city the user last picked, by slug-free name. AsyncStorage rather than SecureStore: this
  * is a preference, not a secret, and SecureStore has no web implementation. Mirrors web's
  * `bhavano_city` cookie — see apps/web/src/lib/defaultCity.ts. */
-const CITY_KEY = "bhavano.city";
+const cityKey = () => marketKey("bhavano.city");
 /** How long the WhatsApp code gets before "send by SMS instead" appears. */
 const SMS_FALLBACK_AFTER_SECONDS = 20;
 
@@ -248,7 +250,7 @@ export function HomeSheetsProvider({
     setIsLoggedIn(false);
     setAccessToken(null);
     setProfile(null);
-    if (Platform.OS !== "web") await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+    if (Platform.OS !== "web") await SecureStore.deleteItemAsync(tokenKey()).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -256,6 +258,20 @@ export function HomeSheetsProvider({
     const timer = setTimeout(() => setSmsWaitSeconds((n) => n - 1), 1000);
     return () => clearTimeout(timer);
   }, [loginStep, smsWaitSeconds]);
+
+  // Leaving a market stops its pushes to this phone, while its session is still the one in use. The session itself is kept, so switching back
+  // is instant; the push token is registered again then.
+  useEffect(
+    () =>
+      beforeMarketLeave(async () => {
+        const token = accessTokenRef.current;
+        const pushToken = pushTokenRef.current;
+        if (!token || !pushToken) return;
+        pushTokenRef.current = null;
+        await unregisterPushAsync(token, pushToken);
+      }),
+    [],
+  );
 
   useEffect(() => {
     setUnauthorizedHandler((token) => void endDeadSession(token));
@@ -266,12 +282,14 @@ export function HomeSheetsProvider({
    * (see docs/plans/more-login-conversion.md). A failure keeps the current, still-valid token. */
   const renewSessionIfDue = useCallback(async (token: string) => {
     if (!isTokenDueForRenewal(token)) return;
+    // Read now: if the market changes while the server answers, the new token still belongs to this one.
+    const key = tokenKey();
     try {
       const { accessToken: renewed } = await refreshSession(token);
       if (token !== accessTokenRef.current) return;
       accessTokenRef.current = renewed;
       setAccessToken(renewed);
-      if (Platform.OS !== "web") await SecureStore.setItemAsync(TOKEN_KEY, renewed);
+      if (Platform.OS !== "web") await SecureStore.setItemAsync(key, renewed);
     } catch {
       // A 401 already ended the session through the unauthorized handler; anything else retries
       // next time the app comes forward.
@@ -293,11 +311,12 @@ export function HomeSheetsProvider({
   useEffect(() => {
     // expo-secure-store has no web implementation — the browser preview simply starts logged out.
     if (Platform.OS === "web") return;
-    SecureStore.getItemAsync(TOKEN_KEY).then((stored) => {
+    const key = tokenKey();
+    SecureStore.getItemAsync(key).then((stored) => {
       let token = stored;
       if (token && isTokenExpired(token)) {
         token = null;
-        SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+        SecureStore.deleteItemAsync(key).catch(() => {});
       }
       setIsLoggedIn(!!token);
       setAccessToken(token);
@@ -340,7 +359,7 @@ export function HomeSheetsProvider({
       // Matched by name against the real list rather than restored wholesale: a stored city that
       // has since been renamed or removed falls through to "all cities" instead of resurrecting
       // a row that no longer exists.
-      const rememberedName = await AsyncStorage.getItem(CITY_KEY).catch(() => null);
+      const rememberedName = await AsyncStorage.getItem(cityKey()).catch(() => null);
       if (cancelled) return;
       if (rememberedName) {
         const remembered =
@@ -365,7 +384,7 @@ export function HomeSheetsProvider({
     setCityState(next);
     // Fire-and-forget: failing to remember the choice is not worth blocking the sheet closing,
     // and the next launch simply falls back to the IP guess.
-    AsyncStorage.setItem(CITY_KEY, next.name).catch(() => undefined);
+    AsyncStorage.setItem(cityKey(), next.name).catch(() => undefined);
     locationSheetRef.current?.dismiss();
   }, []);
 
@@ -375,7 +394,7 @@ export function HomeSheetsProvider({
    * the next launch and make this look like it had not worked. */
   const clearCity = useCallback(() => {
     setCityState(null);
-    AsyncStorage.removeItem(CITY_KEY).catch(() => undefined);
+    AsyncStorage.removeItem(cityKey()).catch(() => undefined);
     locationSheetRef.current?.dismiss();
   }, []);
 
@@ -559,7 +578,7 @@ export function HomeSheetsProvider({
   async function onLoginSuccess(accessToken: string, isNewUser = false) {
     onSkipRef.current = undefined;
     setSkipReason(null);
-    if (Platform.OS !== "web") await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
+    if (Platform.OS !== "web") await SecureStore.setItemAsync(tokenKey(), accessToken);
     setIsLoggedIn(true);
     setAccessToken(accessToken);
     setIsNewUser(isNewUser);
@@ -643,6 +662,7 @@ export function HomeSheetsProvider({
    * done unconditionally: a network failure must never leave someone stuck logged in. */
   const logout = useCallback(async () => {
     const token = accessToken;
+    const key = tokenKey();
     // Drop this device's push token first, while the access token is still valid to authenticate
     // the (authed) delete — afterwards there's no way to identify the row to the server.
     if (token && pushTokenRef.current) {
@@ -652,7 +672,7 @@ export function HomeSheetsProvider({
     setIsLoggedIn(false);
     setAccessToken(null);
     setProfile(null);
-    if (Platform.OS !== "web") await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+    if (Platform.OS !== "web") await SecureStore.deleteItemAsync(key).catch(() => {});
     if (token) await bffLogout(token).catch(() => {});
   }, [accessToken]);
 

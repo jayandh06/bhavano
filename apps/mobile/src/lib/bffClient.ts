@@ -62,8 +62,7 @@ import type {
 } from "@bhavano/types";
 import { installAcquisitionFields } from "./installReferrer";
 import { isTrackingAuthorized } from "./trackingConsent";
-
-const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL ?? "http://localhost:4000";
+import { apiUrl } from "./marketEndpoints";
 
 /** Error thrown for any non-2xx BFF response — carries the HTTP `status` so callers can tell an
  * auth failure (stale/invalid token) from a transient network or server error. */
@@ -129,7 +128,7 @@ async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
   // "not asked yet" must never look like a denial to the server-side conversion gate.
   const trackingHeaders =
     isTrackingAuthorized() === false ? { "X-Tracking-Authorized": "false" } : undefined;
-  const res = await fetch(`${BFF_URL}${path}`, {
+  const res = await fetch(`${apiUrl()}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -321,7 +320,7 @@ export function fetchAreas(cityId: string, q?: string, all?: boolean): Promise<A
  * directly — see LocationsService.getStaticMapImage's own doc comment for why a key usable here
  * can't be safely shipped in the app bundle the way the website's own browser-exposed key can. */
 export function staticMapUrl(lat: number, lng: number): string {
-  return `${BFF_URL}/locations/static-map?lat=${lat}&lng=${lng}`;
+  return `${apiUrl()}/locations/static-map?lat=${lat}&lng=${lng}`;
 }
 
 export function fetchListingById(id: string, accessToken?: string | null): Promise<ListingDetailDto> {
@@ -500,7 +499,7 @@ export async function submitSupportTicket(input: {
   formData.append("message", input.message);
   if (input.userId) formData.append("userId", input.userId);
 
-  const res = await fetch(`${BFF_URL}/support/tickets`, {
+  const res = await fetch(`${apiUrl()}/support/tickets`, {
     method: "POST",
     body: formData as unknown as BodyInit,
   });
@@ -673,7 +672,7 @@ export async function uploadPhoto(
   formData.append("listingId", listingId);
   formData.append("photoNo", String(photoNo));
 
-  return xhrJson<{ hash: string; ext: string }>("POST", `${BFF_URL}/uploads`, accessToken, formData, onProgress);
+  return xhrJson<{ hash: string; ext: string }>("POST", `${apiUrl()}/uploads`, accessToken, formData, onProgress);
 }
 
 const VIDEO_MIME_BY_EXT: Record<string, string> = {
@@ -699,7 +698,7 @@ export async function uploadVideo(
   formData.append("file", { uri: fileUri, name: filename, type: mimeType } as unknown as Blob);
   formData.append("listingId", listingId);
 
-  return xhrJson<CreatedVideoInput>("POST", `${BFF_URL}/uploads/video`, accessToken, formData, onProgress);
+  return xhrJson<CreatedVideoInput>("POST", `${apiUrl()}/uploads/video`, accessToken, formData, onProgress);
 }
 
 /** Public, unauthenticated — logs an anonymous click on a shared referral/listing link before any
@@ -849,7 +848,7 @@ export async function addListingPhoto(fileUri: string, listingId: string, access
   const mimeType = (ext && MIME_BY_EXT[ext]) ?? "image/jpeg";
   formData.append("file", { uri: fileUri, name: filename, type: mimeType } as unknown as Blob);
 
-  const res = await fetch(`${BFF_URL}/listings/${listingId}/photos`, {
+  const res = await fetch(`${apiUrl()}/listings/${listingId}/photos`, {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}` },
     body: formData,
@@ -888,7 +887,7 @@ export async function addListingVideo(fileUri: string, listingId: string, access
   const mimeType = (ext && VIDEO_MIME_BY_EXT[ext]) ?? "video/mp4";
   formData.append("file", { uri: fileUri, name: filename, type: mimeType } as unknown as Blob);
 
-  const res = await fetch(`${BFF_URL}/listings/${listingId}/videos`, {
+  const res = await fetch(`${apiUrl()}/listings/${listingId}/videos`, {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}` },
     body: formData,

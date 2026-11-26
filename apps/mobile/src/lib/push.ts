@@ -145,6 +145,10 @@ export async function setAppBadgeCount(count: number): Promise<void> {
   }
 }
 
+/** The notification that launched the app is acted on once. A market switch remounts the listener, and the OS still reports the same last tap,
+ * which belongs to the market just left. */
+let handledLaunchResponse = false;
+
 /**
  * Runs `cb` for a tapped notification — messages deep-link to a conversation; listing interest /
  * favourite deep-link to My listings. Returns a cleanup function. No-op without the native module.
@@ -170,10 +174,13 @@ export function onNotificationTap(
     return null;
   };
 
-  void N.getLastNotificationResponseAsync().then((response) => {
-    const target = targetOf(response);
-    if (target) cb(target);
-  });
+  if (!handledLaunchResponse) {
+    handledLaunchResponse = true;
+    void N.getLastNotificationResponseAsync().then((response) => {
+      const target = targetOf(response);
+      if (target) cb(target);
+    });
+  }
   const sub = N.addNotificationResponseReceivedListener((response) => {
     const target = targetOf(response);
     if (target) cb(target);

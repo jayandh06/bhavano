@@ -18,7 +18,9 @@ describe("appWebUrl", () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires -- re-require after env change
     const { appWebUrl: appWebUrlWithEnv } = require("./appWebUrl");
     expect(appWebUrlWithEnv("/post")).toBe("https://staging.bhavano.com/post?app=1");
-    process.env.EXPO_PUBLIC_SITE_URL = prev;
+    // Assigning undefined would leave the text "undefined" behind for the next test.
+    if (prev === undefined) delete process.env.EXPO_PUBLIC_SITE_URL;
+    else process.env.EXPO_PUBLIC_SITE_URL = prev;
   });
 });
 

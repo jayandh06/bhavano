@@ -1,13 +1,14 @@
 # Mobile app market switch (India and US in one app)
 
-Status: **proposed 2026-11-26, not approved, nothing built.** Follows [us-market-expansion.md](us-market-expansion.md) ("Mobile apps").
+Status: **approved 2026-11-26** with the recommendations below. Phase 1 built the same day; nothing user-visible
+yet, and no app release made. Follows [us-market-expansion.md](us-market-expansion.md) ("Mobile apps").
 
 ## Goal
 
 One app (same bundle `com.finfolia.bhavano`, same store listing) that works against either market's server and shows
 that market's content. **An India user who updates notices nothing.**
 
-## What exists today (checked 2026-11-26)
+## What existed before phase 1 (checked 2026-11-26)
 
 | Area | State |
 |---|---|
@@ -40,7 +41,7 @@ registration and consent wording), then set the flag back to `true`.
 
 ## Decisions
 
-| # | Question | Recommendation | Why |
+| # | Question | Decision | Why |
 |---|---|---|---|
 | 1 | Market per account or per install? | **Per install**, changeable in Account and the home drawer | Accounts live in separate databases, so the market must be known before sign-in |
 | 2 | How is it first chosen? | Upgrades stay India silently. Fresh install with device region US: ask once, US preselected. Any other region: India, no question | Keeps India unchanged; US-region India users (NRIs) with the app are not moved |
@@ -74,13 +75,20 @@ registration and consent wording), then set the flag back to `true`.
 India keeps today's key names (so nobody is signed out); US keys add a `.us` suffix through one `marketKey(name)`
 helper. Install attribution stays a single first-install record.
 
-### 4. Switching
-1. Unregister this device's push token from the market being left.
-2. Disconnect the socket and reset module state: `socket.ts`, `analyticsSession.ts`, `guestSaves.ts` (loads at import),
-   the post-ad draft and the iOS purchase client.
-3. Change the market and remount the app tree (`key={marketId}`, with a new `QueryClient`), landing on Home. This
-   avoids `Updates.reloadAsync`, which does not work in development builds.
-4. On entry, restore that market's token and city and register push again.
+### 4. Switching (built in phase 1)
+`switchMarket(id)` in `market.ts`; nothing calls it yet. The state lives in `marketState.ts` (no storage or React).
+
+1. While still on the old market, goodbye hooks run (at most 5 seconds): this phone's push token is unregistered and the
+   analytics session saved. Each market's session token is kept, so switching back needs no sign-in.
+2. `MarketRoot` removes every screen, so their cleanup runs under the old market.
+3. The market changes, and modules drop what they hold in memory (socket, analytics session, guest saves, post-ad draft
+   flag, requirement draft, seeker-contact setting, the once-per-launch profile prompt). The choice is saved.
+4. The app is drawn again with a new `QueryClient`. In the browser preview it landed on Home even when switched from
+   another screen (check on devices). New providers restore that market's token and city and register push.
+
+Also guarded, because remounting reports them again: the notification and link that launched the app are acted on once.
+Apple purchases get no session outside India, so a replayed India purchase stays unfinished for India's server.
+Not done through `Updates.reloadAsync`, which does not work in development builds.
 
 ### 5. Links
 - Add `app/+native-intent.tsx` (`redirectSystemPath`): read the market from the path (`marketFromPath`), strip `/us`,
@@ -121,10 +129,10 @@ in the US as well.
 | Phase | Work | India behaviour |
 |---|---|---|
 | 0 | Server: publishing rule (done 2026-11-26), US push, refuse US payments | Unchanged |
-| 1 | `marketEndpoints`, `marketKey`, hydrate before first screen, reset hooks | Unchanged; tests pin addresses and key names |
+| 1 | `marketEndpoints`, `marketKey`, hydrate before first screen, reset hooks, the switch itself (**done 2026-11-26**) | Unchanged; tests pin addresses and key names |
 | 2 | US content, consent default, hidden payments and India-only screens | Unchanged |
 | 3 | Link handling and the web `market=us` change | India links as today |
-| 4 | First-run chooser and Country row (**last**, so earlier India releases cannot reach US) | Chooser never shown to upgrades |
+| 4 | First-run chooser and Country row (**last**, so earlier India releases cannot reach US). Suggested, to confirm then: tapping the header flag opens the switch | Chooser never shown to upgrades |
 | 5 | Version bump, builds, TestFlight and Play internal testing, store listings, release | |
 | After | Once the release is the US minimum: remove the `NOT /us` lines from `apple-app-site-association` | |
 
@@ -133,7 +141,14 @@ in the US as well.
 - Devices, both platforms: upgrade from 1.6.0 stays signed in on India; fresh US-region install; switch both ways;
   sign in, post, message and push in each; India and US links, cold and warm.
 
+## Verified for phase 1 (2026-11-26)
+- App tests (120) and type check pass.
+- Browser preview against two stand-in servers: launch used India's server; after switching, every request went to the
+  US server; the choice survived a reload; switching back worked. The preview needed temporary stand-ins for two
+  native-only modules that already fail on web (`expo-tracking-transparency`, Firebase analytics).
+
 ## Not verified
+- Nothing has run on a phone or simulator: sign-in, push, sockets and secure storage across a switch are untested.
 - No device or signed-in test against the US server.
 - US storefront availability, and whether Apple review needs anything extra for a US release.
 - The list of India-only wording comes from a text search, not a screen-by-screen review.
