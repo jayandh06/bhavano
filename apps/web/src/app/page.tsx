@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { ListingCategory } from "@bhavano/types";
-import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
 import { platformFeeFor } from "@bhavano/types/platformFeePricing";
 import {
@@ -51,6 +50,7 @@ import {
   SERVICE_TYPE_VALUES,
   SHARING_TYPE_VALUES,
 } from "@/lib/seoRoute";
+import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
 
 const PAGE_SIZE = 12;
 /** The Featured rail's own item count, and how many of the main grid's boosted matches the BFF
@@ -122,7 +122,7 @@ export default async function HomePage({
   // explicit `?city=` narrows it. A visitor who wants their own city picks it, which puts them
   // on /{city} — a real, linkable address rather than an invisible default.
   const resolvedCity =
-    allCities.find((c) => slugify(c.name) === cityParam) ?? allCities.find((c) => c.id === cityParam);
+    allCities.find((c) => toCitySlug(c.name) === cityParam) ?? allCities.find((c) => c.id === cityParam);
 
   const offset = (page - 1) * PAGE_SIZE;
   const listingsQuery = {
@@ -274,7 +274,7 @@ export default async function HomePage({
     params.set("category", category);
     if (propertyType) params.set("propertyType", propertyType);
     if (q) params.set("q", q);
-    if (resolvedCity) params.set("city", slugify(resolvedCity.name));
+    if (resolvedCity) params.set("city", toCitySlug(resolvedCity.name));
     if (bedrooms && bedrooms.length > 0) params.set("bedrooms", bedrooms.join(","));
     if (furnished) params.set("furnished", furnished);
     if (postedBy) params.set("postedBy", postedBy);

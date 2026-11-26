@@ -14,6 +14,7 @@ import { logThirdPartyCall, maskUrlParam } from '../logging/thirdPartyCallLogger
 import { cleanAreaName } from './area-name';
 import type { Area, City } from '@prisma/client';
 import { MARKET } from '../market/market-config';
+import { citySlug as toCitySlug } from '@bhavano/types/citySlug';
 
 interface GoogleGeocodeAddressComponent {
   long_name: string;
@@ -315,9 +316,9 @@ export class LocationsService {
     // browser or <Link> then resolves as protocol-relative to a bogus host instead of a same-site
     // path). Treated the same as the existing same-slug-collision case below: decline rather than
     // create a city no listing under it could ever be reached through.
-    const newSlug = slugify(trimmedName);
+    const newSlug = toCitySlug(trimmedName);
     const allCities = await this.prisma.city.findMany();
-    if (!newSlug || allCities.some((c) => slugify(c.name) === newSlug)) return null;
+    if (!newSlug || allCities.some((c) => toCitySlug(c.name) === newSlug)) return null;
 
     return this.prisma.city.create({
       data: { name: trimmedName, state: trimmedState, lat, lng, source: 'user-submitted' },

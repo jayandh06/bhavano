@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { slugify } from "@bhavano/types/slugify";
 import { useAuthGate } from "./AuthGateProvider";
 import { signOutAction } from "@/app/actions/auth";
 import { Icon } from "./Icon";
 import { spell } from "@/lib/marketCopy";
+import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
 
 /**
  * The account section of the mobile hamburger drawer — a flat list, not a nested dropdown.
@@ -20,7 +20,7 @@ const row =
 
 export function HeaderDrawerAccount({ userName, cityName }: { userName?: string | null; cityName?: string }) {
   const { requireLogin } = useAuthGate();
-  const cityQuery = cityName ? `?city=${slugify(cityName)}` : "";
+  const cityQuery = cityName ? `?city=${toCitySlug(cityName)}` : "";
 
   if (!userName) {
     return (

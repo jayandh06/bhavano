@@ -6,12 +6,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { HOME_TABS, type HomeTabValue } from "@/lib/homeCategories";
 import { buildBrowsePath } from "@/lib/listingPath";
 import { segmentsForHomeCategory, type ParsedSegments } from "@/lib/seoRoute";
-import { slugify } from "@bhavano/types/slugify";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { HorizontalScroller } from "./HorizontalScroller";
 import { MegaMenu } from "./MegaMenu";
 import { Icon } from "./Icon";
 import { marketCopy } from "@/lib/marketCopy";
+import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
 
 // Market wording (India's strings unchanged): lib/marketCopy.ts.
 const COPY = marketCopy();
@@ -35,10 +35,10 @@ export function CategoryTabs({
   const blogActive = pathname.startsWith("/blog");
   const plansActive = pathname.startsWith("/premium");
   const requirementsActive = pathname.startsWith("/requirements");
-  const requirementsHref = cityName ? `/requirements/${slugify(cityName)}` : "/requirements";
+  const requirementsHref = cityName ? `/requirements/${toCitySlug(cityName)}` : "/requirements";
   // No city selected means no ?city= to carry — /premium resolves its own default rather than
   // being handed the literal string "undefined".
-  const plansHref = cityName ? `/premium?city=${slugify(cityName)}` : "/premium";
+  const plansHref = cityName ? `/premium?city=${toCitySlug(cityName)}` : "/premium";
   const [openTab, setOpenTab] = useState<HomeTabValue | null>(null);
   const [menuLeft, setMenuLeft] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);

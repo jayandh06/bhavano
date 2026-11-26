@@ -1,5 +1,5 @@
-import { slugify } from "@bhavano/types/slugify";
 import type { PostEntrySource } from "@bhavano/types/postEntry";
+import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
 
 /** Builds every internal `/post` link's href — a `?city=` preselect (unchanged behavior) plus
  * `?from=<slug>` so the admin funnel can tell which on-site link sent the visitor here. See
@@ -7,6 +7,6 @@ import type { PostEntrySource } from "@bhavano/types/postEntry";
  * six near-identical ternaries, so a future query param never has to be added in six places. */
 export function postHref(cityName: string | null | undefined, from: PostEntrySource): string {
   const params = new URLSearchParams({ from });
-  if (cityName) params.set("city", slugify(cityName));
+  if (cityName) params.set("city", toCitySlug(cityName));
   return `/post?${params.toString()}`;
 }

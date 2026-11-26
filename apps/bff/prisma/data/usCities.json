@@ -1,0 +1,1037 @@
+[
+  {
+    "name": "New York",
+    "state": "New York",
+    "lat": 40.7128,
+    "lng": -74.006,
+    "catchmentKm": 50,
+    "areas": [
+      {
+        "name": "Upper East Side",
+        "lat": 40.7736,
+        "lng": -73.9566
+      },
+      {
+        "name": "Upper West Side",
+        "lat": 40.787,
+        "lng": -73.9754
+      },
+      {
+        "name": "Midtown",
+        "lat": 40.7549,
+        "lng": -73.984
+      },
+      {
+        "name": "Harlem",
+        "lat": 40.8116,
+        "lng": -73.9465
+      },
+      {
+        "name": "Lower East Side",
+        "lat": 40.715,
+        "lng": -73.9843
+      },
+      {
+        "name": "Williamsburg",
+        "lat": 40.7081,
+        "lng": -73.9571
+      },
+      {
+        "name": "Park Slope",
+        "lat": 40.671,
+        "lng": -73.9814
+      },
+      {
+        "name": "Bushwick",
+        "lat": 40.6944,
+        "lng": -73.9213
+      },
+      {
+        "name": "Astoria",
+        "lat": 40.7644,
+        "lng": -73.9235
+      },
+      {
+        "name": "Long Island City",
+        "lat": 40.7447,
+        "lng": -73.9485
+      },
+      {
+        "name": "Flushing",
+        "lat": 40.7675,
+        "lng": -73.8331
+      },
+      {
+        "name": "Financial District",
+        "lat": 40.7075,
+        "lng": -74.0113
+      }
+    ]
+  },
+  {
+    "name": "Los Angeles",
+    "state": "California",
+    "lat": 34.0522,
+    "lng": -118.2437,
+    "catchmentKm": 60,
+    "areas": [
+      {
+        "name": "Downtown",
+        "lat": 34.0407,
+        "lng": -118.2468
+      },
+      {
+        "name": "Hollywood",
+        "lat": 34.0928,
+        "lng": -118.3287
+      },
+      {
+        "name": "Silver Lake",
+        "lat": 34.0869,
+        "lng": -118.2702
+      },
+      {
+        "name": "Koreatown",
+        "lat": 34.0618,
+        "lng": -118.3004
+      },
+      {
+        "name": "Westwood",
+        "lat": 34.0635,
+        "lng": -118.4455
+      },
+      {
+        "name": "Venice",
+        "lat": 33.985,
+        "lng": -118.4695
+      },
+      {
+        "name": "Santa Monica",
+        "lat": 34.0195,
+        "lng": -118.4912
+      },
+      {
+        "name": "Pasadena",
+        "lat": 34.1478,
+        "lng": -118.1445
+      },
+      {
+        "name": "Sherman Oaks",
+        "lat": 34.1511,
+        "lng": -118.4492
+      },
+      {
+        "name": "North Hollywood",
+        "lat": 34.187,
+        "lng": -118.3813
+      },
+      {
+        "name": "Echo Park",
+        "lat": 34.0782,
+        "lng": -118.2606
+      },
+      {
+        "name": "Culver City",
+        "lat": 34.0211,
+        "lng": -118.3965
+      }
+    ]
+  },
+  {
+    "name": "Chicago",
+    "state": "Illinois",
+    "lat": 41.8781,
+    "lng": -87.6298,
+    "catchmentKm": 50,
+    "areas": [
+      {
+        "name": "Lincoln Park",
+        "lat": 41.9214,
+        "lng": -87.6513
+      },
+      {
+        "name": "Lakeview",
+        "lat": 41.9398,
+        "lng": -87.6589
+      },
+      {
+        "name": "River North",
+        "lat": 41.8924,
+        "lng": -87.6341
+      },
+      {
+        "name": "West Loop",
+        "lat": 41.8825,
+        "lng": -87.6447
+      },
+      {
+        "name": "Wicker Park",
+        "lat": 41.9088,
+        "lng": -87.6796
+      },
+      {
+        "name": "Logan Square",
+        "lat": 41.9231,
+        "lng": -87.7093
+      },
+      {
+        "name": "Hyde Park",
+        "lat": 41.7943,
+        "lng": -87.5907
+      },
+      {
+        "name": "South Loop",
+        "lat": 41.8674,
+        "lng": -87.627
+      },
+      {
+        "name": "Gold Coast",
+        "lat": 41.9059,
+        "lng": -87.6277
+      },
+      {
+        "name": "Uptown",
+        "lat": 41.9665,
+        "lng": -87.6533
+      },
+      {
+        "name": "Andersonville",
+        "lat": 41.9798,
+        "lng": -87.6684
+      },
+      {
+        "name": "Pilsen",
+        "lat": 41.8525,
+        "lng": -87.662
+      }
+    ]
+  },
+  {
+    "name": "Houston",
+    "state": "Texas",
+    "lat": 29.7604,
+    "lng": -95.3698,
+    "catchmentKm": 60,
+    "areas": [
+      {
+        "name": "Downtown",
+        "lat": 29.7589,
+        "lng": -95.3677
+      },
+      {
+        "name": "Midtown",
+        "lat": 29.7425,
+        "lng": -95.3778
+      },
+      {
+        "name": "Montrose",
+        "lat": 29.7447,
+        "lng": -95.3902
+      },
+      {
+        "name": "The Heights",
+        "lat": 29.798,
+        "lng": -95.398
+      },
+      {
+        "name": "River Oaks",
+        "lat": 29.7531,
+        "lng": -95.4313
+      },
+      {
+        "name": "Galleria",
+        "lat": 29.739,
+        "lng": -95.4633
+      },
+      {
+        "name": "Memorial",
+        "lat": 29.7683,
+        "lng": -95.53
+      },
+      {
+        "name": "Katy",
+        "lat": 29.7858,
+        "lng": -95.8244
+      },
+      {
+        "name": "Sugar Land",
+        "lat": 29.6197,
+        "lng": -95.6349
+      },
+      {
+        "name": "The Woodlands",
+        "lat": 30.1658,
+        "lng": -95.4613
+      },
+      {
+        "name": "Pearland",
+        "lat": 29.5636,
+        "lng": -95.286
+      },
+      {
+        "name": "Medical Center",
+        "lat": 29.7079,
+        "lng": -95.401
+      }
+    ]
+  },
+  {
+    "name": "Dallas",
+    "state": "Texas",
+    "lat": 32.7767,
+    "lng": -96.797,
+    "catchmentKm": 60,
+    "areas": [
+      {
+        "name": "Uptown",
+        "lat": 32.7987,
+        "lng": -96.8027
+      },
+      {
+        "name": "Downtown",
+        "lat": 32.7801,
+        "lng": -96.7996
+      },
+      {
+        "name": "Deep Ellum",
+        "lat": 32.7843,
+        "lng": -96.7816
+      },
+      {
+        "name": "Oak Lawn",
+        "lat": 32.81,
+        "lng": -96.81
+      },
+      {
+        "name": "Lakewood",
+        "lat": 32.819,
+        "lng": -96.75
+      },
+      {
+        "name": "Bishop Arts District",
+        "lat": 32.7476,
+        "lng": -96.827
+      },
+      {
+        "name": "Lake Highlands",
+        "lat": 32.89,
+        "lng": -96.72
+      },
+      {
+        "name": "Preston Hollow",
+        "lat": 32.882,
+        "lng": -96.806
+      },
+      {
+        "name": "Plano",
+        "lat": 33.0198,
+        "lng": -96.6989
+      },
+      {
+        "name": "Frisco",
+        "lat": 33.1507,
+        "lng": -96.8236
+      },
+      {
+        "name": "Irving",
+        "lat": 32.814,
+        "lng": -96.9489
+      },
+      {
+        "name": "Richardson",
+        "lat": 32.9483,
+        "lng": -96.7299
+      }
+    ]
+  },
+  {
+    "name": "Austin",
+    "state": "Texas",
+    "lat": 30.2672,
+    "lng": -97.7431,
+    "catchmentKm": 40,
+    "areas": [
+      {
+        "name": "Downtown",
+        "lat": 30.268,
+        "lng": -97.743
+      },
+      {
+        "name": "Hyde Park",
+        "lat": 30.3055,
+        "lng": -97.729
+      },
+      {
+        "name": "South Congress",
+        "lat": 30.248,
+        "lng": -97.75
+      },
+      {
+        "name": "East Austin",
+        "lat": 30.26,
+        "lng": -97.715
+      },
+      {
+        "name": "Mueller",
+        "lat": 30.298,
+        "lng": -97.705
+      },
+      {
+        "name": "Zilker",
+        "lat": 30.264,
+        "lng": -97.772
+      },
+      {
+        "name": "Clarksville",
+        "lat": 30.279,
+        "lng": -97.759
+      },
+      {
+        "name": "The Domain",
+        "lat": 30.402,
+        "lng": -97.725
+      },
+      {
+        "name": "North Loop",
+        "lat": 30.318,
+        "lng": -97.718
+      },
+      {
+        "name": "Round Rock",
+        "lat": 30.5083,
+        "lng": -97.6789
+      },
+      {
+        "name": "Cedar Park",
+        "lat": 30.5052,
+        "lng": -97.8203
+      },
+      {
+        "name": "South Lamar",
+        "lat": 30.245,
+        "lng": -97.781
+      }
+    ]
+  },
+  {
+    "name": "Phoenix",
+    "state": "Arizona",
+    "lat": 33.4484,
+    "lng": -112.074,
+    "catchmentKm": 60,
+    "areas": [
+      {
+        "name": "Downtown",
+        "lat": 33.4482,
+        "lng": -112.0738
+      },
+      {
+        "name": "Arcadia",
+        "lat": 33.494,
+        "lng": -111.99
+      },
+      {
+        "name": "Biltmore",
+        "lat": 33.509,
+        "lng": -112.03
+      },
+      {
+        "name": "Ahwatukee",
+        "lat": 33.342,
+        "lng": -111.984
+      },
+      {
+        "name": "Desert Ridge",
+        "lat": 33.68,
+        "lng": -111.976
+      },
+      {
+        "name": "Scottsdale",
+        "lat": 33.4942,
+        "lng": -111.9261
+      },
+      {
+        "name": "Tempe",
+        "lat": 33.4255,
+        "lng": -111.94
+      },
+      {
+        "name": "Mesa",
+        "lat": 33.4152,
+        "lng": -111.8315
+      },
+      {
+        "name": "Chandler",
+        "lat": 33.3062,
+        "lng": -111.8413
+      },
+      {
+        "name": "Gilbert",
+        "lat": 33.3528,
+        "lng": -111.789
+      },
+      {
+        "name": "Glendale",
+        "lat": 33.5387,
+        "lng": -112.186
+      },
+      {
+        "name": "Peoria",
+        "lat": 33.5806,
+        "lng": -112.2374
+      }
+    ]
+  },
+  {
+    "name": "Atlanta",
+    "state": "Georgia",
+    "lat": 33.749,
+    "lng": -84.388,
+    "catchmentKm": 60,
+    "areas": [
+      {
+        "name": "Midtown",
+        "lat": 33.7838,
+        "lng": -84.3831
+      },
+      {
+        "name": "Buckhead",
+        "lat": 33.8484,
+        "lng": -84.3733
+      },
+      {
+        "name": "Downtown",
+        "lat": 33.755,
+        "lng": -84.39
+      },
+      {
+        "name": "Virginia-Highland",
+        "lat": 33.7817,
+        "lng": -84.353
+      },
+      {
+        "name": "Old Fourth Ward",
+        "lat": 33.7639,
+        "lng": -84.372
+      },
+      {
+        "name": "Inman Park",
+        "lat": 33.761,
+        "lng": -84.359
+      },
+      {
+        "name": "Grant Park",
+        "lat": 33.737,
+        "lng": -84.372
+      },
+      {
+        "name": "West Midtown",
+        "lat": 33.786,
+        "lng": -84.413
+      },
+      {
+        "name": "Decatur",
+        "lat": 33.7748,
+        "lng": -84.2963
+      },
+      {
+        "name": "Sandy Springs",
+        "lat": 33.9304,
+        "lng": -84.3733
+      },
+      {
+        "name": "Marietta",
+        "lat": 33.9526,
+        "lng": -84.5499
+      },
+      {
+        "name": "Alpharetta",
+        "lat": 34.0754,
+        "lng": -84.2941
+      }
+    ]
+  },
+  {
+    "name": "Miami",
+    "state": "Florida",
+    "lat": 25.7617,
+    "lng": -80.1918,
+    "catchmentKm": 60,
+    "areas": [
+      {
+        "name": "Brickell",
+        "lat": 25.7601,
+        "lng": -80.1951
+      },
+      {
+        "name": "Downtown",
+        "lat": 25.7743,
+        "lng": -80.1937
+      },
+      {
+        "name": "Wynwood",
+        "lat": 25.801,
+        "lng": -80.199
+      },
+      {
+        "name": "Edgewater",
+        "lat": 25.8,
+        "lng": -80.188
+      },
+      {
+        "name": "Coconut Grove",
+        "lat": 25.727,
+        "lng": -80.242
+      },
+      {
+        "name": "Coral Gables",
+        "lat": 25.7215,
+        "lng": -80.2684
+      },
+      {
+        "name": "Little Havana",
+        "lat": 25.766,
+        "lng": -80.22
+      },
+      {
+        "name": "Miami Beach",
+        "lat": 25.7907,
+        "lng": -80.13
+      },
+      {
+        "name": "Doral",
+        "lat": 25.8195,
+        "lng": -80.3553
+      },
+      {
+        "name": "Kendall",
+        "lat": 25.6793,
+        "lng": -80.3173
+      },
+      {
+        "name": "Aventura",
+        "lat": 25.9565,
+        "lng": -80.1392
+      },
+      {
+        "name": "Fort Lauderdale",
+        "lat": 26.1224,
+        "lng": -80.1373
+      }
+    ]
+  },
+  {
+    "name": "Washington",
+    "state": "District of Columbia",
+    "lat": 38.9072,
+    "lng": -77.0369,
+    "catchmentKm": 40,
+    "areas": [
+      {
+        "name": "Capitol Hill",
+        "lat": 38.8899,
+        "lng": -76.996
+      },
+      {
+        "name": "Georgetown",
+        "lat": 38.9097,
+        "lng": -77.0654
+      },
+      {
+        "name": "Dupont Circle",
+        "lat": 38.9096,
+        "lng": -77.0434
+      },
+      {
+        "name": "Adams Morgan",
+        "lat": 38.9215,
+        "lng": -77.042
+      },
+      {
+        "name": "Logan Circle",
+        "lat": 38.9096,
+        "lng": -77.0296
+      },
+      {
+        "name": "Columbia Heights",
+        "lat": 38.9282,
+        "lng": -77.032
+      },
+      {
+        "name": "Navy Yard",
+        "lat": 38.876,
+        "lng": -77.003
+      },
+      {
+        "name": "Shaw",
+        "lat": 38.912,
+        "lng": -77.022
+      },
+      {
+        "name": "Arlington",
+        "lat": 38.8816,
+        "lng": -77.091
+      },
+      {
+        "name": "Alexandria",
+        "lat": 38.8048,
+        "lng": -77.0469
+      },
+      {
+        "name": "Bethesda",
+        "lat": 38.9847,
+        "lng": -77.0947
+      },
+      {
+        "name": "Silver Spring",
+        "lat": 38.9907,
+        "lng": -77.0261
+      }
+    ]
+  },
+  {
+    "name": "Boston",
+    "state": "Massachusetts",
+    "lat": 42.3601,
+    "lng": -71.0589,
+    "catchmentKm": 40,
+    "areas": [
+      {
+        "name": "Back Bay",
+        "lat": 42.3503,
+        "lng": -71.081
+      },
+      {
+        "name": "South End",
+        "lat": 42.3388,
+        "lng": -71.0765
+      },
+      {
+        "name": "Beacon Hill",
+        "lat": 42.3588,
+        "lng": -71.0707
+      },
+      {
+        "name": "North End",
+        "lat": 42.3647,
+        "lng": -71.0542
+      },
+      {
+        "name": "South Boston",
+        "lat": 42.3334,
+        "lng": -71.0495
+      },
+      {
+        "name": "Fenway",
+        "lat": 42.3429,
+        "lng": -71.1003
+      },
+      {
+        "name": "Jamaica Plain",
+        "lat": 42.3097,
+        "lng": -71.1151
+      },
+      {
+        "name": "Charlestown",
+        "lat": 42.3782,
+        "lng": -71.0602
+      },
+      {
+        "name": "Allston",
+        "lat": 42.3539,
+        "lng": -71.1337
+      },
+      {
+        "name": "Brighton",
+        "lat": 42.3464,
+        "lng": -71.1627
+      },
+      {
+        "name": "Cambridge",
+        "lat": 42.3736,
+        "lng": -71.1097
+      },
+      {
+        "name": "Somerville",
+        "lat": 42.3876,
+        "lng": -71.0995
+      }
+    ]
+  },
+  {
+    "name": "San Francisco",
+    "state": "California",
+    "lat": 37.7749,
+    "lng": -122.4194,
+    "catchmentKm": 35,
+    "areas": [
+      {
+        "name": "Mission District",
+        "lat": 37.7599,
+        "lng": -122.4148
+      },
+      {
+        "name": "SoMa",
+        "lat": 37.7785,
+        "lng": -122.4056
+      },
+      {
+        "name": "Marina",
+        "lat": 37.8037,
+        "lng": -122.4368
+      },
+      {
+        "name": "Noe Valley",
+        "lat": 37.7502,
+        "lng": -122.4337
+      },
+      {
+        "name": "Castro",
+        "lat": 37.7609,
+        "lng": -122.435
+      },
+      {
+        "name": "Pacific Heights",
+        "lat": 37.7925,
+        "lng": -122.4382
+      },
+      {
+        "name": "Nob Hill",
+        "lat": 37.793,
+        "lng": -122.4161
+      },
+      {
+        "name": "Sunset District",
+        "lat": 37.7534,
+        "lng": -122.495
+      },
+      {
+        "name": "Richmond District",
+        "lat": 37.78,
+        "lng": -122.48
+      },
+      {
+        "name": "Hayes Valley",
+        "lat": 37.7759,
+        "lng": -122.4245
+      },
+      {
+        "name": "Oakland",
+        "lat": 37.8044,
+        "lng": -122.2712
+      },
+      {
+        "name": "Berkeley",
+        "lat": 37.8715,
+        "lng": -122.273
+      }
+    ]
+  },
+  {
+    "name": "Seattle",
+    "state": "Washington",
+    "lat": 47.6062,
+    "lng": -122.3321,
+    "catchmentKm": 40,
+    "areas": [
+      {
+        "name": "Capitol Hill",
+        "lat": 47.6253,
+        "lng": -122.3222
+      },
+      {
+        "name": "Belltown",
+        "lat": 47.6147,
+        "lng": -122.348
+      },
+      {
+        "name": "Queen Anne",
+        "lat": 47.637,
+        "lng": -122.357
+      },
+      {
+        "name": "Ballard",
+        "lat": 47.6687,
+        "lng": -122.3847
+      },
+      {
+        "name": "Fremont",
+        "lat": 47.651,
+        "lng": -122.35
+      },
+      {
+        "name": "South Lake Union",
+        "lat": 47.627,
+        "lng": -122.336
+      },
+      {
+        "name": "University District",
+        "lat": 47.661,
+        "lng": -122.313
+      },
+      {
+        "name": "Wallingford",
+        "lat": 47.661,
+        "lng": -122.334
+      },
+      {
+        "name": "West Seattle",
+        "lat": 47.571,
+        "lng": -122.387
+      },
+      {
+        "name": "Green Lake",
+        "lat": 47.68,
+        "lng": -122.329
+      },
+      {
+        "name": "Bellevue",
+        "lat": 47.6101,
+        "lng": -122.2015
+      },
+      {
+        "name": "Redmond",
+        "lat": 47.674,
+        "lng": -122.1215
+      }
+    ]
+  },
+  {
+    "name": "Denver",
+    "state": "Colorado",
+    "lat": 39.7392,
+    "lng": -104.9903,
+    "catchmentKm": 40,
+    "areas": [
+      {
+        "name": "LoDo",
+        "lat": 39.753,
+        "lng": -104.999
+      },
+      {
+        "name": "Capitol Hill",
+        "lat": 39.733,
+        "lng": -104.979
+      },
+      {
+        "name": "Cherry Creek",
+        "lat": 39.717,
+        "lng": -104.953
+      },
+      {
+        "name": "Highland",
+        "lat": 39.761,
+        "lng": -105.011
+      },
+      {
+        "name": "RiNo",
+        "lat": 39.768,
+        "lng": -104.981
+      },
+      {
+        "name": "Washington Park",
+        "lat": 39.7,
+        "lng": -104.971
+      },
+      {
+        "name": "Five Points",
+        "lat": 39.755,
+        "lng": -104.978
+      },
+      {
+        "name": "Sloan's Lake",
+        "lat": 39.749,
+        "lng": -105.036
+      },
+      {
+        "name": "Central Park",
+        "lat": 39.759,
+        "lng": -104.892
+      },
+      {
+        "name": "Aurora",
+        "lat": 39.7294,
+        "lng": -104.8319
+      },
+      {
+        "name": "Lakewood",
+        "lat": 39.7047,
+        "lng": -105.0814
+      },
+      {
+        "name": "Englewood",
+        "lat": 39.6478,
+        "lng": -104.9878
+      }
+    ]
+  },
+  {
+    "name": "Charlotte",
+    "state": "North Carolina",
+    "lat": 35.2271,
+    "lng": -80.8431,
+    "catchmentKm": 40,
+    "areas": [
+      {
+        "name": "Uptown",
+        "lat": 35.227,
+        "lng": -80.8433
+      },
+      {
+        "name": "South End",
+        "lat": 35.212,
+        "lng": -80.859
+      },
+      {
+        "name": "NoDa",
+        "lat": 35.248,
+        "lng": -80.808
+      },
+      {
+        "name": "Plaza Midwood",
+        "lat": 35.22,
+        "lng": -80.81
+      },
+      {
+        "name": "Dilworth",
+        "lat": 35.206,
+        "lng": -80.85
+      },
+      {
+        "name": "Myers Park",
+        "lat": 35.183,
+        "lng": -80.83
+      },
+      {
+        "name": "SouthPark",
+        "lat": 35.152,
+        "lng": -80.831
+      },
+      {
+        "name": "Ballantyne",
+        "lat": 35.053,
+        "lng": -80.849
+      },
+      {
+        "name": "University City",
+        "lat": 35.307,
+        "lng": -80.742
+      },
+      {
+        "name": "Steele Creek",
+        "lat": 35.11,
+        "lng": -80.95
+      },
+      {
+        "name": "Matthews",
+        "lat": 35.1168,
+        "lng": -80.7237
+      },
+      {
+        "name": "Huntersville",
+        "lat": 35.4107,
+        "lng": -80.8429
+      }
+    ]
+  }
+]

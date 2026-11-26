@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.transactionGroupFor = transactionGroupFor;
 exports.buildListingPath = buildListingPath;
 const slugify_1 = require("./slugify");
+const citySlug_1 = require("./citySlug");
 function transactionGroupFor(t) {
     return t === "buy" || t === "sell" ? "buy" : "rent-lease";
 }
@@ -13,5 +14,5 @@ function transactionGroupFor(t) {
  * `buildBrowsePath` for that (still web-only: nothing outside the browse UI needs it). */
 function buildListingPath(item) {
     const group = transactionGroupFor(item.transactionType);
-    return `/${(0, slugify_1.slugify)(item.cityName)}/${(0, slugify_1.slugify)(item.area)}/${group}/${item.category}/${item.slug}-${item.id}`;
+    return `/${(0, citySlug_1.citySlug)(item.cityName)}/${(0, slugify_1.slugify)(item.area)}/${group}/${item.category}/${item.slug}-${item.id}`;
 }

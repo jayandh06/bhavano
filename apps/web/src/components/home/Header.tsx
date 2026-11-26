@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { City, PopularSearchDto } from "@bhavano/types";
-import { slugify } from "@bhavano/types/slugify";
 import { postHref } from "@/lib/postHref";
 import type { ParsedSegments } from "@/lib/seoRoute";
 import { LocationPicker } from "./LocationPicker";
@@ -17,6 +16,7 @@ import { HeaderDrawer } from "./HeaderDrawer";
 import { Icon } from "./Icon";
 import { marketCopy } from "@/lib/marketCopy";
 import { withBasePath } from "@/lib/basePath";
+import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
 
 // next/image needs a local path to carry the build's base path (it is not added for you): "/us/logo.png" in the US build, "/logo.png" for India.
 const LOGO_SRC = withBasePath("/logo.png");
@@ -144,7 +144,7 @@ export function Header({
                 Tools
               </Link>
             )}
-            <Link href={cityName ? `/premium?city=${slugify(cityName)}` : "/premium"} prefetch={false} className="text-inherit transition-colors hover:text-[color:var(--gold)]">
+            <Link href={cityName ? `/premium?city=${toCitySlug(cityName)}` : "/premium"} prefetch={false} className="text-inherit transition-colors hover:text-[color:var(--gold)]">
               Plans
             </Link>
             <Link href="/help" prefetch={false} className="text-inherit transition-colors hover:text-[color:var(--gold)]">
