@@ -97,7 +97,8 @@ export const HOME_TABS: HomeTab[] = [
       bhkColumn1Item("buy", "Buy", "apartment", "Apartment"),
       ...(US ? [bhkColumn1Item("buy", "Buy", "condo", "Condo"), bhkColumn1Item("buy", "Buy", "townhouse", "Townhouse")] : []),
       bhkColumn1Item("buy", "Buy", "villa", "Villa"),
-      singleLinkColumn1Item("plot", "Plots", { transactionGroup: "buy", category: "plot" }),
+      // PG, Coworking and Plots are not US categories (MARKETS.us.categories), so the US menus do not offer them.
+      ...(US ? [] : [singleLinkColumn1Item("plot", "Plots", { transactionGroup: "buy", category: "plot" })]),
       singleLinkColumn1Item("commercial", "Commercial", { transactionGroup: "buy", category: "commercial" }),
     ],
   },
@@ -120,22 +121,26 @@ export const HOME_TABS: HomeTab[] = [
       singleLinkColumn1Item("commercial", "Commercial", { transactionGroup: "rent-lease", category: "commercial" }),
     ],
   },
-  {
-    value: "pg",
-    label: "PG",
-    icon: "bed",
-    column1: PG_SHARING_OPTIONS.map((opt) =>
-      singleLinkColumn1Item(opt.value, opt.label, { transactionGroup: "rent-lease", category: "pg", facetValue: opt.value }),
-    ),
-  },
-  {
-    value: "coworking",
-    label: "Coworking",
-    icon: "building",
-    // No further breakdown (like PG's sharing types or Furniture's conditions) — Coworking has
-    // nothing narrower to offer, so this tab is a plain link with no dropdown, same shape as "all".
-    column1: [],
-  },
+  ...(US
+    ? []
+    : ([
+        {
+          value: "pg",
+          label: "PG",
+          icon: "bed",
+          column1: PG_SHARING_OPTIONS.map((opt) =>
+            singleLinkColumn1Item(opt.value, opt.label, { transactionGroup: "rent-lease", category: "pg", facetValue: opt.value }),
+          ),
+        },
+        {
+          value: "coworking",
+          label: "Coworking",
+          icon: "building",
+          // No further breakdown (like PG's sharing types or Furniture's conditions) — Coworking has
+          // nothing narrower to offer, so this tab is a plain link with no dropdown, same shape as "all".
+          column1: [],
+        },
+      ] satisfies HomeTab[])),
   // Furniture/Interiors deliberately hidden for now — low inventory, focus is on core real
   // estate first. Not removed from ListingCategory/HomeCategoryFilter, so any existing listings
   // and their browse pages keep working exactly as before; this only hides them from nav/new
