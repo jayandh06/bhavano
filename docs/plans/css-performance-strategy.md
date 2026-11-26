@@ -13,6 +13,7 @@
 - **No responsive CSS at all** — zero `@media` / container queries anywhere. This is a *symptom*
   of the inline approach: you can't express breakpoints inline.
 - Fonts already optimal: self-hosted via `next/font/google` (Lora + Manrope). **Leave as-is.**
+  (Since 2026-11-26 the files are in the repo and loaded with `next/font/local`; see [self-hosted-fonts.md](self-hosted-fonts.md).)
 
 ## Baseline measurements (step 0 — captured)
 

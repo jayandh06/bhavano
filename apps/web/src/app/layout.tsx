@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Lora, Manrope } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider } from "next-themes";
 import { LEGAL_ENTITY, entityAddressLines } from "@bhavano/types/legalEntity";
@@ -22,20 +21,8 @@ import { siteRobots } from "@/lib/marketRobots";
 import { marketCopy } from "@/lib/marketCopy";
 import { OpenInAppStrip } from "@/components/home/OpenInAppStrip";
 import { JsonLd } from "@/components/JsonLd";
+import { fontVariables } from "./fonts";
 import "./globals.css";
-
-const lora = Lora({
-  variable: "--font-lora",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  style: ["normal", "italic"],
-});
-
-const manrope = Manrope({
-  variable: "--font-manrope",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-});
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
@@ -81,7 +68,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang={COPY.htmlLang} className={`${lora.variable} ${manrope.variable}`} suppressHydrationWarning>
+    <html lang={COPY.htmlLang} className={fontVariables} suppressHydrationWarning>
       <head>
         <JsonLd
           data={{
