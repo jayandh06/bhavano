@@ -59,18 +59,35 @@ describe('MessagingService.listConversations — Verified Buyer badge (premiumUn
 });
 
 describe('MessagingService.listConversations — unified inquiry + moderation inbox', () => {
-  it('lists every conversation the user is in (no type filter); empty threads stay out via messages.some', async () => {
+  it('lists owned and enquiry threads with a message, and a sent staff thread only once someone else has replied', async () => {
     const { service, prisma } = makeService([]);
-    await service.listConversations('poster1');
+    await service.listConversations('user1');
     expect(prisma.conversation.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
-          OR: [{ posterId: 'poster1' }, { inquirerId: 'poster1' }],
+          OR: [
+            { posterId: 'user1' },
+            { inquirerId: 'user1', type: 'inquiry' },
+            {
+              inquirerId: 'user1',
+              type: { in: ['moderation', 'announcement'] },
+              messages: { some: { senderId: { not: 'user1' }, deletedAt: null } },
+            },
+          ],
           messages: { some: { deletedAt: null } },
         },
       }),
     );
   });
+
+  it.each(['moderation', 'announcement'] as const)(
+    'names the advertiser, not "Bhavano Admin", to the admin who sent the %s thread',
+    async (type) => {
+      const { service } = makeService([conversation('owner1', 'admin1', null, type)]);
+      const [result] = await service.listConversations('admin1');
+      expect(result.otherPartyName).toBe('Poster');
+    },
+  );
 
   it('labels moderation threads as Bhavano Admin and never shows Verified Buyer on them', async () => {
     const { service } = makeService([conversation('owner1', 'admin1', future(), 'moderation')]);
@@ -525,6 +542,14 @@ describe('MessagingService.getConversation — blocked flag', () => {
   it('reports blocked: false when no block exists', async () => {
     const service = makeGetConversationService(row, 0);
     await expect(service.getConversation('c1', 'poster1')).resolves.toMatchObject({ blocked: false });
+  });
+
+  it.each([
+    ['poster1', 'Bhavano Admin'],
+    ['buyer1', 'Poster'],
+  ])('names the other side of a staff thread for %s as %s', async (viewer, name) => {
+    const service = makeGetConversationService({ ...row, type: 'announcement' }, 0);
+    await expect(service.getConversation('c1', viewer)).resolves.toMatchObject({ otherPartyName: name });
   });
 });
 

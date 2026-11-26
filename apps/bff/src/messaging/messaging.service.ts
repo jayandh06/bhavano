@@ -35,6 +35,9 @@ function toMessageDto(message: Message, opts: { revealDeletedBody?: boolean } = 
   };
 }
 
+/** Thread types an admin opens with an advertiser, as opposed to a buyer's `inquiry`. */
+const STAFF_THREAD_TYPES: ('moderation' | 'announcement')[] = ['moderation', 'announcement'];
+
 /** How a staff-sent thread is labelled in the owner's inbox — always "Bhavano Admin", never the
  * acting admin's personal name and never a phone number. `moderation` (takedown/fix) and
  * `announcement` (tip/offer) share the label but stay separate thread types, so the inbox can
@@ -207,11 +210,15 @@ export class MessagingService {
     };
   }
 
-  /** Unified owner/buyer inbox — buyer inquiries **and** admin↔owner moderation threads that
+  /** Unified owner/buyer inbox — buyer inquiries **and** staff threads (moderation, announcement) that
    * already have at least one non-deleted message. Empty moderation rows (created when an admin
    * merely opens a listing via `getOrCreateModerationThread`) stay out because of the
-   * `messages: { some: { deletedAt: null } }` filter, so admins who also use the consumer app
-   * don't see a phantom empty thread for every listing they browsed in admin. */
+   * `messages: { some: { deletedAt: null } }` filter.
+   *
+   * The admin who sent a staff thread sees it only once the advertiser has replied. The automatic Boost,
+   * expiry and feedback messages are all sent under one admin account, which would otherwise find
+   * hundreds of its own outgoing messages in its inbox and miss the replies among them. The admin
+   * Messages screen (`listConversationsAsAdmin`) still lists every thread. */
   async listConversations(userId: string): Promise<ConversationSummaryDto[]> {
     const conversations = await this.prisma.conversation.findMany({
       // `some: { deletedAt: null }`, not just `some: {}` — a conversation whose only messages
@@ -221,7 +228,15 @@ export class MessagingService {
       // what's listed here. sendFirstMessage's upsert still finds and reuses the same row if
       // either side messages again, so nothing is lost or duplicated.
       where: {
-        OR: [{ posterId: userId }, { inquirerId: userId }],
+        OR: [
+          { posterId: userId },
+          { inquirerId: userId, type: 'inquiry' },
+          {
+            inquirerId: userId,
+            type: { in: STAFF_THREAD_TYPES },
+            messages: { some: { senderId: { not: userId }, deletedAt: null } },
+          },
+        ],
         messages: { some: { deletedAt: null } },
       },
       include: {
@@ -261,9 +276,11 @@ export class MessagingService {
           otherPartyId: otherParty.id,
           // Never the raw phone number — a caller with no display name previously fell through
           // to `otherParty.phone`, handing out contact info the paid reveal flow exists to gate
-          // (see contact-reveal.service.ts). Moderation always reads as "Bhavano Admin" so an
-          // individual admin's personal name never looks like a buyer in the unified inbox.
-          otherPartyName: staffLabel(c.type) ?? (otherParty.name ?? (viewerIsPoster ? 'Buyer' : 'Seller')),
+          // (see contact-reveal.service.ts). To the advertiser a staff thread always reads as
+          // "Bhavano Admin", so an admin's personal name never looks like a buyer in the unified
+          // inbox; the admin who sent it sees the advertiser.
+          otherPartyName:
+            (viewerIsPoster ? staffLabel(c.type) : null) ?? otherParty.name ?? (viewerIsPoster ? 'Buyer' : 'Seller'),
           otherPartyIsVerifiedBuyer,
           lastMessage: c.messages[0] ? toMessageDto(c.messages[0]) : null,
           unreadCount,
@@ -307,9 +324,10 @@ export class MessagingService {
     return {
       id: conversation.id,
       type: conversation.type,
-      // See listConversations' identical fix — never the raw phone number; moderation is always
-      // labeled as staff, not the acting admin's personal display name.
-      otherPartyName: staffLabel(conversation.type) ?? (otherParty.name ?? (viewerIsPoster ? 'Buyer' : 'Seller')),
+      // Same naming as listConversations — never the raw phone number; the advertiser sees staff,
+      // not the acting admin's personal display name, and the admin sees the advertiser.
+      otherPartyName:
+        (viewerIsPoster ? staffLabel(conversation.type) : null) ?? otherParty.name ?? (viewerIsPoster ? 'Buyer' : 'Seller'),
       listing: {
         id: conversation.listing.id,
         title: conversation.listing.title,

@@ -14,7 +14,9 @@ This is a large, multi-part feature. It's phased below so it can be built and ve
   **Shipped behaviour:** `listConversations` / `getUnreadTotal` include both `inquiry` and
   `moderation`, but only threads with at least one non-deleted message (so empty rows created when
   an admin merely opens a listing stay out of the consumer inbox). Moderation rows are labeled
-  **Bhavano Admin** / UI badge **From Bhavano**.
+  **Bhavano Admin** / UI badge **From Bhavano**. Since 2026-11-26 the admin who sent a staff thread sees
+  it in that inbox only after the other side replies — see
+  [`admin-in-app-boost-message.md`](admin-in-app-boost-message.md).
 - **Email + SMS notifications are net-new infrastructure** — zero email-sending capability exists anywhere in the repo today, and the only SMS integration (MSG91) is hardwired to OTP delivery, not free-form transactional messages. This is flagged clearly in Phase 4 below since it needs an external account (Resend, or SES since deployment is already on AWS) and, for SMS in India, DLT template registration — neither of which I can provision myself.
 
 ---
