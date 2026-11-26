@@ -16,12 +16,14 @@ const GETTING_STARTED: Faq[] = [
     q: "What is Bhavano, and how is it different from other classifieds sites?",
     a: (
       <>
-        {COPY.helpAbout} Listings are
-        checked before they go live and our team can take down ones that break the rules. See{" "}
+        {COPY.helpAbout}{" "}
+        {COPY.listingsCheckedClaim
+          ? "Listings are checked before they go live and our team can take down ones that break the rules. See "
+          : "Listings are posted by owners and agents and are not checked before they appear. See "}
         <Link href="/trust" className="text-green font-bold">
-          how we keep listings clean
+          {COPY.listingsCheckedClaim ? "how we keep listings clean" : "Trust & Safety"}
         </Link>
-        , including what we don&apos;t verify yet.
+        {COPY.listingsCheckedClaim ? ", including what we don't verify yet." : " for staying safe and what we do and do not check."}
       </>
     ),
   },
@@ -33,9 +35,19 @@ const GETTING_STARTED: Faq[] = [
     q: "How do I create an account?",
     a: (
       <>
-        Click <strong>Login</strong> and choose either <strong>Continue with Google</strong> or <strong>Phone
-        OTP</strong> (we&apos;ll text you a one-time code). There&apos;s no separate signup step — logging in the
-        first time creates your account.
+        {COPY.phoneOtpLogin ? (
+          <>
+            Click <strong>Login</strong> and choose either <strong>Continue with Google</strong> or <strong>Phone
+            OTP</strong> (we&apos;ll text you a one-time code). There&apos;s no separate signup step — logging in the
+            first time creates your account.
+          </>
+        ) : (
+          <>
+            Click <strong>Login</strong> and choose <strong>Continue with Google</strong>. There&apos;s no separate signup
+            step — logging in the first time creates your account. You&apos;ll be asked to verify a phone number before
+            you post an ad.
+          </>
+        )}
       </>
     ),
   },
@@ -157,9 +169,9 @@ const SAFETY: Faq[] = [
     q: "Are the listings verified?",
     a: (
       <>
-        Every listing goes through automated checks before it goes live (banned content, price sense-check and a
-        duplicate-photo check), and our team reviews and can take down listings that break the standards. We
-        don&apos;t inspect properties or verify every owner&apos;s documents. Details on our{" "}
+        {COPY.listingsCheckedClaim
+          ? "Every listing goes through automated checks before it goes live (banned content, price sense-check and a duplicate-photo check), and our team reviews and can take down listings that break the standards. We don't inspect properties or verify every owner's documents. Details on our "
+          : "No. Listings are posted by owners and agents and are not checked before they appear. We don't inspect properties or verify ownership, and we may remove listings that break our Terms. Tips and what to watch for are on our "}
         <Link href="/trust" className="text-green font-bold">
           Trust &amp; Safety page
         </Link>

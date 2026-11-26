@@ -41,5 +41,5 @@ listing-check claim, if Terms/Privacy lose their draft marker, or if the entity 
 
 - The mobile apps' privacy and terms screens (`apps/mobile/app/privacy.tsx`, `terms.tsx`, `about.tsx`) stay India's; the app has
   no US market switch yet.
-- The Help page's FAQs about phone-OTP login and listing checks.
+- (Done 2026-11-26) The Help page FAQs: US says Google sign-in only (phone verified before posting) and makes no listing-check claims.
 - Payment terms: the US has no payments, so Terms section 10 says paid features are not offered yet.
