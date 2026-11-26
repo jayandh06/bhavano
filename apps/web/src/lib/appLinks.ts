@@ -1,4 +1,5 @@
 import { extractListingId, parseSegments } from "./seoRoute";
+import { buildMarket } from "./marketRobots";
 
 /** Links from the website into the Android app — see docs/plans/drive-users-to-android-app.md.
  * Used from both server (Footer) and client components: no server-only imports, and no React
@@ -106,18 +107,24 @@ export function appPathForWebPath(pathname: string): string {
   return parsed?.listingSlugId ? `listing/${extractListingId(parsed.listingSlugId)}` : "";
 }
 
+/** The app is one for both markets and cannot tell from `bhavano://` which one a link is from, so the US site says so; an unmarked link is India's
+ * (apps/mobile/src/lib/marketLinks.ts). Nothing is added to India's links. */
+function marketTag(marketId?: string): string {
+  return buildMarket(marketId).id === "us" ? "?market=us" : "";
+}
+
 /** Chrome-on-Android intent link: opens `bhavano://<appPath>` when the app is installed, and the
  * Play Store page otherwise. A plain bhavano:// href would do nothing at all without the app. */
-export function androidIntentUrl(appPath: string, medium: string, campaign: string): string {
+export function androidIntentUrl(appPath: string, medium: string, campaign: string, marketId?: string): string {
   const fallback = encodeURIComponent(playStoreUrl(medium, campaign));
-  return `intent://${appPath}#Intent;scheme=bhavano;package=${ANDROID_PACKAGE};S.browser_fallback_url=${fallback};end`;
+  return `intent://${appPath}${marketTag(marketId)}#Intent;scheme=bhavano;package=${ANDROID_PACKAGE};S.browser_fallback_url=${fallback};end`;
 }
 
 /** The app's own link scheme for a screen, e.g. `bhavano://listing/abc`. On iPhone a plain scheme link is the only
  * way a web page can ask the app to open (there is no intent:// equivalent); with no app installed Safari shows
  * an error, so callers must fall back to the App Store themselves (see OpenInAppStrip). */
-export function iosAppUrl(appPath: string): string {
-  return `bhavano://${appPath}`;
+export function iosAppUrl(appPath: string, marketId?: string): string {
+  return `bhavano://${appPath}${marketTag(marketId)}`;
 }
 
 /** Android Chrome / Samsung Internet etc. — excludes in-app WebViews (Facebook, Instagram and

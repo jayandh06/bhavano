@@ -1,3 +1,4 @@
+import type { MarketId } from "@bhavano/types/market";
 import { getCurrentMarketId } from "./marketState";
 
 /** Each market has its own server and its own place on the website. Ask at the time of the request, never keep the answer in a module constant:
@@ -9,8 +10,8 @@ export function apiUrl(): string {
   return process.env.EXPO_PUBLIC_BFF_URL ?? "http://localhost:4000";
 }
 
-/** The market's website, without a trailing slash: the US lives under /us. */
-export function siteUrl(): string {
-  if (getCurrentMarketId() === "us") return process.env.EXPO_PUBLIC_US_SITE_URL || "https://www.bhavano.com/us";
+/** A market's website (the current one unless named), without a trailing slash: the US lives under /us. */
+export function siteUrl(market: MarketId = getCurrentMarketId()): string {
+  if (market === "us") return process.env.EXPO_PUBLIC_US_SITE_URL || "https://www.bhavano.com/us";
   return process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
 }
