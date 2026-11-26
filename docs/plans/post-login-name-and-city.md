@@ -27,6 +27,9 @@ profile has none. **Web does not prefill yet** — the selected city lives in a 
 
 - **Rule:** publishing needs a *verified phone*. Phone-OTP accounts always have one. Google/Apple
   accounts usually do not, so they are asked at Publish. Email is never required to publish.
+- **Per market (2026-11-26):** the rule applies where `publishRequiresVerifiedPhone` is true in the market config.
+  India: true, everything below unchanged. US: false, because it has no SMS provider and nobody could verify, so the
+  BFF, web wizard and app skip the check — see [mobile-market-switch.md](mobile-market-switch.md).
 - **BFF (authoritative):** `ListingsService.assertOwnerPhoneVerified`, called by the user-facing
   `POST /listings` controller only (not inside `create`, which outreach also uses to post on a
   contact's behalf). Rejects with 403 `{ code: PHONE_VERIFICATION_REQUIRED, message: "Verify your

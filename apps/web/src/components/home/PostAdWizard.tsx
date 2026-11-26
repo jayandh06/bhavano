@@ -2158,8 +2158,10 @@ export function PostAdWizard({
     // spam control) but login no longer collects one, so a Google/Apple account arrives here
     // without it. Checked below, after the uploads it has no dependency on have already started —
     // see the result handling below. The BFF re-checks authoritatively on create.
-    // Not for an assisted ad: the seller proves their phone when they claim it.
-    const publisherPromise = assistedMode ? Promise.resolve(null) : getUserContactAction();
+    // Not for an assisted ad: the seller proves their phone when they claim it. Nor in a market with no way to send a
+    // code (the US): the BFF does not ask there either.
+    const publisherPromise =
+      assistedMode || !market.publishRequiresVerifiedPhone ? Promise.resolve(null) : getUserContactAction();
 
     // Uploaded with up to 3 in flight at once (runWithConcurrency) rather than one at a time —
     // see docs/plans/posting-speed-and-progress.md: sequential upload of every photo then every

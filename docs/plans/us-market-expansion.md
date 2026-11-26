@@ -313,6 +313,8 @@ handling is out. **Not covered:**
 - The web's "Open app" bar and Safari's Smart App Banner still show on US pages and open the India app (left as is by
   choice).
 
+**Detailed plan (proposed 2026-11-26):** [mobile-market-switch.md](mobile-market-switch.md).
+
 **What needs work either way**
 - **API selection:** the app uses one backend, `EXPO_PUBLIC_BFF_URL=https://api.bhavano.com` (India). The US needs its
   own API host (for example `api.us.bhavano.com`) chosen by market (account or an explicit choice), with the India URL

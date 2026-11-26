@@ -56,6 +56,7 @@ describe("Help page FAQs", () => {
     expect(text).toContain("Continue with Google");
     expect(text).not.toMatch(/Phone\s+OTP|one-time code|automated checks|checked before they go live|duplicate-photo/i);
     expect(text).toContain("not checked before they appear");
+    expect(text).not.toContain("verify a phone number");
   });
 
   it("India: unchanged, with Phone OTP and the automated-checks answer", async () => {

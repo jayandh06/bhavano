@@ -29,8 +29,8 @@ export function UsPrivacy() {
       <PageSection heading="1. Information we collect">
         <ul className="list-disc m-0 pl-5 flex flex-col gap-1.5">
           <li>
-            <strong>Account information:</strong> the name and email address from your Google account when you sign in with Google, and the
-            phone number you give us if we ask you to verify one before you post.
+            <strong>Account information:</strong> the name and email address from your Google or Apple account when you sign in, and
+            any phone number you add to your account.
           </li>
           <li>
             <strong>Profile information:</strong> your name, city and contact details, which you can review and change on your{" "}
