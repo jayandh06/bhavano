@@ -59,9 +59,11 @@ test.describe("required-field borders (v2)", () => {
     await field(page, "bathrooms").locator("input").first().focus();
     await expect(field(page, "carpetAreaSqft")).toHaveAttribute("data-req", "error");
     await expect(field(page, "carpetAreaSqft").getByRole("alert")).toBeVisible();
-    const solid = await borderOf(field(page, "carpetAreaSqft").locator("input").first());
+    // The border colour animates, so read it until it settles; a single read can land mid-transition with a translucent alpha.
+    const input = field(page, "carpetAreaSqft").locator("input").first();
+    await expect.poll(async () => (await borderOf(input)).a, { message: "solid red is opaque" }).toBe(1);
+    const solid = await borderOf(input);
     expect(solid.r, solid.css).toBeGreaterThan(solid.g + 40);
-    expect(solid.a, "solid red is opaque").toBe(1);
 
     // Filling it clears the error and turns it green.
     await field(page, "carpetAreaSqft").locator("input").first().fill("950");

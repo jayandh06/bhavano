@@ -3,10 +3,14 @@ import type { Metadata } from "next";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 import { JsonLd } from "@/components/JsonLd";
 import { faqPageJsonLd } from "@/lib/faqJsonLd";
+import { UsTrust } from "@/components/legal/UsTrust";
+import { buildMarket } from "@/lib/marketRobots";
 
-const TITLE = "Trust & listing standards";
-const DESCRIPTION =
-  "How Bhavano keeps listings clean: automated checks before a listing goes live, human review and takedown, and what we don't verify yet.";
+const IS_US = buildMarket().id === "us";
+const TITLE = IS_US ? "Trust & Safety" : "Trust & listing standards";
+const DESCRIPTION = IS_US
+  ? "How to stay safe renting or buying through Bhavano, what we do and do not check, and how to report a listing."
+  : "How Bhavano keeps listings clean: automated checks before a listing goes live, human review and takedown, and what we don't verify yet.";
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -39,6 +43,8 @@ const FAQS: { q: string; a: string }[] = [
 ];
 
 export default function TrustPage() {
+  // The US makes no listing-check claims (it has no moderation yet); India's page below is unchanged.
+  if (buildMarket().id === "us") return <UsTrust />;
   return (
     <StaticPageLayout title={TITLE} updated="15 October 2026">
       <JsonLd data={faqPageJsonLd(FAQS)} />

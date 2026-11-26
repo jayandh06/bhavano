@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { LEGAL_ENTITY, entityOperatorSentence } from "@bhavano/types/legalEntity";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
+import { UsTerms } from "@/components/legal/UsTerms";
+import { buildMarket } from "@/lib/marketRobots";
 
 export const metadata = {
   title: "Terms of Service",
@@ -8,6 +10,8 @@ export const metadata = {
 };
 
 export default function TermsPage() {
+  // The US has its own terms (US law placeholders, Fair Housing, no OTP sign-in or Razorpay); India's text below is unchanged.
+  if (buildMarket().id === "us") return <UsTerms />;
   return (
     <StaticPageLayout title="Terms of Service" updated="2 November 2026">
       <PageSection heading="1. Acceptance of these terms">
