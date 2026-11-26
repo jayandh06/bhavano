@@ -2669,6 +2669,27 @@ describe('ListingsService.getSellerAttention', () => {
   });
 });
 
+describe('ListingsService.assertOwnerPhoneVerified in the US', () => {
+  it('lets an account with no phone publish, since the US cannot send a code', async () => {
+    const previous = process.env.MARKET;
+    process.env.MARKET = 'us';
+    const findUnique = jest.fn().mockResolvedValue({ phone: null, phoneVerifiedAt: null });
+    let result: Promise<void> | undefined;
+    try {
+      jest.isolateModules(() => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { ListingsService: UsListingsService } = require('./listings.service');
+        result = UsListingsService.prototype.assertOwnerPhoneVerified.call({ prisma: { user: { findUnique } } }, 'u1');
+      });
+    } finally {
+      if (previous === undefined) delete process.env.MARKET;
+      else process.env.MARKET = previous;
+    }
+    await expect(result).resolves.toBeUndefined();
+    expect(findUnique).not.toHaveBeenCalled();
+  });
+});
+
 describe('ListingsService.assertOwnerPhoneVerified', () => {
   const setup = (owner: unknown) => {
     const { service, prisma } = makeService();

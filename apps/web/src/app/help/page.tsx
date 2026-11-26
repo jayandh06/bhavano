@@ -44,8 +44,7 @@ const GETTING_STARTED: Faq[] = [
         ) : (
           <>
             Click <strong>Login</strong> and choose <strong>Continue with Google</strong>. There&apos;s no separate signup
-            step — logging in the first time creates your account. You&apos;ll be asked to verify a phone number before
-            you post an ad.
+            step — logging in the first time creates your account.
           </>
         )}
       </>

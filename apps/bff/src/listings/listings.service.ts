@@ -1786,8 +1786,10 @@ export class ListingsService {
    * it; the client asks for it there, and this is the authoritative backstop. Called by the
    * user-facing create route only — not by `create` itself, which outreach also uses to post on
    * behalf of a contact who has no account phone. `code` lets a client tell this apart from any
-   * other 403 without matching the message text. */
+   * other 403 without matching the message text. Markets that cannot send a code (the US, no SMS provider yet) skip it:
+   * see `publishRequiresVerifiedPhone` in the market config. */
   async assertOwnerPhoneVerified(ownerId: string): Promise<void> {
+    if (!MARKET.publishRequiresVerifiedPhone) return;
     const owner = await this.prisma.user.findUnique({
       where: { id: ownerId },
       select: { phone: true, phoneVerifiedAt: true },

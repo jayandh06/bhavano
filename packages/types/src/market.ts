@@ -48,6 +48,8 @@ export interface MarketConfig {
   phonePlaceholder: string;
   /** Phone numbers are the login identity here. False means email or social login leads. */
   phoneLoginPrimary: boolean;
+  /** Publishing an ad needs a phone number proven by a one-time code. False where no code can be sent: the US has no SMS provider yet. */
+  publishRequiresVerifiedPhone: boolean;
   /** Categories that exist in this market. */
   categories: ListingCategory[];
   /** Listing and requirement field keys this market does not offer. The US drops the fields that state a preference for
@@ -77,6 +79,7 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
     phoneLabel: "10-digit Indian mobile number",
     phonePlaceholder: "10-digit mobile number",
     phoneLoginPrimary: true,
+    publishRequiresVerifiedPhone: true,
     categories: ["house", "apartment", "villa", "pg", "storage", "coworking", "furniture", "interiors", "plot", "commercial"],
     hiddenFieldKeys: [],
     indexable: true,
@@ -100,6 +103,7 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
     phoneLabel: "10-digit US phone number",
     phonePlaceholder: "10-digit phone number",
     phoneLoginPrimary: false,
+    publishRequiresVerifiedPhone: false,
     // Starting set plus condo, townhouse and room for rent (docs/plans/us-categories-condo-townhouse-room.md); the wedge decision in the plan may change it.
     // No PG, coworking, plots or furniture/interiors.
     categories: ["house", "apartment", "villa", "storage", "commercial", "condo", "townhouse", "room"],

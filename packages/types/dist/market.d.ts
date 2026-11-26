@@ -46,6 +46,8 @@ export interface MarketConfig {
     phonePlaceholder: string;
     /** Phone numbers are the login identity here. False means email or social login leads. */
     phoneLoginPrimary: boolean;
+    /** Publishing an ad needs a phone number proven by a one-time code. False where no code can be sent: the US has no SMS provider yet. */
+    publishRequiresVerifiedPhone: boolean;
     /** Categories that exist in this market. */
     categories: ListingCategory[];
     /** Listing and requirement field keys this market does not offer. The US drops the fields that state a preference for

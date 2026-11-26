@@ -38,6 +38,7 @@ export function ListingCard({
   const [contactError, setContactError] = useState<string | null>(null);
   const [contactRevealed, setContactRevealed] = useState(item.contactRevealed);
   const [ownerPhone, setOwnerPhone] = useState(item.ownerPhone);
+  const [ownerEmail, setOwnerEmail] = useState(item.ownerEmail);
   const [revealPending, setRevealPending] = useState(false);
 
   // Same "cheap benefit of being Featured, not a full carousel" reasoning as web's
@@ -118,6 +119,7 @@ export function ListingCard({
       const contact = await revealContact(accessToken, item.id);
       setContactRevealed(true);
       setOwnerPhone(contact.ownerPhone);
+      setOwnerEmail(contact.ownerEmail);
     } catch (e) {
       if (e instanceof BffError && e.status === 402) {
         setContactError("You've used your free reveals. Buy contact-reveal credits at bhavano.com to unlock more.");
@@ -247,13 +249,13 @@ export function ListingCard({
                 </Pressable>
               )}
               {!item.contactUnavailable &&
-                (contactRevealed && ownerPhone ? (
+                (contactRevealed && (ownerPhone || ownerEmail) ? (
                   <Pressable
-                    onPress={() => Linking.openURL(`tel:${ownerPhone}`)}
+                    onPress={() => void Linking.openURL(ownerPhone ? `tel:${ownerPhone}` : `mailto:${ownerEmail}`).catch(() => undefined)}
                     style={[styles.contactButton, { backgroundColor: colors.green }]}
                   >
-                    <Icon name="phone" size={12} color={colors.onGreen} />
-                    <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 12 }}>{ownerPhone}</Text>
+                    <Icon name={ownerPhone ? "phone" : "message"} size={12} color={colors.onGreen} />
+                    <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 12 }}>{ownerPhone ?? "Email"}</Text>
                   </Pressable>
                 ) : (
                   <Pressable

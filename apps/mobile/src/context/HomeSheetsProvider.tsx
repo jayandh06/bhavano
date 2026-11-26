@@ -51,7 +51,8 @@ import { Icon } from "../components/Icon";
 import { GoogleIcon } from "../components/GoogleIcon";
 import { ProfileBasicsStep, basicsFromProfile, canDismissBasics, profileNeedsBasics, profileNeedsMandatoryBasics, type ProfileBasicsValues } from "../components/home/ProfileBasicsStep";
 import { appWebUrl } from "../lib/appWebUrl";
-import { useMarket } from "../lib/market";
+import { getCurrentMarketId, useMarket } from "../lib/market";
+import { getMarket } from "@bhavano/types/market";
 
 // Exported so PostAdWizard can re-read the just-written token directly after a login it
 // triggered mid-submit — see its own onSubmit for why a fresh read beats the accessToken prop.
@@ -449,6 +450,8 @@ export function HomeSheetsProvider({
 
   const ensureVerifiedPhone = useCallback(
     async (options: { accessToken: string; onSuccess: () => void }): Promise<boolean> => {
+      // A market with no way to send a code (the US) publishes without a phone, as the BFF does.
+      if (!getMarket(getCurrentMarketId()).publishRequiresVerifiedPhone) return true;
       try {
         const current = await fetchProfile(options.accessToken);
         // A phone is only ever stored once verified (OTP login or the link flow); the BFF

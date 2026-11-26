@@ -35,6 +35,7 @@ exports.MARKETS = {
         phoneLabel: "10-digit Indian mobile number",
         phonePlaceholder: "10-digit mobile number",
         phoneLoginPrimary: true,
+        publishRequiresVerifiedPhone: true,
         categories: ["house", "apartment", "villa", "pg", "storage", "coworking", "furniture", "interiors", "plot", "commercial"],
         hiddenFieldKeys: [],
         indexable: true,
@@ -58,6 +59,7 @@ exports.MARKETS = {
         phoneLabel: "10-digit US phone number",
         phonePlaceholder: "10-digit phone number",
         phoneLoginPrimary: false,
+        publishRequiresVerifiedPhone: false,
         // Starting set plus condo, townhouse and room for rent (docs/plans/us-categories-condo-townhouse-room.md); the wedge decision in the plan may change it.
         // No PG, coworking, plots or furniture/interiors.
         categories: ["house", "apartment", "villa", "storage", "commercial", "condo", "townhouse", "room"],

@@ -372,12 +372,12 @@ export function ListingCard({
                 (contactRevealed ? (
                   (ownerPhone || ownerEmail) && (
                     <a
-                      href={`tel:${ownerPhone ?? ""}`}
+                      href={ownerPhone ? `tel:${ownerPhone}` : `mailto:${ownerEmail}`}
                       onClick={(e) => e.stopPropagation()}
                       aria-label={fixedHeight ? (ownerPhone ?? "Email") : undefined}
                       className="flex items-center gap-1 bg-green text-on-green border-none rounded-lg px-2.5 py-1.5 text-[12px] font-bold whitespace-nowrap no-underline"
                     >
-                      <Icon name="phone" /> {!fixedHeight && (ownerPhone ?? "Email")}
+                      <Icon name={ownerPhone ? "phone" : "message"} /> {!fixedHeight && (ownerPhone ?? "Email")}
                     </a>
                   )
                 ) : (
