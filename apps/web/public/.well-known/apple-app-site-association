@@ -4,7 +4,7 @@
     "details": [
       {
         "appID": "L6RKCXT9K4.com.finfolia.bhavano",
-        "paths": ["*"]
+        "paths": ["NOT /us", "NOT /us/*", "*"]
       }
     ]
   }

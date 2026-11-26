@@ -299,11 +299,19 @@ slugs; an explicit `/us/` prefix has none.
 
 ## Mobile apps (checked 2026-11-24 in `apps/mobile/app.config.js` and `apps/web/public/.well-known/`)
 
-**Option B (US under `bhavano.com/us/`) needs no new app-link setup.** iOS claims `applinks:www.bhavano.com` and the
-apple-app-site-association file has `"paths": ["*"]`; Android's `intentFilters` use `autoVerify` for host
-`www.bhavano.com` with no path filter. So `/us/...` links open in the app, and the web open-in-app and install prompts
-(host-based) carry over. A separate US domain would need new `associatedDomains`, intent filters, and a `.well-known`
-file on that host, which is an app release.
+**Option B (US under `bhavano.com/us/`) needs no new app-link setup, but until the app knows the US it must not take US
+links.** iOS claims `applinks:www.bhavano.com`; Android's `intentFilters` use `autoVerify` for host `www.bhavano.com`
+with no path filter. A separate US domain would need new `associatedDomains`, intent filters, and a `.well-known` file
+on that host, which is an app release.
+
+**Changed 2026-11-26:** the app only talks to India, so a US link opened in it showed India's home screen or a missing
+listing. `apple-app-site-association` now lists `"paths": ["NOT /us", "NOT /us/*", "*"]`, so iPhones open `/us` links in
+the browser once they pick up the new file (Apple's CDN refreshes it, and devices fetch it on app install or update
+and periodically after that). Remove the two exclusions when a release with the market switch, US API and `/us` link
+handling is out. **Not covered:**
+- Android still opens `/us` links in the app.
+- The web's "Open app" bar and Safari's Smart App Banner still show on US pages and open the India app (left as is by
+  choice).
 
 **What needs work either way**
 - **API selection:** the app uses one backend, `EXPO_PUBLIC_BFF_URL=https://api.bhavano.com` (India). The US needs its
