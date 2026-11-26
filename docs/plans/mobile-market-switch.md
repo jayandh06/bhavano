@@ -1,6 +1,6 @@
 # Mobile app market switch (India and US in one app)
 
-Status: **approved 2026-11-26** with the recommendations below. Phases 1 and 2 built the same day; nothing can switch
+Status: **approved 2026-11-26** with the recommendations below. Phases 1 to 3 built the same day; nothing can switch
 to the US yet, and no app release made. Follows [us-market-expansion.md](us-market-expansion.md) ("Mobile apps").
 
 ## Goal
@@ -90,14 +90,20 @@ Also guarded, because remounting reports them again: the notification and link t
 Apple purchases get no session outside India, so a replayed India purchase stays unfinished for India's server.
 Not done through `Updates.reloadAsync`, which does not work in development builds.
 
-### 5. Links
-- Add `app/+native-intent.tsx` (`redirectSystemPath`): read the market from the path (`marketFromPath`), strip `/us`,
-  and map to an app screen. If the link's market is not the current one, go to a "This link is for Bhavano US / India"
-  screen with **Switch** and **Open in browser**; never an empty or wrong page. It runs before sign-in state is
-  available, so it only decides the route. Verify cold and warm starts on devices.
-- `ReferralLinkBridge` and `MessageBody` read URLs themselves: use the same helper.
-- Web change: the US site's `bhavano://` links ("Open app") carry no market today; add `market=us`.
-- Share links: with the US site address they become `/us/listings/{id}`; confirm that route resolves.
+### 5. Links (built in phase 3)
+`src/lib/marketLinks.ts` decides which market a link belongs to: `www.bhavano.com/us/...` and `bhavano://...?market=us`
+are the US, other bhavano.com links and unmarked `bhavano://` screen links are India's, and anything else (sign-in
+redirects) says nothing and passes through.
+
+- `app/+native-intent.tsx` asks it for every system link, after loading the saved market. Same market: unchanged (the
+  US path loses `/us` for the router). Other market: `app/switch-market.tsx`.
+- That screen offers **Open in browser** and **Stay**. **Switch** appears only when `MARKET_SWITCH_ENABLED` is true,
+  which is **false until phase 4**, so a release made before then cannot move anyone to the US. A followed link is kept
+  across the switch and opened afterwards.
+- `ReferralLinkBridge` records nothing for the other market's link; `MessageBody` sends such links to the same screen.
+- The US website now adds `market=us` to its "Open app" links. India's are unchanged.
+- Also fixed: a shared `/listings/{id}` link (what the app's Share button sends) opened the app on Home; it now opens
+  the listing.
 
 ### 6. Content and rules (built in phase 2)
 Four flags on the market config drive it: `phoneOtpAvailable`, `paymentsEnabled`, `indiaContent`,
@@ -144,8 +150,8 @@ orders in the US.**
 | 0 | Server: publishing rule (done 2026-11-26), US push, refuse US payments | Unchanged |
 | 1 | `marketEndpoints`, `marketKey`, hydrate before first screen, reset hooks, the switch itself (**done 2026-11-26**) | Unchanged; tests pin addresses and key names |
 | 2 | US content, consent default, hidden payments and India-only screens (**done 2026-11-26**) | Unchanged |
-| 3 | Link handling and the web `market=us` change | India links as today |
-| 4 | First-run chooser and Country row (**last**, so earlier India releases cannot reach US). Suggested, to confirm then: tapping the header flag opens the switch | Chooser never shown to upgrades |
+| 3 | Link handling and the web `market=us` change (**done 2026-11-26**; the web part needs a US deploy) | India links as today, shared listing links now open the listing |
+| 4 | First-run chooser, Country row and `MARKET_SWITCH_ENABLED` (**last**, so earlier India releases cannot reach US). Suggested, to confirm then: tapping the header flag opens the switch | Chooser never shown to upgrades |
 | 5 | Version bump, builds, TestFlight and Play internal testing, store listings, release | |
 | After | Once the release is the US minimum: remove the `NOT /us` lines from `apple-app-site-association` | |
 
@@ -166,7 +172,14 @@ orders in the US.**
   (Google only), posting categories, Help (website link), Plans and Tools redirecting Home; India's home and filters
   as before.
 
+## Verified for phase 3 (2026-11-26)
+- App tests (158), website tests (288) and both type checks pass.
+- Browser preview: the switch screen for a US link on India (no Switch button, Open in browser opens the page, Stay
+  goes Home); a same-market link goes Home.
+
 ## Not verified
+- **Links on a device.** `+native-intent` does not run in the browser preview: check cold and warm starts, universal
+  links, App Links and `bhavano://` on both platforms, and that an India listing link still opens as before.
 - Nothing has run on a phone or simulator: sign-in, push, sockets and secure storage across a switch are untested.
 - Signed-in screens (account, my listings, posting past the first step, messages) were not seen in either market.
 - No device or signed-in test against the US server.

@@ -92,4 +92,12 @@ describe("iosAppUrl", () => {
     expect(iosAppUrl("listing/abc")).toBe("bhavano://listing/abc");
     expect(iosAppUrl("")).toBe("bhavano://");
   });
+
+  it("says the link is from the US on the US site, and adds nothing on India's", () => {
+    expect(iosAppUrl("listing/abc", "us")).toBe("bhavano://listing/abc?market=us");
+    expect(iosAppUrl("", "us")).toBe("bhavano://?market=us");
+    expect(iosAppUrl("listing/abc", "in")).toBe("bhavano://listing/abc");
+    expect(androidIntentUrl("listing/abc", "strip", "listing", "us")).toContain("intent://listing/abc?market=us#Intent;scheme=bhavano;");
+    expect(androidIntentUrl("listing/abc", "strip", "listing", "in")).toContain("intent://listing/abc#Intent;scheme=bhavano;");
+  });
 });

@@ -1,6 +1,8 @@
 import { Linking, Text, type TextStyle } from "react-native";
 import { router, type Href } from "expo-router";
-import { bhavanoSitePath, normalizeUrlForOpening, segmentMessageBody } from "@bhavano/types/messageFormat";
+import { normalizeUrlForOpening, segmentMessageBody } from "@bhavano/types/messageFormat";
+import { getCurrentMarketId } from "../../lib/marketState";
+import { parseMarketLink, switchMarketRoute } from "../../lib/marketLinks";
 
 /** bhavano.com pages that have an app screen, so a link to one opens in the app (already logged
  * in) instead of the browser. Keyed by the website path. */
@@ -21,8 +23,13 @@ const APP_SCREEN_FOR_SITE_PATH: Record<string, Href> = {
 };
 
 function openLink(url: string) {
-  const sitePath = bhavanoSitePath(url)?.split(/[?#]/)[0].replace(/(.)\/$/, "$1");
-  const screen = sitePath ? APP_SCREEN_FOR_SITE_PATH[sitePath] : undefined;
+  const link = parseMarketLink(url);
+  // A link to the other market must not open this market's screen of the same name.
+  if (link && link.market !== getCurrentMarketId()) {
+    router.push(switchMarketRoute(url) as Href);
+    return;
+  }
+  const screen = link ? APP_SCREEN_FOR_SITE_PATH[link.path] : undefined;
   if (screen) router.push(screen);
   else void Linking.openURL(normalizeUrlForOpening(url)).catch(() => undefined);
 }
