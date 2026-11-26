@@ -1,7 +1,7 @@
 # Mobile app market switch (India and US in one app)
 
-Status: **approved 2026-11-26** with the recommendations below. Phases 1 to 3 built the same day; nothing can switch
-to the US yet, and no app release made. Follows [us-market-expansion.md](us-market-expansion.md) ("Mobile apps").
+Status: **approved 2026-11-26** with the recommendations below. Phases 1 to 4 built the same day; production builds still
+offer India only, and no app release made. Follows [us-market-expansion.md](us-market-expansion.md) ("Mobile apps").
 
 ## Goal
 
@@ -52,13 +52,20 @@ registration and consent wording), then set the flag back to `true`.
 
 ## Design
 
-### 1. Market selection
-- First launch logic in `market.ts`: stored value wins; otherwise, if the app already has any stored data (an upgrade),
-  India; otherwise India unless `expo-localization`'s `getLocales()[0].regionCode` is `US`, in which case show a
-  one-time chooser. The "already has data" check must run before other modules write their first keys.
-- **Hold the first screen until the market is loaded.** `hydrateMarket()` is asynchronous today, so early requests
-  would otherwise go to India.
-- A "Country" row (flag and name) in Account and the home drawer, with a confirmation.
+### 1. Market selection (built in phase 4)
+**Release gate:** a build offers the US only with `EXPO_PUBLIC_US_ENABLED=1`. `eas.json` sets it for development and
+preview builds and **not for production**, so an India release can be cut at any time; the US launch adds it there.
+Without it there is no first-launch question, no Country setting, no Switch button, and a saved US choice is ignored.
+
+- First launch (`market.ts`): a stored value wins. Otherwise, on a new install (no stored data at all) whose
+  `expo-localization` `regionCode` is `US`, `FirstMarketChooser` asks once with the US preselected and saves the
+  answer. An update (any stored data) stays on India and is remembered; every other region is India without a question.
+  The region is read through a guarded `require`, so a binary without the module gets India, not a crash.
+- The app draws nothing else until the market is known or chosen.
+- A "Country" row in the menu and on the Account screen opens `CountryPicker`, which confirms before switching and
+  starts from Home.
+- **To confirm:** tapping the header flag opens the picker. Today a signed-out visitor reaches the menu only from the
+  collapsed header, after scrolling.
 
 ### 2. Server and site addresses
 - New `src/lib/marketEndpoints.ts`: `apiUrl()` and `siteUrl()` for the current market. India keeps
@@ -151,8 +158,8 @@ orders in the US.**
 | 1 | `marketEndpoints`, `marketKey`, hydrate before first screen, reset hooks, the switch itself (**done 2026-11-26**) | Unchanged; tests pin addresses and key names |
 | 2 | US content, consent default, hidden payments and India-only screens (**done 2026-11-26**) | Unchanged |
 | 3 | Link handling and the web `market=us` change (**done 2026-11-26**; the web part needs a US deploy) | India links as today, shared listing links now open the listing |
-| 4 | First-run chooser, Country row and `MARKET_SWITCH_ENABLED` (**last**, so earlier India releases cannot reach US). Suggested, to confirm then: tapping the header flag opens the switch | Chooser never shown to upgrades |
-| 5 | Version bump, builds, TestFlight and Play internal testing, store listings, release | |
+| 4 | First-run chooser, Country row, switching, behind the release gate (**done 2026-11-26**) | Production builds unchanged; chooser never shown to updates |
+| 5 | Version bump (needed: new native module), builds, TestFlight and Play internal testing, store listings, release; set `EXPO_PUBLIC_US_ENABLED` for production at the US launch | |
 | After | Once the release is the US minimum: remove the `NOT /us` lines from `apple-app-site-association` | |
 
 ## Testing
@@ -177,7 +184,15 @@ orders in the US.**
 - Browser preview: the switch screen for a US link on India (no Switch button, Open in browser opens the page, Stay
   goes Home); a same-market link goes Home.
 
+## Verified for phase 4 (2026-11-26)
+- App tests (165), type checks, server and website tests pass.
+- Browser preview (US-region browser, US enabled): a fresh install was asked and nothing was stored before answering;
+  choosing the US opened it; the menu's Country row switched to India with a confirmation; the choice survived a
+  reload without asking again; a followed link switched to the US and opened Help.
+
 ## Not verified
+- The native region module on a device, the Account screen's Country row (needs sign-in), and the picker over the
+  drawer on iOS.
 - **Links on a device.** `+native-intent` does not run in the browser preview: check cold and warm starts, universal
   links, App Links and `bhavano://` on both platforms, and that an India listing link still opens as before.
 - Nothing has run on a phone or simulator: sign-in, push, sockets and secure storage across a switch are untested.

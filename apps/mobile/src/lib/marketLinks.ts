@@ -3,10 +3,6 @@ import { bhavanoSitePath } from "@bhavano/types/messageFormat";
 import { siteUrl } from "./marketEndpoints";
 import { listingIdFromPath } from "./referralLink";
 
-/** Whether the app may move itself to another market from a link. Off until the Country setting ships (phase 4 of
- * docs/plans/mobile-market-switch.md), so a release made before then can only open another market's link in the browser. */
-export const MARKET_SWITCH_ENABLED: boolean = false;
-
 export interface MarketLink {
   /** Whose server has what the link points to. */
   market: MarketId;

@@ -1,5 +1,14 @@
 type MarketState = typeof import("./marketState");
 
+const offered = process.env.EXPO_PUBLIC_US_ENABLED;
+beforeEach(() => {
+  process.env.EXPO_PUBLIC_US_ENABLED = "1";
+});
+afterAll(() => {
+  if (offered === undefined) delete process.env.EXPO_PUBLIC_US_ENABLED;
+  else process.env.EXPO_PUBLIC_US_ENABLED = offered;
+});
+
 /** A fresh copy of the module, as at app launch. */
 function launch(): MarketState {
   let state!: MarketState;
@@ -100,6 +109,30 @@ describe("market state", () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it("offers the US only on a build made for it, and will not switch there otherwise", async () => {
+    delete process.env.EXPO_PUBLIC_US_ENABLED;
+    const state = launch();
+    expect(state.isMarketOffered("in")).toBe(true);
+    expect(state.isMarketOffered("us")).toBe(false);
+    expect(state.marketSwitchEnabled()).toBe(false);
+    state.finishMarketLoad(null);
+    await expect(state.requestMarketSwitch("us")).resolves.toBe(false);
+  });
+
+  it("waits for a new install's answer, resetting modules if it is the US", () => {
+    const state = launch();
+    const reset = jest.fn();
+    state.onMarketChange(reset);
+    state.askForFirstMarket();
+    expect(state.getMarketPhase()).toBe("choosing");
+    state.finishMarketLoad(null);
+    expect(state.getMarketPhase()).toBe("choosing");
+    expect(state.completeFirstChoice("us")).toBe(true);
+    expect([state.getMarketPhase(), state.getCurrentMarketId()]).toEqual(["ready", "us"]);
+    expect(reset).toHaveBeenCalledTimes(1);
+    expect(state.completeFirstChoice("in")).toBe(false);
   });
 
   it("stops calling a removed hook", async () => {

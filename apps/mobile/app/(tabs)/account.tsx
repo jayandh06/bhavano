@@ -26,6 +26,8 @@ import { ContactShareCard } from "../../src/components/home/ContactShareCard";
 import { IosCreditsSheet } from "../../src/components/home/IosPurchaseSheets";
 import { useMarket } from "../../src/lib/market";
 import { siteUrl } from "../../src/lib/marketEndpoints";
+import { openCountryPicker } from "../../src/lib/countryPicker";
+import { CountryRow } from "../../src/components/CountryRow";
 
 type PhoneStep = "idle" | "otpSent";
 
@@ -814,6 +816,8 @@ function ProfileFields({
           </Pressable>
         </>
       )}
+
+      <CountryRow onPress={openCountryPicker} />
 
       {/* Below Save, above the legal footer: reachable but not adjacent to the primary action,
           so it can't be hit by mistake while editing the profile. */}
