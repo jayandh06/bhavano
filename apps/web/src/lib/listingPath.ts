@@ -1,6 +1,7 @@
 import { slugify } from "@bhavano/types/slugify";
 import type { ListingCategory } from "@bhavano/types";
 import { buildFacetSlug, categoryGroupsFor, type TransactionGroup } from "./seoRoute";
+import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
 
 // Moved to @bhavano/types/listingPath so the BFF can build a listing's URL too (see
 // NotificationsService.notifyListingPosted) — re-exported here so every existing
@@ -21,7 +22,7 @@ export function buildBrowsePath(params: {
   facetValue?: string | number;
   areaName?: string;
 }): string {
-  const parts = params.cityName ? [slugify(params.cityName)] : [];
+  const parts = params.cityName ? [toCitySlug(params.cityName)] : [];
   if (params.cityName && params.areaName) parts.push(slugify(params.areaName));
   // Drop the group when the category only has one — PG is rent-only, interiors and plots are
   // sell-only, so "/rent-lease/pg" spends a segment saying something "/pg" already implies. The

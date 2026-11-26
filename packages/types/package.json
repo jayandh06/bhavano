@@ -165,6 +165,10 @@
       "types": "./dist/listingTag.d.ts",
       "default": "./dist/listingTag.js"
     },
+    "./citySlug": {
+      "types": "./dist/citySlug.d.ts",
+      "default": "./dist/citySlug.js"
+    },
     "./slugify": {
       "types": "./dist/slugify.d.ts",
       "default": "./dist/slugify.js"

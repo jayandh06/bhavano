@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import type { City } from "@bhavano/types";
-import { slugify } from "@bhavano/types/slugify";
 import { cookieName } from "@/lib/cookieNames";
+import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
 
 /** Written by `middleware.ts` from whichever city the visitor last looked at — see the comment
  * there for why the capture lives in middleware rather than in a page. Holds the slug, never the
@@ -31,7 +31,7 @@ export const CITY_COOKIE = cookieName("bhavano_city");
  * falls through to "all cities" instead of resolving to nothing. */
 export async function resolveDefaultCity(allCities: City[]): Promise<City | undefined> {
   const slug = (await cookies()).get(CITY_COOKIE)?.value;
-  const remembered = slug ? allCities.find((c) => slugify(c.name) === slug) : undefined;
+  const remembered = slug ? allCities.find((c) => toCitySlug(c.name) === slug) : undefined;
   if (remembered) return remembered;
 
   // No Bengaluru fallback. "All cities" is now a real, expressible state — `/` and `/buy` are

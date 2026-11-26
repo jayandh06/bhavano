@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { slugify } from "@bhavano/types/slugify";
 import { useAuthGate } from "./AuthGateProvider";
 import { signOutAction } from "@/app/actions/auth";
 import { useClickOutside } from "@/lib/useClickOutside";
@@ -13,6 +12,7 @@ import { SessionKeepAlive } from "./SessionKeepAlive";
 import { GuestSavesSync } from "./GuestSavesSync";
 import { GetAppHeaderQr, GooglePlayHeaderIcon } from "./GooglePlayBadge";
 import { AppStoreHeaderIcon } from "./AppStoreBadge";
+import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
 
 export function HeaderAuthButtons({
   userName,
@@ -32,7 +32,7 @@ export function HeaderAuthButtons({
   // footer area links) regardless of what the user actually had selected here. With no city
   // selected (national browsing) the param is omitted entirely rather than sent as an empty
   // string, which would resolve to no city and look like a bug in the URL.
-  const cityQuery = cityName ? `?city=${slugify(cityName)}` : "";
+  const cityQuery = cityName ? `?city=${toCitySlug(cityName)}` : "";
 
   return (
     <UnreadCountProvider accessToken={accessToken}>

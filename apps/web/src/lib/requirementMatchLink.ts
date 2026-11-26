@@ -1,5 +1,6 @@
 import { slugify } from "@bhavano/types/slugify";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
+import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
 
 /** Where "N people are looking for this" on My listings goes: the Requirements tab narrowed to the ad's city, area,
  * property type and transaction, the same four things the match count is computed from (`listingFits` in the BFF),
@@ -11,7 +12,7 @@ export function requirementMatchHref(ad: {
   transactionType: TransactionType;
 }): string {
   const params = new URLSearchParams({ areas: slugify(ad.area), type: ad.category, txn: ad.transactionType });
-  return `/requirements/${slugify(ad.cityName)}?${params.toString()}`;
+  return `/requirements/${toCitySlug(ad.cityName)}?${params.toString()}`;
 }
 
 /** "1 person is looking for this" / "3 people are looking for this". */

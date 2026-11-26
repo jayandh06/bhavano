@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import type { City } from "@bhavano/types";
-import { slugify } from "@bhavano/types/slugify";
 import { postHref } from "@/lib/postHref";
 import type { ParsedSegments } from "@/lib/seoRoute";
 import { segmentsForHomeCategory } from "@/lib/seoRoute";
@@ -12,6 +11,7 @@ import { HeaderDrawerAccount } from "./HeaderDrawerAccount";
 import { ThemeToggle } from "./ThemeToggle";
 import { Icon } from "./Icon";
 import { marketCopy } from "@/lib/marketCopy";
+import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
 
 // Market wording (India's strings unchanged): lib/marketCopy.ts.
 const COPY = marketCopy();
@@ -87,10 +87,10 @@ export function HeaderDrawer({
           </Link>
         </>
       )}
-      <Link href={cityName ? `/premium?city=${slugify(cityName)}` : "/premium"} prefetch={false} className={rowClass}>
+      <Link href={cityName ? `/premium?city=${toCitySlug(cityName)}` : "/premium"} prefetch={false} className={rowClass}>
         <Icon name="sparkles" className="text-gold" /> Plans
       </Link>
-      <Link href={cityName ? `/requirements/${slugify(cityName)}` : "/requirements"} prefetch={false} className={rowClass}>
+      <Link href={cityName ? `/requirements/${toCitySlug(cityName)}` : "/requirements"} prefetch={false} className={rowClass}>
         <Icon name="requirements" className="text-muted" /> Requirements
       </Link>
 

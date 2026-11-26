@@ -259,6 +259,8 @@ redirecting to `www`. No `/in/` prefix, no redirects, no new hreflang entries on
 
 - Slugs carry the state (`austin-tx`, `portland-or`, `portland-me`) because US names collide. India slugs stay
   name-only, so no India URL changes.
+  **Built 2026-11-26** for the 15 launch cities (`citySlug`, [us-cities-seed.md](us-cities-seed.md)); same-name
+  cities in two states still need the lookup extended.
 - Each host has its own `sitemap.xml`, `robots.txt`, canonical host, Search Console and Bing property, GA4 stream.
   The India sitemap lists only India cities and the US sitemap only US ones.
 - Canonicals are self-referencing per host. `hreflang` is not needed while the two sites carry different listings

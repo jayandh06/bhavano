@@ -130,7 +130,7 @@ describe("menus", () => {
     expect(values(HOME_TABS, "rentLease")).toEqual(["house", "apartment", "condo", "townhouse", "room", "villa", "storage", "commercial"]);
     const condo = HOME_TABS.find((t) => t.value === "buy")!.column1.find((c) => c.value === "condo")!;
     expect(condo.links("Austin")[1].label).toBe("Buy 2 bed Condo in Austin");
-    expect(condo.href!("Austin")).toBe("/austin/buy/condo");
+    expect(condo.href!("Austin")).toBe("/austin-tx/buy/condo");
   });
 
   it("offers no PG, Coworking or Plots in the US, and still offers them in India", async () => {

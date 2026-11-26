@@ -37,6 +37,7 @@ import { RequireLoginPrompt } from "./RequireLoginPrompt";
 import { RequirementsRoleQuestion } from "./RequirementsRoleQuestion";
 import { SERVER_MARKET } from "@/lib/serverMarket";
 import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
+import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -217,7 +218,7 @@ function SummaryCounts({ summary, citySlug }: { summary: RequirementFeedSummaryD
       )}
       <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[13px]">
         {summary.cities.map((c) => (
-          <Link key={c.cityId} href={`/requirements/${slugify(c.cityName)}`} prefetch={false} className="text-green">
+          <Link key={c.cityId} href={`/requirements/${toCitySlug(c.cityName)}`} prefetch={false} className="text-green">
             {c.cityName} ({c.count})
           </Link>
         ))}
@@ -292,13 +293,13 @@ function FeedFilters({
         <Chip href={href(withoutPlace, undefined)} active={!citySlug}>
           All cities
         </Chip>
-        {citySlug && cityName && !feed.facets.cities.some((c) => slugify(c.cityName) === citySlug) && (
+        {citySlug && cityName && !feed.facets.cities.some((c) => toCitySlug(c.cityName) === citySlug) && (
           <Chip href={href(withoutPlace)} active>
             {cityName} (0)
           </Chip>
         )}
         {feed.facets.cities.map((c) => {
-          const slug = slugify(c.cityName);
+          const slug = toCitySlug(c.cityName);
           return (
             <Chip key={c.cityId} href={href(withoutPlace, slug)} active={slug === citySlug}>
               {c.cityName} ({c.count})
@@ -543,7 +544,7 @@ function FeedCard({ card }: { card: RequirementFeedCardDto }) {
     transactionType: card.transactionType,
     from: "requirements_feed",
   });
-  if (card.cityName) postParams.set("city", slugify(card.cityName));
+  if (card.cityName) postParams.set("city", toCitySlug(card.cityName));
 
   return (
     <article className="border border-border rounded-xl bg-surface p-5">

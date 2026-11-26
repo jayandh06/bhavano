@@ -3,6 +3,7 @@ import { slugify } from "@bhavano/types/slugify";
 import { buildBrowsePath } from "@/lib/listingPath";
 import { parseSegments } from "@/lib/seoRoute";
 import { fetchAreas, fetchCities, fetchCitySlugRedirect } from "@/lib/bff";
+import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
 
 // The pure type guards/label maps live in seoRoute.ts (which must stay free of any server-only
 // dependency, since it's reachable from client components) — re-exported here so existing
@@ -27,7 +28,7 @@ export {
  * the exact match locally is both simpler and actually correct. */
 export async function resolveCity(citySlug: string): Promise<City | null> {
   const candidates = await fetchCities(undefined, true);
-  return candidates.find((c) => slugify(c.name) === citySlug) ?? null;
+  return candidates.find((c) => toCitySlug(c.name) === citySlug) ?? null;
 }
 
 /** Path to 308 to when `citySlug` is a deleted auto-created city. Null when it isn't.
@@ -63,7 +64,7 @@ export async function formerCityRedirectPath(citySlug: string, rest: string[] = 
   }
 
   const suffix = rest.length > 0 ? `/${rest.join("/")}` : "";
-  return `/${slugify(target.name)}${suffix}`;
+  return `/${toCitySlug(target.name)}${suffix}`;
 }
 
 /** Same reasoning as resolveCity above — some real area names contain a hyphen ("Phase - III",

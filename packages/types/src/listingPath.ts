@@ -1,5 +1,6 @@
 import { slugify } from "./slugify";
 import type { ListingCardDto, TransactionType } from "./index";
+import { citySlug as toCitySlug } from "./citySlug";
 
 /** The URL grammar's top-level segment — groups the 4 real `TransactionType` values the same
  * way the homepage's tabs already do (buy+sell, rent+lease), so `/city/buy/...` reads naturally
@@ -24,5 +25,5 @@ export function buildListingPath(
   item: Pick<ListingCardDto, "id" | "slug" | "category" | "transactionType" | "cityName" | "area">,
 ): string {
   const group = transactionGroupFor(item.transactionType);
-  return `/${slugify(item.cityName)}/${slugify(item.area)}/${group}/${item.category}/${item.slug}-${item.id}`;
+  return `/${toCitySlug(item.cityName)}/${slugify(item.area)}/${group}/${item.category}/${item.slug}-${item.id}`;
 }
