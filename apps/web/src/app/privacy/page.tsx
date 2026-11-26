@@ -2,6 +2,8 @@ import Link from "next/link";
 import { fetchSeekerContactSettings } from "@/lib/bff";
 import { LEGAL_ENTITY, entityAddressLines, entityOperatorSentence } from "@bhavano/types/legalEntity";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
+import { UsPrivacy } from "@/components/legal/UsPrivacy";
+import { buildMarket } from "@/lib/marketRobots";
 
 export const metadata = {
   title: "Privacy Policy",
@@ -13,6 +15,8 @@ export const metadata = {
 // Play Console account- and data-deletion URLs, so it must stay public (no login) and describe
 // what the apps actually do.
 export default async function PrivacyPage() {
+  // The US has its own policy (CCPA-style rights, US providers); India's below is unchanged.
+  if (buildMarket().id === "us") return <UsPrivacy />;
   const addressLines = entityAddressLines();
   // The paragraph about owners seeing a verified number is shown only while it is true (Admin -> Settings -> Seeker contact).
   const seekerContact = await fetchSeekerContactSettings();

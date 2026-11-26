@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { LEGAL_ENTITY, entityAddressLines, entityOperatorSentence } from "@bhavano/types/legalEntity";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
+import { UsAbout } from "@/components/legal/UsAbout";
+import { buildMarket } from "@/lib/marketRobots";
+
+const US = buildMarket().id === "us";
 
 export const metadata = {
   title: "About Us",
@@ -8,6 +12,7 @@ export const metadata = {
 };
 
 export default function AboutPage() {
+  if (US) return <UsAbout />;
   const addressLines = entityAddressLines();
 
   return (

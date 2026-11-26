@@ -193,8 +193,8 @@ category lists (US: only the market's categories) and FAQ and steps (`homeFaqs(c
 The calculators, blog and guides, the moving guide and the Diwali banner are not offered in the US: those routes answer 404 (a `layout.tsx` gate) and their links are hidden. The popular-search
 fallback offers only the market's categories and nothing in the US without a city. Deployed to the US stack as `sha-6b06fe15` and checked on the live pages (title, description, H1, locale, structured data, the four 404 gates). A second pass
 (2026-11-25) fixed what that check found: the requirement prompt's "anywhere in India" now uses the market's place name, and the visible "favourite" spellings (header and drawer nav, the Favorites page, listing
-button, guest prompt, Help text, profile merge prompt) use US spelling through `spell()` in `marketCopy.ts` (India unchanged). **Not done, needs a decision or legal text:** About, Trust, Terms and Privacy (India entity, GST and DLT text), the
-footer's legal-entity line and copyright, the Help page's FAQs about phone-OTP login and listing checks, the category tabs and menus (PG, plots, coworking, furniture, interiors), "BHK" in search
+button, guest prompt, Help text, profile merge prompt) use US spelling through `spell()` in `marketCopy.ts` (India unchanged). **Done since:** About, Trust, Terms and Privacy have US versions (drafts for counsel review, operator Finfolia Technologies LLP; see [us-legal-pages.md](us-legal-pages.md)). **Not done, needs a decision or legal text:** the
+Help page's FAQs about phone-OTP login and listing checks, the category tabs and menus (PG, plots, coworking, furniture, interiors), "BHK" in search
 and headings (bed and bath), the `/premium` plans page (INR), browse and city page copy, and the mobile app's wording.
 
 **Built 2026-11-25 (US plan prices):** the owner's rule for US prices is the rupee amount divided by 60, rounded up to the next $5 (never below $5), which gives the owner's examples (Rs 199 = $5, Rs 799 = $15, Rs 1,200 = $20). `usdTierFromInr` in
