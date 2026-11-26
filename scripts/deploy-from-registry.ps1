@@ -209,7 +209,17 @@ docker compose -f "`$COMPOSE_FILE" ps
 $remoteB64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(($remoteScript -replace "`r", "")))
 
 Write-Host "==> remote pull + up --no-build"
-ssh @sshArgs $remote "echo $remoteB64 | base64 -d | bash"
-if ($LASTEXITCODE -ne 0) { throw "remote deploy failed" }
+# git and docker write progress ("From github.com:...", "Container x Recreate") to stderr. With $ErrorActionPreference = "Stop", Windows PowerShell 5.1
+# turns each such line into a terminating error and kills the script mid-deploy (it once aborted a compose recreate and left a stray container). Success is
+# ssh's exit code, so stderr is merged into the output as plain text and only the exit code decides.
+$prevPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+try {
+    ssh @sshArgs $remote "echo $remoteB64 | base64 -d | bash" 2>&1 | ForEach-Object { Write-Host "$_" }
+    $sshExit = $LASTEXITCODE
+} finally {
+    $ErrorActionPreference = $prevPreference
+}
+if ($sshExit -ne 0) { throw "remote deploy failed (ssh exit $sshExit)" }
 
 Write-Host "==> Deploy finished ($deployId, $Tag)"
