@@ -100,8 +100,9 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
     phoneLabel: "10-digit US phone number",
     phonePlaceholder: "10-digit phone number",
     phoneLoginPrimary: false,
-    // Starting set; the wedge decision in the plan may change it. No PG, coworking, plots or furniture/interiors.
-    categories: ["house", "apartment", "villa", "storage", "commercial"],
+    // Starting set plus condo, townhouse and room for rent (docs/plans/us-categories-condo-townhouse-room.md); the wedge decision in the plan may change it.
+    // No PG, coworking, plots or furniture/interiors.
+    categories: ["house", "apartment", "villa", "storage", "commercial", "condo", "townhouse", "room"],
     hiddenFieldKeys: ["preferredTenantTypes", "vegetariansOnly", "gender", "foodType"],
     indexable: false,
   },

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.REQUIREMENT_GAP_PHRASES = exports.REQUIREMENT_GAP_LABELS = exports.REQUIRED_REQUIREMENT_STEPS = exports.REQUIREMENT_TIMELINE_OPTIONS = exports.REQUIREMENT_BEDROOM_OPTIONS = exports.REQUIREMENT_ATTRIBUTE_QUESTIONS = exports.INTENT_TRANSACTION_CHOICES = exports.REQUIREMENT_CATEGORY_LABELS = exports.INTENT_CATEGORIES = exports.REQUIREMENT_INTENTS = exports.MAX_REQUIREMENT_AREAS = void 0;
+exports.intentCategories = intentCategories;
 exports.intentOf = intentOf;
 exports.applyIntent = applyIntent;
 exports.isValidRequirementTransaction = isValidRequirementTransaction;
@@ -55,10 +56,25 @@ exports.INTENT_CATEGORIES = {
     furniture: ["furniture"],
     interiors: ["interiors"],
 };
+/** The US market's categories for the two property intents: its own order, and condo, townhouse and room for rent. The other intents (PG, coworking,
+ * furniture, interiors) have no category in the US. India's lists above are unchanged. */
+const US_INTENT_CATEGORIES = {
+    buy: ["house", "apartment", "condo", "townhouse", "villa", "commercial"],
+    rentLease: ["house", "apartment", "condo", "townhouse", "room", "villa", "commercial", "storage"],
+};
+/** The categories an intent offers in a market. India (the default) gets `INTENT_CATEGORIES[intent]` itself, unchanged; the US gets its own list. */
+function intentCategories(intent, marketId = "in") {
+    if (marketId === "in")
+        return exports.INTENT_CATEGORIES[intent];
+    return US_INTENT_CATEGORIES[intent] ?? exports.INTENT_CATEGORIES[intent].filter((c) => (0, market_1.isMarketCategory)(marketId, c));
+}
 exports.REQUIREMENT_CATEGORY_LABELS = {
     house: "House",
     apartment: "Apartment",
     villa: "Villa",
+    condo: "Condo",
+    townhouse: "Townhouse",
+    room: "Room for rent",
     pg: "PG",
     storage: "Storage",
     coworking: "Coworking",
@@ -136,6 +152,9 @@ exports.REQUIREMENT_ATTRIBUTE_QUESTIONS = {
     house: residentialQuestions("house"),
     apartment: residentialQuestions("apartment"),
     villa: residentialQuestions("villa"),
+    condo: residentialQuestions("condo"),
+    townhouse: residentialQuestions("townhouse"),
+    room: [question("room", "roomType", "Room type", true), question("room", "bathroom", "Bathroom", true)],
     pg: [
         question("pg", "sharingType", "Sharing", true),
         question("pg", "gender", "For", false),
@@ -154,6 +173,8 @@ function sizeQuestionFor(category) {
         case "house":
         case "apartment":
         case "villa":
+        case "condo":
+        case "townhouse":
             return { kind: "bedrooms", label: "How many bedrooms?" };
         case "plot":
             return { kind: "area", label: "Plot size", units: ["sqft", "cent", "acre", "hectare", "sqm"] };

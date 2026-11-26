@@ -47,6 +47,8 @@ export declare const REQUIREMENT_INTENTS: {
  * Coworking is its own intent (not folded into rentLease) to mirror HOME_TABS, which promoted it
  * to its own tab for the same "nothing narrower to offer, deserves its own entry point" reason. */
 export declare const INTENT_CATEGORIES: Record<RequirementIntent, ListingCategory[]>;
+/** The categories an intent offers in a market. India (the default) gets `INTENT_CATEGORIES[intent]` itself, unchanged; the US gets its own list. */
+export declare function intentCategories(intent: RequirementIntent, marketId?: MarketId): ListingCategory[];
 export declare const REQUIREMENT_CATEGORY_LABELS: Record<ListingCategory, string>;
 /** The follow-up for the two intents that span two transaction types. Rent vs lease matters more
  * than it looks: a lease is a lump sum, so the budget question is a different question. */

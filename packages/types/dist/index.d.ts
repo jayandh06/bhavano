@@ -5,7 +5,7 @@ import type { FeaturedPerformanceDto } from "./featuredPerformance";
 import type { BoostDurationDays } from "./boostPricing";
 import type { AreaUnit } from "./areaUnit";
 import type { RequirementAttributes } from "./requirementQuestions";
-export type ListingCategory = "house" | "apartment" | "villa" | "pg" | "storage" | "coworking" | "furniture" | "interiors" | "plot" | "commercial";
+export type ListingCategory = "house" | "apartment" | "villa" | "pg" | "storage" | "coworking" | "furniture" | "interiors" | "plot" | "commercial" | "condo" | "townhouse" | "room";
 export type TransactionType = "buy" | "sell" | "rent" | "lease";
 export type ListingStatus = "active" | "sold" | "rented" | "deactivated";
 /** Whether a newly created listing is visible in browse and has fired post-live side effects.
@@ -52,7 +52,7 @@ export type SellerType = "owner" | "agent";
  * (+ an optional propertyType sub-filter); "pg"/"furniture" filter by category alone. */
 export type HomeCategoryFilter = "buy" | "rentLease" | "pg" | "coworking" | "furniture" | "interiors";
 /** Sub-filter shown under the Buy / Rent & Lease tabs only. */
-export type PropertyTypeFilter = "house" | "apartment" | "villa" | "storage" | "coworking" | "plot" | "commercial";
+export type PropertyTypeFilter = "house" | "apartment" | "villa" | "condo" | "townhouse" | "room" | "storage" | "coworking" | "plot" | "commercial";
 export interface City {
     id: string;
     name: string;

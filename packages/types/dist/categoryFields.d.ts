@@ -215,9 +215,6 @@ export declare function brokerageFeeNote(transactionType: TransactionType, price
  * whichever amount is present. Leaves the attributes untouched when the type is already set or
  * can't be told. */
 export declare function inferBrokerageFeeType(attributes: Record<string, unknown>): Record<string, unknown>;
-/** One field-def list per category — the single source of truth for both the posting
- * wizard's dynamic step-3 form and the `attributes` JSONB column it maps onto. Adding a
- * future category means adding an entry here, not a new form/code path. */
 export declare const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]>;
 /**
  * Every amenity key any category declares, and the categories that declare each.

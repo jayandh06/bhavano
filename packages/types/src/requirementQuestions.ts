@@ -3,7 +3,7 @@ import { CATEGORY_FIELD_CONFIG, amenityFieldsFor, type FieldOption } from "./cat
 import { POSTABLE_TRANSACTION_TYPES } from "./postingRules";
 import { MAX_BEDROOMS, bedroomLabel } from "./bedrooms";
 import { convertArea, formatArea, type AreaUnit } from "./areaUnit";
-import { isMarketField, type MarketId } from "./market";
+import { isMarketCategory, isMarketField, type MarketId } from "./market";
 
 /**
  * The questions asked after "Yes, find this for me", and the vocabulary a refined requirement is
@@ -72,10 +72,26 @@ export const INTENT_CATEGORIES: Record<RequirementIntent, ListingCategory[]> = {
   interiors: ["interiors"],
 };
 
+/** The US market's categories for the two property intents: its own order, and condo, townhouse and room for rent. The other intents (PG, coworking,
+ * furniture, interiors) have no category in the US. India's lists above are unchanged. */
+const US_INTENT_CATEGORIES: Partial<Record<RequirementIntent, ListingCategory[]>> = {
+  buy: ["house", "apartment", "condo", "townhouse", "villa", "commercial"],
+  rentLease: ["house", "apartment", "condo", "townhouse", "room", "villa", "commercial", "storage"],
+};
+
+/** The categories an intent offers in a market. India (the default) gets `INTENT_CATEGORIES[intent]` itself, unchanged; the US gets its own list. */
+export function intentCategories(intent: RequirementIntent, marketId: MarketId = "in"): ListingCategory[] {
+  if (marketId === "in") return INTENT_CATEGORIES[intent];
+  return US_INTENT_CATEGORIES[intent] ?? INTENT_CATEGORIES[intent].filter((c) => isMarketCategory(marketId, c));
+}
+
 export const REQUIREMENT_CATEGORY_LABELS: Record<ListingCategory, string> = {
   house: "House",
   apartment: "Apartment",
   villa: "Villa",
+  condo: "Condo",
+  townhouse: "Townhouse",
+  room: "Room for rent",
   pg: "PG",
   storage: "Storage",
   coworking: "Coworking",
@@ -167,7 +183,7 @@ function question(
   return { key, label, multi, options: optionsOf(category, key), ...extra };
 }
 
-function residentialQuestions(category: "house" | "apartment" | "villa"): RequirementAttributeQuestion[] {
+function residentialQuestions(category: "house" | "apartment" | "villa" | "condo" | "townhouse"): RequirementAttributeQuestion[] {
   return [
     question(category, "furnished", "Furnishing", true),
     question(category, "preferredTenantTypes", "Who's moving in?", false, { transactionTypes: ["rent", "lease"] }),
@@ -180,6 +196,9 @@ export const REQUIREMENT_ATTRIBUTE_QUESTIONS: Record<ListingCategory, Requiremen
   house: residentialQuestions("house"),
   apartment: residentialQuestions("apartment"),
   villa: residentialQuestions("villa"),
+  condo: residentialQuestions("condo"),
+  townhouse: residentialQuestions("townhouse"),
+  room: [question("room", "roomType", "Room type", true), question("room", "bathroom", "Bathroom", true)],
   pg: [
     question("pg", "sharingType", "Sharing", true),
     question("pg", "gender", "For", false),
@@ -203,6 +222,8 @@ export function sizeQuestionFor(category: ListingCategory): RequirementSizeQuest
     case "house":
     case "apartment":
     case "villa":
+    case "condo":
+    case "townhouse":
       return { kind: "bedrooms", label: "How many bedrooms?" };
     case "plot":
       return { kind: "area", label: "Plot size", units: ["sqft", "cent", "acre", "hectare", "sqm"] };

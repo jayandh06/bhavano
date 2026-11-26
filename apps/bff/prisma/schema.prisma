@@ -17,6 +17,10 @@ enum ListingCategory {
   interiors
   plot
   commercial
+  // US-only categories (docs/plans/us-categories-condo-townhouse-room.md); India never posts them.
+  condo
+  townhouse
+  room
 }
 
 enum TransactionType {

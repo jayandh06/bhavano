@@ -1,5 +1,7 @@
 import type { ListingCategory } from "@bhavano/types";
+import { isMarketCategory } from "@bhavano/types/market";
 import type { TransactionGroup } from "./seoRoute";
+import { buildMarket } from "./marketRobots";
 
 // Deliberately rule-based, not NLP — scoped to the handful of phrasings real users type into a
 // classifieds search box ("2BHK in Koramangala", "furniture for sale under 5000", "PG in HSR
@@ -7,7 +9,12 @@ import type { TransactionGroup } from "./seoRoute";
 // in `residual` for the caller to try as a locality/area name, or ultimately fall back to a plain
 // text search — never a dead end.
 
-const CATEGORY_PATTERNS: [RegExp, ListingCategory][] = [
+const ALL_CATEGORY_PATTERNS: [RegExp, ListingCategory][] = [
+  // US-only words first, so "townhouse" is not read as "house" and "condo apartment" is a condo. Dropped for India by the market filter below.
+  [/\bcondos?\b|\bcondominiums?\b/i, "condo"],
+  [/\btown\s*(houses?|homes?)\b|\brow\s+houses?\b/i, "townhouse"],
+  // "room" is only a category when it is a room to rent: "2 bedroom" never matches (no word boundary), "room for rent" and roommate or sublet words do.
+  [/\b(?:private\s+|shared\s+)?rooms?\b(?=\s+(?:for|to)\s+rent|\s+available)|\broommates?\b|\bsublets?\b/i, "room"],
   [/\b(apartments?|flats?)\b/i, "apartment"],
   [/\b(independent\s+)?houses?\b/i, "house"],
   [/\bhomes?\b/i, "house"],
@@ -31,6 +38,9 @@ const CATEGORY_PATTERNS: [RegExp, ListingCategory][] = [
   [/\bshops?\b/i, "commercial"],
   [/\boffice\s*spaces?\b/i, "commercial"],
 ];
+
+// Only the categories this build's market has: India keeps exactly its old list (the US-only patterns drop out), and the US drops PG, plot and the rest.
+const CATEGORY_PATTERNS = ALL_CATEGORY_PATTERNS.filter(([, category]) => isMarketCategory(buildMarket().id, category));
 
 const TRANSACTION_PATTERNS: [RegExp, TransactionGroup][] = [
   [/\bfor\s+sale\b/i, "buy"],
