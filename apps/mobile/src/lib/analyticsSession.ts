@@ -3,8 +3,8 @@ import * as Crypto from "expo-crypto";
 import { AppState } from "react-native";
 import { isSessionLive, parseStoredSession, type StoredSession } from "./analyticsSessionPolicy";
 import { readInstallWebSessionId } from "./installAttributionStore";
-
-const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL ?? "http://localhost:4000";
+import { apiUrl } from "./marketEndpoints";
+import { beforeMarketLeave, marketKey, onMarketChange } from "./marketState";
 
 /**
  * In-app Page visits / PageView trail — mirrors web's `bhavano_sid` + SoftNavPageViews, but
@@ -22,6 +22,8 @@ const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL ?? "http://localhost:4000";
  */
 
 const STORAGE_KEY = "bhavano.analyticsSession";
+/** Each market's server has its own visits, so each keeps its own session. */
+const storageKey = () => marketKey(STORAGE_KEY);
 /** Activity is flushed to storage at most this often, and immediately when the app leaves the
  * foreground (the AppState listener below), instead of on every page view. */
 const PERSIST_THROTTLE_MS = 15_000;
@@ -38,7 +40,7 @@ function persist(): void {
   if (!sessionId) return;
   lastPersistedAt = Date.now();
   const value: StoredSession = { id: sessionId, lastActiveAt, visitSent, jsConfirmSent };
-  void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(value)).catch(() => undefined);
+  void AsyncStorage.setItem(storageKey(), JSON.stringify(value)).catch(() => undefined);
 }
 
 /** Starts a new session: a new id, nothing sent yet, and the account link to be made again for it. */
@@ -57,8 +59,10 @@ function startSession(): string {
  * early caller), that newer session is kept rather than switching ids under a caller holding it. */
 export function hydrateAnalyticsSession(): Promise<void> {
   if (!hydration) {
-    hydration = AsyncStorage.getItem(STORAGE_KEY)
+    const key = storageKey();
+    hydration = AsyncStorage.getItem(key)
       .then((raw) => {
+        if (key !== storageKey()) return; // the market changed while reading
         const stored = parseStoredSession(raw);
         if (!sessionId && stored && isSessionLive(stored, Date.now())) {
           sessionId = stored.id;
@@ -83,6 +87,18 @@ function touch(): void {
 function rotateIfIdle(): void {
   if (sessionId && !isSessionLive({ lastActiveAt }, Date.now())) startSession();
 }
+
+// Save the market being left, then forget it: the next page view loads or starts the new market's session.
+beforeMarketLeave(() => persist());
+onMarketChange(() => {
+  sessionId = null;
+  lastActiveAt = 0;
+  visitSent = false;
+  jsConfirmSent = false;
+  lastPersistedAt = 0;
+  hydration = null;
+  linkedForToken = null;
+});
 
 // Leaving the foreground is when the process is most likely to be killed: save the latest activity then.
 AppState.addEventListener("change", (state) => {
@@ -109,7 +125,7 @@ export async function linkAnalyticsSessionToUser(accessToken: string): Promise<v
   const id = getAnalyticsSessionId();
   if (linkedForToken === accessToken) return;
   try {
-    const res = await fetch(`${BFF_URL}/analytics/link-session`, {
+    const res = await fetch(`${apiUrl()}/analytics/link-session`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Client": "app", Authorization: `Bearer ${accessToken}` },
       // `webSessionId`: the website session this install came from (Play referrer `ws`), so the server can also
@@ -124,7 +140,7 @@ export async function linkAnalyticsSessionToUser(accessToken: string): Promise<v
 }
 
 async function postJson(path: string, body: Record<string, unknown>): Promise<void> {
-  const res = await fetch(`${BFF_URL}${path}`, {
+  const res = await fetch(`${apiUrl()}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Client": "app" },
     body: JSON.stringify(body),

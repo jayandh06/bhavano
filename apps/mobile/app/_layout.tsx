@@ -4,7 +4,7 @@ import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import type { ErrorUtils } from "react-native";
@@ -18,13 +18,13 @@ import { recordInstallReferrerOnce } from "../src/lib/installReferrer";
 import { BottomTabBar } from "../src/components/home/BottomTabBar";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { UpdateGate } from "../src/components/UpdateGate";
+import { MarketRoot } from "../src/components/MarketRoot";
+import { useMarket } from "../src/lib/market";
 import { SoftNavAppPageViews } from "../src/components/home/SoftNavAppPageViews";
 import { ReferralLinkBridge } from "../src/components/home/ReferralLinkBridge";
 import { ProfileCompletionDialog } from "../src/components/home/ProfileCompletionDialog";
 import { importFavourites, reportClientError } from "../src/lib/bffClient";
 import { clearGuestSaves, guestSaveIds, useGuestSaves } from "../src/lib/guestSaves";
-
-const queryClient = new QueryClient();
 
 // Once, at module load — decides how a push behaves while the app is foregrounded. A no-op if
 // the notifications native module isn't in this binary (see push.ts).
@@ -84,9 +84,12 @@ function PushBridge() {
  * off iOS. See docs/plans/ios-in-app-purchase.md. */
 function IosPurchaseBridge() {
   const { accessToken } = useHomeSheets();
+  const market = useMarket();
+  // Apple purchases exist only in India. Elsewhere no session is handed over, so a replayed India purchase is left unfinished for India's
+  // server rather than sent to one that cannot confirm it.
   useEffect(() => {
-    iosPurchases.setAccessToken(accessToken ?? null);
-  }, [accessToken]);
+    iosPurchases.setAccessToken(market.id === "in" ? (accessToken ?? null) : null);
+  }, [accessToken, market.id]);
   return null;
 }
 
@@ -191,15 +194,16 @@ export default function RootLayout() {
           Wrapped as high as the tree allows so every screen can use it. */}
       <KeyboardProvider>
         <SafeAreaProvider>
-          <QueryClientProvider client={queryClient}>
-            <AppThemeProvider>
+          <AppThemeProvider>
+            {/* Holds the app until the market is known, owns the query cache, and starts both afresh on a market switch. */}
+            <MarketRoot>
               <BottomSheetModalProvider>
                 {/* Always light: the status-bar strip is `chrome` (dark) in both themes. */}
                 <StatusBar style="light" />
                 <AppNavigation />
               </BottomSheetModalProvider>
-            </AppThemeProvider>
-          </QueryClientProvider>
+            </MarketRoot>
+          </AppThemeProvider>
         </SafeAreaProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>

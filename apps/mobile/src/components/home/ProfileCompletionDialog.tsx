@@ -15,6 +15,7 @@ import {
 } from "../../lib/bffClient";
 import { Icon } from "../Icon";
 import { useMarket } from "../../lib/market";
+import { onMarketChange } from "../../lib/marketState";
 
 type Step = "askPhone" | "askOtp" | "askEmail" | "askEmailCode" | "confirmMerge" | "done";
 
@@ -22,6 +23,10 @@ type Step = "askPhone" | "askOtp" | "askEmail" | "askEmailCode" | "confirmMerge"
  * `getProfileNudge`'s own snooze/cap is the real backstop against over-showing across launches;
  * this flag only stops a second popup within the *same* one. */
 let shownThisLaunch = false;
+// A different account on the other market gets its own turn.
+onMarketChange(() => {
+  shownThisLaunch = false;
+});
 
 /**
  * Mobile port of apps/web/src/components/home/ProfileCompletionDialog.tsx — same state machine,

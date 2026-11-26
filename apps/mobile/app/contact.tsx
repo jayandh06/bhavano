@@ -3,8 +3,7 @@ import * as WebBrowser from "expo-web-browser";
 import { LEGAL_ENTITY, entityAddressLines } from "@bhavano/types/legalEntity";
 import { useAppTheme } from "../src/theme/ThemeContext";
 import { P, PageLink, PageSection, StaticPageLayout } from "../src/components/home/StaticPageLayout";
-
-const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
+import { siteUrl } from "../src/lib/marketEndpoints";
 
 // Mirrors apps/web/src/app/contact/page.tsx's static sections — the actual support-ticket form
 // (attachments, spam honeypot, topic routing) isn't ported here; it's a real submission feature
@@ -50,7 +49,7 @@ export default function ContactScreen() {
           .
         </P>
         <Pressable
-          onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/contact`)}
+          onPress={() => WebBrowser.openBrowserAsync(`${siteUrl()}/contact`)}
           style={{ borderWidth: 1.5, borderColor: colors.green, borderRadius: 8, paddingVertical: 13, alignItems: "center", marginTop: 4 }}
         >
           <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Send us a message</Text>

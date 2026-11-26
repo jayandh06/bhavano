@@ -5,6 +5,9 @@ import { listingIdFromPath, storeReferralCode } from "../../lib/referralLink";
 import { recordReferralClick } from "../../lib/bffClient";
 import { getAnalyticsSessionId } from "../../lib/analyticsSession";
 
+/** The last link acted on. Remounting (a market switch) reports the launch link again; it must not reopen in the other market. */
+let handledUrl: string | null = null;
+
 /** Handles an incoming deep link (a tapped universal link, or a cold launch into one) carrying a
  * shared listing/referral link's `?ref=<userId>` — persists the code for signup attribution (see
  * referralLink.ts) and navigates to the shared listing. A link with no `ref` param just falls
@@ -21,7 +24,8 @@ export function ReferralLinkBridge(): null {
   const router = useRouter();
 
   useEffect(() => {
-    if (!url) return;
+    if (!url || url === handledUrl) return;
+    handledUrl = url;
     const { path, queryParams } = Linking.parse(url);
     const refParam = queryParams?.ref;
     const referralCode = Array.isArray(refParam) ? refParam[0] : refParam;

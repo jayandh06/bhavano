@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "react-native";
 import type { BoostPlanSelection, City, ListingCategory, TransactionType } from "@bhavano/types";
+import { marketKey, onMarketChange } from "./marketState";
 
 /**
  * The post-ad form, saved on the device while it is filled in, so the app being killed in the
@@ -30,7 +31,8 @@ export interface PostAdDraft {
   selectedBoostPlan: BoostPlanSelection | null;
 }
 
-const KEY = "bhavano:post-ad-draft";
+/** A draft names one market's city and categories. */
+const storageKey = () => marketKey("bhavano:post-ad-draft");
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 /** How recent a draft found at app start must be to count as the app having been killed mid-post
  * (switching out to read the OTP) rather than a later visit. */
@@ -40,6 +42,9 @@ const RESUME_WINDOW_MS = 10 * 60 * 1000;
 // sessionStorage), so: leaving the form while the app keeps running marks it left, and after a
 // restart only a draft saved in the last few minutes resumes by itself.
 let leftFormThisRun = false;
+onMarketChange(() => {
+  leftFormThisRun = false;
+});
 
 /** Called when the form closes without the listing being posted. */
 export function markPostAdDraftLeft(): void {
@@ -59,7 +64,7 @@ function fileStillThere(uri: string): Promise<boolean> {
 /** `resume`: pick up where the seller was, unasked. Otherwise offer the draft as a choice. */
 export async function loadPostAdDraft(): Promise<{ draft: PostAdDraft; savedAt: number; resume: boolean } | null> {
   try {
-    const raw = await AsyncStorage.getItem(KEY);
+    const raw = await AsyncStorage.getItem(storageKey());
     if (!raw) return null;
     const saved = JSON.parse(raw) as { savedAt: number; draft: PostAdDraft };
     if (!saved?.draft?.category || Date.now() - saved.savedAt > MAX_AGE_MS) {
@@ -80,7 +85,7 @@ export async function loadPostAdDraft(): Promise<{ draft: PostAdDraft; savedAt: 
 export async function savePostAdDraft(draft: PostAdDraft): Promise<void> {
   leftFormThisRun = false;
   try {
-    await AsyncStorage.setItem(KEY, JSON.stringify({ savedAt: Date.now(), draft }));
+    await AsyncStorage.setItem(storageKey(), JSON.stringify({ savedAt: Date.now(), draft }));
   } catch {
     // Best-effort — the form still works, it just isn't kept.
   }
@@ -88,7 +93,7 @@ export async function savePostAdDraft(draft: PostAdDraft): Promise<void> {
 
 export async function clearPostAdDraft(): Promise<void> {
   try {
-    await AsyncStorage.removeItem(KEY);
+    await AsyncStorage.removeItem(storageKey());
   } catch {
     // Nothing to clear.
   }

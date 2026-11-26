@@ -58,7 +58,7 @@ import { AREA_UNIT_LABELS, areaUnitShortLabel, formatArea, type AreaUnit } from 
 import { MAX_VIDEO_BYTES, resolveVideoEntitlement } from "@bhavano/types/videoLimits";
 import { runWithConcurrency } from "@bhavano/types/concurrencyPool";
 import { useAppTheme } from "../../theme/ThemeContext";
-import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
+import { tokenKey, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName, type IconName } from "../Icon";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertChannelPicker, type AlertChannelChoice } from "./AlertChannelPicker";
@@ -1618,7 +1618,7 @@ export function PostAdWizard({
 
     let activeToken = accessToken ?? postAccessToken;
     if (!activeToken) {
-      activeToken = (await SecureStore.getItemAsync(TOKEN_KEY)) ?? undefined;
+      activeToken = (await SecureStore.getItemAsync(tokenKey())) ?? undefined;
     }
     if (!activeToken) {
       requireLogin({ onSuccess: () => void handleGenerateCopy(field, opts) });
@@ -1711,7 +1711,7 @@ export function PostAdWizard({
   async function onPreview() {
     let activeToken = accessToken;
     if (!activeToken) {
-      activeToken = (await SecureStore.getItemAsync(TOKEN_KEY)) ?? undefined;
+      activeToken = (await SecureStore.getItemAsync(tokenKey())) ?? undefined;
     }
     setPhotoNotice(null);
     setError(null);
@@ -1763,7 +1763,7 @@ export function PostAdWizard({
 
     let activeToken = accessToken;
     if (!activeToken) {
-      activeToken = (await SecureStore.getItemAsync(TOKEN_KEY)) ?? undefined;
+      activeToken = (await SecureStore.getItemAsync(tokenKey())) ?? undefined;
     }
     if (!activeToken) {
       void logPostLoginRequired({ step });

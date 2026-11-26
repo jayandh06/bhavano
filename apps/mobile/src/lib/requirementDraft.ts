@@ -1,4 +1,5 @@
 import type { RequirementCaptureCriteria, RequirementDto } from "@bhavano/types";
+import { onMarketChange } from "./marketState";
 
 /**
  * Hands a capture from the home screen's `RequirementPrompt` to the `/requirement/new` questions
@@ -16,6 +17,10 @@ export interface RequirementDraft {
 
 let pending: RequirementDraft | null = null;
 let created: RequirementDto | null = null;
+onMarketChange(() => {
+  pending = null;
+  created = null;
+});
 
 export function startRequirementDraft(draft: RequirementDraft): void {
   pending = draft;

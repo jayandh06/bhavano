@@ -1,9 +1,16 @@
 import { io, type Socket } from "socket.io-client";
-
-const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL ?? "http://localhost:4000";
+import { apiUrl } from "./marketEndpoints";
+import { onMarketChange } from "./marketState";
 
 let socket: Socket | null = null;
 let socketToken: string | null = null;
+
+// The connection is to one market's server.
+onMarketChange(() => {
+  socket?.disconnect();
+  socket = null;
+  socketToken = null;
+});
 
 export function getSocket(accessToken: string): Socket {
   // Recreate when the session token changes — a singleton opened with the first login kept
@@ -16,7 +23,7 @@ export function getSocket(accessToken: string): Socket {
     socketToken = accessToken;
     // Force the websocket transport — React Native's XHR polyfill doesn't support
     // socket.io's long-polling fallback transport reliably.
-    socket = io(BFF_URL, { auth: { token: accessToken }, transports: ["websocket"] });
+    socket = io(apiUrl(), { auth: { token: accessToken }, transports: ["websocket"] });
   }
   return socket;
 }

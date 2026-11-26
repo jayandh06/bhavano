@@ -1,4 +1,4 @@
-const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
+import { siteUrl } from "./marketEndpoints";
 
 /**
  * Builds a bhavano.com URL for opening in the system browser (WebBrowser.openBrowserAsync /
@@ -9,7 +9,7 @@ const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
  */
 export function appWebUrl(path: string): string {
   const separator = path.includes("?") ? "&" : "?";
-  return `${SITE_URL}${path}${separator}app=1`;
+  return `${siteUrl()}${path}${separator}app=1`;
 }
 
 /**
@@ -19,7 +19,7 @@ export function appWebUrl(path: string): string {
  * link a recipient opens in their own regular browser would misattribute their visit as ours.
  */
 export function publicWebUrl(path: string): string {
-  return `${SITE_URL}${path}`;
+  return `${siteUrl()}${path}`;
 }
 
 /** `publicWebUrl` plus the same UTM tags apps/web's shareLinks.ts puts on a web share, so a link
@@ -32,5 +32,5 @@ export function sharedWebUrl(
 ): string {
   const separator = path.includes("?") ? "&" : "?";
   const ref = referralCode ? `&ref=${encodeURIComponent(referralCode)}` : "";
-  return `${SITE_URL}${path}${separator}utm_source=app_share&utm_medium=share&utm_campaign=${campaign}${ref}`;
+  return `${siteUrl()}${path}${separator}utm_source=app_share&utm_medium=share&utm_campaign=${campaign}${ref}`;
 }

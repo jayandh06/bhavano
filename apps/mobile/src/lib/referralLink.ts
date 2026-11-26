@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { marketKey } from "./marketState";
 
 const REFERRAL_CODE_STORAGE = "bhavano.referralCode";
 const REFERRAL_STORED_AT_STORAGE = "bhavano.referralStoredAt";
@@ -10,8 +11,8 @@ const REFERRAL_ATTRIBUTION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
  * it was stored — read back at signup by getReferralCodeIfFresh. A newer link always overwrites
  * an older one (latest-wins), same rule as web's bhavano_ref cookie. */
 export async function storeReferralCode(referralCode: string): Promise<void> {
-  await AsyncStorage.setItem(REFERRAL_CODE_STORAGE, referralCode);
-  await AsyncStorage.setItem(REFERRAL_STORED_AT_STORAGE, String(Date.now()));
+  await AsyncStorage.setItem(marketKey(REFERRAL_CODE_STORAGE), referralCode);
+  await AsyncStorage.setItem(marketKey(REFERRAL_STORED_AT_STORAGE), String(Date.now()));
 }
 
 /** Read at signup (see HomeSheetsProvider's handleVerifyOtp/handleGoogle/handleApple) —
@@ -21,8 +22,8 @@ export async function storeReferralCode(referralCode: string): Promise<void> {
  * a retry succeeds. */
 export async function getReferralCodeIfFresh(): Promise<string | undefined> {
   const [code, storedAtRaw] = await Promise.all([
-    AsyncStorage.getItem(REFERRAL_CODE_STORAGE),
-    AsyncStorage.getItem(REFERRAL_STORED_AT_STORAGE),
+    AsyncStorage.getItem(marketKey(REFERRAL_CODE_STORAGE)),
+    AsyncStorage.getItem(marketKey(REFERRAL_STORED_AT_STORAGE)),
   ]);
   if (!code || !storedAtRaw) return undefined;
   const storedAt = Number(storedAtRaw);
