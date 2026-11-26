@@ -161,6 +161,12 @@ address needs the rule updated. `DATABASE_URL` for the US `.env` uses the DB's p
   `https://www.bhavano.com` through CORS. **Rollback:** on the India host `rm caddy/market-routes/us.caddy` and run the same `up -d --no-deps --force-recreate caddy`; the extra mount and the `.env` line are harmless. Known and left: the response carries two
   `Strict-Transport-Security` headers (India's and the US Caddy's; harmless), and a proxy hop adds latency (the plan's edge routing is the proper fix). Found while checking: the header logo (`next/image` with a local `/logo.png`) returned 400 under the base
   path because Next does not add the base path to local image sources; fixed by `withBasePath` in `Header.tsx` (CDN images are unaffected).
+- **Server Actions through `www.bhavano.com/us` (found 2026-11-26 in a real browser, fixed):** every Server Action (login, favorites, search assist, the post flow) answered 500 through the proxy with `x-forwarded-host header with value us-origin.bhavano.com
+  does not match origin header with value www.bhavano.com`. India's Caddy sends `X-Forwarded-Host: www.bhavano.com`, but the US Caddy overwrote it with its own host because India's Caddy was not a trusted proxy, and Next.js refuses an action whose
+  `Origin` differs from the forwarded host. curl never showed it (only a browser sends the `Origin` header on a POST). Fix: `Caddyfile.us` has a global `servers { trusted_proxies static {$INDIA_PROXY_IP:13.205.0.54} }` (India's Elastic IP, also the address the
+  US side sees), so the forwarded host, protocol and visitor address pass through. Validated in a throwaway container, applied with a graceful `caddy reload`, and checked: after two fresh page loads the web log showed no new `Invalid Server Actions` lines
+  (14 before the reload, none after) and the browser's `POST /us` calls returned 200. Deploy note: the host's `Caddyfile.us` was edited in place for this test, so run `git checkout -- Caddyfile.us` on the US host before the next `git pull`.
+  Lesson: check a routed site in a real browser (console and network), not only with curl.
 - **Still to do on the hosts:** a dump copy outside the region or account (an S3 bucket needs an
   instance role); the monthly OS-update routine (the DB's public address is for outbound access only). The `bhavano-us`
   CLI profile had a temporary inline policy `bhavano-us-ops` (DLM, SNS, one IAM role) for this; remove it from the IAM user when done.

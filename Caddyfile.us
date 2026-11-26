@@ -2,6 +2,16 @@
 #   US_ORIGIN_DOMAIN  where India's Caddy sends www.bhavano.com/us/* (caddy/market-routes/us.caddy); visitors never use it directly.
 #   US_API_DOMAIN     the US API (NEXT_PUBLIC_BFF_URL of the US web image).
 # Same HSTS rule as India's Caddyfile: one year, no includeSubDomains or preload.
+{
+	servers {
+		# India's Caddy (www.bhavano.com) forwards /us to this host. Trusting it keeps the X-Forwarded-For, -Proto and -Host it sends (the
+		# visitor's address, https, and www.bhavano.com). Without this, this Caddy overwrites them with its own view (us-origin), and Next.js
+		# refuses every Server Action because x-forwarded-host (us-origin) does not match the browser's Origin (www). Its address is
+		# India's Elastic IP; override with INDIA_PROXY_IP in .env if that host ever moves.
+		trusted_proxies static {$INDIA_PROXY_IP:13.205.0.54}
+	}
+}
+
 (hsts) {
 	header Strict-Transport-Security "max-age=31536000"
 }
