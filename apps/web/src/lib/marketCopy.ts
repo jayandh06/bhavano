@@ -48,6 +48,8 @@ export interface MarketCopy {
   listingsCheckedClaim: boolean;
   /** "Phone OTP" is offered as a way to log in (the Help page says so). India's primary login; the US signs in with Google and only verifies a phone before posting. */
   phoneOtpLogin: boolean;
+  /** The "owners and agents may call or message me" box on the "find this for me" prompt starts ticked. On in India; off in the US, where a pre-ticked box may not count as consent to calls and texts. */
+  contactConsentPreTicked: boolean;
   /** India-only content is offered: the calculators, blog and guides, the moving guide, and the Diwali banner. Off in the US. */
   indiaContent: boolean;
   /** Link to the India app store listing in structured data (`sameAs`) and the legal-entity fields in the Organization markup. */
@@ -94,6 +96,7 @@ const COPY: Record<MarketId, MarketCopy> = {
     ],
     listingsCheckedClaim: true,
     phoneOtpLogin: true,
+    contactConsentPreTicked: true,
     indiaContent: true,
     indiaOrganization: true,
   },
@@ -135,6 +138,7 @@ const COPY: Record<MarketId, MarketCopy> = {
     ],
     listingsCheckedClaim: false,
     phoneOtpLogin: false,
+    contactConsentPreTicked: false,
     indiaContent: false,
     indiaOrganization: false,
   },

@@ -61,10 +61,11 @@ export function RequirementPrompt({
    * say more. */
   const [refining, setRefining] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** Pre-ticked: someone asking us to go and find a house generally does want the person who has
-   * one to ring them, and the box is right there to untick. Unticking is a real choice, not a
-   * cosmetic one — it keeps their number with Bhavano. */
-  const [allowContact, setAllowContact] = useState(true);
+  /** Pre-ticked in India: someone asking us to go and find a house generally does want the person
+   * who has one to ring them, and the box is right there to untick. Unticking is a real choice, not
+   * a cosmetic one — it keeps their number with Bhavano. In the US it starts unticked, so consent
+   * is something the person does (see marketCopy.contactConsentPreTicked). */
+  const [allowContact, setAllowContact] = useState(COPY.contactConsentPreTicked);
   /** The inline variant asks the same question, but only once they have shown interest —
    * otherwise it would be a consent form sitting under every page of results. */
   const [inlineOpen, setInlineOpen] = useState(false);
