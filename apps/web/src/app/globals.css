@@ -4,6 +4,31 @@
  * content-page lists carry explicit `list-disc` so Preflight's list reset doesn't strip bullets. */
 @import "tailwindcss";
 
+/* Lora and Manrope (src/app/fonts/index.ts), one family per script subset in the order a browser should try them, then a size-adjusted system font that holds the
+ * layout while they load (the same metrics next/font/google generated). */
+@font-face {
+  font-family: "Lora Fallback";
+  src: local("Times New Roman");
+  ascent-override: 87.33%;
+  descent-override: 23.78%;
+  line-gap-override: 0%;
+  size-adjust: 115.2%;
+}
+
+@font-face {
+  font-family: "Manrope Fallback";
+  src: local("Arial");
+  ascent-override: 103.31%;
+  descent-override: 29.07%;
+  line-gap-override: 0%;
+  size-adjust: 103.19%;
+}
+
+html:root {
+  --font-lora: var(--font-lora-latin), var(--font-lora-latin-ext), var(--font-lora-cyrillic), var(--font-lora-cyrillic-ext), var(--font-lora-vietnamese), var(--font-lora-math), var(--font-lora-symbols), "Lora Fallback";
+  --font-manrope: var(--font-manrope-latin), var(--font-manrope-latin-ext), var(--font-manrope-cyrillic), var(--font-manrope-cyrillic-ext), var(--font-manrope-greek), var(--font-manrope-vietnamese), "Manrope Fallback";
+}
+
 /* Map the existing design tokens into Tailwind's color space with `@theme inline`, so utilities
  * (bg-bg, text-green, border-border, …) compile to `var(--token)` references — which means the
  * runtime data-theme dark-mode swap below keeps working with no per-utility dark variants. */
