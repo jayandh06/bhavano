@@ -14,6 +14,7 @@ import { MobileHeaderCollapse } from "./MobileHeaderCollapse";
 import { MobileInlineSearch } from "./MobileInlineSearch";
 import { HeaderDrawer } from "./HeaderDrawer";
 import { Icon } from "./Icon";
+import { MarketFlag } from "./MarketFlag";
 import { marketCopy } from "@/lib/marketCopy";
 import { withBasePath } from "@/lib/basePath";
 import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
@@ -97,6 +98,7 @@ export function Header({
               * readers. */}
             <Image src={LOGO_SRC} alt="Bhavano" width={30} height={30} className="rounded-lg w-[30px] h-[30px]" />
           </Link>
+          <MarketFlag className="ml-2" />
           <span className="flex-1" />
           <Link
             href={postHref(cityName, "header_mobile")}
@@ -173,8 +175,19 @@ export function Header({
             * shrink-0, so the button can never be pushed past the screen edge and clipped. */}
           <div className="flex items-center gap-2 sm:gap-3 py-2.5 sm:py-3">
             <Link href="/" className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-              <Image src={LOGO_SRC} alt="" width={38} height={38} className="rounded-[10px] w-8 h-8 sm:w-[38px] sm:h-[38px] shrink-0" priority />
+              <span className="relative flex shrink-0">
+                <Image src={LOGO_SRC} alt="" width={38} height={38} className="rounded-[10px] w-8 h-8 sm:w-[38px] sm:h-[38px]" priority />
+                {/* Signed in on a narrow phone, the row has no width to spare, so the flag sits on the logo's corner instead of beside the title. */}
+                {userName && (
+                  <span className="absolute -bottom-1 -right-1.5 flex origin-bottom-right scale-75 min-[400px]:hidden">
+                    <MarketFlag />
+                  </span>
+                )}
+              </span>
               <span className="font-lora font-bold text-xl sm:text-2xl tracking-[-0.01em] text-green truncate">Bhavano</span>
+              <span className={userName ? "hidden min-[400px]:flex shrink-0" : "flex shrink-0"}>
+                <MarketFlag />
+              </span>
             </Link>
             <HeaderAuthButtons userName={userName} cityName={cityName} accessToken={accessToken} />
             {/* Visible at every size. It was hidden below sm while the header was one crowded
