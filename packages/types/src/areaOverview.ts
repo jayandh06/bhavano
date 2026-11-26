@@ -87,7 +87,7 @@ export const AREA_OVERVIEW_REVIEW_CHECKLIST = [
   "It says something specific to this area, and each FAQ answers a real question.",
 ] as const;
 
-const BANNED_NUMBERS = /₹|\bRs\.?\s?\d|\d\s?%|\blakh|\bcrore/i;
+const BANNED_NUMBERS = /₹|\bRs\.?\s?\d|\$\s?\d|\d\s?%|\blakh|\bcrore/i;
 const BANNED_LINKS = /https?:\/\/|www\.|@\w+\.\w+/i;
 
 /** Problems with the text that no reviewer should have to spot by eye. An empty array means the

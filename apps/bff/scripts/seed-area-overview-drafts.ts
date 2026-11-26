@@ -5,6 +5,8 @@
  *
  *   cd apps/bff && set -a && . ./.env && set +a && node_modules/.bin/tsx scripts/seed-area-overview-drafts.ts [--dry-run]
  *
+ * On a US server (MARKET=us) it loads the US city drafts instead.
+ *
  * Needs the AreaOverview migration applied first. See docs/plans/area-overview-pages.md.
  */
 import { Prisma, PrismaClient } from '@prisma/client';
@@ -13,13 +15,17 @@ import { validateAreaOverviewContent } from '@bhavano/types/areaOverview';
 import { slugify } from '@bhavano/types/slugify';
 import { AREA_OVERVIEW_DRAFTS } from './area-overview-drafts';
 import { CITY_OVERVIEW_DRAFTS } from './city-overview-drafts';
+import { US_CITY_OVERVIEW_DRAFTS } from './us-city-overview-drafts';
+
+// Each market has its own drafts and database: MARKET=us loads the US city drafts (no US area drafts exist), anything else India's.
+const isUs = process.env.MARKET === 'us';
 
 const dryRun = process.argv.includes('--dry-run');
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
 async function main() {
   const areas = await prisma.area.findMany({ include: { city: true, overview: true } });
-  for (const [key, content] of Object.entries(AREA_OVERVIEW_DRAFTS)) {
+  for (const [key, content] of Object.entries(isUs ? {} : AREA_OVERVIEW_DRAFTS)) {
     const problems = validateAreaOverviewContent(content);
     if (problems.length > 0) {
       console.log(`SKIP   ${key}: ${problems.join(' ')}`);
@@ -46,7 +52,7 @@ async function main() {
 
 async function seedCities() {
   const cities = await prisma.city.findMany({ include: { overview: true } });
-  for (const [key, content] of Object.entries(CITY_OVERVIEW_DRAFTS)) {
+  for (const [key, content] of Object.entries(isUs ? US_CITY_OVERVIEW_DRAFTS : CITY_OVERVIEW_DRAFTS)) {
     const problems = validateAreaOverviewContent(content);
     if (problems.length > 0) {
       console.log(`SKIP   city ${key}: ${problems.join(' ')}`);
