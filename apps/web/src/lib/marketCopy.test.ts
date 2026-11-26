@@ -69,6 +69,7 @@ describe("marketCopy: India is exactly what the components hardcoded", () => {
     expect(c.listingsCheckedClaim).toBe(true);
     expect(c.indiaOrganization).toBe(true);
     expect(c.phoneOtpLogin).toBe(true);
+    expect(c.contactConsentPreTicked).toBe(true);
   });
 });
 
@@ -89,6 +90,7 @@ describe("marketCopy: the US names nothing India-only", () => {
     expect(c.indiaOrganization).toBe(false);
     expect(c.notFoundExampleCities).toBe(false);
     expect(c.phoneOtpLogin).toBe(false);
+    expect(c.contactConsentPreTicked).toBe(false);
   });
 
   it("makes no claim about moderation, paid boosts or phone sign-in", () => {

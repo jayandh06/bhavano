@@ -36,6 +36,11 @@ listing-check claim, if Terms/Privacy lose their draft marker, or if the entity 
 4. Whether phone numbers collected for posting (US SMS is not built, see us-market-expansion.md) need A2P/TCPA language.
 5. A US mailing address for the entity, and whether a US entity should replace Finfolia as operator.
 6. Remove `DraftNotice` from Terms and Privacy when approved.
+7. Consent to calls and texts. Since 2026-11-26 the "Owners and agents with a matching property may call or message me" box on
+   the "find this for me" prompt starts **unticked** in the US (`marketCopy.contactConsentPreTicked`; India stays ticked).
+   Confirm the wording is enough for TCPA and state rules, and review the separate seeker-contact sharing setting (Admin ->
+   Settings -> Seeker contact), whose "notice" mode shares a number unless the person opts out; it must stay off or be
+   opt-in in the US unless counsel says otherwise.
 
 ## Not done
 
