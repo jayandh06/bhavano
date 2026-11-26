@@ -126,10 +126,17 @@ describe("menus", () => {
 
   it("adds condo, townhouse and room to the US menus, with bed wording", async () => {
     const { HOME_TABS } = await loadWith<Home>("./homeCategories", "us");
-    expect(values(HOME_TABS, "buy")).toEqual(["house", "apartment", "condo", "townhouse", "villa", "plot", "commercial"]);
+    expect(values(HOME_TABS, "buy")).toEqual(["house", "apartment", "condo", "townhouse", "villa", "commercial"]);
     expect(values(HOME_TABS, "rentLease")).toEqual(["house", "apartment", "condo", "townhouse", "room", "villa", "storage", "commercial"]);
     const condo = HOME_TABS.find((t) => t.value === "buy")!.column1.find((c) => c.value === "condo")!;
     expect(condo.links("Austin")[1].label).toBe("Buy 2 bed Condo in Austin");
     expect(condo.href!("Austin")).toBe("/austin/buy/condo");
+  });
+
+  it("offers no PG, Coworking or Plots in the US, and still offers them in India", async () => {
+    const us = (await loadWith<Home>("./homeCategories", "us")).HOME_TABS.map((t) => t.value);
+    expect(us).toEqual(["all", "buy", "rentLease"]);
+    const india = (await loadWith<Home>("./homeCategories", "")).HOME_TABS.map((t) => t.value);
+    expect(india).toEqual(["all", "buy", "rentLease", "pg", "coworking"]);
   });
 });
