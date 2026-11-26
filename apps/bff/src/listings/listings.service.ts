@@ -173,6 +173,12 @@ const PROPERTY_TYPES_BY_TAB: Record<'buy' | 'rentLease', PropertyTypeFilter[]> =
     ],
   };
 
+/** The US market's tab lists: India's, plus condo and townhouse under both tabs and room for rent under Rent & Lease. India keeps the map above exactly. */
+const US_PROPERTY_TYPES_BY_TAB: Record<'buy' | 'rentLease', PropertyTypeFilter[]> = {
+  buy: [...PROPERTY_TYPES_BY_TAB.buy, 'condo', 'townhouse'],
+  rentLease: [...PROPERTY_TYPES_BY_TAB.rentLease, 'condo', 'townhouse', 'room'],
+};
+
 function buildHomeCategoryWhere(
   tab: HomeCategoryFilter | undefined,
   propertyType?: PropertyTypeFilter,
@@ -188,7 +194,7 @@ function buildHomeCategoryWhere(
 
   const transactionTypes: TransactionType[] =
     tab === 'buy' ? ['buy', 'sell'] : ['rent', 'lease'];
-  const allowedCategories = PROPERTY_TYPES_BY_TAB[tab];
+  const allowedCategories = (MARKET.id === 'us' ? US_PROPERTY_TYPES_BY_TAB : PROPERTY_TYPES_BY_TAB)[tab];
   const categories =
     propertyType && allowedCategories.includes(propertyType)
       ? [propertyType]

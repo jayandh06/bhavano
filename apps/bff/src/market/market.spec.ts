@@ -208,7 +208,12 @@ describe('market categories and area units', () => {
   });
 
   it('leaves the posting wizard groups unchanged for India', () => {
-    expect(marketPostCategoryGroups('in')).toEqual(POST_CATEGORY_GROUPS);
+    // Pinned to what India's picker offered before the US-only categories (condo, townhouse, room) were added to POST_CATEGORY_GROUPS.
+    const shape = (groups: typeof POST_CATEGORY_GROUPS) => groups.map((g) => ({ title: g.title, options: g.options.map((o) => o.value) }));
+    expect(shape(marketPostCategoryGroups('in'))).toEqual([
+      { title: 'Property', options: ['house', 'apartment', 'villa', 'plot', 'pg'] },
+      { title: 'Commercial & workspace', options: ['commercial', 'coworking', 'storage'] },
+    ]);
   });
 
   it('keeps every India unit list a field names, in order', () => {

@@ -105,30 +105,30 @@ const COPY: Record<MarketId, MarketCopy> = {
     homeHeading: "Rent, buy and list homes across the United States",
     anywhere: "the United States",
     homeIntro:
-      "Bhavano is a marketplace for renting, buying and selling homes, storage and commercial space, listed by owners and agents. Sign in only when you want to post a listing, save a favorite, or message the owner — we use your account solely to power those features.",
+      "Bhavano is a marketplace for renting, buying and selling homes, condos, townhouses, rooms, storage and commercial space, listed by owners and agents. Sign in only when you want to post a listing, save a favorite, or message the owner — we use your account solely to power those features.",
     homeIntroShort: "Rent, buy & sell — message owners directly.",
     footerBlurb:
-      "Listings to rent or buy houses, apartments, villas, storage and commercial spaces across the United States — no login needed to browse.",
+      "Listings to rent or buy houses, apartments, condos, townhouses, villas, rooms for rent, storage and commercial spaces across the United States — no login needed to browse.",
     ownerBlurb:
-      "List a house, apartment, villa, storage space or commercial space and reach people searching in your city. You deal directly with renters and buyers.",
+      "List a house, apartment, condo, townhouse, room, storage space or commercial space and reach people searching in your city. You deal directly with renters and buyers.",
     helpAbout:
-      "Bhavano is a property marketplace for homes, storage space and commercial space across the United States, so renting, buying or setting up a small business can be handled in one place.",
+      "Bhavano is a property marketplace for homes, rooms, storage space and commercial space across the United States, so renting, buying or setting up a small business can be handled in one place.",
     helpWhatCanIList:
-      "Houses, apartments, villas, storage space and commercial spaces — each with its own set of relevant fields (bedrooms, size, and so on).",
+      "Houses, apartments, condos, townhouses, villas, rooms for rent, storage space and commercial spaces — each with its own set of relevant fields (bedrooms, size, and so on).",
     citiesDescription: "Every city Bhavano covers for renting and buying homes across the United States.",
     citiesIntro: (count) =>
-      `${count} cities across the United States — pick one to browse houses, apartments, villas, storage and commercial spaces there.`,
-    notFoundBrowse: "Browse homes for rent and for sale, villas, storage and commercial spaces",
+      `${count} cities across the United States — pick one to browse houses, apartments, condos, townhouses, villas, rooms, storage and commercial spaces there.`,
+    notFoundBrowse: "Browse homes for rent and for sale, condos, townhouses, rooms, storage and commercial spaces",
     notFoundExampleCities: false,
     searchPlaceholder: (cityLabel, areaName) =>
       areaName
-        ? `Search "2 bed in ${areaName}, ${cityLabel}", "villa for rent"…`
-        : `Search "2 bed in ${cityLabel}", "house for rent", "storage space"…`,
+        ? `Search "2 bed in ${areaName}, ${cityLabel}", "condo for rent"…`
+        : `Search "2 bed condo in ${cityLabel}", "room for rent", "townhouse for sale"…`,
     searchExampleChips: (cityLabel, place) => [
       `2 bed in ${place}`,
-      `Villas for rent in ${cityLabel}`,
-      `Houses for rent in ${cityLabel}`,
-      `Storage in ${cityLabel}`,
+      `Condos for rent in ${cityLabel}`,
+      `Townhouses for sale in ${cityLabel}`,
+      `Rooms for rent in ${cityLabel}`,
     ],
     listingsCheckedClaim: false,
     indiaContent: false,

@@ -41,6 +41,10 @@ export const POST_CATEGORY_GROUPS: PostCategoryGroup[] = [
       { value: "house", label: "House", icon: "🏡", iconName: "catHouse" },
       { value: "apartment", label: "Apartment", icon: "🏢", iconName: "catApartment" },
       { value: "villa", label: "Villa", icon: "🏘️", iconName: "catVilla" },
+      // US-only (not in India's market category list, so India's picker is unchanged): they reuse the existing icons.
+      { value: "condo", label: "Condo", icon: "🏙️", iconName: "catApartment" },
+      { value: "townhouse", label: "Townhouse", icon: "🏠", iconName: "catHouse" },
+      { value: "room", label: "Room for rent", icon: "🛏️", iconName: "catPg" },
       { value: "plot", label: "Plot", icon: "🗺️", iconName: "catPlot" },
       // Land, whichever way it is eventually used. Someone with a plot to sell thinks of it as
       // property long before they think of it as commercial.
@@ -65,7 +69,7 @@ export const POST_CATEGORY_GROUPS: PostCategoryGroup[] = [
 export const POST_CATEGORIES: PostCategoryOption[] = POST_CATEGORY_GROUPS.flatMap((g) => g.options);
 
 /** The category groups offered in the posting wizard in this market: only categories the market has, and no empty group.
- * India's list is the full `POST_CATEGORY_GROUPS`, unchanged. */
+ * India's list is `POST_CATEGORY_GROUPS` without the US-only categories, which is exactly what it offered before they were added. */
 export function marketPostCategoryGroups(id: MarketId): PostCategoryGroup[] {
   return POST_CATEGORY_GROUPS.map((g) => ({ ...g, options: g.options.filter((o) => isMarketCategory(id, o.value)) })).filter(
     (g) => g.options.length > 0,

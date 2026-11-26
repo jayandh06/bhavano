@@ -46,7 +46,7 @@ function bhkFacetLinks(
   cityName: string,
   areaName: string | undefined,
   group: TransactionGroup,
-  category: "house" | "apartment" | "villa",
+  category: "house" | "apartment" | "villa" | "condo" | "townhouse",
   currentFacet?: number,
 ): BrowseSeoLink[] {
   if (facetKindForCategory(category) !== "bedrooms") return [];
@@ -80,7 +80,7 @@ function buildRelatedLinks(input: BrowseSeoCopyInput): BrowseSeoLink[] {
   if (areaName && category && group) {
     const catLabel = CATEGORY_LABELS[category];
 
-    if (facetValue !== undefined && (category === "house" || category === "apartment" || category === "villa")) {
+    if (facetValue !== undefined && (category === "house" || category === "apartment" || category === "villa" || category === "condo" || category === "townhouse")) {
       const bedroom = typeof facetValue === "number" ? facetValue : undefined;
       links.push({
         label: `All ${catLabel.toLowerCase()} in ${areaName}`,
@@ -88,7 +88,7 @@ function buildRelatedLinks(input: BrowseSeoCopyInput): BrowseSeoLink[] {
       });
       links.push(...bhkFacetLinks(cityName, areaName, group, category, bedroom));
     } else {
-      if (category === "house" || category === "apartment" || category === "villa") {
+      if (category === "house" || category === "apartment" || category === "villa" || category === "condo" || category === "townhouse") {
         links.push(...bhkFacetLinks(cityName, areaName, group, category));
       }
       links.push({
@@ -124,7 +124,7 @@ function buildRelatedLinks(input: BrowseSeoCopyInput): BrowseSeoLink[] {
         href: buildBrowsePath({ cityName, transactionGroup: otherGroup, category }),
       });
     }
-    if (category === "house" || category === "apartment" || category === "villa") {
+    if (category === "house" || category === "apartment" || category === "villa" || category === "condo" || category === "townhouse") {
       const bedroom = typeof facetValue === "number" ? facetValue : undefined;
       if (facetValue !== undefined) {
         links.push({

@@ -39,6 +39,9 @@ const CATEGORY_STYLE: Record<ListingCategory, { label: string; bg: string; fg: s
   house: { label: 'House', bg: '#1f6f54', fg: '#eafaf2' },
   apartment: { label: 'Apartment', bg: '#1d5b8f', fg: '#e8f2fb' },
   villa: { label: 'Villa', bg: '#2f6b4f', fg: '#eaf7ef' },
+  condo: { label: 'Condo', bg: '#2a5f7a', fg: '#e8f3f8' },
+  townhouse: { label: 'Townhouse', bg: '#3a6b3f', fg: '#eaf6ec' },
+  room: { label: 'Room for rent', bg: '#7a5a2a', fg: '#fbf1e2' },
   pg: { label: 'PG / Co-living', bg: '#8a4b1f', fg: '#fdf0e6' },
   storage: { label: 'Storage', bg: '#4a4f57', fg: '#f0f2f5' },
   coworking: { label: 'Coworking', bg: '#5a3a86', fg: '#f2ecfb' },
@@ -159,16 +162,30 @@ function deriveFields(category: ListingCategory, transactionType: TransactionTyp
   switch (category) {
     case 'house':
     case 'apartment':
+    case 'condo':
+    case 'townhouse':
     case 'villa': {
       const bedrooms = [2, 3, 4][i];
       const bathrooms = [2, 2, 3][i];
       const sqft = [950, 1450, 2200][i];
       const furnished = ['unfurnished', 'semi', 'furnished'][i];
-      const noun = category === 'house' ? 'Independent House' : category === 'apartment' ? 'Apartment' : 'Villa';
+      const noun =
+        category === 'house' ? 'Independent House' : category === 'apartment' ? 'Apartment' : category === 'condo' ? 'Condo' : category === 'townhouse' ? 'Townhouse' : 'Villa';
       return {
         title: `${bedrooms} BHK ${noun} ${suffix} in ${areaName}`,
         specs: [`${bedrooms} Beds`, `${bathrooms} Bath`, `${sqft} sqft`],
         attributes: { bedrooms, bathrooms, sqft, furnished },
+      };
+    }
+    case 'room': {
+      const roomType = ['private', 'private', 'shared'][i];
+      const bathroom = ['private', 'shared', 'shared'][i];
+      const furnished = ['furnished', 'unfurnished', 'furnished'][i];
+      const utilitiesIncluded = ['yes', 'no', 'yes'][i];
+      return {
+        title: `${roomType === 'private' ? 'Private' : 'Shared'} room for rent in ${areaName}`,
+        specs: [roomType === 'private' ? 'Private room' : 'Shared room', bathroom === 'private' ? 'Private bathroom' : 'Shared bathroom'],
+        attributes: { roomType, bathroom, furnished, utilitiesIncluded },
       };
     }
     case 'pg': {

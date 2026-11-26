@@ -235,13 +235,15 @@ function breadcrumbJsonLd(cityName: string, citySlug: string, parsed: ParsedSegm
 
 // Categories with real property/land, as opposed to rentable space, goods, or services — these
 // get a location-aware `RealEstateListing` instead of the generic `Product` schema.
-const REAL_ESTATE_CATEGORIES = new Set<ListingCategory>(["house", "apartment", "villa", "plot", "commercial"]);
+const REAL_ESTATE_CATEGORIES = new Set<ListingCategory>(["house", "apartment", "villa", "plot", "commercial", "condo", "townhouse", "room"]);
 
 // `attributes` values arrive as sanitized strings from PostAdWizard's number inputs, never numbers.
 const SQFT_ATTRIBUTE_KEY: Partial<Record<ListingCategory, string>> = {
   house: "sqft",
   apartment: "sqft",
   villa: "sqft",
+  condo: "sqft",
+  townhouse: "sqft",
   commercial: "sqft",
   plot: "plotAreaSqft",
 };

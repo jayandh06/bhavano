@@ -3,6 +3,11 @@ import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 import { buildBrowsePath } from "./listingPath";
 import { bedroomLabel, type TransactionGroup } from "./seoRoute";
 import type { IconName } from "@/components/home/Icon";
+import { buildMarket } from "./marketRobots";
+
+// The US build adds condo, townhouse and room for rent to the menus and says "bed" where India says "BHK"; India (the default) is unchanged.
+const US = buildMarket().id === "us";
+const BED_WORD = US ? "bed" : "BHK";
 
 export interface MegaMenuLink {
   label: string;
@@ -51,7 +56,7 @@ function bhkColumn1Item(group: TransactionGroup, actionLabel: string, category: 
     href: (cityName) => buildBrowsePath({ cityName, transactionGroup: group, category }),
     links: (cityName) =>
       BEDROOM_COUNTS.map((n) => ({
-        label: `${actionLabel} ${bedroomLabel(n)} BHK ${label} in ${cityName}`,
+        label: `${actionLabel} ${bedroomLabel(n)} ${BED_WORD} ${label} in ${cityName}`,
         transactionGroup: group,
         category,
         facetValue: n,
@@ -90,6 +95,7 @@ export const HOME_TABS: HomeTab[] = [
     column1: [
       bhkColumn1Item("buy", "Buy", "house", "House"),
       bhkColumn1Item("buy", "Buy", "apartment", "Apartment"),
+      ...(US ? [bhkColumn1Item("buy", "Buy", "condo", "Condo"), bhkColumn1Item("buy", "Buy", "townhouse", "Townhouse")] : []),
       bhkColumn1Item("buy", "Buy", "villa", "Villa"),
       singleLinkColumn1Item("plot", "Plots", { transactionGroup: "buy", category: "plot" }),
       singleLinkColumn1Item("commercial", "Commercial", { transactionGroup: "buy", category: "commercial" }),
@@ -102,6 +108,13 @@ export const HOME_TABS: HomeTab[] = [
     column1: [
       bhkColumn1Item("rent-lease", "Rent", "house", "House"),
       bhkColumn1Item("rent-lease", "Rent", "apartment", "Apartment"),
+      ...(US
+        ? [
+            bhkColumn1Item("rent-lease", "Rent", "condo", "Condo"),
+            bhkColumn1Item("rent-lease", "Rent", "townhouse", "Townhouse"),
+            singleLinkColumn1Item("room", "Room for rent", { transactionGroup: "rent-lease", category: "room" }),
+          ]
+        : []),
       bhkColumn1Item("rent-lease", "Rent", "villa", "Villa"),
       singleLinkColumn1Item("storage", "Storage", { transactionGroup: "rent-lease", category: "storage" }),
       singleLinkColumn1Item("commercial", "Commercial", { transactionGroup: "rent-lease", category: "commercial" }),

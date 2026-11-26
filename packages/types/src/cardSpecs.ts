@@ -48,6 +48,13 @@ const RECIPES: Record<ListingCategory, Chip[]> = {
   house: PROPERTY,
   apartment: PROPERTY,
   villa: PROPERTY,
+  condo: PROPERTY,
+  townhouse: PROPERTY,
+  room: [
+    { kind: "option", key: "roomType" },
+    { kind: "option", key: "bathroom" },
+    { kind: "flag", key: "utilitiesIncluded", when: ["yes"], label: "Utilities included" },
+  ],
   pg: [
     { kind: "option", key: "sharingType" },
     { kind: "option", key: "gender" },

@@ -35,5 +35,5 @@ export declare const POST_CATEGORY_GROUPS: PostCategoryGroup[];
 /** Flat list, for anywhere that needs to look a category up rather than offer a choice. */
 export declare const POST_CATEGORIES: PostCategoryOption[];
 /** The category groups offered in the posting wizard in this market: only categories the market has, and no empty group.
- * India's list is the full `POST_CATEGORY_GROUPS`, unchanged. */
+ * India's list is `POST_CATEGORY_GROUPS` without the US-only categories, which is exactly what it offered before they were added. */
 export declare function marketPostCategoryGroups(id: MarketId): PostCategoryGroup[];

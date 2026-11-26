@@ -24,6 +24,10 @@ export const LISTING_CATEGORIES: ListingCategory[] = [
   "interiors",
   "plot",
   "commercial",
+  // US-only (docs/plans/us-categories-condo-townhouse-room.md); the URL grammar accepts them, India just never has listings in them.
+  "condo",
+  "townhouse",
+  "room",
 ];
 
 export function isTransactionType(value: string): value is TransactionType {
@@ -45,6 +49,9 @@ export const CATEGORY_LABELS: Record<ListingCategory, string> = {
   interiors: "Interiors",
   plot: "Plots",
   commercial: "Commercial Spaces",
+  condo: "Condos",
+  townhouse: "Townhouses",
+  room: "Rooms for Rent",
 };
 
 export const TRANSACTION_LABELS: Record<TransactionType, string> = {
@@ -142,7 +149,7 @@ export function parseEnum<T extends string>(value: string | string[] | undefined
 }
 
 export const FURNISHING_VALUES = ["unfurnished", "semi", "furnished"] as const;
-export const PROPERTY_TYPE_VALUES: PropertyTypeFilter[] = ["house", "apartment", "villa", "storage", "coworking"];
+export const PROPERTY_TYPE_VALUES: PropertyTypeFilter[] = ["house", "apartment", "villa", "condo", "townhouse", "room", "storage", "coworking"];
 export const SHARING_TYPE_VALUES = CATEGORY_FIELD_CONFIG.pg.find((f) => f.key === "sharingType")!.options!.map((o) => o.value);
 export const CONDITION_VALUES = CATEGORY_FIELD_CONFIG.furniture.find((f) => f.key === "condition")!.options!.map((o) => o.value);
 export const SERVICE_TYPE_VALUES = CATEGORY_FIELD_CONFIG.interiors.find((f) => f.key === "serviceType")!.options!.map((o) => o.value);
@@ -158,7 +165,7 @@ export const POSTED_BY_VALUES = ["owner"] as const;
 export type FacetKind = "bedrooms" | "sharingType" | "condition" | "serviceType" | "none";
 
 export function facetKindForCategory(category: ListingCategory): FacetKind {
-  if (category === "house" || category === "apartment" || category === "villa") return "bedrooms";
+  if (category === "house" || category === "apartment" || category === "villa" || category === "condo" || category === "townhouse") return "bedrooms";
   if (category === "pg") return "sharingType";
   if (category === "furniture") return "condition";
   if (category === "interiors") return "serviceType";

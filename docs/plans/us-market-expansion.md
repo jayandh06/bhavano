@@ -61,7 +61,7 @@ The market comes from the URL path on web (`/us/...` is the US, everything else 
 | Dates | `en-IN` | `en-US` | Not yet (many module-level formatters) |
 | Place search | Google Places restricted to India | Restricted to the US | Done (BFF and web map picker) |
 | Structured data and SEO | `addressCountry: IN`, indexable | US, `noindex` until launch | Country and `noindex` (meta tag plus header) and US sitemap/robots done 2026-11-24 |
-| Listing types | House, apartment, villa, PG, storage, coworking, furniture, interiors, plot, commercial | House, apartment, villa, storage, commercial (starting set) | Config only; the post flow does not filter yet |
+| Listing types | House, apartment, villa, PG, storage, coworking, furniture, interiors, plot, commercial | House, apartment, villa, storage, commercial (starting set), plus condo, townhouse and room for rent | Built 2026-11-26 ([us-categories-condo-townhouse-room.md](us-categories-condo-townhouse-room.md)); not yet deployed. The posting picker, validation and menus follow the market list; PG, coworking and plot entries are still visible in the US menus |
 | Area and bedrooms | sq ft, sq m, acre, hectare, cent; BHK | sq ft and acre; bed/bath | Units listed in config; forms not changed |
 | Fair Housing fields | "Bachelor", "Vegetarians only", PG gender | Removed in the US | Not built (needs legal review) |
 | Content | Blog, guides, land-record pages, India calculators | Hidden at launch | Hidden (404, links removed) in the US build 2026-11-25; the moving guide too |

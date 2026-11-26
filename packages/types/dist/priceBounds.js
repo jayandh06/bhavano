@@ -14,6 +14,11 @@ exports.PRICE_BOUNDS = {
     house: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
     apartment: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
     villa: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
+    // US-only categories. Same numbers as their India siblings (US dollar amounts are numerically smaller than rupee ones, so normal US prices are inside
+    // these bands); a room rents for much less than a home, and is rent-only so its sale band is never reached.
+    condo: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
+    townhouse: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
+    room: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 100, max: 100_000 } },
     pg: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 100_000 } },
     storage: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 200, max: 100_000 } },
     coworking: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 500, max: 200_000 } },

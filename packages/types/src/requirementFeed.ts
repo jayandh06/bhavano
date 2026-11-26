@@ -1,6 +1,6 @@
 import type { ListingCategory, TransactionType } from "./index";
 import type { AreaUnit } from "./areaUnit";
-import { INTENT_CATEGORIES, REQUIREMENT_INTENTS, type RequirementIntent } from "./requirementQuestions";
+import { INTENT_CATEGORIES, REQUIREMENT_INTENTS, intentCategories, type RequirementIntent } from "./requirementQuestions";
 
 /**
  * The owner/agent Requirements tab — docs/plans/requirements-feed-for-owners-agents.md.
@@ -95,7 +95,11 @@ export function decodeRequirementFeedQuery(query: Query): RequirementFeedFilters
   if (transactionType) f.transactionType = transactionType;
 
   const type = first(query.type) as ListingCategory | undefined;
-  if (type && (intent ? INTENT_CATEGORIES[intent] : Object.values(INTENT_CATEGORIES).flat()).includes(type)) {
+  // India's categories plus the US ones (a ?type= for a category the market does not have simply filters to nothing).
+  const accepted = intent
+    ? [...INTENT_CATEGORIES[intent], ...intentCategories(intent, "us")]
+    : [...Object.values(INTENT_CATEGORIES).flat(), ...REQUIREMENT_INTENTS.flatMap((i) => intentCategories(i.value, "us"))];
+  if (type && accepted.includes(type)) {
     f.category = type;
   }
 

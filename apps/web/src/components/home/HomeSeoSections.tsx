@@ -20,6 +20,8 @@ const ALL_BUY: { group: TransactionGroup; category: ListingCategory }[] = [
   { group: "buy", category: "apartment" },
   { group: "buy", category: "house" },
   { group: "buy", category: "villa" },
+  { group: "buy", category: "condo" },
+  { group: "buy", category: "townhouse" },
   { group: "buy", category: "plot" },
   { group: "buy", category: "commercial" },
 ];
@@ -27,6 +29,9 @@ const ALL_RENT: { group: TransactionGroup; category: ListingCategory }[] = [
   { group: "rent-lease", category: "apartment" },
   { group: "rent-lease", category: "house" },
   { group: "rent-lease", category: "villa" },
+  { group: "rent-lease", category: "condo" },
+  { group: "rent-lease", category: "townhouse" },
+  { group: "rent-lease", category: "room" },
   { group: "rent-lease", category: "commercial" },
   { group: "rent-lease", category: "pg" },
   { group: "rent-lease", category: "coworking" },

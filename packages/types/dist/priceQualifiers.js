@@ -47,6 +47,9 @@ exports.PRICE_QUALIFIER_OPTIONS = {
     house: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
     apartment: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
     villa: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
+    condo: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
+    townhouse: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
+    room: { rent: MONTHLY_OPTIONS },
     pg: { rent: PG_RENT_OPTIONS },
     storage: { rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
     // Lease here keeps the per-seat/per-month options too (a coworking lease is still commonly

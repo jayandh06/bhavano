@@ -154,7 +154,9 @@ exports.SECTION_FIELD_GROUPS = {
         { id: "legal", label: "Ownership & legal", keys: ["ownership", "loanAvailable", "reraRegistered", "reraNumber"] },
     ],
     roomDetails: [
-        { id: "rooms", label: "Rooms & occupants", keys: ["sharingType", "gender", "roomsAvailable"] },
+        // roomType and bathroom are the US room-for-rent fields (docs/plans/us-categories-condo-townhouse-room.md); PG has neither, so its grouping is unchanged.
+        { id: "rooms", label: "Rooms & occupants", keys: ["sharingType", "gender", "roomsAvailable", "roomType", "bathroom"] },
+        { id: "utilities", label: "Utilities", keys: ["utilitiesIncluded"] },
         { id: "food", label: "Food", keys: ["meals", "foodType", "mealTimings"] },
         { id: "rules", label: "House rules & availability", keys: ["gateTimings", "visitorsAllowed", "noticePeriod", "availableFrom"] },
         { id: "contact", label: "Website", keys: ["website"] },
@@ -1083,10 +1085,79 @@ const VILLA_FIELDS = [
 /** One field-def list per category — the single source of truth for both the posting
  * wizard's dynamic step-3 form and the `attributes` JSONB column it maps onto. Adding a
  * future category means adding an entry here, not a new form/code path. */
+/** Room for rent (US only): one room in a home, month to month. Nothing here states a preference about who may rent (no gender, family status or food
+ * fields), in line with the Fair Housing handling in the market config; see docs/plans/us-categories-condo-townhouse-room.md. */
+const ROOM_FIELDS = [
+    {
+        key: "roomType",
+        label: "Room type",
+        type: "select",
+        section: "roomDetails",
+        required: true,
+        options: [
+            { value: "private", label: "Private room" },
+            { value: "shared", label: "Shared room" },
+        ],
+    },
+    {
+        key: "bathroom",
+        label: "Bathroom",
+        type: "select",
+        section: "roomDetails",
+        required: true,
+        options: [
+            { value: "private", label: "Private bathroom" },
+            { value: "shared", label: "Shared bathroom" },
+        ],
+    },
+    {
+        key: "furnished",
+        label: "Furnishing",
+        type: "select",
+        section: "basics",
+        required: true,
+        options: [
+            { value: "unfurnished", label: "Unfurnished" },
+            { value: "furnished", label: "Furnished" },
+        ],
+    },
+    {
+        key: "utilitiesIncluded",
+        label: "Utilities included",
+        type: "select",
+        section: "roomDetails",
+        options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+        ],
+    },
+    {
+        key: "availableFrom",
+        label: "Available from",
+        type: "text",
+        compact: true,
+        placeholder: "e.g. Dec 1",
+        section: "roomDetails",
+    },
+    {
+        key: "petsAllowed",
+        label: "Pets allowed",
+        type: "select",
+        section: "preferences",
+        options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+        ],
+    },
+];
 exports.CATEGORY_FIELD_CONFIG = {
     house: RESIDENTIAL_FIELDS,
     apartment: RESIDENTIAL_FIELDS,
     villa: VILLA_FIELDS,
+    // US-only: a condo is an apartment and a townhouse a house for fields; the room has its own short set.
+    condo: RESIDENTIAL_FIELDS,
+    townhouse: RESIDENTIAL_FIELDS,
+    room: ROOM_FIELDS,
     pg: [
         {
             // Multi-select, not select — a PG can genuinely offer more than one sharing type at once

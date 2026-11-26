@@ -55,7 +55,11 @@ function decodeRequirementFeedQuery(query) {
     if (transactionType)
         f.transactionType = transactionType;
     const type = first(query.type);
-    if (type && (intent ? requirementQuestions_1.INTENT_CATEGORIES[intent] : Object.values(requirementQuestions_1.INTENT_CATEGORIES).flat()).includes(type)) {
+    // India's categories plus the US ones (a ?type= for a category the market does not have simply filters to nothing).
+    const accepted = intent
+        ? [...requirementQuestions_1.INTENT_CATEGORIES[intent], ...(0, requirementQuestions_1.intentCategories)(intent, "us")]
+        : [...Object.values(requirementQuestions_1.INTENT_CATEGORIES).flat(), ...requirementQuestions_1.REQUIREMENT_INTENTS.flatMap((i) => (0, requirementQuestions_1.intentCategories)(i.value, "us"))];
+    if (type && accepted.includes(type)) {
         f.category = type;
     }
     f.minBudget = positiveInt(query.minBudget);
