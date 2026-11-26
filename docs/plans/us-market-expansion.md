@@ -329,3 +329,7 @@ The repo now contains everything needed to build and run a separate US stack und
 with a `/us` base path, its own cookie names and market; `docker-compose.us.yml`, `Caddyfile.us` and `.env.us.example` define the US host; India's
 Caddy has an optional import hook (`caddy/market-routes/us.caddy.example`); CI builds a `web-us` image when the US variables exist; and
 `deploy-from-registry.ps1 -Stack us` deploys it. Nothing is provisioned or deployed.
+
+**Built 2026-11-26 (market flag):** a small India or US flag sits beside the Bhavano title in the header (`components/home/MarketFlag.tsx`, chosen by the
+build's market), because both sites share `www.bhavano.com`. It is also in the phone's collapsed header bar. For a signed-in user on a phone narrower than
+400px it moves to the corner of the logo, so the title is not cut off.
