@@ -59,6 +59,33 @@ denied without `sudo`. Full operator tables in [`docs/deployment.md`](../deploym
 - Treat dumps as production PII; never commit them.
 - Rotate `finfolia_backup` if the private key is exposed; replace Finfolia `authorized_keys`.
 
+## Incident 2026-11-27: the DB disk filled and India was down
+
+India's pages and API failed from about **05:57 to 07:17 IST** (80 minutes). The DB instance's 8 GB volume (6.8 GB
+usable) reached 100%; PostgreSQL logged `No space left on device`, panicked and could not finish recovery. The
+02:30 IST dump had already failed for the same reason (its `mv` into `bhavano-local` left a partial file). Nothing
+alerted: there is no disk-space alarm.
+
+- **Recovery:** moved the cached `.deb` installers (391 MB) to `/tmp`; PostgreSQL recovered by itself.
+- **Fresh dump:** run at 07:19 IST, reads to the end (`pg_restore`), and the Finfolia copy matches by checksum.
+- **Space used by:** not the database (384 MB). System journal (750 MB), apt cache, and a leftover app stack from
+  2026-07-14 on the DB host (`bhavano-web`, `bhavano-bff` restarting over 100,000 times with a 344 MB log, Caddy).
+- **Cleanup:** removed those three containers and their images and trimmed the journal. Disk 95% → 66% (2.4 GB
+  free). Docker volumes `bhavano_*` on that host were kept.
+
+Still to do:
+
+1. Grow `vol-046b184a044c7c1c4` from 8 GB to 30 GB, then `growpart /dev/nvme0n1 1` and `resize2fs /dev/nvme0n1p1`.
+2. Alerts for disk space, a failed dump and the site being down: [ops-alerts.md](ops-alerts.md). The
+   `bhavano-india-alerts` email subscription was confirmed when checked that day.
+
+Done the same day: the dump script now reads the whole dump (`pg_restore -f /dev/null`) before it replaces anything or
+uploads (previous script kept at `/root/bhavano-pg-dump-to-finfolia.sh.before-20261127`); the journal is capped at
+200 MB and the apt cache is emptied weekly on all four servers.
+
+Server access from a laptop:
+`ssh -i <Mumbai .pem> -o "ProxyCommand=ssh -W %h:%p bhavano-app" ubuntu@172.31.18.137`.
+
 ## Follow-ups
 
 1. AWS DLM / daily EBS snapshots of the Bhavano DB volume  

@@ -1230,6 +1230,8 @@ chmod 700 "$LOCAL_DIR"
 
 echo "[$(date -Is)] dumping bhavano -> $TMP_DUMP"
 sudo -u postgres pg_dump -Fc -d bhavano -f "$TMP_DUMP"
+# Read the whole archive before it replaces anything: a short or broken dump stops the job here.
+pg_restore -f /dev/null "$TMP_DUMP"
 mv "$TMP_DUMP" "$DUMP"
 chown root:root "$DUMP"
 chmod 600 "$DUMP"
