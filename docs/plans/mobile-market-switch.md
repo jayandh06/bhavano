@@ -44,7 +44,7 @@ registration and consent wording), then set the flag back to `true`.
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 1 | Market per account or per install? | **Per install**, changeable in Account and the home drawer | Accounts live in separate databases, so the market must be known before sign-in |
-| 2 | How is it first chosen? | Upgrades stay India silently. Fresh install with device region US: ask once, US preselected. Any other region: India, no question | Keeps India unchanged; US-region India users (NRIs) with the app are not moved |
+| 2 | How is it first chosen? | Upgrades stay India silently. Fresh install with device region US **and an American time zone**: ask once, US preselected. Otherwise India, no question | Keeps India unchanged; US-region India users (NRIs) with the app are not moved |
 | 3 | Sessions when switching | Keep one session per market; switching does not sign you out of the other | Switching back is instant |
 | 4 | US paid features | Hide every purchase entry point until US payments exist | No working payment path |
 | 5 | US legal, help, blog, tools | Legal and help open the US web pages; hide blog and calculators (India content) | One copy of legal text |
@@ -57,10 +57,14 @@ registration and consent wording), then set the flag back to `true`.
 preview builds and **not for production**, so an India release can be cut at any time; the US launch adds it there.
 Without it there is no first-launch question, no Country setting, no Switch button, and a saved US choice is ignored.
 
-- First launch (`market.ts`): a stored value wins. Otherwise, on a new install (no stored data at all) whose
-  `expo-localization` `regionCode` is `US`, `FirstMarketChooser` asks once with the US preselected and saves the
-  answer. An update (any stored data) stays on India and is remembered; every other region is India without a question.
-  The region is read through a guarded `require`, so a binary without the module gets India, not a crash.
+- First launch (`market.ts`): a stored value wins. Otherwise, on a new install (no stored data at all) on a phone set
+  up for the US, `FirstMarketChooser` asks once with the US preselected and saves the answer. An update (any stored
+  data) stays on India and is remembered; every other phone is India without a question.
+- **"Set up for the US" means region `US` and an American time zone** (`deviceRegion.ts`, changed 2026-11-27). The
+  region alone was wrong: on Android `expo-localization` takes `regionCode` from the language's country (checked in its
+  source; MIUI has its own region setting), so a phone in India set to "English (United States)" reports `US`. Someone
+  set up for the US who is travelling abroad is not asked, and uses the Country setting. Read through a guarded
+  `require`, so a binary without the module gets India, not a crash. No location is read.
 - The app draws nothing else until the market is known or chosen.
 - A "Country" row in the menu and on the Account screen opens `CountryPicker`, which confirms before switching and
   starts from Home.

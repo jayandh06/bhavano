@@ -6,7 +6,7 @@ import { useAppTheme } from "../theme/ThemeContext";
 import { chooseFirstMarket } from "../lib/market";
 import { CountryOption } from "./CountryOption";
 
-/** Asked once, on a new install whose phone region is the US, with the US picked already. Drawn before the app itself, so it uses no navigation. */
+/** Asked once, on a new install on a phone set up for the US, with the US picked already. Drawn before the app itself, so it uses no navigation. */
 export function FirstMarketChooser() {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
