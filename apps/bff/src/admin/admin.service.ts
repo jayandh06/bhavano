@@ -144,6 +144,7 @@ import {
 import { normalizedPhoneDigitsForSearch, buildUserSearchOr } from './user-search';
 import { isListingBoosted } from '../listings/listing-boost.util';
 import { MARKET, MARKET_TIME_ZONE } from '../market/market-config';
+import { assertPaymentsEnabled } from '../market/payments-available';
 
 const APPROVED_MESSAGE = 'Your listing has been reviewed and is live again.';
 const ACTIVITY_LIMIT_PER_SOURCE = 50;
@@ -2267,6 +2268,8 @@ export class AdminService {
     listingIds: string[],
     opts: { channel?: 'outbound' | 'in_app'; adminId?: string; skipCooldown?: boolean } = {},
   ): Promise<SendPostedNotificationResponseDto> {
+    // The message offers something to buy: refused where nothing is sold.
+    assertPaymentsEnabled();
     const inApp = opts.channel === 'in_app';
     if (inApp && !opts.adminId) throw new BadRequestException('An in-app message needs a sending admin');
     const cooldownStart = new Date(Date.now() - PROMO_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
@@ -2478,6 +2481,7 @@ export class AdminService {
    * unread update as the Boost message, with a Renew button. Returns false when the ad is gone or not worth messaging. The caller
    * (FeaturedExpiryReminderJob) owns the once-per-period rule; this writes the log row it reads. */
   async sendFeaturedExpiryReminder(listingId: string, daysLeft: number, adminId: string): Promise<boolean> {
+    if (!MARKET.paymentsEnabled) return false;
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
       include: { city: true, area: true, owner: { select: { phone: true } } },

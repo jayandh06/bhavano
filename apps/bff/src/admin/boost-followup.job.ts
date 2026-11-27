@@ -3,7 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminService } from './admin.service';
 import { getReminderSettings } from './reminder-settings';
-import { MARKET_TIME_ZONE } from '../market/market-config';
+import { MARKET, MARKET_TIME_ZONE } from '../market/market-config';
 
 /** Follows up on a non-Featured ad with the existing in-app Boost message, by default 4 hours, 1 day and 3 days after it went live
  * (Admin → Settings → Reminders sets the hours and switches it off) — see
@@ -66,6 +66,7 @@ export class BoostFollowupJob {
 
   /** Exposed for a one-off run and for tests; returns how many messages went out. */
   async sendFollowups(now = new Date()): Promise<number> {
+    if (!MARKET.paymentsEnabled) return 0;
     const senderId = await this.resolveSenderId();
     if (!senderId) {
       this.logger.warn('No sending admin found (set BOOST_NUDGE_SENDER_USER_ID or create an admin user)');

@@ -32,6 +32,7 @@ import {
 import { subscriptionPriceFor } from '@bhavano/types/subscriptionPricing';
 import { DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS } from '@bhavano/types/instantAlertsPricing';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertPaymentsEnabled } from '../market/payments-available';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import {
@@ -95,7 +96,9 @@ export class PaymentsService {
     private readonly referralsService: ReferralsService,
   ) {}
 
+  /** Every charge goes through here, so a market without payments is refused once. Free activations (credits, 100% codes) never call it. */
   private getRazorpay(): Razorpay {
+    assertPaymentsEnabled();
     if (this.razorpay) return this.razorpay;
     const key_id = this.config.get<string>('RAZORPAY_KEY_ID');
     const key_secret = this.config.get<string>('RAZORPAY_KEY_SECRET');

@@ -3,7 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminService } from './admin.service';
 import { getReminderSettings } from './reminder-settings';
-import { MARKET_TIME_ZONE } from '../market/market-config';
+import { MARKET, MARKET_TIME_ZONE } from '../market/market-config';
 
 /** Tells a seller their Featured period is ending, by default 3 days and 1 day before (Admin → Settings → Reminders sets the days and
  * switches it off) — see docs/plans/featured-expiry-reminder.md.
@@ -55,6 +55,7 @@ export class FeaturedExpiryReminderJob {
 
   /** Exposed for a one-off run and for tests; returns how many reminders went out. */
   async sendReminders(now = new Date()): Promise<number> {
+    if (!MARKET.paymentsEnabled) return 0;
     const senderId = await this.resolveSenderId();
     if (!senderId) {
       this.logger.warn('No sending admin found (set BOOST_NUDGE_SENDER_USER_ID or create an admin user)');

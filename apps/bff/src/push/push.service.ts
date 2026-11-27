@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { MessageDto } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { MARKET } from '../market/market-config';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 /** Expo's documented cap per request. */
@@ -290,7 +291,7 @@ export class PushService {
   ): Promise<void> {
     await this.sendToUser(recipientId, {
       title: listingTitle,
-      body: isBoosted
+      body: isBoosted || !MARKET.paymentsEnabled
         ? `How's "${listingTitle}" doing? Check your views and messages.`
         : `🌟 Feature "${listingTitle}" to get seen first`,
       channelId: PUSH_CHANNEL_LISTING_ACTIVITY,

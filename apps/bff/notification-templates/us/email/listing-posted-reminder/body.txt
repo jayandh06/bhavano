@@ -1,0 +1,5 @@
+Hi {{name}},
+
+Your listing "{{title}}" has been live for a few days now. If you haven't heard from anyone yet, a sharper photo set or a quick price check often helps.
+
+You can update either anytime from your listings.

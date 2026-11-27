@@ -1,0 +1,5 @@
+Hi {{name}},
+
+Your ad "{{title}}" is now live on Bhavano.
+
+Tap below to see how it looks. You can manage or renew it anytime from My Listings.

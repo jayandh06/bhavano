@@ -1,0 +1,5 @@
+We've created a free listing for {{name}} in {{area}}, {{city}} on Bhavano.
+
+Claim it to receive messages and to update photos, price and availability yourself.
+
+Claiming takes about two minutes.

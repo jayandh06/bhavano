@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminService } from './admin.service';
-import { MARKET_TIME_ZONE } from '../market/market-config';
+import { MARKET, MARKET_TIME_ZONE } from '../market/market-config';
 
 /** Automatic Boost nudge for a quiet ad — see docs/plans/admin-in-app-boost-message.md.
  *
@@ -52,6 +52,7 @@ export class BoostNudgeJob {
 
   /** Exposed for a one-off run and for tests; returns how many messages went out. */
   async nudgeQuietListings(now = new Date()): Promise<number> {
+    if (!MARKET.paymentsEnabled) return 0;
     const senderId = await this.resolveSenderId();
     if (!senderId) {
       this.logger.warn('No sending admin found (set BOOST_NUDGE_SENDER_USER_ID or create an admin user)');

@@ -127,7 +127,7 @@ import { postAdValueRupees } from '../ads/post-ad-value';
 import { websiteUrl, WEBSITE_URL_MESSAGE } from '@bhavano/types/websiteUrl';
 import { ContactRevealService, type ContactRevealState } from '../contact-reveal/contact-reveal.service';
 import { PlatformFeeSettingsService } from '../plans/platform-fee-settings.service';
-import { platformFeeApplies } from '@bhavano/types/platformFeePricing';
+import { holdsForPayment } from './holds-for-payment';
 import type { LastListingDetailsDto } from '@bhavano/types/listingReuse';
 import { scrubPhonesInText } from './scrub-listing-phones';
 import { BULK_IMPORT_OWNER_PHONE, isBulkImportOwner } from './bulk-import-owner';
@@ -1933,14 +1933,13 @@ export class ListingsService {
     );
 
     const platformFeeSettings = await this.platformFeeSettingsService.getSettings();
-    const wantsBoost = input.checkoutIntent?.boostDays !== undefined;
-    if (input.checkoutIntent?.includeInstantAlerts && !wantsBoost) {
+    // Where nothing is sold, a requested boost is ignored and the ad is posted free.
+    const checkoutIntent = MARKET.paymentsEnabled ? input.checkoutIntent : undefined;
+    const wantsBoost = checkoutIntent?.boostDays !== undefined;
+    if (checkoutIntent?.includeInstantAlerts && !wantsBoost) {
       throw new BadRequestException('Instant Alerts requires a Boost selection at publish time');
     }
-    // Admin kill-switch: go live even when fee/boost would normally hold the ad in pending_checkout.
-    const pendingCheckout =
-      !platformFeeSettings.allowLivePublishWithPendingPayment &&
-      (platformFeeApplies(input.category, platformFeeSettings) || wantsBoost);
+    const pendingCheckout = holdsForPayment(input.category, platformFeeSettings, wantsBoost);
     const now = new Date();
 
     // Hold a free ad off the site until the Posted confirmation time has passed (admin → Posted
@@ -3065,9 +3064,7 @@ export class ListingsService {
     if (!owner || owner.deletedAt) throw new UnauthorizedException('This account was deleted');
 
     const platformFeeSettings = await this.platformFeeSettingsService.getSettings();
-    const pendingCheckout =
-      !platformFeeSettings.allowLivePublishWithPendingPayment &&
-      platformFeeApplies(existing.category, platformFeeSettings);
+    const pendingCheckout = holdsForPayment(existing.category, platformFeeSettings, false);
     const now = new Date();
 
     // Conditional on still being unclaimed, so two sign-ins racing on the same link can't both win.
