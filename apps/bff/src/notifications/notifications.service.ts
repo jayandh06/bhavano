@@ -280,7 +280,8 @@ export class NotificationsService {
   ): Promise<'email' | 'whatsapp' | null> {
     const vars = { name: user.name ?? 'there', searchLabel };
     const template = hasAlert ? 'email/requirement-captured' : 'email/requirement-captured-no-alert';
-    const linkPath = hasAlert ? '/my-requirements' : '/premium';
+    // Without an alert the button offers the paid one, where there is one to buy.
+    const linkPath = hasAlert || !MARKET.paymentsEnabled ? '/my-requirements' : '/premium';
     const { subject, text, html } = this.renderPurchaseEmail(template, vars, linkPath);
 
     return this.dispatchEmailPreferWhatsapp(user, {
@@ -303,10 +304,14 @@ export class NotificationsService {
     openTotal: number,
   ): Promise<'email' | 'whatsapp' | null> {
     const subject = `${lines.length} new requirement${lines.length === 1 ? '' : 's'} — ${openTotal} open`;
+    // India's admin address is the default there only: another market's queue is linked once it has an admin site.
+    const adminSite = this.config.get<string>('ADMIN_SITE_URL') || (MARKET.id === 'in' ? 'https://admin.bhavano.com' : undefined);
     const body =
       `People searched for these and found nothing:\n\n${lines.map((line) => `• ${line}`).join('\n')}\n\n` +
       `${openTotal} requirement${openTotal === 1 ? ' is' : 's are'} open in total. ` +
-      `Work them at https://admin.bhavano.com/requirements — each one is both a lead and a gap in inventory.`;
+      (adminSite
+        ? `Work them at ${adminSite}/requirements — each one is both a lead and a gap in inventory.`
+        : `Each one is both a lead and a gap in inventory.`);
 
     return this.dispatchEmailPreferWhatsapp({ ...admin, phone: null }, { subject, text: body });
   }

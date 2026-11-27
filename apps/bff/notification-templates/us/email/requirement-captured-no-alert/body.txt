@@ -1,0 +1,3 @@
+Thanks for telling us what you're looking for — {{searchLabel}}.
+
+Our team will check what's currently available and get back to you directly.

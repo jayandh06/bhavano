@@ -1,5 +1,7 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { DEFAULT_MARKET_ID } from '@bhavano/types/market';
+import { MARKET } from '../market/market-config';
 
 /** One notification's editable copy — see `apps/bff/notification-templates/README.md` for how
  * to change these files without touching this one. */
@@ -38,6 +40,14 @@ function templatesRoot(): string {
   return join(process.cwd(), 'notification-templates');
 }
 
+/** A market other than India may keep its own copy of a folder under `<market>/` (`us/email/welcome`). When it does, that whole folder
+ * is used, so a file it leaves out (a second button, say) is absent rather than borrowed from India's. */
+function marketFolder(name: string): string {
+  if (MARKET.id === DEFAULT_MARKET_ID) return name;
+  const own = `${MARKET.id}/${name}`;
+  return existsSync(join(templatesRoot(), own)) ? own : name;
+}
+
 /** Loads one *email* notification's template folder — pass the path under
  * `notification-templates/`, e.g. `"email/welcome"`. Only ever the `email/` half: the
  * `whatsapp/` folders exist for reference and for the `whatsapp_create_*_template.py` scripts to
@@ -48,7 +58,8 @@ function templatesRoot(): string {
  * Throws if `subject.txt`/`preheader.txt`/`heading.txt`/`body.txt` are missing — a typo'd folder
  * name should fail loudly at the one call site that uses it, not silently send a blank email.
  * `buttonLabel.txt` and `secondaryButtonLabel.txt` are the optional ones. */
-export function loadTemplate(name: string): NotificationTemplate {
+export function loadTemplate(templateName: string): NotificationTemplate {
+  const name = marketFolder(templateName);
   const subject = readField(name, 'subject.txt');
   const preheader = readField(name, 'preheader.txt');
   const heading = readField(name, 'heading.txt');

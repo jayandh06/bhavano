@@ -134,8 +134,8 @@ Four flags on the market config drive it: `phoneOtpAvailable`, `paymentsEnabled`
 ### 7. Payments (decision 4, app side built in phase 2)
 With `paymentsEnabled` false the app hides Featured ads, plans, purchases, referrals, contact credits, alert-channel
 settings and the Boost message card (its plain text shows instead); Plans, Purchases and Referrals redirect Home.
-Apple purchases get no session outside India (phase 1). **Still to do (phase 0): the server should refuse payment
-orders in the US.**
+Apple purchases get no session outside India (phase 1). The server refuses payment orders and Apple purchase intents
+where payments are off (built 2026-11-27, [us-admin-site.md](us-admin-site.md); needs a US backend deploy).
 
 ### Still India-flavoured in the US
 - The shared requirement label (written by the server as `searchLabel` and previewed in the app and on the web) says
@@ -158,7 +158,7 @@ orders in the US.**
 
 | Phase | Work | India behaviour |
 |---|---|---|
-| 0 | Server: publishing rule (done 2026-11-26), US push, refuse US payments | Unchanged |
+| 0 | Server: publishing rule (done 2026-11-26), refuse US payments (built 2026-11-27), US push | Unchanged |
 | 1 | `marketEndpoints`, `marketKey`, hydrate before first screen, reset hooks, the switch itself (**done 2026-11-26**) | Unchanged; tests pin addresses and key names |
 | 2 | US content, consent default, hidden payments and India-only screens (**done 2026-11-26**) | Unchanged |
 | 3 | Link handling and the web `market=us` change (**done 2026-11-26**; the web part needs a US deploy) | India links as today, shared listing links now open the listing |

@@ -12,6 +12,7 @@ import { BOOST_DURATIONS, type BoostDurationDays } from '@bhavano/types/boostPri
 import { PrismaService } from '../../prisma/prisma.service';
 import { CONTACT_REVEAL_SETTINGS_ID, DEFAULT_CONTACT_REVEAL_SETTINGS } from '../../contact-reveal/contact-reveal.constants';
 import { PaymentsService } from '../payments.service';
+import { assertPaymentsEnabled } from '../../market/payments-available';
 import { appleRootCertificates } from './apple-root-certificates';
 import { APPLE_PRODUCT_PREFIX, appleProductById, boostProductId, boostTierFor, type AppleProduct } from './apple-products';
 
@@ -101,6 +102,7 @@ export class AppleIapService {
   // ---------------------------------------------------------------- intent
 
   async createIntent(userId: string, input: CreateAppleIntentInput): Promise<AppleIntentResult> {
+    assertPaymentsEnabled();
     if (input.type === 'subscription') {
       const product = appleProductById(input.productId);
       if (!product || product.kind !== 'subscription') throw new BadRequestException('Unknown subscription product');
