@@ -13,7 +13,7 @@ import {
   subscribeMarket,
   type MarketPhase,
 } from "./marketState";
-import { deviceRegion } from "./deviceRegion";
+import { isUsPhone } from "./deviceRegion";
 
 export { getCurrentMarketId, marketKey, marketSwitchEnabled } from "./marketState";
 
@@ -21,8 +21,8 @@ export { getCurrentMarketId, marketKey, marketSwitchEnabled } from "./marketStat
  * The market the app is showing: India unless something has chosen another one. Saved on the phone, so the choice lasts across launches. The root
  * layout shows nothing until it is known, so no request can go to the wrong market's server. Every screen reads it through `useMarket`.
  *
- * On a build that offers the US, a new install whose phone region is the US is asked once. An install that already has stored data is an update
- * from an earlier version and stays on India without a question, as does every other region. See docs/plans/mobile-market-switch.md.
+ * On a build that offers the US, a new install on a phone set up for the US (region and time zone) is asked once. An install that already has
+ * stored data is an update from an earlier version and stays on India without a question, as does every other phone. See docs/plans/mobile-market-switch.md.
  */
 const STORAGE_KEY = "bhavano.market";
 
@@ -31,7 +31,7 @@ let hydration: Promise<void> | null = null;
 async function load(): Promise<void> {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   if (isMarketId(raw)) return finishMarketLoad(isMarketOffered(raw) ? raw : null);
-  if (isMarketOffered("us") && deviceRegion() === "US") {
+  if (isMarketOffered("us") && isUsPhone()) {
     // Must be read before anything else writes: the app's screens, which do, are not drawn yet.
     const stored = await AsyncStorage.getAllKeys();
     if (stored.length === 0) return askForFirstMarket();
