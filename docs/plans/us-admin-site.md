@@ -1,7 +1,8 @@
 # US admin site
 
-Status: **server fixes deployed 2026-11-27; phase A deployed the same day at https://admin-us.bhavano.com; the first admin signed in with Google that day. A refused non-admin account has not been checked, and the Cloudflare
-proxy is not on. Phase B is proposed.** Part of the US launch
+Status: **server fixes deployed 2026-11-27; phase A deployed the same day at https://admin-us.bhavano.com, behind the
+Cloudflare proxy, with admin sign-in confirmed. Dollar prices are done. A refused non-admin account has not been
+checked. The rest of phase B is proposed.** Part of the US launch
 ([us-market-expansion.md](us-market-expansion.md), [us-stack-setup.md](us-stack-setup.md)).
 
 ## Goal
@@ -62,7 +63,7 @@ Not changed:
 | Site block for `US_ADMIN_DOMAIN` (never indexed), proxy to `admin:3001` | `Caddyfile.us`, compose | Built |
 | `admin` is a US service, deployed by default like `web` and `bff` | `scripts/deploy-from-registry.ps1` | Built |
 | The four settings below | `.env.us.example`, the server's `.env` | Done (previous file kept at `~/.us-env.before-admin`) |
-| DNS record `admin-us.bhavano.com` to `52.45.78.97` | Cloudflare | Done, DNS only |
+| DNS record `admin-us.bhavano.com` to `52.45.78.97` | Cloudflare | Done, proxied |
 | Redirect address `https://admin-us.bhavano.com/api/auth/callback/google` | Google Cloud console, client `Bhavano-Web` (shared with India) | Done |
 
 Until `US_ADMIN_DOMAIN` is set, Caddy is given a name nobody can request, so a deploy before the DNS record exists
@@ -98,8 +99,8 @@ India's: only subscriptions and contact credits had US defaults.
   7 / 15 / 30 days, storage and the furniture tier $5, Instant Alerts $5, no price-by-value bands.
 - Condo, townhouse and room are priced as property (they fell into the cheapest tier).
 
-The defaults only reach a fresh database. The US database already holds India's rows, so after the deploy they are set
-once (keeping the old values to restore):
+The defaults only reach a fresh database. The US database held India's rows, so they were set once after the deploy on
+2026-11-27 (the old values are in `~/us-prices-before-20261127.json` on the US app server):
 
 ```sql
 UPDATE "BoostPriceSetting" SET "propertyBoostPrice7d" = 5, "propertyBoostPrice15d" = 10, "propertyBoostPrice30d" = 10,
