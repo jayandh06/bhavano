@@ -84,6 +84,8 @@ Always run EAS commands from `apps/mobile/`. Running them from the repo root cre
 3. **`preview` EAS environment is empty.** Before building the `preview` profile anywhere, copy the
    vars into it (`eas env:set --environment preview …`) or point the profile at another
    environment with `"environment": "production"` in `eas.json`.
+   **Done 2026-11-26** by the second way: a preview build now reads the production variables, so it talks to the live
+   India server (and, with the Country setting, the live US one).
 
 ### How to run
 
