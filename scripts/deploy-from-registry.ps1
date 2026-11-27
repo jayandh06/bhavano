@@ -29,7 +29,7 @@ param(
   [string] $Tag,
   [switch] $NoBuild,
   [switch] $SkipMigrate,
-  # Which stack: "india" (docker-compose.prod.yml, project bhavano) or "us" (docker-compose.us.yml, project bhavano-us, images web-us and bff).
+  # Which stack: "india" (docker-compose.prod.yml, project bhavano) or "us" (docker-compose.us.yml, project bhavano-us, images web-us, bff and admin).
   # Run it against the US host: BHAVANO_EC2_HOST pointing at it. See docs/plans/us-stack-setup.md.
   [ValidateSet("india", "us")]
   [string] $Stack = "india",
@@ -47,12 +47,11 @@ $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $RepoRoot
 
 if ($Stack -eq "us") {
-  if (-not $PSBoundParameters.ContainsKey("Services")) { $Services = @("web", "bff") }
   if (-not $PSBoundParameters.ContainsKey("ProjectName")) { $ProjectName = "bhavano-us" }
 }
 $composeFile = if ($Stack -eq "us") { "docker-compose.us.yml" } else { "docker-compose.prod.yml" }
 $Services = $Services | ForEach-Object { $_ -split "," } | Where-Object { $_ }
-$validServices = if ($Stack -eq "us") { @("web", "bff") } else { @("web", "bff", "admin") }
+$validServices = @("web", "bff", "admin")
 foreach ($svc in $Services) {
   if ($validServices -notcontains $svc) { throw "Invalid -Services value '$svc'. Valid values: $($validServices -join ', ')" }
 }

@@ -1,6 +1,7 @@
-# Caddy for the US host (docker-compose.us.yml). Two names, both set in .env:
+# Caddy for the US host (docker-compose.us.yml). Names set in .env:
 #   US_ORIGIN_DOMAIN  where India's Caddy sends www.bhavano.com/us/* (caddy/market-routes/us.caddy); visitors never use it directly.
 #   US_API_DOMAIN     the US API (NEXT_PUBLIC_BFF_URL of the US web image).
+#   US_ADMIN_DOMAIN   the US admin site; optional (the compose file supplies an unreachable name when it is not set).
 # Same HSTS rule as India's Caddyfile: one year, no includeSubDomains or preload.
 {
 	servers {
@@ -31,4 +32,11 @@
 		max_size 210MB
 	}
 	reverse_proxy bff:4000
+}
+
+# The US admin site, on its own name like India's. Never indexed.
+{$US_ADMIN_DOMAIN} {
+	import hsts
+	header X-Robots-Tag "noindex, nofollow"
+	reverse_proxy admin:3001
 }

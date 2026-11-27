@@ -1,6 +1,6 @@
 # US admin site
 
-Status: **server fixes built 2026-11-27; the admin site itself (phases A and B) is proposed, not approved.** Part of the US launch
+Status: **server fixes deployed 2026-11-27; phase A approved and its code built the same day, not yet deployed. Phase B is proposed.** Part of the US launch
 ([us-market-expansion.md](us-market-expansion.md), [us-stack-setup.md](us-stack-setup.md)).
 
 ## Goal
@@ -55,23 +55,35 @@ Not changed:
 
 ## Phase A: put the admin site up
 
-| Change | Where |
-|---|---|
-| `admin` service (image `bhavano-us-admin`, `BFF_INTERNAL_URL=http://bff:4000`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, Google keys) | `docker-compose.us.yml` |
-| Site block for `US_ADMIN_DOMAIN`, proxy to `admin:3001`; pass the variable to Caddy | `Caddyfile.us`, compose |
-| Allow `-Services admin` for the US stack | `scripts/deploy-from-registry.ps1` |
-| `US_ADMIN_DOMAIN`, `ADMIN_SITE_URL`, `ADMIN_NEXTAUTH_URL`, `ADMIN_NEXTAUTH_SECRET` (new, generated on the server) | `.env.us.example`, the server's `.env` |
-| DNS record to the US app server | Cloudflare (owner signs in) |
-| Redirect address `https://<admin domain>/api/auth/callback/google` | Google Cloud console (owner) |
+| Change | Where | State |
+|---|---|---|
+| `admin` service (image `bhavano-us-admin`, the registry's `bhavano-admin`) with its own `NEXTAUTH_*` and the US Google keys | `docker-compose.us.yml` | Built |
+| Site block for `US_ADMIN_DOMAIN` (never indexed), proxy to `admin:3001` | `Caddyfile.us`, compose | Built |
+| `admin` is a US service, deployed by default like `web` and `bff` | `scripts/deploy-from-registry.ps1` | Built |
+| The four settings below | `.env.us.example`, the server's `.env` | Example built; server not set |
+| DNS record `admin-us.bhavano.com` to `52.45.78.97` | Cloudflare (owner) | Not done |
+| Redirect address `https://admin-us.bhavano.com/api/auth/callback/google` | Google Cloud console (owner) | Not done |
 
-Deploy `bff` first (with the fixes above), then `admin`, then restart `bff` (for `ADMIN_SITE_URL`) and Caddy. India is not
-touched.
+Until `US_ADMIN_DOMAIN` is set, Caddy is given a name nobody can request, so a deploy before the DNS record exists
+changes nothing visible.
+
+Order:
+
+1. Owner: the DNS record, **DNS only** (grey cloud) so the server can get its certificate, and the Google redirect address.
+2. Server `.env`: `US_ADMIN_DOMAIN=admin-us.bhavano.com`, `ADMIN_NEXTAUTH_URL` and `ADMIN_SITE_URL` =
+   `https://admin-us.bhavano.com`, `ADMIN_NEXTAUTH_SECRET` (new, generated on the server).
+3. `scripts/deploy-from-registry.ps1 -Stack us -Services bff,admin` (also recreates Caddy and gives `bff` the admin
+   address).
+4. Sign in, then the owner turns the Cloudflare proxy on.
+
+India is not touched.
 
 **Done when:** an `ADMIN_EMAILS` account signs in with Google at the new address, sees US data, and another Google
 account is refused.
 
 Until phase B the screens show India's conventions: times in IST, date filters on Indian days, rupees, and India-only
-screens that stay empty. Moderation works; **do not change prices or send outreach from the US admin.**
+screens that stay empty. Links from visit trails and requirements open India's site. Use it for moderation; **do not
+change prices or send outreach from the US admin.**
 
 ## Phase B: make the admin app fit the US
 
@@ -91,7 +103,7 @@ lines), so phase B is clearly larger than phase A.
 
 | # | Question | Recommendation |
 |---|---|---|
-| 1 | Address | `admin-us.bhavano.com`, proxied by Cloudflare like India's. `admin.us.bhavano.com` would need to bypass the proxy (or a paid certificate), since the free certificate covers one level |
+| 1 | Address | **Chosen: `admin-us.bhavano.com`**, proxied by Cloudflare like India's. `admin.us.bhavano.com` would need to bypass the proxy (or a paid certificate), since the free certificate covers one level |
 | 2 | Extra protection | Put Cloudflare Access (email allow-list) in front of both admin sites; the app's own login stays |
 | 3 | When to do phase B | After phase A, before US users arrive in numbers |
 

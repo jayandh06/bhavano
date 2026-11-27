@@ -93,6 +93,25 @@ services:
     expose:
       - "3000"
 
+  # The US admin site (docs/plans/us-admin-site.md). The same image as India's: it reads only the settings below.
+  admin:
+    image: bhavano-us-admin:latest
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      BFF_INTERNAL_URL: http://bff:4000
+      NEXTAUTH_URL: ${ADMIN_NEXTAUTH_URL:-}
+      # Its own secret, not the website's.
+      NEXTAUTH_SECRET: ${ADMIN_NEXTAUTH_SECRET:-}
+      AUTH_TRUST_HOST: "true"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    depends_on:
+      bff:
+        condition: service_healthy
+    expose:
+      - "3001"
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -100,6 +119,8 @@ services:
     environment:
       US_ORIGIN_DOMAIN: ${US_ORIGIN_DOMAIN}
       US_API_DOMAIN: ${US_API_DOMAIN}
+      # Unset or empty: a name nobody can request, over plain HTTP, so the admin site stays unreachable and no certificate is asked for.
+      US_ADMIN_DOMAIN: ${US_ADMIN_DOMAIN:-http://us-admin.invalid}
       # X-Robots-Tag on every US response; unset keeps "noindex, nofollow". Set to "all" at launch.
       US_ROBOTS_TAG: ${US_ROBOTS_TAG:-noindex, nofollow}
     ports:
