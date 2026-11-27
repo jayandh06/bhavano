@@ -4,6 +4,18 @@ import {
   defaultSubscriptionPlanSettings,
   usdTierFromInr,
 } from '@bhavano/types/subscriptionPricing';
+import {
+  DEFAULT_BOOST_PRICE_SETTINGS,
+  US_BOOST_PRICE_SETTINGS,
+  boostPriceFor,
+  defaultBoostPriceSettings,
+} from '@bhavano/types/boostPricing';
+import {
+  DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS,
+  US_INSTANT_ALERTS_PRICE_SETTINGS,
+  defaultInstantAlertsPriceSettings,
+} from '@bhavano/types/instantAlertsPricing';
+import { platformFeeFor } from '@bhavano/types/platformFeePricing';
 
 describe('usdTierFromInr (the rupee amount divided by 60, rounded up to the next $5)', () => {
   it("reproduces the owner's examples", () => {
@@ -95,3 +107,56 @@ describe('the BFF defaults follow the stack market', () => {
     expect(reveal.DEFAULT_CONTACT_REVEAL_SETTINGS.creditPackSize).toBe(5);
   });
 });
+
+describe('US Feature and Instant Alerts prices', () => {
+  const flat = Object.keys(DEFAULT_BOOST_PRICE_SETTINGS).filter((key) => /BoostPrice\d+d$/.test(key)) as Array<
+    'propertyBoostPrice7d'
+  >;
+
+  it("are the rule applied to India's flat prices", () => {
+    expect(flat).toHaveLength(9);
+    for (const key of flat) expect(US_BOOST_PRICE_SETTINGS[key]).toBe(usdTierFromInr(DEFAULT_BOOST_PRICE_SETTINGS[key]));
+    expect(US_INSTANT_ALERTS_PRICE_SETTINGS.instantAlertsPrice).toBe(
+      usdTierFromInr(DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS.instantAlertsPrice),
+    );
+  });
+
+  it('have no price-by-value bands, so a home sold for $400,000 pays the flat price', () => {
+    expect(US_BOOST_PRICE_SETTINGS.valueBandRules).toEqual([]);
+    const sale = { transactionType: 'sell' as const, value: 400_000 };
+    expect(boostPriceFor('house', 7, US_BOOST_PRICE_SETTINGS, sale)).toBe(5);
+  });
+
+  it.each(['house', 'apartment', 'villa', 'condo', 'townhouse', 'room', 'commercial'] as const)('price a %s as property', (category) => {
+    expect(boostPriceFor(category, 30, US_BOOST_PRICE_SETTINGS)).toBe(US_BOOST_PRICE_SETTINGS.propertyBoostPrice30d);
+    expect(
+      platformFeeFor(category, {
+        propertyListingFee: 7,
+        coworkingPgStorageListingFee: 3,
+        furnitureInteriorsListingFee: 1,
+        allowLivePublishWithPendingPayment: false,
+      }),
+    ).toBe(7);
+  });
+
+  it('price storage in its own tier', () => {
+    expect(boostPriceFor('storage', 30, US_BOOST_PRICE_SETTINGS)).toBe(5);
+  });
+
+  it("leave India's prices and bands as they were", () => {
+    expect(DEFAULT_BOOST_PRICE_SETTINGS).toMatchObject({
+      propertyBoostPrice7d: 199,
+      propertyBoostPrice15d: 349,
+      propertyBoostPrice30d: 599,
+      coworkingPgStorageBoostPrice7d: 99,
+      furnitureInteriorsBoostPrice7d: 49,
+    });
+    expect(DEFAULT_BOOST_PRICE_SETTINGS.valueBandRules?.length).toBe(6);
+    expect(DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS.instantAlertsPrice).toBe(25);
+    expect(defaultBoostPriceSettings()).toBe(DEFAULT_BOOST_PRICE_SETTINGS);
+    expect(defaultBoostPriceSettings('us')).toBe(US_BOOST_PRICE_SETTINGS);
+    expect(defaultInstantAlertsPriceSettings()).toBe(DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS);
+    expect(defaultInstantAlertsPriceSettings('us')).toBe(US_INSTANT_ALERTS_PRICE_SETTINGS);
+  });
+});
+

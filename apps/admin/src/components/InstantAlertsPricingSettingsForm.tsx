@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import { updateInstantAlertsPricingAction } from "@/app/actions/admin";
 
-export function InstantAlertsPricingSettingsForm({ initial }: { initial: InstantAlertsPriceSettings }) {
+export function InstantAlertsPricingSettingsForm({ initial, currency }: { initial: InstantAlertsPriceSettings; currency: string }) {
   const [instantAlertsPrice, setInstantAlertsPrice] = useState(String(initial.instantAlertsPrice));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -31,7 +31,7 @@ export function InstantAlertsPricingSettingsForm({ initial }: { initial: Instant
           Flat fee — every category, no duration tiers
         </div>
         <div style={{ display: "flex", gap: 12 }}>
-          <Field label="Instant Alerts price (₹)" value={instantAlertsPrice} onChange={setInstantAlertsPrice} />
+          <Field label={`Instant Alerts price (${currency})`} value={instantAlertsPrice} onChange={setInstantAlertsPrice} />
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import type { BoostPricingOptionDto, BoostPricingPreviewDto, ListingCategory, TransactionType } from "./index";
 import { promoPriceFor } from "./promoCode";
+import type { MarketId } from "./market";
 
 export type BoostDurationDays = 7 | 15 | 30;
 
@@ -163,6 +164,27 @@ export const DEFAULT_BOOST_PRICE_SETTINGS: BoostPriceSettings = {
   valueBandRules: DEFAULT_VALUE_BAND_RULES,
 };
 
+/** The US market's Feature prices (US dollars, in the same fields): `usdTierFromInr` applied to the India flat prices, which a test keeps true.
+ * No price-by-value bands: India's cut-offs are rupee amounts, and dollar ones have not been chosen. */
+export const US_BOOST_PRICE_SETTINGS: BoostPriceSettings = {
+  ...DEFAULT_BOOST_PRICE_SETTINGS,
+  propertyBoostPrice7d: 5,
+  propertyBoostPrice15d: 10,
+  propertyBoostPrice30d: 10,
+  coworkingPgStorageBoostPrice7d: 5,
+  coworkingPgStorageBoostPrice15d: 5,
+  coworkingPgStorageBoostPrice30d: 5,
+  furnitureInteriorsBoostPrice7d: 5,
+  furnitureInteriorsBoostPrice15d: 5,
+  furnitureInteriorsBoostPrice30d: 5,
+  valueBandRules: [],
+};
+
+/** The default Feature prices for a market (India unless another is named): what the BFF writes to a fresh database. */
+export function defaultBoostPriceSettings(marketId: MarketId = "in"): BoostPriceSettings {
+  return marketId === "us" ? US_BOOST_PRICE_SETTINGS : DEFAULT_BOOST_PRICE_SETTINGS;
+}
+
 /** The durations admin has switched on, shortest first. A flag missing from a response sent by a
  * server older than these toggles counts as on. */
 export function enabledBoostDurations(
@@ -189,7 +211,8 @@ export function defaultBoostDuration(offered: readonly BoostDurationDays[]): Boo
   return offered.includes(15) ? 15 : (offered[0] ?? 15);
 }
 
-const PROPERTY_CATEGORIES = new Set<ListingCategory>(["house", "apartment", "villa", "plot", "commercial"]);
+// Condo, townhouse and room are the US categories for homes; India does not offer them.
+const PROPERTY_CATEGORIES = new Set<ListingCategory>(["house", "apartment", "villa", "condo", "townhouse", "room", "plot", "commercial"]);
 const MID_VALUE_CATEGORIES = new Set<ListingCategory>(["coworking", "pg", "storage"]);
 // furniture/interiors fall through to the remaining low-value tier below.
 

@@ -8,10 +8,12 @@ import {
 import { BoostPricingSettingsForm } from "@/components/BoostPricingSettingsForm";
 import { PlatformFeeSettingsForm } from "@/components/PlatformFeeSettingsForm";
 import { SubscriptionPlanSettingsForm } from "@/components/SubscriptionPlanSettingsForm";
+import { adminMarket } from "@/lib/market";
 
 import { FullPageLink } from "@/components/FullPageLink";
 export default async function PlansSettingsPage() {
   const { accessToken } = await requireAdmin();
+  const market = adminMarket();
   const [boostPricing, subscriptionPlans, platformFee] = await Promise.all([
     fetchBoostPricingSettings(accessToken),
     fetchSubscriptionPlanSettings(accessToken),
@@ -36,12 +38,12 @@ export default async function PlansSettingsPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 32, maxWidth: 720 }}>
           <section>
             <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px" }}>Platform fee</h2>
-            <PlatformFeeSettingsForm initial={platformFee} />
+            <PlatformFeeSettingsForm initial={platformFee} marketId={market.id} />
           </section>
 
           <section>
             <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px" }}>Feature prices</h2>
-            <BoostPricingSettingsForm initial={boostPricing} />
+            <BoostPricingSettingsForm initial={boostPricing} marketId={market.id} />
           </section>
 
           {/* No Instant Alerts price section any more: alerts are included in every boost, so there
@@ -49,7 +51,7 @@ export default async function PlansSettingsPage() {
 
           <section>
             <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px" }}>Subscription plans &amp; listing slots</h2>
-            <SubscriptionPlanSettingsForm initial={subscriptionPlans} />
+            <SubscriptionPlanSettingsForm initial={subscriptionPlans} currency={market.currencySymbol} />
           </section>
 
           <section

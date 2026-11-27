@@ -6,6 +6,7 @@ import { DEFAULT_OWNER_ALERT_ORDER, OWNER_ALERT_CHANNEL_LABELS } from "@bhavano/
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchAdminConversations, fetchCities, fetchPayments, fetchUserActivity, fetchUserSavedSearches } from "@/lib/bff";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
+import { adminMarket } from "@/lib/market";
 import { DeleteUserPanel } from "@/components/DeleteUserPanel";
 import { AgentStatusPanel } from "@/components/AgentStatusPanel";
 import { UserSavedSearchesPanel } from "@/components/UserSavedSearchesPanel";
@@ -141,7 +142,7 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
                     <td style={tdStyle}>{listing.transactionType}</td>
                     <td style={tdStyle}>{listing.area}, {listing.cityName}</td>
                     <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                      {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(listing.price)}
+                      {new Intl.NumberFormat(adminMarket().locale, { style: "currency", currency: adminMarket().currency, maximumFractionDigits: 0 }).format(listing.price)}
                     </td>
                     <td style={tdStyle}>{listing.status}</td>
                     <td style={tdStyle}>{listing.publishState}</td>
