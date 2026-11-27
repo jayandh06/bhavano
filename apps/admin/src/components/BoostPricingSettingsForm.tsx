@@ -7,6 +7,8 @@ import {
   type BoostPriceSettings,
   type BoostPricingRule,
 } from "@bhavano/types/boostPricing";
+import { getMarket, type MarketId } from "@bhavano/types/market";
+import { tierLabels } from "@/lib/priceTiers";
 import { updateBoostPricingAction } from "@/app/actions/admin";
 
 /** One label per rule, in the same order as DEFAULT_VALUE_BAND_RULES — purely for display; the
@@ -21,7 +23,9 @@ const RULE_LABELS = [
   "Coworking (by monthly seat/desk price)",
 ];
 
-export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSettings }) {
+export function BoostPricingSettingsForm({ initial, marketId }: { initial: BoostPriceSettings; marketId: MarketId }) {
+  const currency = getMarket(marketId).currencySymbol;
+  const labels = tierLabels(marketId);
   const [propertyBoostPrice7d, setPropertyBoostPrice7d] = useState(String(initial.propertyBoostPrice7d));
   const [propertyBoostPrice15d, setPropertyBoostPrice15d] = useState(String(initial.propertyBoostPrice15d));
   const [propertyBoostPrice30d, setPropertyBoostPrice30d] = useState(String(initial.propertyBoostPrice30d));
@@ -52,7 +56,8 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
   // first time sees — and can immediately start tuning — real starting bands, not a blank form
   // that looks like the feature doesn't exist. See docs/plans/boost-proof-stat-and-value-bands.md.
   const [valueBandRules, setValueBandRules] = useState<BoostPricingRule[]>(
-    initial.valueBandRules ?? DEFAULT_VALUE_BAND_RULES,
+    // The shipped bands are rupee amounts: only India starts from them.
+    initial.valueBandRules ?? (marketId === "in" ? DEFAULT_VALUE_BAND_RULES : []),
   );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -138,56 +143,59 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
       </div>
 
       <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>House / Apartment / Villa / Plot / Commercial</div>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{labels.property}</div>
         <div style={{ display: "flex", gap: 12 }}>
-          <Field label="7-day Feature (₹)" value={propertyBoostPrice7d} onChange={setPropertyBoostPrice7d} />
-          <Field label="15-day Feature (₹)" value={propertyBoostPrice15d} onChange={setPropertyBoostPrice15d} />
-          <Field label="30-day Feature (₹)" value={propertyBoostPrice30d} onChange={setPropertyBoostPrice30d} />
+          <Field label={`7-day Feature (${currency})`} value={propertyBoostPrice7d} onChange={setPropertyBoostPrice7d} />
+          <Field label={`15-day Feature (${currency})`} value={propertyBoostPrice15d} onChange={setPropertyBoostPrice15d} />
+          <Field label={`30-day Feature (${currency})`} value={propertyBoostPrice30d} onChange={setPropertyBoostPrice30d} />
         </div>
       </div>
 
       <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Coworking / PG / Storage</div>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{labels.middle}</div>
         <div style={{ display: "flex", gap: 12 }}>
           <Field
-            label="7-day Feature (₹)"
+            label={`7-day Feature (${currency})`}
             value={coworkingPgStorageBoostPrice7d}
             onChange={setCoworkingPgStorageBoostPrice7d}
           />
           <Field
-            label="15-day Feature (₹)"
+            label={`15-day Feature (${currency})`}
             value={coworkingPgStorageBoostPrice15d}
             onChange={setCoworkingPgStorageBoostPrice15d}
           />
           <Field
-            label="30-day Feature (₹)"
+            label={`30-day Feature (${currency})`}
             value={coworkingPgStorageBoostPrice30d}
             onChange={setCoworkingPgStorageBoostPrice30d}
           />
         </div>
       </div>
 
-      <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Furniture / Interiors</div>
-        <div style={{ display: "flex", gap: 12 }}>
-          <Field
-            label="7-day Feature (₹)"
-            value={furnitureInteriorsBoostPrice7d}
-            onChange={setFurnitureInteriorsBoostPrice7d}
-          />
-          <Field
-            label="15-day Feature (₹)"
-            value={furnitureInteriorsBoostPrice15d}
-            onChange={setFurnitureInteriorsBoostPrice15d}
-          />
-          <Field
-            label="30-day Feature (₹)"
-            value={furnitureInteriorsBoostPrice30d}
-            onChange={setFurnitureInteriorsBoostPrice30d}
-          />
+      {labels.furniture && (
+        <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{labels.furniture}</div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <Field
+              label={`7-day Feature (${currency})`}
+              value={furnitureInteriorsBoostPrice7d}
+              onChange={setFurnitureInteriorsBoostPrice7d}
+            />
+            <Field
+              label={`15-day Feature (${currency})`}
+              value={furnitureInteriorsBoostPrice15d}
+              onChange={setFurnitureInteriorsBoostPrice15d}
+            />
+            <Field
+              label={`30-day Feature (${currency})`}
+              value={furnitureInteriorsBoostPrice30d}
+              onChange={setFurnitureInteriorsBoostPrice30d}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
+      {valueBandRules.length > 0 && (
       <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Price bands by listing value</div>
         <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 16 }}>
@@ -203,11 +211,13 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
               key={RULE_LABELS[ruleIndex] ?? ruleIndex}
               label={RULE_LABELS[ruleIndex] ?? `Rule ${ruleIndex + 1}`}
               rule={rule}
+              currency={currency}
               onChangeBand={(bandIndex, field, value) => updateBand(ruleIndex, bandIndex, field, value)}
             />
           ))}
         </div>
       </div>
+      )}
 
       <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
         <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
@@ -302,10 +312,12 @@ function DurationToggle({
 function BandRuleEditor({
   label,
   rule,
+  currency,
   onChangeBand,
 }: {
   label: string;
   rule: BoostPricingRule;
+  currency: string;
   onChangeBand: (bandIndex: number, field: "maxValue" | "price7d" | "price15d" | "price30d", value: number | null) => void;
 }) {
   return (
@@ -328,7 +340,7 @@ function BandRuleEditor({
             >
               <div style={{ flex: 1.2 }}>
                 <label style={{ display: "block", fontSize: 11, color: "var(--muted)", marginBottom: 6, fontWeight: 700 }}>
-                  Up to (₹)
+                  Up to ({currency})
                 </label>
                 {isTopBand ? (
                   <div style={{ fontSize: 13, color: "var(--muted)", padding: "10px 0" }}>and above</div>
@@ -337,17 +349,17 @@ function BandRuleEditor({
                 )}
               </div>
               <NumberField
-                label="7-day (₹)"
+                label={`7-day (${currency})`}
                 value={band.price7d}
                 onChange={(v) => onChangeBand(bandIndex, "price7d", v)}
               />
               <NumberField
-                label="15-day (₹)"
+                label={`15-day (${currency})`}
                 value={band.price15d}
                 onChange={(v) => onChangeBand(bandIndex, "price15d", v)}
               />
               <NumberField
-                label="30-day (₹)"
+                label={`30-day (${currency})`}
                 value={band.price30d}
                 onChange={(v) => onChangeBand(bandIndex, "price30d", v)}
               />

@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchContactRevealSettings } from "@/lib/bff";
 import { ContactRevealSettingsForm } from "@/components/ContactRevealSettingsForm";
+import { adminMarket } from "@/lib/market";
 
 import { FullPageLink } from "@/components/FullPageLink";
 export default async function ContactRevealSettingsPage() {
@@ -18,7 +19,7 @@ export default async function ContactRevealSettingsPage() {
           Controls how many of a listing's owner contact details a user can unlock for free
           before needing to buy credits, and the price/size/expiry of a credit pack.
         </p>
-        <ContactRevealSettingsForm initial={settings} />
+        <ContactRevealSettingsForm initial={settings} currency={adminMarket().currencySymbol} />
       </div>
     </div>
   );

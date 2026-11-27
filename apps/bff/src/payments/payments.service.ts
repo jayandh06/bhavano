@@ -30,7 +30,6 @@ import {
   type BoostPriceSettings,
 } from '@bhavano/types/boostPricing';
 import { subscriptionPriceFor } from '@bhavano/types/subscriptionPricing';
-import { DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS } from '@bhavano/types/instantAlertsPricing';
 import { PrismaService } from '../prisma/prisma.service';
 import { assertPaymentsEnabled } from '../market/payments-available';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -47,6 +46,7 @@ import {
   DEFAULT_SUBSCRIPTION_PLAN_SETTINGS,
   INSTANT_ALERTS_PRICE_SETTINGS_ID,
   PLATFORM_FEE_SETTINGS_ID,
+  DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS,
 } from '../plans/plans.constants';
 import { toBoostPriceSettings } from '../plans/boost-pricing-settings.service';
 import { platformFeeFor } from '@bhavano/types/platformFeePricing';

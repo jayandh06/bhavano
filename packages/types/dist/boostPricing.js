@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DEFAULT_BOOST_PRICE_SETTINGS = exports.DEFAULT_VALUE_BAND_RULES = exports.BOOST_DURATIONS = void 0;
+exports.US_BOOST_PRICE_SETTINGS = exports.DEFAULT_BOOST_PRICE_SETTINGS = exports.DEFAULT_VALUE_BAND_RULES = exports.BOOST_DURATIONS = void 0;
+exports.defaultBoostPriceSettings = defaultBoostPriceSettings;
 exports.enabledBoostDurations = enabledBoostDurations;
 exports.offeredBoostDurations = offeredBoostDurations;
 exports.defaultBoostDuration = defaultBoostDuration;
@@ -103,6 +104,25 @@ exports.DEFAULT_BOOST_PRICE_SETTINGS = {
     allowSkippingBoost: true,
     valueBandRules: exports.DEFAULT_VALUE_BAND_RULES,
 };
+/** The US market's Feature prices (US dollars, in the same fields): `usdTierFromInr` applied to the India flat prices, which a test keeps true.
+ * No price-by-value bands: India's cut-offs are rupee amounts, and dollar ones have not been chosen. */
+exports.US_BOOST_PRICE_SETTINGS = {
+    ...exports.DEFAULT_BOOST_PRICE_SETTINGS,
+    propertyBoostPrice7d: 5,
+    propertyBoostPrice15d: 10,
+    propertyBoostPrice30d: 10,
+    coworkingPgStorageBoostPrice7d: 5,
+    coworkingPgStorageBoostPrice15d: 5,
+    coworkingPgStorageBoostPrice30d: 5,
+    furnitureInteriorsBoostPrice7d: 5,
+    furnitureInteriorsBoostPrice15d: 5,
+    furnitureInteriorsBoostPrice30d: 5,
+    valueBandRules: [],
+};
+/** The default Feature prices for a market (India unless another is named): what the BFF writes to a fresh database. */
+function defaultBoostPriceSettings(marketId = "in") {
+    return marketId === "us" ? exports.US_BOOST_PRICE_SETTINGS : exports.DEFAULT_BOOST_PRICE_SETTINGS;
+}
 /** The durations admin has switched on, shortest first. A flag missing from a response sent by a
  * server older than these toggles counts as on. */
 function enabledBoostDurations(settings) {
@@ -119,7 +139,8 @@ function offeredBoostDurations(pricing) {
 function defaultBoostDuration(offered) {
     return offered.includes(15) ? 15 : (offered[0] ?? 15);
 }
-const PROPERTY_CATEGORIES = new Set(["house", "apartment", "villa", "plot", "commercial"]);
+// Condo, townhouse and room are the US categories for homes; India does not offer them.
+const PROPERTY_CATEGORIES = new Set(["house", "apartment", "villa", "condo", "townhouse", "room", "plot", "commercial"]);
 const MID_VALUE_CATEGORIES = new Set(["coworking", "pg", "storage"]);
 function boostPriceFor(category, days, settings = exports.DEFAULT_BOOST_PRICE_SETTINGS, context) {
     if (context) {

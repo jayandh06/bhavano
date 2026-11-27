@@ -99,6 +99,7 @@ services:
     restart: unless-stopped
     logging: *default-logging
     environment:
+      MARKET: us
       BFF_INTERNAL_URL: http://bff:4000
       NEXTAUTH_URL: ${ADMIN_NEXTAUTH_URL:-}
       # Its own secret, not the website's.

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getMarket, type MarketId } from "@bhavano/types/market";
 import type { Area, City, ListingDetailDto, ListingCategory, ListingStatus, TransactionType } from "@bhavano/types";
 import {
   CATEGORY_FIELD_CONFIG,
@@ -496,7 +497,16 @@ function FieldRunBlock({
  * Tailwind-only component (apps/admin has no Tailwind, and there's no shared component package
  * between the two Next apps — porting the exact widget would mean adding Tailwind to admin just
  * for this one page). */
-export function AdminEditListingForm({ listing, cities }: { listing: ListingDetailDto; cities: City[] }) {
+export function AdminEditListingForm({
+  listing,
+  cities,
+  marketId,
+}: {
+  listing: ListingDetailDto;
+  cities: City[];
+  marketId: MarketId;
+}) {
+  const { currencySymbol, locale } = getMarket(marketId);
   const router = useRouter();
   const [category, setCategory] = useState(listing.category as ListingCategory);
   const [transactionType, setTransactionType] = useState(listing.transactionType as TransactionType);
@@ -534,7 +544,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
 
   const categoryLabel = (value: string) => POST_CATEGORIES.find((c) => c.value === value)?.label ?? value;
   const priceChangeText = (value: string, mode: "total" | "perUnit") =>
-    value === "" || Number(value) === 0 ? "" : `₹${Number(value).toLocaleString("en-IN")}${mode === "perUnit" ? " per unit" : ""}`;
+    value === "" || Number(value) === 0 ? "" : `${currencySymbol}${Number(value).toLocaleString(locale)}${mode === "perUnit" ? " per unit" : ""}`;
 
   // Refetches whenever `cityId` changes (including the initial fetch for the listing's current
   // city) — `all=true` returns every area in the city uncapped (searchAreas's own doc comment),
@@ -948,7 +958,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
                 <div style={{ display: "flex", gap: 10 }}>
                   <div style={{ flex: 1, maxWidth: 200 }}>
                     <label style={labelStyle}>
-                      {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹)` : "Price (₹)"}{" "}
+                      {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (${currencySymbol})` : `Price (${currencySymbol})`}{" "}
                       {!priceOnRequestAllowed && <span style={{ color: "var(--danger)" }}>*</span>}
                     </label>
                     <input

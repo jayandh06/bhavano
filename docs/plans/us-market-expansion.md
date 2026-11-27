@@ -67,7 +67,7 @@ The market comes from the URL path on web (`/us/...` is the US, everything else 
 | Content | Blog, guides, land-record pages, India calculators | Hidden at launch | Hidden (404, links removed) in the US build 2026-11-25; the moving guide too |
 | Sign-in | Phone/WhatsApp OTP first, Google, Apple, email | Email, Google, Apple first; phone optional | Phone rules only; US flow not built |
 | Notifications | WhatsApp and MSG91 SMS | Email and push (SMS only with consent) | Not built |
-| Pricing and payments | Razorpay, Apple/Google INR tiers | Stripe or USD store tiers, new price numbers | Plan and contact-credit prices set in dollars 2026-11-25 (rule below); payments, boost, instant-alert and platform-fee prices not built |
+| Pricing and payments | Razorpay, Apple/Google INR tiers | Stripe or USD store tiers, new price numbers | Plan and contact-credit prices set in dollars 2026-11-25 (rule below), Feature and instant-alert prices 2026-11-27 ([us-admin-site.md](us-admin-site.md)); platform fee zero; payments not built |
 | Legal | Finfolia Technologies LLP texts, DLT | US entity, CCPA, Fair Housing notice | Not built |
 | Mobile app | One app, India API, India storefront link | Same app, US API, US storefront link | Market store and UI done; switch, US API and release not built |
 | Search and ads | Existing pages and rankings untouched | New Google Ads setup, housing-ad rules | Not built |

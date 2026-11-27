@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchListingById } from "@/lib/bff";
 import { fetchCitiesAction } from "@/app/actions/locations";
 import { AdminEditListingForm } from "@/components/AdminEditListingForm";
+import { adminMarket } from "@/lib/market";
 
 /** Same route shape as the owner's own /my-listings/[id]/edit on the web app — an admin editing
  * a listing's content lands on a dedicated page, not a collapsed panel buried in the moderation
@@ -27,7 +28,7 @@ export default async function AdminEditListingPage({ params }: { params: Promise
           ← Back to listing
         </Link>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 20px" }}>Edit listing</h1>
-        <AdminEditListingForm listing={listing} cities={cities} />
+        <AdminEditListingForm listing={listing} cities={cities} marketId={adminMarket().id} />
       </div>
     </div>
   );

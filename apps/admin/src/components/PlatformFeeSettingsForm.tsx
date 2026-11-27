@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
+import { getMarket, type MarketId } from "@bhavano/types/market";
+import { tierLabels } from "@/lib/priceTiers";
 import { updatePlatformFeeAction } from "@/app/actions/admin";
 
-export function PlatformFeeSettingsForm({ initial }: { initial: PlatformFeeSettings }) {
+export function PlatformFeeSettingsForm({ initial, marketId }: { initial: PlatformFeeSettings; marketId: MarketId }) {
+  const currency = getMarket(marketId).currencySymbol;
+  const labels = tierLabels(marketId);
   const [propertyListingFee, setPropertyListingFee] = useState(String(initial.propertyListingFee));
   const [coworkingPgStorageListingFee, setCoworkingPgStorageListingFee] = useState(
     String(initial.coworkingPgStorageListingFee),
@@ -41,36 +45,38 @@ export function PlatformFeeSettingsForm({ initial }: { initial: PlatformFeeSetti
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>House / Apartment / Villa / Plot / Commercial</div>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{labels.property}</div>
         <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 12px" }}>
-          Mandatory at publish checkout when greater than ₹0. Set to ₹0 to hide the fee for this tier.
+          Mandatory at publish checkout when greater than {currency}0. Set to {currency}0 to hide the fee for this tier.
         </p>
         <div style={{ display: "flex", gap: 12 }}>
-          <Field label="Platform fee (₹)" value={propertyListingFee} onChange={setPropertyListingFee} />
+          <Field label={`Platform fee (${currency})`} value={propertyListingFee} onChange={setPropertyListingFee} />
         </div>
       </div>
 
       <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Coworking / PG / Storage</div>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{labels.middle}</div>
         <div style={{ display: "flex", gap: 12 }}>
           <Field
-            label="Platform fee (₹)"
+            label={`Platform fee (${currency})`}
             value={coworkingPgStorageListingFee}
             onChange={setCoworkingPgStorageListingFee}
           />
         </div>
       </div>
 
-      <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Furniture / Interiors</div>
-        <div style={{ display: "flex", gap: 12 }}>
-          <Field
-            label="Platform fee (₹)"
-            value={furnitureInteriorsListingFee}
-            onChange={setFurnitureInteriorsListingFee}
-          />
+      {labels.furniture && (
+        <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{labels.furniture}</div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <Field
+              label={`Platform fee (${currency})`}
+              value={furnitureInteriorsListingFee}
+              onChange={setFurnitureInteriorsListingFee}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
         <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>

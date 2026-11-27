@@ -1,3 +1,5 @@
+import type { MarketId } from "./market";
+
 /** Admin-editable Instant Alerts price — same singleton-row convention as BoostPriceSettings.
  * Flat, no category tiers: unlike boost (which trades on listing visibility, so a cheap category
  * getting the same fee as an expensive one is unfair), the value here — being told about a
@@ -13,3 +15,13 @@ export interface InstantAlertsPriceSettings {
 export const DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS: InstantAlertsPriceSettings = {
   instantAlertsPrice: 25,
 };
+
+/** The US price: `usdTierFromInr` applied to India's. */
+export const US_INSTANT_ALERTS_PRICE_SETTINGS: InstantAlertsPriceSettings = {
+  instantAlertsPrice: 5,
+};
+
+/** The default Instant Alerts price for a market (India unless another is named). */
+export function defaultInstantAlertsPriceSettings(marketId: MarketId = "in"): InstantAlertsPriceSettings {
+  return marketId === "us" ? US_INSTANT_ALERTS_PRICE_SETTINGS : DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS;
+}

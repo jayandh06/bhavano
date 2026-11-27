@@ -1,4 +1,5 @@
 import type { BoostPricingOptionDto, BoostPricingPreviewDto, ListingCategory, TransactionType } from "./index";
+import type { MarketId } from "./market";
 export type BoostDurationDays = 7 | 15 | 30;
 /** Every duration a seller can buy, shortest first — the one list the pickers render from. */
 export declare const BOOST_DURATIONS: readonly BoostDurationDays[];
@@ -74,6 +75,11 @@ export declare const DEFAULT_VALUE_BAND_RULES: BoostPricingRule[];
  * BoostProvider.tsx (web) / BoostModal.tsx (mobile). The BFF's own DB-row fallback (when no
  * settings have ever been saved) reuses this exact same constant rather than redefining it. */
 export declare const DEFAULT_BOOST_PRICE_SETTINGS: BoostPriceSettings;
+/** The US market's Feature prices (US dollars, in the same fields): `usdTierFromInr` applied to the India flat prices, which a test keeps true.
+ * No price-by-value bands: India's cut-offs are rupee amounts, and dollar ones have not been chosen. */
+export declare const US_BOOST_PRICE_SETTINGS: BoostPriceSettings;
+/** The default Feature prices for a market (India unless another is named): what the BFF writes to a fresh database. */
+export declare function defaultBoostPriceSettings(marketId?: MarketId): BoostPriceSettings;
 /** The durations admin has switched on, shortest first. A flag missing from a response sent by a
  * server older than these toggles counts as on. */
 export declare function enabledBoostDurations(settings: Partial<Pick<BoostPriceSettings, "boost7dEnabled" | "boost15dEnabled" | "boost30dEnabled">>): BoostDurationDays[];

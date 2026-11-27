@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import { updateSubscriptionPlanAction } from "@/app/actions/admin";
 
-export function SubscriptionPlanSettingsForm({ initial }: { initial: SubscriptionPlanSettings }) {
+export function SubscriptionPlanSettingsForm({ initial, currency }: { initial: SubscriptionPlanSettings; currency: string }) {
   const [freeListingSlots, setFreeListingSlots] = useState(String(initial.freeListingSlots));
   const [sellerSlotPackTotalSlots, setSellerSlotPackTotalSlots] = useState(String(initial.sellerSlotPackTotalSlots));
   const [sellerSlotPackMonthlyPrice, setSellerSlotPackMonthlyPrice] = useState(
@@ -64,7 +64,7 @@ export function SubscriptionPlanSettingsForm({ initial }: { initial: Subscriptio
             value={sellerSlotPackTotalSlots}
             onChange={setSellerSlotPackTotalSlots}
           />
-          <Field label="Price / month (₹)" value={sellerSlotPackMonthlyPrice} onChange={setSellerSlotPackMonthlyPrice} />
+          <Field label={`Price / month (${currency})`} value={sellerSlotPackMonthlyPrice} onChange={setSellerSlotPackMonthlyPrice} />
         </div>
       </div>
 
@@ -76,7 +76,7 @@ export function SubscriptionPlanSettingsForm({ initial }: { initial: Subscriptio
         <div style={{ display: "flex", gap: 12 }}>
           <Field label="Slots per unit" value={proListingSlotsPerUnit} onChange={setProListingSlotsPerUnit} />
           <Field
-            label="Price / unit / month (₹)"
+            label={`Price / unit / month (${currency})`}
             value={agentProMonthlyPricePerUnit}
             onChange={setAgentProMonthlyPricePerUnit}
           />
@@ -90,9 +90,9 @@ export function SubscriptionPlanSettingsForm({ initial }: { initial: Subscriptio
           extra listing slots or contact reveals.
         </p>
         <div style={{ display: "flex", gap: 12 }}>
-          <Field label="1 month (₹)" value={buyerPremiumPrice1Month} onChange={setBuyerPremiumPrice1Month} />
-          <Field label="6 months (₹)" value={buyerPremiumPrice6Months} onChange={setBuyerPremiumPrice6Months} />
-          <Field label="12 months (₹)" value={buyerPremiumPrice12Months} onChange={setBuyerPremiumPrice12Months} />
+          <Field label={`1 month (${currency})`} value={buyerPremiumPrice1Month} onChange={setBuyerPremiumPrice1Month} />
+          <Field label={`6 months (${currency})`} value={buyerPremiumPrice6Months} onChange={setBuyerPremiumPrice6Months} />
+          <Field label={`12 months (${currency})`} value={buyerPremiumPrice12Months} onChange={setBuyerPremiumPrice12Months} />
         </div>
       </div>
 

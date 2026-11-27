@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ContactRevealSettingsDto } from "@bhavano/types";
 import { updateContactRevealSettingsAction } from "@/app/actions/admin";
 
-export function ContactRevealSettingsForm({ initial }: { initial: ContactRevealSettingsDto }) {
+export function ContactRevealSettingsForm({ initial, currency }: { initial: ContactRevealSettingsDto; currency: string }) {
   const [freeRevealsPerUser, setFreeRevealsPerUser] = useState(String(initial.freeRevealsPerUser));
   const [creditPackSize, setCreditPackSize] = useState(String(initial.creditPackSize));
   const [creditPackPriceRupees, setCreditPackPriceRupees] = useState(String(initial.creditPackPriceRupees));
@@ -46,7 +46,7 @@ export function ContactRevealSettingsForm({ initial }: { initial: ContactRevealS
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Credit pack</div>
         <div style={{ display: "flex", gap: 12 }}>
           <Field label="Credits per pack" value={creditPackSize} onChange={setCreditPackSize} min={1} />
-          <Field label="Price (₹)" value={creditPackPriceRupees} onChange={setCreditPackPriceRupees} min={1} />
+          <Field label={`Price (${currency})`} value={creditPackPriceRupees} onChange={setCreditPackPriceRupees} min={1} />
           <Field label="Expires after (months)" value={creditExpiryMonths} onChange={setCreditExpiryMonths} min={1} />
         </div>
       </div>

@@ -1,6 +1,7 @@
 # US admin site
 
-Status: **server fixes deployed 2026-11-27; phase A approved and its code built the same day, not yet deployed. Phase B is proposed.** Part of the US launch
+Status: **server fixes deployed 2026-11-27; phase A deployed the same day at https://admin-us.bhavano.com; the first admin signed in with Google that day. A refused non-admin account has not been checked, and the Cloudflare
+proxy is not on. Phase B is proposed.** Part of the US launch
 ([us-market-expansion.md](us-market-expansion.md), [us-stack-setup.md](us-stack-setup.md)).
 
 ## Goal
@@ -60,9 +61,9 @@ Not changed:
 | `admin` service (image `bhavano-us-admin`, the registry's `bhavano-admin`) with its own `NEXTAUTH_*` and the US Google keys | `docker-compose.us.yml` | Built |
 | Site block for `US_ADMIN_DOMAIN` (never indexed), proxy to `admin:3001` | `Caddyfile.us`, compose | Built |
 | `admin` is a US service, deployed by default like `web` and `bff` | `scripts/deploy-from-registry.ps1` | Built |
-| The four settings below | `.env.us.example`, the server's `.env` | Example built; server not set |
-| DNS record `admin-us.bhavano.com` to `52.45.78.97` | Cloudflare (owner) | Not done |
-| Redirect address `https://admin-us.bhavano.com/api/auth/callback/google` | Google Cloud console (owner) | Not done |
+| The four settings below | `.env.us.example`, the server's `.env` | Done (previous file kept at `~/.us-env.before-admin`) |
+| DNS record `admin-us.bhavano.com` to `52.45.78.97` | Cloudflare | Done, DNS only |
+| Redirect address `https://admin-us.bhavano.com/api/auth/callback/google` | Google Cloud console, client `Bhavano-Web` (shared with India) | Done |
 
 Until `US_ADMIN_DOMAIN` is set, Caddy is given a name nobody can request, so a deploy before the DNS record exists
 changes nothing visible.
@@ -85,13 +86,38 @@ Until phase B the screens show India's conventions: times in IST, date filters o
 screens that stay empty. Links from visit trails and requirements open India's site. Use it for moderation; **do not
 change prices or send outreach from the US admin.**
 
+## Dollar prices (built 2026-11-27, ahead of the rest of phase B)
+
+The Plans screen showed dollar subscription prices under rupee labels, and the Feature and Instant Alerts prices were
+India's: only subscriptions and contact credits had US defaults.
+
+- The admin reads `MARKET` at request time (`apps/admin/src/lib/market.ts`, set in `docker-compose.us.yml`). Price
+  screens, the listing price field and a user's listing prices use that market's currency. The US price screens name the
+  US categories and leave out the furniture tier and the value bands.
+- US Feature prices by the owner's rule (rupees divided by 60, rounded up to the next $5): property $5 / $10 / $10 for
+  7 / 15 / 30 days, storage and the furniture tier $5, Instant Alerts $5, no price-by-value bands.
+- Condo, townhouse and room are priced as property (they fell into the cheapest tier).
+
+The defaults only reach a fresh database. The US database already holds India's rows, so after the deploy they are set
+once (keeping the old values to restore):
+
+```sql
+UPDATE "BoostPriceSetting" SET "propertyBoostPrice7d" = 5, "propertyBoostPrice15d" = 10, "propertyBoostPrice30d" = 10,
+  "coworkingPgStorageBoostPrice7d" = 5, "coworkingPgStorageBoostPrice15d" = 5, "coworkingPgStorageBoostPrice30d" = 5,
+  "furnitureInteriorsBoostPrice7d" = 5, "furnitureInteriorsBoostPrice15d" = 5, "furnitureInteriorsBoostPrice30d" = 5,
+  "valueBandRules" = '[]', "updatedAt" = now() WHERE id = 'singleton';
+UPDATE "InstantAlertsPriceSetting" SET "instantAlertsPrice" = 5, "updatedAt" = now() WHERE id = 'singleton';
+```
+
+Still rupees in the US admin: the ad-campaign analytics (India's Google Ads spend).
+
 ## Phase B: make the admin app fit the US
 
 Build a second image, `admin-us`, with `NEXT_PUBLIC_MARKET=us` (as `web-us` is built), because dates and money are
 formatted by plain functions in server and browser code.
 
 - Login: Google only.
-- Times, date ranges and "today" in the US business zone (`America/New_York`); `en-US` dates; dollars.
+- Times, date ranges and "today" in the US business zone (`America/New_York`); `en-US` dates. (Dollar prices are done.)
 - Hide: Outreach, Billing and promotions, Referrals, and the settings for plans, contact reveal, referral rewards,
   featured prompt, featured reminders, owner alerts and seeker contact. Hide the phone code button.
 - India stays byte-for-byte the same; tests pin its formatting.
