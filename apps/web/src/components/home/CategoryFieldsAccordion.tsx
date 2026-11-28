@@ -10,6 +10,7 @@ import {
   pruneHiddenAttributes,
   SECTION_LABELS,
   SECTION_ORDER,
+  sectionOrderFor,
 } from "@bhavano/types/categoryFields";
 import { clampDigits } from "@bhavano/types/listingLimits";
 import { issueCountForFields, type DetailsIssue } from "@bhavano/types/postDetailsIssues";
@@ -722,7 +723,7 @@ export function CategoryFieldsAccordion({
     (section) => sectionExtras?.[section] && !fieldSections.some((s) => s.section === section),
   ).map((section) => ({ section, label: SECTION_LABELS[section], fields: [] as FieldDef[] }));
   const orderIndex = (section: FieldSection | "other") =>
-    section === "other" ? SECTION_ORDER.length : SECTION_ORDER.indexOf(section);
+    section === "other" ? SECTION_ORDER.length : sectionOrderFor(market.id).indexOf(section);
   const sections = [...fieldSections, ...extraOnlySections].sort(
     (a, b) => orderIndex(a.section) - orderIndex(b.section),
   );

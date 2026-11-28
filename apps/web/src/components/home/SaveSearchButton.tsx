@@ -13,6 +13,7 @@ import { createSavedSearchAction } from "@/app/actions/saved-searches";
 import { buttonClass } from "./BrowseFilterBar";
 import { GetAppCard } from "./GetAppCard";
 import { Icon } from "./Icon";
+import { buildMarket } from "@/lib/marketRobots";
 
 /** The criteria this button saves — exactly what the browse page has *already* resolved from the
  * URL (AreaFilter's current selection, BhkFilter's current buckets, BrowseFilterBar's price range)
@@ -117,7 +118,7 @@ export function SaveSearchButton({ criteria }: { criteria: SaveSearchCriteria })
                 onKeyDown={(e) => {
                   if (e.key === "Enter") void onSave();
                 }}
-                placeholder="e.g. 2BHK in Koramangala"
+                placeholder={buildMarket().id === "us" ? "e.g. 2 bed in Austin" : "e.g. 2BHK in Koramangala"}
                 autoFocus
                 className={fieldClass}
               />

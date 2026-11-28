@@ -11,6 +11,7 @@ import {
   SECTION_LABELS,
   SECTION_ORDER,
   type FieldSection,
+  sectionOrderFor,
 } from "@bhavano/types/categoryFields";
 import { AREA_UNIT_LABELS, type AreaUnit } from "@bhavano/types/areaUnit";
 import { POSTED_BY_FORM_LABEL, POSTED_BY_FORM_OPTIONS } from "@bhavano/types/sellerType";
@@ -106,7 +107,7 @@ export function CategoryFieldsForm({
     (section) => sectionExtras?.[section] && !fieldSections.some((s) => s.section === section),
   ).map((section) => ({ section, label: SECTION_LABELS[section], fields: [] as FieldConfig[] }));
   const orderIndex = (section: FieldSection | "other") =>
-    section === "other" ? SECTION_ORDER.length : SECTION_ORDER.indexOf(section);
+    section === "other" ? SECTION_ORDER.length : sectionOrderFor(market.id).indexOf(section);
   const sections = [...fieldSections, ...extraOnlySections].sort(
     (a, b) => orderIndex(a.section) - orderIndex(b.section),
   );

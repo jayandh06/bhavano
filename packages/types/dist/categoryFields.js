@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AMENITY_KEYS = exports.CATEGORY_FIELD_CONFIG = exports.BROKERAGE_FEE_PERCENT = exports.BROKERAGE_FEE_FIXED = exports.SECTION_FIELD_GROUPS = exports.SECTION_ORDER = exports.SECTION_LABELS = void 0;
+exports.sectionOrderFor = sectionOrderFor;
 exports.fieldIsVisible = fieldIsVisible;
 exports.formatFieldValue = formatFieldValue;
 exports.formatFieldLabel = formatFieldLabel;
@@ -52,6 +53,15 @@ exports.SECTION_ORDER = [
     "furnishing",
     "amenities",
 ];
+/** The display order in a market. The US asks about a space (its area) before its price, because a US commercial rent is
+ * worked out from the area. India's order is `SECTION_ORDER`. */
+function sectionOrderFor(marketId = "in") {
+    if (marketId !== "us")
+        return exports.SECTION_ORDER;
+    const rest = exports.SECTION_ORDER.filter((section) => section !== "spaceDetails");
+    const at = rest.indexOf("pricing");
+    return [...rest.slice(0, at), "spaceDetails", ...rest.slice(at)];
+}
 /** `dependsOn` against a stored value: a single-select compares for equality, a multi-select
  * (stored as an array) matches when it contains the value — a PG's "Single room rent" shows once
  * "Single" is among the sharing types ticked. */
@@ -109,7 +119,7 @@ function groupFieldsBySection(fields, marketId = "in") {
         else
             buckets.set(section, [field]);
     }
-    const ordered = [...exports.SECTION_ORDER, "other"];
+    const ordered = [...sectionOrderFor(marketId), "other"];
     return ordered
         .filter((section) => buckets.has(section))
         .map((section) => ({

@@ -5,13 +5,14 @@ import {
   priceWordsNote,
   type ListingPriceFields,
 } from "@bhavano/types/priceWords";
+import { buildMarket } from "@/lib/marketRobots";
 
 /** Live read-back under a price box — "₹35,00,000 (35 Lakh)" — so a seller or admin who typed
  * one zero too many sees it before saving. Nothing below ₹1,000, where there are no words. */
 export function PriceWordsHint({ value, suffix = "" }: { value: string; suffix?: string }) {
   const amount = Number(value);
   if (!Number.isFinite(amount) || amount < 1_000) return null;
-  return <div className="mt-1 text-[12px] text-muted">{formatInrWithWords(amount)}{suffix}</div>;
+  return <div className="mt-1 text-[12px] text-muted">{formatInrWithWords(amount, buildMarket().id)}{suffix}</div>;
 }
 
 /** Under a per-unit price box: what the whole listing comes to — "= ₹60,00,000 (60 Lakh) for
@@ -20,7 +21,7 @@ export function PerUnitTotalHint({ total, area }: { total: number | null; area: 
   if (total === null || !(total > 0) || !area) return null;
   return (
     <div className="mt-0.5 text-[12px] font-semibold text-text-soft">
-      = {formatInrWithWords(total)} for {area}
+      = {formatInrWithWords(total, buildMarket().id)} for {area}
     </div>
   );
 }

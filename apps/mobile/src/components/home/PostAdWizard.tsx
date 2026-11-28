@@ -42,6 +42,7 @@ import {
   SECTION_LABELS,
   SECTION_ORDER,
   type FieldSection,
+  sectionOrderFor,
 } from "@bhavano/types/categoryFields";
 import { marketPostCategoryGroups, marketPostCategories } from "@bhavano/types/postCategories";
 import {
@@ -1350,7 +1351,7 @@ export function PostAdWizard({
   // the Price/qualifier inputs below must always show somewhere.
   const fieldSections = groupFieldsBySection(visibleFields, market.id);
   const orderIndex = (section: FieldSection | "other") =>
-    section === "other" ? SECTION_ORDER.length : SECTION_ORDER.indexOf(section);
+    section === "other" ? SECTION_ORDER.length : sectionOrderFor(market.id).indexOf(section);
   const sections = fieldSections.some((s) => s.section === "pricing")
     ? fieldSections
     : [...fieldSections, { section: "pricing" as const, label: SECTION_LABELS.pricing, fields: [] as FieldConfig[] }].sort(

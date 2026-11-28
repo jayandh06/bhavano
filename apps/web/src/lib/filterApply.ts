@@ -8,6 +8,7 @@ import { parseAmount } from "./priceInput";
 import { MAX_BEDROOMS, segmentsForHomeCategory, type ParsedSegments, type TransactionGroup } from "./seoRoute";
 import type { HomeTabValue } from "./homeCategories";
 import { SEARCH_FACT_KEYS } from "@bhavano/types/searchFacts";
+import { buildMarket } from "./marketRobots";
 
 /** Everything the filter section can change before Apply. A missing key means "not touched": the URL's own value stands. Nothing here reaches the URL until
  * `buildAppliedUrl` runs on Apply, which writes every pending change in one navigation (so one search, and the area, BHK, type and query filters can never
@@ -68,13 +69,14 @@ export function currentBhk(base: FilterBase): number[] {
 /** Why the draft cannot be applied yet, or null. At least one area and one BHK bucket must stay picked, and a typed price must make sense. */
 export function draftIssue(draft: FilterDraft): string | null {
   if (draft.areas && draft.areas.length === 0) return "Pick at least one area";
-  if (draft.bhk && draft.bhk.length === 0) return "Pick at least one BHK";
+  if (draft.bhk && draft.bhk.length === 0) return buildMarket().id === "us" ? "Pick at least one bedroom count" : "Pick at least one BHK";
   if (draft.price) {
     const min = draft.price.min.trim();
     const max = draft.price.max.trim();
     const parsedMin = min ? parseAmount(min) : undefined;
     const parsedMax = max ? parseAmount(max) : undefined;
-    if ((min && parsedMin === undefined) || (max && parsedMax === undefined)) return "Enter a price like 20000, 20k or 2L";
+    if ((min && parsedMin === undefined) || (max && parsedMax === undefined))
+      return buildMarket().id === "us" ? "Enter a price like 2000, 20k or 1.5M" : "Enter a price like 20000, 20k or 2L";
     if (parsedMin !== undefined && parsedMax !== undefined && parsedMin > parsedMax) return "Min price must be less than max";
   }
   return null;

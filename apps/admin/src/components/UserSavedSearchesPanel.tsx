@@ -8,16 +8,17 @@ import type {
   ListingCategory,
   TransactionType,
 } from "@bhavano/types";
-import { MAX_BEDROOMS, bedroomLabel } from "@bhavano/types/bedrooms";
+import { MAX_BEDROOMS, bedroomLabel, bedWord } from "@bhavano/types/bedrooms";
 import { formatInrWithWords } from "@bhavano/types/priceWords";
-import { MAX_REQUIREMENT_AREAS } from "@bhavano/types/requirementQuestions";
+import { MAX_REQUIREMENT_AREAS, requirementCategoryLabel } from "@bhavano/types/requirementQuestions";
 import {
   deleteUserSavedSearchAction,
   fetchSavedSearchAreasAction,
   updateUserSavedSearchAction,
 } from "@/app/actions/admin";
+import { MARKETS, type MarketId } from "@bhavano/types/market";
 
-const CATEGORIES: { value: ListingCategory; label: string }[] = [
+const INDIA_CATEGORIES: { value: ListingCategory; label: string }[] = [
   { value: "house", label: "House" },
   { value: "apartment", label: "Apartment" },
   { value: "villa", label: "Villa" },
@@ -29,6 +30,11 @@ const CATEGORIES: { value: ListingCategory; label: string }[] = [
   { value: "furniture", label: "Furniture" },
   { value: "interiors", label: "Interiors" },
 ];
+
+/** The US offers its own categories; India's list above is unchanged. */
+function categoriesFor(marketId: MarketId): { value: ListingCategory; label: string }[] {
+  return marketId === "us" ? MARKETS.us.categories.map((value) => ({ value, label: requirementCategoryLabel(value, "us") })) : INDIA_CATEGORIES;
+}
 
 const TRANSACTIONS: { value: TransactionType; label: string }[] = [
   { value: "buy", label: "Buy" },
@@ -47,16 +53,16 @@ const fieldStyle: React.CSSProperties = {
   fontSize: 13,
 };
 
-function searchSummary(search: AdminSavedSearchDto): string {
+function searchSummary(search: AdminSavedSearchDto, marketId: MarketId): string {
   return [
     search.category,
     search.transactionType,
     search.cityName,
     search.areaNames.length > 0 ? search.areaNames.join(", ") : search.cityName ? "Any area" : undefined,
-    search.minPrice !== undefined ? `min ${formatInrWithWords(search.minPrice)}` : undefined,
-    search.maxPrice !== undefined ? `max ${formatInrWithWords(search.maxPrice)}` : undefined,
+    search.minPrice !== undefined ? `min ${formatInrWithWords(search.minPrice, marketId)}` : undefined,
+    search.maxPrice !== undefined ? `max ${formatInrWithWords(search.maxPrice, marketId)}` : undefined,
     search.bedroomOptions.length > 0
-      ? search.bedroomOptions.map((bedrooms) => `${bedroomLabel(bedrooms)} BHK`).join(" or ")
+      ? search.bedroomOptions.map((bedrooms) => `${bedroomLabel(bedrooms)} ${bedWord(marketId)}`).join(" or ")
       : undefined,
   ]
     .filter(Boolean)
@@ -67,8 +73,10 @@ export function UserSavedSearchesPanel({
   userId,
   initialSearches,
   cities,
+  marketId,
 }: {
   userId: string;
+  marketId: MarketId;
   initialSearches: AdminSavedSearchDto[];
   cities: City[];
 }) {
@@ -185,7 +193,7 @@ export function UserSavedSearchesPanel({
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
                   <div>
                     <strong style={{ fontSize: 13.5 }}>{search.name}</strong>
-                    <div style={{ color: "var(--muted)", fontSize: 12.5, marginTop: 3 }}>{searchSummary(search)}</div>
+                    <div style={{ color: "var(--muted)", fontSize: 12.5, marginTop: 3 }}>{searchSummary(search, marketId)}</div>
                     <div style={{ color: "var(--muted)", fontSize: 11.5, marginTop: 5 }}>
                       {search.source} alert · created {new Date(search.createdAt).toLocaleString()}
                       {search.lastNotifiedAt && ` · last match processed ${new Date(search.lastNotifiedAt).toLocaleString()}`}
@@ -223,7 +231,7 @@ export function UserSavedSearchesPanel({
                       Category
                       <select value={category} onChange={(event) => setCategory(event.target.value)} style={fieldStyle}>
                         <option value="">Any category</option>
-                        {CATEGORIES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                        {categoriesFor(marketId).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                       </select>
                     </label>
                     <label style={labelStyle}>

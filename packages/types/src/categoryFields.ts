@@ -59,6 +59,15 @@ export const SECTION_ORDER: FieldSection[] = [
   "amenities",
 ];
 
+/** The display order in a market. The US asks about a space (its area) before its price, because a US commercial rent is
+ * worked out from the area. India's order is `SECTION_ORDER`. */
+export function sectionOrderFor(marketId: MarketId = "in"): FieldSection[] {
+  if (marketId !== "us") return SECTION_ORDER;
+  const rest = SECTION_ORDER.filter((section) => section !== "spaceDetails");
+  const at = rest.indexOf("pricing");
+  return [...rest.slice(0, at), "spaceDetails", ...rest.slice(at)];
+}
+
 export interface FieldDef {
   key: string;
   label: string;
@@ -192,7 +201,7 @@ export function groupFieldsBySection<F extends { section?: FieldSection }>(
     if (bucket) bucket.push(field);
     else buckets.set(section, [field]);
   }
-  const ordered: (FieldSection | "other")[] = [...SECTION_ORDER, "other"];
+  const ordered: (FieldSection | "other")[] = [...sectionOrderFor(marketId), "other"];
   return ordered
     .filter((section) => buckets.has(section))
     .map((section) => ({

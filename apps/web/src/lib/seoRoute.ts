@@ -2,7 +2,7 @@ import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, Transacti
 import type { HomeTabValue } from "./homeCategories";
 import { CATEGORY_FIELD_CONFIG, categoryFieldsFor } from "@bhavano/types/categoryFields";
 import { POSTABLE_TRANSACTION_TYPES, postableTransactionTypes } from "@bhavano/types/postingRules";
-import { MAX_BEDROOMS, bedroomLabel } from "@bhavano/types/bedrooms";
+import { MAX_BEDROOMS, bedroomLabel, bedWord } from "@bhavano/types/bedrooms";
 
 export { MAX_BEDROOMS, bedroomLabel };
 
@@ -91,6 +91,7 @@ export type { TransactionGroup } from "@bhavano/types/listingPath";
 export { transactionGroupFor } from "@bhavano/types/listingPath";
 import type { TransactionGroup } from "@bhavano/types/listingPath";
 import { buildMarket } from "./marketRobots";
+import { formatCompactMoney } from "@bhavano/types/requirementQuestions";
 
 export function isTransactionGroup(value: string): value is TransactionGroup {
   return value === "buy" || value === "rent-lease";
@@ -205,6 +206,8 @@ const BEDROOM_SLUG_RE = /^([1-5])bhk$/;
  * preview — the two places a raw rupee amount needs to read like "₹85L"/"₹1.2Cr" instead of a
  * long number. */
 export function formatINR(n: number): string {
+  // The US writes "$25k" and "$1.5M"; the name is India's, where this began.
+  if (buildMarket().id === "us") return formatCompactMoney(n, "us");
   if (n >= 10_000_000) return `₹${(n / 10_000_000).toFixed(n % 10_000_000 === 0 ? 0 : 1)}Cr`;
   if (n >= 100_000) return `₹${(n / 100_000).toFixed(n % 100_000 === 0 ? 0 : 1)}L`;
   if (n >= 1_000) return `₹${Math.round(n / 1_000)}k`;
@@ -525,7 +528,7 @@ function buildHeadingSubject(params: {
     const suffix = !hasVerb && transactionType ? TRANSACTION_LABELS[transactionType] : "";
     return `${base} ${suffix}`.replace(/\s+/g, " ").trim();
   }
-  if (bedrooms !== undefined && propertyType) return `${bedroomLabel(bedrooms)} BHK ${CATEGORY_LABELS[propertyType]}`;
+  if (bedrooms !== undefined && propertyType) return `${bedroomLabel(bedrooms)} ${bedWord(buildMarket().id)} ${CATEGORY_LABELS[propertyType]}`;
   if (sharingType) {
     const label = CATEGORY_FIELD_CONFIG.pg.find((f) => f.key === "sharingType")?.options?.find((o) => o.value === sharingType)?.label ?? sharingType;
     return `PG ${label}`;

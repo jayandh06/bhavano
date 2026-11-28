@@ -18,6 +18,7 @@ import {
   type FieldDef,
   type FieldOption,
   type FieldSection,
+  sectionOrderFor,
 } from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { AREA_UNIT_LABELS, areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
@@ -65,8 +66,8 @@ function sanitizeNonNegative(value: string): string {
   return value.replace(/-/g, "");
 }
 
-function sectionOrderIndex(section: FieldSection | "other"): number {
-  return section === "other" ? SECTION_ORDER.length : SECTION_ORDER.indexOf(section);
+function sectionOrderIndex(section: FieldSection | "other", marketId: MarketId): number {
+  return section === "other" ? SECTION_ORDER.length : sectionOrderFor(marketId).indexOf(section);
 }
 
 /** A `select` field is really a Yes/No question if its only two options are exactly
@@ -633,7 +634,7 @@ export function AdminEditListingForm({
   const sections = fieldSections.some((s) => s.section === "pricing")
     ? fieldSections
     : [{ section: "pricing" as const, label: SECTION_LABELS.pricing, fields: [] as FieldDef[] }, ...fieldSections].sort(
-        (a, b) => sectionOrderIndex(a.section) - sectionOrderIndex(b.section),
+        (a, b) => sectionOrderIndex(a.section, marketId) - sectionOrderIndex(b.section, marketId),
       );
 
   const priceOnRequestAllowed = PRICE_ON_REQUEST_CATEGORIES.has(category);
@@ -980,7 +981,7 @@ export function AdminEditListingForm({
                     )}
                     {priceMode === "perUnit" && priceUnitAreaField && totalPrice !== null && totalPrice > 0 && (
                       <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2 }}>
-                        = {formatInrWithWords(totalPrice)} for {formatArea(priceArea, currentAreaUnit)}
+                        = {formatInrWithWords(totalPrice, marketId)} for {formatArea(priceArea, currentAreaUnit, marketId)}
                       </div>
                     )}
                   </div>
