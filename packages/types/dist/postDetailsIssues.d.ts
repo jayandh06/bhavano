@@ -1,4 +1,5 @@
 import type { ListingCategory, TransactionType } from "./index";
+import type { MarketId } from "./market";
 /** What is still wrong on the posting wizard's Details step, as an ordered list (form order) instead of the
  * single "first problem" the step used to compute. Shared by the web and mobile wizards so both agree with each
  * other and with the server's checks. The first entry is exactly what the old one-line "To preview: ..." message
@@ -43,6 +44,9 @@ export interface DetailsIssueInput {
     titleMin: number;
     description: string;
     descriptionMin: number;
+    /** Which market's fields apply (a field the market hides is never asked for) and whose currency the messages
+     * use. India when not given. */
+    marketId?: MarketId;
 }
 export declare const ATTR_TARGET_PREFIX = "attr:";
 export declare function attributeTarget(fieldKey: string): string;

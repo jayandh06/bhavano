@@ -172,3 +172,12 @@ describe('email copy', () => {
     expect(loader('in')('email/welcome').preheader).toContain('across India');
   });
 });
+
+describe('price check', () => {
+  type Bounds = typeof import('../moderation/priceBounds');
+
+  it('judges a posted price by the market the server serves', () => {
+    expect(load<Bounds>('us', '../moderation/priceBounds').checkPriceSanity('apartment', 'rent', 950)).toBeNull();
+    expect(load<Bounds>('in', '../moderation/priceBounds').checkPriceSanity('apartment', 'rent', 950)).toMatch(/₹950/);
+  });
+});

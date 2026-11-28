@@ -1,5 +1,6 @@
 import type { ListingCategory, TransactionType } from '@bhavano/types';
 import { listingPriceIssue } from '@bhavano/types/priceBounds';
+import { MARKET } from '../market/market-config';
 
 /** price: 0 ("Contact for price") is a legitimate, deliberate posting for price-on-request
  * categories — ListingsService.assertValidPrice already allows it, and so does this. `price` is
@@ -10,5 +11,5 @@ export function checkPriceSanity(
   transactionType: TransactionType,
   price: number,
 ): string | null {
-  return listingPriceIssue(category, transactionType, price);
+  return listingPriceIssue(category, transactionType, price, undefined, MARKET.id);
 }

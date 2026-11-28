@@ -33,7 +33,7 @@ function postDetailsIssues(input) {
     if (input.needsPostedBy && !input.postedByAnswered)
         other("posted_by", "Choose Owner or Broker / Agent under Posted by", true);
     if (input.category && input.transactionType) {
-        for (const issue of (0, categoryFields_1.listingAttributeIssues)(input.category, input.transactionType, input.attributes)) {
+        for (const issue of (0, categoryFields_1.listingAttributeIssues)(input.category, input.transactionType, input.attributes, undefined, input.marketId)) {
             // The brokerage-against-price check (no field) is made below with the real total; and Posted by was
             // already reported above with its own wording.
             if (!issue.key)
@@ -48,7 +48,7 @@ function postDetailsIssues(input) {
     else if (input.priceIssue)
         other("price", input.priceIssue, false);
     if (input.transactionType) {
-        const brokerage = (0, categoryFields_1.brokerageFeeIssue)(input.transactionType, input.totalPrice, input.attributes);
+        const brokerage = (0, categoryFields_1.brokerageFeeIssue)(input.transactionType, input.totalPrice, input.attributes, input.marketId);
         if (brokerage)
             other("brokerage", brokerage, false);
     }

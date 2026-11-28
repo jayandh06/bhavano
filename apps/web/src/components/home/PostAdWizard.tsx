@@ -19,6 +19,7 @@ import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPri
 import {
   brokerageFeeNote,
   CATEGORY_FIELD_CONFIG,
+  categoryFieldsFor,
   defaultAttributesFor,
   fieldIsVisible,
   listingCompleteness,
@@ -1667,7 +1668,7 @@ export function PostAdWizard({
   // an area field — see priceMode's own comment.
   const priceUnitAreaField =
     category && (transactionType === "sell" || transactionType === "lease")
-      ? CATEGORY_FIELD_CONFIG[category].find((field) => field.type === "area")
+      ? categoryFieldsFor(category, market.id).find((field) => field.type === "area")
       : undefined;
   const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
   // 0 is a real, submittable price ("Contact for price") for pg/coworking — see
@@ -1684,7 +1685,7 @@ export function PostAdWizard({
       : pricedPerUnit
         ? Math.round(Number(price) * priceArea)
         : Number(price);
-  const brokerageNote = transactionType ? brokerageFeeNote(transactionType, totalPrice, attributes) : null;
+  const brokerageNote = transactionType ? brokerageFeeNote(transactionType, totalPrice, attributes, market.id) : null;
   const priceIssue =
     category && transactionType && price !== "" && (!pricedPerUnit || priceArea > 0)
       ? listingPriceIssue(
@@ -1692,6 +1693,7 @@ export function PostAdWizard({
           transactionType,
           pricedPerUnit ? Math.round(Number(price) * priceArea) : Number(price),
           pricedPerUnit ? { price: Number(price), area: priceArea, unit: currentAreaUnit } : undefined,
+          market.id,
         )
       : null;
   // Everything the BFF would reject on Post ad, checked here instead, in form order, so the
@@ -1729,6 +1731,7 @@ export function PostAdWizard({
     titleMin: TITLE_MIN_LENGTH,
     description,
     descriptionMin: DESCRIPTION_MIN_LENGTH,
+    marketId: market.id,
   });
   // The AI copy helper writes the title and description, so only the other problems stop it.
   const firstOtherIssue = issues.find((issue) => issue.group === "other") ?? null;
@@ -1766,7 +1769,7 @@ export function PostAdWizard({
   function useLastAd() {
     if (!lastAdPreview || !category) return;
     const labels = lastAdPreview.copiedKeys
-      .map((key) => CATEGORY_FIELD_CONFIG[category].find((f) => f.key === key)?.label)
+      .map((key) => categoryFieldsFor(category, market.id).find((f) => f.key === key)?.label)
       .filter((l): l is string => !!l);
     setAttributes(lastAdPreview.attributes);
     setLastAdCopied(labels);

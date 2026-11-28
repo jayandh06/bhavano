@@ -14,18 +14,23 @@ export interface CategoryPriceBounds {
  * app to build category-aware price quick-picks on browse pages. Sale = buy/sell, rental =
  * rent/lease. Tune as real submissions come in. */
 export declare const PRICE_BOUNDS: Record<ListingCategory, CategoryPriceBounds>;
+/** Only the categories the US offers; any other keeps the shared bounds above. */
+export declare const US_PRICE_BOUNDS: Partial<Record<ListingCategory, CategoryPriceBounds>>;
+/** The bounds a price or budget is judged against in a market. */
+export declare function priceBoundsFor(category: ListingCategory, transactionType: TransactionType, marketId?: MarketId): PriceBounds;
 /**
  * Why a listing's price can't be posted, or null. Always judged on the total stored in
  * `Listing.price`, never on a per-unit figure: ₹12,500 per sq ft is a normal house rate, and the
  * ₹1 lakh minimum is for the whole property. When the seller priced per unit, pass what they
  * typed so the message can show the working. Shared by the BFF (the authority) and both post
  * forms, which check before the preview so a seller never learns this after uploading photos.
+ * Bounds and wording follow `marketId` (India when not given).
  */
 export declare function listingPriceIssue(category: ListingCategory, transactionType: TransactionType, total: number, perUnit?: {
     price: number;
     area: number;
     unit: AreaUnit;
-}): string | null;
+}, marketId?: MarketId): string | null;
 /**
  * Why a requirement's budget figure can't be used, or null — the same category/transaction-aware
  * bounds `listingPriceIssue` enforces on a listing's own price, applied to each end of the

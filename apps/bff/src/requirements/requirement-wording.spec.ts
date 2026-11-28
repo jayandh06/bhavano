@@ -67,7 +67,7 @@ describe('requirement wording', () => {
 
   it('explains an out-of-range budget in the market currency', () => {
     expect(requirementBudgetIssue('apartment', 'rent', 7, 'us')).toBe(
-      '$7 is outside the typical range for this category ($1,000 to $1,000,000)',
+      '$7 is outside the typical range for this category ($200 to $100,000)',
     );
     expect(requirementBudgetIssue('apartment', 'rent', 7)).toMatch(/^₹7 is outside the typical range for this category \(₹/);
     expect(requirementBudgetIssue('apartment', 'rent', 20_000, 'us')).toBeNull();

@@ -1,7 +1,7 @@
 import type { ListingCategory, TransactionType } from "./index";
 import type { AreaUnit } from "./areaUnit";
 import { groupInr } from "./priceWords";
-import { isMarketField, type MarketId } from "./market";
+import { formatMoney, isMarketField, MARKETS, type MarketId } from "./market";
 
 export interface FieldOption {
   value: string;
@@ -156,24 +156,24 @@ export function fieldIsVisible(
 }
 
 /** A stored attribute as the listing page prints it: the option's label for a select ("North-East"
- * rather than "north-east"), "Yes"/"No", rupees grouped the Indian way, a unit suffix. Shared by
- * the web and mobile detail pages so they cannot word the same value differently. */
-export function formatFieldValue(field: FieldDef, value: unknown): string {
+ * rather than "north-east"), "Yes"/"No", money in the market's currency and grouping, a unit suffix.
+ * Shared by the web and mobile detail pages so they cannot word the same value differently. */
+export function formatFieldValue(field: FieldDef, value: unknown, marketId: MarketId = "in"): string {
   const labelOf = (item: unknown) => field.options?.find((option) => option.value === item)?.label ?? String(item);
   if (Array.isArray(value)) return value.map(labelOf).join(", ");
   if (value === "yes") return "Yes";
   if (value === "no") return "No";
   if (field.type === "select") return labelOf(value);
   if (field.type === "number" && field.rupees && Number.isFinite(Number(value))) {
-    return `₹${groupInr(Number(value))}`;
+    return formatMoney(marketId, Number(value));
   }
   if (field.type === "number" && field.unit && value !== "" && value !== undefined) return `${value} ${field.unit}`;
   return String(value);
 }
 
-/** The label to show beside `formatFieldValue`'s output — a rupee field drops its "(₹)". */
+/** The label to show beside `formatFieldValue`'s output — a money field drops its "(₹)" or "($)". */
 export function formatFieldLabel(field: FieldDef): string {
-  return field.rupees ? field.label.replace(/\s*\(₹\)/, "") : field.label;
+  return field.rupees ? field.label.replace(/\s*\((?:₹|\$)\)/, "") : field.label;
 }
 
 /** Groups an already-visibility-filtered field list into sections, ordered per
@@ -424,7 +424,7 @@ export function listingAttributeIssues(
   marketId?: MarketId,
 ): AttributeIssue[] {
   const issues: AttributeIssue[] = [];
-  const fields = CATEGORY_FIELD_CONFIG[category];
+  const fields = categoryFieldsFor(category, marketId);
   for (const field of fields) {
     if (!fieldIsVisible(field, transactionType, attributes, marketId)) continue;
     const value = attributes[field.key];
@@ -453,7 +453,7 @@ export function listingAttributeIssues(
     const amount = attributes[amountField.key];
     if (typeof amount !== "string" || amount.trim() === "") issues.push({ key: amountField.key, text: `${amountField.label} is required` });
   }
-  const brokerage = brokerageFeeIssue(transactionType, price, attributes);
+  const brokerage = brokerageFeeIssue(transactionType, price, attributes, marketId);
   if (brokerage) issues.push({ key: null, text: brokerage });
   return issues;
 }
@@ -480,7 +480,7 @@ export function listingCompleteness(
   attributes: Record<string, string | string[]>,
   marketId?: MarketId,
 ): ListingCompleteness {
-  const counted = CATEGORY_FIELD_CONFIG[category].filter((field) => {
+  const counted = categoryFieldsFor(category, marketId).filter((field) => {
     if (field.required || field.defaultValue !== undefined) return false;
     if (!fieldIsVisible(field, transactionType, attributes, marketId)) return false;
     if (field.section === "amenities" || field.section === "furnishing") return false;
@@ -613,11 +613,11 @@ export function normalizeBrokerageAttributes(
   return rest;
 }
 
-/** Whole rupees the fixed brokerage may reach: 5% of the sale price, or 2 months of rent. */
-function brokerageFeeCap(transactionType: TransactionType, price: number): { rupees: number; basis: string } {
+/** The most a fixed brokerage may be, in whole currency units: 5% of the sale price, or 2 months of rent. */
+function brokerageFeeCap(transactionType: TransactionType, price: number): { amount: number; basis: string } {
   return transactionType === "sell"
-    ? { rupees: Math.floor((price * BROKERAGE_SELL_MAX_PERCENT) / 100), basis: `${BROKERAGE_SELL_MAX_PERCENT}% of the price` }
-    : { rupees: price * BROKERAGE_RENT_MAX_MONTHS, basis: `${BROKERAGE_RENT_MAX_MONTHS} months' rent` };
+    ? { amount: Math.floor((price * BROKERAGE_SELL_MAX_PERCENT) / 100), basis: `${BROKERAGE_SELL_MAX_PERCENT}% of the price` }
+    : { amount: price * BROKERAGE_RENT_MAX_MONTHS, basis: `${BROKERAGE_RENT_MAX_MONTHS} months' rent` };
 }
 
 function brokerageUsesFixedAmount(transactionType: TransactionType, attributes: Record<string, unknown>): boolean {
@@ -625,16 +625,17 @@ function brokerageUsesFixedAmount(transactionType: TransactionType, attributes: 
 }
 
 /**
- * Why the brokerage ₹ amount is out of line with the listing's price, or null. Sits on top of the
- * fields' own min/max (which already hold the % to 0.25–5): a sale's fee is ₹1,000 up to 5% of the
- * price, a rent/lease fee up to 2 months' rent. `price` is the listing's total — the monthly rent
- * for rent/lease — and a missing or zero price skips the ceiling. Shared by the forms and the BFF.
- * See docs/plans/residential-rent-buy-details.md.
+ * Why the fixed brokerage amount is out of line with the listing's price, or null. Sits on top of the
+ * fields' own min/max (which already hold the % to 0.25–5): a sale's fee is up to 5% of the price (and
+ * in India at least ₹1,000), a rent/lease fee up to 2 months' rent. `price` is the listing's total —
+ * the monthly rent for rent/lease — and a missing or zero price skips the ceiling. Shared by the forms
+ * and the BFF. See docs/plans/residential-rent-buy-details.md and docs/plans/us-price-limits.md.
  */
 export function brokerageFeeIssue(
   transactionType: TransactionType,
   price: number | null | undefined,
   attributes: Record<string, unknown>,
+  marketId: MarketId = "in",
 ): string | null {
   if (attributes.brokerageFeeApplicable !== "yes" || !brokerageUsesFixedAmount(transactionType, attributes)) {
     return null;
@@ -642,34 +643,37 @@ export function brokerageFeeIssue(
   if (!isFilled(attributes.brokerageFee)) return null;
   const fee = Number(attributes.brokerageFee);
   if (!Number.isFinite(fee)) return null;
-  if (transactionType === "sell" && fee < BROKERAGE_SELL_MIN_RUPEES) {
-    return `Brokerage Fee (₹) must be at least ₹${groupInr(BROKERAGE_SELL_MIN_RUPEES)} on a sale`;
+  const label = `Brokerage Fee (${MARKETS[marketId].currencySymbol})`;
+  // The ₹1,000 floor is an India figure; elsewhere the field's own minimum (above zero) is the only one.
+  if (marketId === "in" && transactionType === "sell" && fee < BROKERAGE_SELL_MIN_RUPEES) {
+    return `${label} must be at least ${formatMoney(marketId, BROKERAGE_SELL_MIN_RUPEES)} on a sale`;
   }
   if (!price || price <= 0) return null;
   const cap = brokerageFeeCap(transactionType, price);
-  return fee > cap.rupees ? `Brokerage Fee (₹) can be at most ₹${groupInr(cap.rupees)} (${cap.basis})` : null;
+  return fee > cap.amount ? `${label} can be at most ${formatMoney(marketId, cap.amount)} (${cap.basis})` : null;
 }
 
 /**
- * A line shown under the brokerage amount while it is being typed: what a % comes to in rupees
- * ("≈ ₹1,30,000 of ₹65,00,000"), or the most a ₹ amount may be. Null with no price to go on.
+ * A line shown under the brokerage amount while it is being typed: what a % comes to in money
+ * ("≈ ₹1,30,000 of ₹65,00,000"), or the most a fixed amount may be. Null with no price to go on.
  */
 export function brokerageFeeNote(
   transactionType: TransactionType,
   price: number | null | undefined,
   attributes: Record<string, unknown>,
+  marketId: MarketId = "in",
 ): { key: string; text: string } | null {
   if (attributes.brokerageFeeApplicable !== "yes" || !price || price <= 0) return null;
   if (brokerageUsesFixedAmount(transactionType, attributes)) {
     const cap = brokerageFeeCap(transactionType, price);
-    return { key: "brokerageFee", text: `Up to ₹${groupInr(cap.rupees)} (${cap.basis})` };
+    return { key: "brokerageFee", text: `Up to ${formatMoney(marketId, cap.amount)} (${cap.basis})` };
   }
   if (attributes.brokerageFeeType !== BROKERAGE_FEE_PERCENT) return null;
   const percent = Number(attributes.brokerageCommissionPercent);
   if (!isFilled(attributes.brokerageCommissionPercent) || !Number.isFinite(percent)) return null;
   return {
     key: "brokerageCommissionPercent",
-    text: `≈ ₹${groupInr((price * percent) / 100)} of ₹${groupInr(price)}`,
+    text: `≈ ${formatMoney(marketId, (price * percent) / 100)} of ${formatMoney(marketId, price)}`,
   };
 }
 
@@ -2115,3 +2119,27 @@ export const AMENITY_KEYS: string[] = [
 export function amenityFieldsFor(category: ListingCategory): FieldDef[] {
   return (CATEGORY_FIELD_CONFIG[category] ?? []).filter((field) => field.section === "amenities");
 }
+
+const marketFields = new Map<string, FieldDef[]>();
+
+/** A money field as a market without rupees words it: its own symbol in the label, and no rupee minimum on the
+ * brokerage amount (anything above zero). Every other field is returned as it is. */
+function inMarketCurrency(field: FieldDef, marketId: MarketId): FieldDef {
+  if (!field.rupees) return field;
+  const label = field.label.split("₹").join(MARKETS[marketId].currencySymbol);
+  return field.key === "brokerageFee" ? { ...field, label, min: 1 } : { ...field, label };
+}
+
+/** `CATEGORY_FIELD_CONFIG` for one market: what a form or a listing page shows and what its checks say. India gets the
+ * config itself. Which fields a market offers is still decided by `fieldIsVisible`. */
+export function categoryFieldsFor(category: ListingCategory, marketId: MarketId = "in"): FieldDef[] {
+  if (marketId === "in") return CATEGORY_FIELD_CONFIG[category];
+  const key = `${marketId}|${category}`;
+  let fields = marketFields.get(key);
+  if (!fields) {
+    fields = CATEGORY_FIELD_CONFIG[category].map((field) => inMarketCurrency(field, marketId));
+    marketFields.set(key, fields);
+  }
+  return fields;
+}
+
