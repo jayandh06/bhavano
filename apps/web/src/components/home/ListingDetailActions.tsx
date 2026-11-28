@@ -13,6 +13,7 @@ import { ownerEnquiryText, whatsAppChatUrl } from "@bhavano/types/whatsapp";
 import { toggleGuestSave, useGuestSaves } from "@/lib/guestSaves";
 import { Icon } from "./Icon";
 import { spell } from "@/lib/marketCopy";
+import { buildMarket } from "@/lib/marketRobots";
 
 export function ListingDetailActions({
   listingId,
@@ -163,7 +164,7 @@ export function ListingDetailActions({
           <button
             onClick={onViewContact}
             disabled={revealPending || unlocking}
-            title={revealMethod === "credit" ? "Uses 1 credit" : revealMethod === "insufficient" ? "Buy credits to unlock" : "Free"}
+            title={revealMethod === "credit" ? "Uses 1 credit" : revealMethod === "insufficient" ? (buildMarket().paymentsEnabled ? "Buy credits to unlock" : "No free reveals left") : "Free"}
             className="flex-1 bg-surface border-[1.5px] border-green rounded-lg py-2.5 text-green cursor-pointer flex flex-col items-center gap-0.5 disabled:opacity-60"
           >
             <Icon name="phone" className="text-[19px]" />

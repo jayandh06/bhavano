@@ -13,6 +13,7 @@ import { Icon } from "./Icon";
 import { WhatsAppIcon } from "./WhatsAppIcon";
 import { OwnerFacebookShare } from "./OwnerFacebookShare";
 import { withBasePath } from "@/lib/basePath";
+import { useMarket } from "@/lib/useMarket";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bhavano.com";
 
@@ -49,6 +50,7 @@ export function OwnerWhatsAppShare({
   variant: "prominent" | "compact";
   referralCode?: string;
 }) {
+  const market = useMarket();
   const code = referralCode ?? listing.viewerReferralCode;
   const url = taggedShareUrl(`${SITE_URL}${buildListingPath(listing)}`, "whatsapp", "owner_share", code);
   const text = `${listing.title}\n${listingPriceText(listing, "compact")} · ${listing.area}, ${listing.cityName}\nPhotos and details on Bhavano — message me there:`;
@@ -161,7 +163,7 @@ export function OwnerWhatsAppShare({
           The poster is a picture, so the link travels in the message beside it. Scan the QR on the poster to open the ad.
         </p>
       </div>
-      {code && (
+      {code && market.paymentsEnabled && (
         <Link href="/referrals" className="text-[12.5px] font-bold text-green self-start">
           How referrals work
         </Link>

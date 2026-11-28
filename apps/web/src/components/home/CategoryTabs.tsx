@@ -12,6 +12,7 @@ import { MegaMenu } from "./MegaMenu";
 import { Icon } from "./Icon";
 import { marketCopy } from "@/lib/marketCopy";
 import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
+import { buildMarket } from "@/lib/marketRobots";
 
 // Market wording (India's strings unchanged): lib/marketCopy.ts.
 const COPY = marketCopy();
@@ -162,16 +163,18 @@ export function CategoryTabs({
             </Link>
           </>
         )}
-        <Link
-          href={plansHref}
-          prefetch={false}
-          className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold whitespace-nowrap ${
-            plansActive ? "bg-green text-on-green border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
-          }`}
-        >
-          <Icon name="sparkles" />
-          Plans
-        </Link>
+        {buildMarket().paymentsEnabled && (
+          <Link
+            href={plansHref}
+            prefetch={false}
+            className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold whitespace-nowrap ${
+              plansActive ? "bg-green text-on-green border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
+            }`}
+          >
+            <Icon name="sparkles" />
+            Plans
+          </Link>
+        )}
       </HorizontalScroller>
 
       {openTabData && (

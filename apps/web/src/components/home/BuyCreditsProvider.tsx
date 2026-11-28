@@ -5,6 +5,7 @@ import { createContactRevealCreditsOrderAction } from "@/app/actions/payments";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { Currency } from "./Currency";
+import { useMarket } from "@/lib/useMarket";
 
 /**
  * One shared "buy contact-reveal credits" modal for the whole app — see
@@ -38,6 +39,7 @@ export function useBuyCredits(): BuyCreditsContextValue {
 }
 
 export function BuyCreditsProvider({ children }: { children: ReactNode }) {
+  const market = useMarket();
   const [open, setOpen] = useState(false);
   const [opts, setOpts] = useState<BuyCreditsOptions>({});
   const [discountCode, setDiscountCode] = useState("");
@@ -114,7 +116,20 @@ export function BuyCreditsProvider({ children }: { children: ReactNode }) {
     <BuyCreditsContext.Provider value={{ buyCredits }}>
       {children}
 
-      {open && (
+      {open && !market.paymentsEnabled && (
+        // Nothing is sold here, so there is no pack to offer: say why the number stayed hidden.
+        <div onClick={close} className="fixed inset-0 bg-[var(--modal-scrim)] z-[110] flex items-center justify-center p-5">
+          <div onClick={(e) => e.stopPropagation()} className="bg-surface rounded-2xl w-[360px] max-w-full p-6">
+            <div className="font-lora font-bold text-[17px] text-text mb-1">No free reveals left</div>
+            <p className="text-[13px] text-muted mb-4 m-0">You&rsquo;ve used your free reveals. You can still send a message on Bhavano.</p>
+            <button onClick={close} className="w-full bg-green text-on-green border-0 rounded-lg py-3 text-sm font-extrabold cursor-pointer">
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {open && market.paymentsEnabled && (
         <div
           onClick={close}
           className="fixed inset-0 bg-[var(--modal-scrim)] z-[110] flex items-center justify-center p-5"

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ContactRevealBalanceDto } from "@bhavano/types";
 import { Icon } from "./Icon";
+import { SERVER_MARKET } from "@/lib/serverMarket";
 
 /** Profile page's glanceable summary of ContactRevealBalanceDto — the "do I need to buy credits
  * before I next try to view a contact" answer, without having to hit "View Contact" on some
@@ -37,12 +38,14 @@ export function ContactRevealBalanceCard({ balance }: { balance: ContactRevealBa
         </div>
       ) : (
         <p className="text-[13px] text-muted m-0 mb-3">
-          No reveals left. Buy a credit pack from any listing&apos;s &ldquo;View Contact&rdquo; button.
+          No reveals left.{SERVER_MARKET.paymentsEnabled ? <> Buy a credit pack from any listing&apos;s &ldquo;View Contact&rdquo; button.</> : null}
         </p>
       )}
-      <Link href="/premium#contact-reveal-credits" className="text-[13px] font-bold text-green inline-block">
-        See pricing →
-      </Link>
+      {SERVER_MARKET.paymentsEnabled && (
+        <Link href="/premium#contact-reveal-credits" className="text-[13px] font-bold text-green inline-block">
+          See pricing →
+        </Link>
+      )}
     </section>
   );
 }

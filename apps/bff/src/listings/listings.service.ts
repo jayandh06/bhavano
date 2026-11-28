@@ -148,6 +148,7 @@ import { assistedClaimCutoff, assistedClaimUrl, maskClaimPhone } from './assiste
 import { isMetaTraffic, sendMetaConversion } from '../ads/meta-capi';
 import { MARKET } from '../market/market-config';
 import { allowsPerUnitPrice, marketDealIssue } from '@bhavano/types/postingRules';
+import { entitlementFor } from '@bhavano/types/market';
 
 /** `create`'s admin-assisted mode — see ListingsService.createAssisted. */
 export interface AssistedCreateOptions {
@@ -2227,7 +2228,7 @@ export class ListingsService {
       where: { id: ownerId },
       select: { agentProUntil: true },
     });
-    const entitlement = resolveVideoEntitlement(owner);
+    const entitlement = entitlementFor(MARKET.id, resolveVideoEntitlement(owner));
     return videos
       .filter((v) => v.durationSec <= entitlement.maxDurationSec)
       .slice(0, entitlement.maxVideos);
@@ -2256,7 +2257,7 @@ export class ListingsService {
       where: { id: ownerId },
       select: { agentProUntil: true },
     });
-    const entitlement = resolveVideoEntitlement(owner, listing);
+    const entitlement = entitlementFor(MARKET.id, resolveVideoEntitlement(owner, listing));
     if (listing.listingVideos.length >= entitlement.maxVideos) {
       throw new BadRequestException(
         entitlement.canUpgradeByBoosting
@@ -2377,7 +2378,7 @@ export class ListingsService {
       where: { id: ownerId },
       select: { agentProUntil: true },
     });
-    const entitlement = resolvePhotoEntitlement(owner, listing);
+    const entitlement = entitlementFor(MARKET.id, resolvePhotoEntitlement(owner, listing));
     if (listing.listingPhotos.length >= entitlement.maxPhotos) {
       throw new BadRequestException(
         entitlement.canUpgradeByBoosting
@@ -4329,10 +4330,10 @@ export class ListingsService {
       photoUpdatedAts: listing.listingPhotos.map((p) => p.updatedAt.getTime()),
       videos,
       photoEntitlement: isOwnerOrAdmin
-        ? resolvePhotoEntitlement(listing.owner, listing)
+        ? entitlementFor(MARKET.id, resolvePhotoEntitlement(listing.owner, listing))
         : undefined,
       videoEntitlement: isOwnerOrAdmin
-        ? resolveVideoEntitlement(listing.owner, listing)
+        ? entitlementFor(MARKET.id, resolveVideoEntitlement(listing.owner, listing))
         : undefined,
       renewCount: listing.listingRenewals.length,
       isOwner,

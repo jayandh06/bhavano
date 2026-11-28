@@ -92,7 +92,11 @@ export function ListingInterestsPanel({
       await load();
     } catch (e) {
       if ((e as { status?: number })?.status === 402) {
-        setError("You have no contact credits. Buy a pack on the Bhavano website (Profile), or make this ad Featured to see every number free.");
+        setError(
+          market.paymentsEnabled
+            ? "You have no contact credits. Buy a pack on the Bhavano website (Profile), or make this ad Featured to see every number free."
+            : "You’ve used your free reveals. You can still message them.",
+        );
       } else {
         setError(e instanceof Error ? e.message : "Couldn't unlock this contact");
       }
@@ -113,6 +117,7 @@ export function ListingInterestsPanel({
     if (!summary) return "Unlock contact";
     if (summary.freeLeadReveals > 0) return "Unlock (free)";
     if (summary.creditsRemaining > 0) return "Unlock · 1 credit";
+    if (!market.paymentsEnabled) return "Unlock contact";
     return `Unlock · ${market.currencySymbol}${summary.creditPackPriceRupees}/${summary.creditPackSize}`;
   };
 

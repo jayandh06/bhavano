@@ -7,6 +7,7 @@ import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { SavedSearchesManager } from "@/components/home/SavedSearchesManager";
+import { SERVER_MARKET } from "@/lib/serverMarket";
 
 export default async function SavedSearchesPage({
   searchParams,
@@ -57,16 +58,22 @@ async function SavedSearchesGate({ accessToken }: { accessToken: string }) {
   if (!allowance.canCreate) {
     return (
       <div className="border border-border rounded-2xl p-6 bg-surface text-center">
-        <p className="text-sm text-text-soft mb-4 m-0">
-          You&apos;ve used your free saved search alerts. Subscribe to Bhavano Plus for unlimited alerts — get
-          notified the moment a matching listing goes up, before anyone else does.
-        </p>
-        <Link
-          href="/premium"
-          className="bg-green text-on-green border-0 rounded-lg px-7 py-3 text-sm font-bold inline-block"
-        >
-          Get Bhavano Plus →
-        </Link>
+        {SERVER_MARKET.paymentsEnabled ? (
+          <>
+            <p className="text-sm text-text-soft mb-4 m-0">
+              You&apos;ve used your free saved search alerts. Subscribe to Bhavano Plus for unlimited alerts — get
+              notified the moment a matching listing goes up, before anyone else does.
+            </p>
+            <Link
+              href="/premium"
+              className="bg-green text-on-green border-0 rounded-lg px-7 py-3 text-sm font-bold inline-block"
+            >
+              Get Bhavano Plus →
+            </Link>
+          </>
+        ) : (
+          <p className="text-sm text-text-soft m-0">You&apos;ve used your free saved search alerts.</p>
+        )}
       </div>
     );
   }

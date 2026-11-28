@@ -16,6 +16,7 @@ import { getAlertPreferencesAction } from "@/app/actions/users";
 import { Icon } from "./Icon";
 import { InstallAppAlertBanner } from "./InstallAppAlertBanner";
 import { AddEmailForAlerts } from "./AddEmailForAlerts";
+import { useMarket } from "@/lib/useMarket";
 
 export interface AlertChannelChoice {
   /** False blocks posting: no channel can reach the owner for this ad and they have not said they will check Messages themselves. */
@@ -35,7 +36,7 @@ const UNAVAILABLE_HINT: Record<OwnerAlertChannel, string> = {
  * ads, so they unlock when a Featured plan is picked on this same page. Pre-filled with the best free channel the owner can be reached on, so it is a
  * confirmation rather than a chore; it only blocks posting when nothing can reach them (a phone-only owner without the app) until they say they will check
  * Messages themselves, add an email, or go Featured. See docs/plans/owner-notification-channel-preferences.md. */
-export function AlertChannelPicker({
+function AlertChannelPickerInner({
   featured,
   featuredSelectable,
   onChange,
@@ -149,3 +150,11 @@ export function AlertChannelPicker({
     </section>
   );
 }
+
+/** Nothing in a market without payments, as in the app: it chooses between channels a Featured ad unlocks. Left
+ * unmounted, it never reports a choice, so posting is not held up by it. */
+export function AlertChannelPicker(props: Parameters<typeof AlertChannelPickerInner>[0]) {
+  if (!useMarket().paymentsEnabled) return null;
+  return <AlertChannelPickerInner {...props} />;
+}
+

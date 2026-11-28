@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { auth } from "@/auth";
@@ -9,6 +10,7 @@ import { PageHeader } from "@/components/home/PageHeader";
 import { PremiumPlansView } from "@/components/home/PremiumPlansView";
 import type { ContactRevealSettingsDto } from "@bhavano/types";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
+import { SERVER_MARKET } from "@/lib/serverMarket";
 
 // Without its own metadata this page inherited the site-wide title and description, so crawlers saw
 // it (and its `?city=` variant) as a duplicate of the homepage. The canonical points the city
@@ -25,6 +27,8 @@ export default async function PremiumPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  // Nothing is sold in this market (the server refuses payments), so there are no plans to show.
+  if (!SERVER_MARKET.paymentsEnabled) redirect("/");
   const sp = await searchParams;
   const citySlug = typeof sp.city === "string" ? sp.city : undefined;
   const [session, { city, cityAreas, allCities }, contactRevealSettings, planPricing] = await Promise.all([

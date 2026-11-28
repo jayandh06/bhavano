@@ -159,10 +159,14 @@ export function SavedSearchesManager({
       {freeRemaining !== undefined && (
         <p className="text-[13px] text-muted m-0">
           {freeRemaining} free alert{freeRemaining === 1 ? "" : "s"} left.{" "}
-          <Link href="/premium" className="font-bold text-green">
-            Get Bhavano Plus
-          </Link>{" "}
-          for unlimited.
+          {buildMarket().paymentsEnabled && (
+            <>
+              <Link href="/premium" className="font-bold text-green">
+                Get Bhavano Plus
+              </Link>{" "}
+              for unlimited.
+            </>
+          )}
         </p>
       )}
 

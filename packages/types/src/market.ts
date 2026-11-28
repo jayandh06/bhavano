@@ -151,6 +151,11 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
   },
 };
 
+/** An upload limit as a market words it: where nothing is sold, no limit says a Featured ad would raise it. */
+export function entitlementFor<T extends { canUpgradeByBoosting: boolean }>(id: MarketId, entitlement: T): T {
+  return MARKETS[id].paymentsEnabled ? entitlement : { ...entitlement, canUpgradeByBoosting: false };
+}
+
 /** The market every existing deployment and every caller that names none uses. */
 export const DEFAULT_MARKET_ID: MarketId = "in";
 

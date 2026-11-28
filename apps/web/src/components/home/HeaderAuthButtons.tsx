@@ -13,6 +13,7 @@ import { GuestSavesSync } from "./GuestSavesSync";
 import { GetAppHeaderQr, GooglePlayHeaderIcon } from "./GooglePlayBadge";
 import { AppStoreHeaderIcon } from "./AppStoreBadge";
 import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
+import { useMarket } from "@/lib/useMarket";
 
 export function HeaderAuthButtons({
   userName,
@@ -88,6 +89,7 @@ const menuItemClass =
   "flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-semibold text-text hover:bg-surface-alt transition-colors duration-100";
 
 function AccountMenu({ userName, cityQuery }: { userName: string; cityQuery: string }) {
+  const market = useMarket();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useClickOutside(ref, () => setOpen(false));
@@ -140,9 +142,11 @@ function AccountMenu({ userName, cityQuery }: { userName: string; cityQuery: str
             <Link href={`/my-requirements${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
               <Icon name="search" className="text-muted" /> My requirements
             </Link>
-            <Link href={`/premium${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
-              <Icon name="featured" className="text-gold" /> Bhavano Plus
-            </Link>
+            {market.paymentsEnabled && (
+              <Link href={`/premium${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
+                <Icon name="featured" className="text-gold" /> Bhavano Plus
+              </Link>
+            )}
             <Link href={`/saved-searches${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
               <Icon name="bell" className="text-muted" /> Saved searches
             </Link>

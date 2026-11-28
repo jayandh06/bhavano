@@ -114,7 +114,7 @@ import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
 import { iosPurchases } from "../../lib/iosPurchasesClient";
 import { IosBoostSheet } from "./IosPurchaseSheets";
 import { useMarket } from "../../lib/market";
-import { marketAreaUnits, type MarketId } from "@bhavano/types/market";
+import { marketAreaUnits, type MarketId, entitlementFor } from "@bhavano/types/market";
 import { AnnualRateInput } from "./AnnualRateInput";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
@@ -335,8 +335,8 @@ export function PostAdWizard({
   // boosted, so only an active Agent Pro subscription can elevate the tier — falls back to the
   // default (unelevated) tier for a logged-out visitor exactly like the website does.
   const videoEntitlement = useMemo(
-    () => resolveVideoEntitlement(profile ?? { agentProUntil: null }),
-    [profile],
+    () => entitlementFor(market.id, resolveVideoEntitlement(profile ?? { agentProUntil: null })),
+    [profile, market.id],
   );
 
   const [step, setStep] = useState<Step>("category");
@@ -2290,23 +2290,25 @@ export function PostAdWizard({
           )}
           {/* An extra, not a restriction: 3-6 photos and a video stay free
             * (docs/plans/featured-ad-benefits-and-media-limits.md). */}
-          <View
-            style={{
-              marginTop: 8,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: colors.gold + "80",
-              backgroundColor: colors.gold + "1A",
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-            }}
-          >
-            <Text style={{ fontSize: 12, fontWeight: "700", color: colors.gold }}>✨ Make it Featured to show more</Text>
-            <Text style={{ fontSize: 12, color: colors.text, marginTop: 2 }}>
-              {photoUris.length >= MAX_PHOTOS ? `You’ve added ${MAX_PHOTOS} photos. ` : ""}
-              Featured ads can have up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos of up to 3 minutes each. You can upgrade right after you post.
-            </Text>
-          </View>
+          {market.paymentsEnabled && (
+            <View
+              style={{
+                marginTop: 8,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: colors.gold + "80",
+                backgroundColor: colors.gold + "1A",
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.gold }}>✨ Make it Featured to show more</Text>
+              <Text style={{ fontSize: 12, color: colors.text, marginTop: 2 }}>
+                {photoUris.length >= MAX_PHOTOS ? `You’ve added ${MAX_PHOTOS} photos. ` : ""}
+                Featured ads can have up to {PHOTO_LIMITS.elevated.maxPhotos} photos and 5 videos of up to 3 minutes each. You can upgrade right after you post.
+              </Text>
+            </View>
+          )}
           {photoUris.length > 0 && (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
               {photoUris.map((uri, i) => (

@@ -343,3 +343,24 @@ Caddy has an optional import hook (`caddy/market-routes/us.caddy.example`); CI b
 **Built 2026-11-26 (market flag):** a small India or US flag sits beside the Bhavano title in the header (`components/home/MarketFlag.tsx`, chosen by the
 build's market), because both sites share `www.bhavano.com`. It is also in the phone's collapsed header bar. For a signed-in user on a phone narrower than
 400px it moves to the corner of the logo, so the title is not cut off.
+
+## Paid offers hidden (built 2026-11-28)
+
+Where `paymentsEnabled` is false (the US), the website, the app and the server offer nothing that is sold, and nothing that
+only a Featured ad would give:
+
+- **Posting:** no Featured plan, Featured step, "Make it Featured" button, photo or video upgrade note, or alert-channel
+  picker (it chooses between channels a Featured ad unlocks). Upload limits are unchanged; the server marks them
+  `canUpgradeByBoosting: false` (`entitlementFor`), so app builds from before this change show no upgrade note either.
+- **Menus and account:** no Plans links, purchase history or referrals. `/premium` redirects to the home page; `/purchases`
+  and `/referrals` redirect to `/profile`.
+- **Featured prompts:** the server returns the Featured prompt settings switched off.
+- **Credits and Plus:** when free contact reveals or saved search alerts run out, the message says so and offers nothing to
+  buy.
+- **Referrals:** no reward is granted and no "someone joined" notice is sent, since the reward is a free Featured ad. Sign-ups
+  are still recorded, so rewards can be decided when payments start.
+
+India is unchanged. Turning `paymentsEnabled` on brings all of it back, apart from rewards for sign-ups that happened while
+it was off.
+
+The US sitemap already leaves `/premium` out; no sitemap or robots change was needed.
