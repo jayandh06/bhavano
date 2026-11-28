@@ -60,7 +60,8 @@ export interface MarketConfig {
     categories: ListingCategory[];
     /** Listing and requirement field keys this market does not offer. The US drops the fields that state a preference for
      * (or against) a kind of tenant: family or bachelor, vegetarians only, gender, food. Those read as discrimination
-     * under the Fair Housing Act. India has none. See docs/plans/us-market-audit-india-assumptions.md (item 13). */
+     * under the Fair Housing Act. It also drops India-only questions (RERA, water source and so on). India has none.
+     * See docs/plans/us-market-audit-india-assumptions.md (item 13) and docs/plans/us-listing-model.md. */
     hiddenFieldKeys: readonly string[];
     /** Search engines may index this market's pages. False until the market is launched. */
     indexable: boolean;

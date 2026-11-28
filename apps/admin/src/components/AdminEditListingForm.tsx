@@ -24,8 +24,8 @@ import { AREA_UNIT_LABELS, areaUnitShortLabel, formatArea, type AreaUnit } from 
 import { TITLE_MAX_LENGTH, TITLE_MIN_LENGTH } from "@bhavano/types/listingLimits";
 import { formatInrWithWords } from "@bhavano/types/priceWords";
 import { clampDigits, DESCRIPTION_MIN_LENGTH } from "@bhavano/types/listingLimits";
-import { POST_CATEGORIES } from "@bhavano/types/postCategories";
-import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
+import { POST_CATEGORIES, marketPostCategoryGroups } from "@bhavano/types/postCategories";
+import { allowsPerUnitPrice, postableTransactionTypes } from "@bhavano/types/postingRules";
 import { setListingStatusAction, updateListingAction } from "@/app/actions/admin";
 import { fetchAreasForCityAction } from "@/app/actions/locations";
 import { useClickOutside } from "@/lib/useClickOutside";
@@ -561,7 +561,7 @@ export function AdminEditListingForm({
 
   function onCategoryChange(value: string) {
     const newCategory = value as ListingCategory;
-    const postable = POSTABLE_TRANSACTION_TYPES[newCategory];
+    const postable = postableTransactionTypes(newCategory, marketId);
     const newTransactionType = postable.includes(transactionType) ? transactionType : postable[0];
     setCategory(newCategory);
     setTransactionType(newTransactionType);
@@ -569,7 +569,7 @@ export function AdminEditListingForm({
     // required keys) — reset to the new category's defaults, same as the posting wizard does on
     // a category change, then prune anything the new transaction type doesn't apply to.
     setAttributes(pruneHiddenAttributes(newCategory, newTransactionType, defaultAttributesFor(newCategory), marketId));
-    const newQualifierOptions = getPriceQualifierOptions(newCategory, newTransactionType);
+    const newQualifierOptions = getPriceQualifierOptions(newCategory, newTransactionType, marketId);
     if (!newQualifierOptions.some((opt) => opt.value === priceQualifier)) {
       setPriceQualifier(newQualifierOptions[0]?.value ?? "");
     }
@@ -584,12 +584,11 @@ export function AdminEditListingForm({
     // Same category, but a field can be transaction-type-gated (field.transactionTypes) — prune
     // whatever no longer applies so the server's assertValidAttributes doesn't reject a stale key.
     setAttributes((prev) => pruneHiddenAttributes(category, newTransactionType, prev, marketId));
-    const newQualifierOptions = getPriceQualifierOptions(category, newTransactionType);
+    const newQualifierOptions = getPriceQualifierOptions(category, newTransactionType, marketId);
     if (!newQualifierOptions.some((opt) => opt.value === priceQualifier)) {
       setPriceQualifier(newQualifierOptions[0]?.value ?? "");
     }
-    // Price-per-unit is sell/lease only.
-    if (newTransactionType !== "sell" && newTransactionType !== "lease") setPriceMode("total");
+    if (!allowsPerUnitPrice(newTransactionType, marketId)) setPriceMode("total");
   }
 
   function onCityChange(newCityId: string) {
@@ -639,7 +638,7 @@ export function AdminEditListingForm({
 
   const priceOnRequestAllowed = PRICE_ON_REQUEST_CATEGORIES.has(category);
   const priceUnitAreaField =
-    transactionType === "sell" || transactionType === "lease"
+    allowsPerUnitPrice(transactionType, marketId)
       ? fieldConfig.find((field) => field.type === "area")
       : undefined;
   const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
@@ -680,7 +679,7 @@ export function AdminEditListingForm({
     pinValid &&
     descriptionIssue === null;
 
-  const priceQualifierOptions = getPriceQualifierOptions(category, transactionType);
+  const priceQualifierOptions = getPriceQualifierOptions(category, transactionType, marketId);
   const priceQualifierChoices = priceQualifierOptions.some((opt) => opt.value === priceQualifier)
     ? priceQualifierOptions
     : [
@@ -736,7 +735,7 @@ export function AdminEditListingForm({
         <div style={{ flex: 1, minWidth: 180, maxWidth: 260 }}>
           <label style={labelStyle}>Category</label>
           <SelectField value={category} onChange={(e) => onCategoryChange(e.target.value)} style={inputStyle}>
-            {POST_CATEGORIES.map((c) => (
+            {(marketId === "in" ? POST_CATEGORIES : marketPostCategoryGroups(marketId).flatMap((g) => g.options)).map((c) => (
               <option key={c.value} value={c.value}>
                 {c.label}
               </option>
@@ -747,7 +746,7 @@ export function AdminEditListingForm({
         <div style={{ flex: 1, minWidth: 160, maxWidth: 220 }}>
           <label style={labelStyle}>Transaction</label>
           <SelectField value={transactionType} onChange={(e) => onTransactionTypeChange(e.target.value)} style={inputStyle}>
-            {POSTABLE_TRANSACTION_TYPES[category].map((t) => (
+            {postableTransactionTypes(category, marketId).map((t) => (
               <option key={t} value={t}>
                 {TRANSACTION_TYPE_LABELS[t]}
               </option>

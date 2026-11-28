@@ -2,6 +2,7 @@ import type { PopularSearchDto } from "@bhavano/types";
 import { isMarketCategory } from "@bhavano/types/market";
 import { fetchPopularSearches } from "@/lib/bff";
 import { buildMarket } from "@/lib/marketRobots";
+import { postableTransactionTypes } from "@bhavano/types/postingRules";
 
 // Only used if the popular-searches query comes back empty for this city (e.g. a freshly-seeded
 // city with no view counts yet) — real data always wins once there's inventory to rank. Built
@@ -13,12 +14,12 @@ function fallbackSearchesFor(cityName: string, cityId?: string): PopularSearchDt
   if (market.id !== "in" && !cityId) return [];
   const all: PopularSearchDto[] = [
     { cityName, category: "house", transactionType: "rent", count: 0 },
-    { cityName, category: "apartment", transactionType: "sell", count: 0 },
+    { cityName, category: market.id === "us" ? "condo" : "apartment", transactionType: "sell", count: 0 },
     { cityName, category: "coworking", transactionType: "rent", count: 0 },
     { cityName, category: "pg", transactionType: "rent", count: 0 },
   ];
   // Only categories the market offers (India offers all of these, so its list is unchanged).
-  return all.filter((s) => isMarketCategory(market.id, s.category));
+  return all.filter((s) => isMarketCategory(market.id, s.category) && postableTransactionTypes(s.category, market.id).includes(s.transactionType));
 }
 
 /** Shared by every page that renders `<Header>`'s search bar with a "Popular searches" section —

@@ -53,7 +53,7 @@ import {
   TITLE_MIN_LENGTH,
 } from "@bhavano/types/listingLimits";
 import { listingPriceIssue } from "@bhavano/types/priceBounds";
-import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
+import { allowsPerUnitPrice, postableTransactionTypes } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { AREA_UNIT_LABELS, areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import { MAX_VIDEO_BYTES, resolveVideoEntitlement } from "@bhavano/types/videoLimits";
@@ -917,15 +917,15 @@ export function PostAdWizard({
     // here, rather than in a useEffect keyed on `category`, since that can't tell "never chosen
     // yet" apart from "explicitly skipped" (BoostPlanSelector's own Skip sets this back to null).
     setSelectedBoostPlan({ duration: 15, includeInstantAlerts: true });
-    const postable = POSTABLE_TRANSACTION_TYPES[next];
+    const postable = postableTransactionTypes(next, market.id);
     // The intent may already be chosen (intent-first), or the category may allow only one thing (PG, plot,
     // interiors), in which case there is nothing left to ask. Otherwise stay on this screen and wait for the
     // intent, with the category highlighted.
     const intent = transactionType && postable.includes(transactionType) ? transactionType : postable.length === 1 ? postable[0] : null;
     if (intent) {
       setTransactionType(intent);
-      setPriceQualifier(getPriceQualifierOptions(next, intent)[0]?.value ?? "");
-      if (intent !== "sell" && intent !== "lease") setPriceMode("total");
+      setPriceQualifier(getPriceQualifierOptions(next, intent, market.id)[0]?.value ?? "");
+      if (!allowsPerUnitPrice(intent, market.id)) setPriceMode("total");
       setStep("details");
     } else {
       setTransactionType(null);
@@ -935,11 +935,11 @@ export function PostAdWizard({
 
   function selectTransactionType(next: TransactionType) {
     setTransactionType(next);
-    setPriceQualifier(category ? getPriceQualifierOptions(category, next)[0]?.value ?? "" : "");
+    setPriceQualifier(category ? getPriceQualifierOptions(category, next, market.id)[0]?.value ?? "" : "");
     // Price-per-unit is sell/lease only — switching to rent must not carry a stale "perUnit"
     // mode forward into a combination the server would reject.
-    if (next !== "sell" && next !== "lease") setPriceMode("total");
-    if (category && POSTABLE_TRANSACTION_TYPES[category].includes(next)) {
+    if (!allowsPerUnitPrice(next, market.id)) setPriceMode("total");
+    if (category && postableTransactionTypes(category, market.id).includes(next)) {
       setStep("details");
     } else if (category) {
       // The chosen category cannot be posted this way (rent a plot): ask again rather than carry it forward.
@@ -1308,7 +1308,7 @@ export function PostAdWizard({
   // "Whole price vs price per unit" is only offered for a sell/lease listing whose category has
   // an area field — see priceMode's own comment.
   const priceUnitAreaField =
-    category && (transactionType === "sell" || transactionType === "lease")
+    category && transactionType && allowsPerUnitPrice(transactionType, market.id)
       ? categoryFieldsFor(category, market.id).find((field) => field.type === "area")
       : undefined;
   const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
@@ -2116,7 +2116,7 @@ export function PostAdWizard({
               <Text style={[styles.groupHeading, { color: colors.textSoft }]}>{group.title.toUpperCase()}</Text>
               {group.options.map((c) => {
                 // With an intent chosen, only the categories that can be posted that way stay available.
-                const available = !transactionType || POSTABLE_TRANSACTION_TYPES[c.value].includes(transactionType);
+                const available = !transactionType || postableTransactionTypes(c.value, market.id).includes(transactionType);
                 return (
                 <Pressable
                   key={c.value}
@@ -2458,7 +2458,7 @@ export function PostAdWizard({
                 )}
                 <Text style={[styles.label, { color: colors.textSoft }]}>Price qualifier *</Text>
                 <View style={styles.chipRow}>
-                  {getPriceQualifierOptions(category, transactionType).map((opt) => (
+                  {getPriceQualifierOptions(category, transactionType, market.id).map((opt) => (
                     <Pressable
                       key={opt.value}
                       onPress={() => setPriceQualifier(opt.value)}

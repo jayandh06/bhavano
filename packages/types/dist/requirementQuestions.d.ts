@@ -50,6 +50,12 @@ export declare const INTENT_CATEGORIES: Record<RequirementIntent, ListingCategor
 /** The "Looking to ..." choices with at least one category in the market (the US has no PG, coworking, furniture or interiors). India gets
  * `REQUIREMENT_INTENTS` itself. */
 export declare function requirementIntentsFor(marketId?: MarketId): typeof REQUIREMENT_INTENTS;
+/** The follow-up question an intent asks in a market, if any. The US never asks "rent or lease": the category decides
+ * (commercial space is leased, everything else rented). */
+export declare function transactionChoicesFor(intent: RequirementIntent, marketId?: MarketId): {
+    value: TransactionType;
+    label: string;
+}[] | undefined;
 /** The categories an intent offers in a market. India (the default) gets `INTENT_CATEGORIES[intent]` itself, unchanged; the US gets its own list. */
 export declare function intentCategories(intent: RequirementIntent, marketId?: MarketId): ListingCategory[];
 export declare const REQUIREMENT_CATEGORY_LABELS: Record<ListingCategory, string>;
@@ -64,10 +70,10 @@ export declare const INTENT_TRANSACTION_CHOICES: Partial<Record<RequirementInten
 export declare function intentOf(category?: ListingCategory, transactionType?: TransactionType): RequirementIntent | undefined;
 /** The criteria after choosing an intent: the transaction type that intent implies, and the
  * category kept only where the new intent still offers it. */
-export declare function applyIntent(intent: RequirementIntent, current: Pick<RequirementCriteria, "category" | "transactionType">): Pick<RequirementCriteria, "category" | "transactionType">;
+export declare function applyIntent(intent: RequirementIntent, current: Pick<RequirementCriteria, "category" | "transactionType">, marketId?: MarketId): Pick<RequirementCriteria, "category" | "transactionType">;
 /** Whether a category can be had on this transaction at all — the posting rules, with `buy`
  * read as `sell`. */
-export declare function isValidRequirementTransaction(category: ListingCategory, transactionType: TransactionType): boolean;
+export declare function isValidRequirementTransaction(category: ListingCategory, transactionType: TransactionType, marketId?: MarketId): boolean;
 export interface RequirementAttributeQuestion {
     key: string;
     label: string;

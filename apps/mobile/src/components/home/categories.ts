@@ -77,20 +77,20 @@ type PropertyOption = HomeTab["subFilter"]["options"][number];
 const option = (value: string, label: string): PropertyOption => ({ value, label });
 const HOUSE = option("house", "House");
 const APARTMENT = option("apartment", "Apartment");
-const CONDO = option("condo", "Condo");
+const CONDO = option("condo", "Condo / Co-op");
 const TOWNHOUSE = option("townhouse", "Townhouse");
-const VILLA = option("villa", "Villa");
 const COMMERCIAL = option("commercial", "Commercial");
 
-/** The US lists: condo, townhouse and room for rent, and no plots, PG or coworking (as on the website). */
+/** The US lists, as on the website (docs/plans/us-listing-model.md): apartments are only rented, and there are no villas, plots, PG or coworking. */
 const US_OPTIONS: Partial<Record<HomeTabValue, PropertyOption[]>> = {
-  buy: [HOUSE, APARTMENT, CONDO, TOWNHOUSE, VILLA, COMMERCIAL],
-  rentLease: [HOUSE, APARTMENT, CONDO, TOWNHOUSE, option("room", "Room for rent"), VILLA, option("storage", "Storage"), COMMERCIAL],
+  buy: [HOUSE, CONDO, TOWNHOUSE, COMMERCIAL],
+  rentLease: [HOUSE, APARTMENT, CONDO, TOWNHOUSE, option("room", "Room for rent"), option("storage", "Storage"), COMMERCIAL],
 };
 
 const US_HOME_TABS: HomeTab[] = HOME_TABS.filter((tab) => tab.value !== "pg" && tab.value !== "coworking").map((tab) => {
   const options = US_OPTIONS[tab.value];
-  return options ? { ...tab, subFilter: { ...tab.subFilter, options } } : tab;
+  const label = tab.value === "rentLease" ? "Rent" : tab.label;
+  return options ? { ...tab, label, subFilter: { ...tab.subFilter, options } } : tab;
 });
 
 /** The market's category tabs. India gets `HOME_TABS` itself. */

@@ -50,13 +50,13 @@ const US_HOME: CategoryPriceBounds = { sale: { min: 40_000, max: 20_000_000 }, r
 export const US_PRICE_BOUNDS: Partial<Record<ListingCategory, CategoryPriceBounds>> = {
   house: US_HOME,
   apartment: US_HOME,
-  villa: US_HOME,
   condo: US_HOME,
   townhouse: US_HOME,
   // Rent-only, so the sale band is never reached.
   room: { sale: US_HOME.sale, rental: { min: 100, max: 50_000 } },
   storage: { sale: { min: 1_000, max: 10_000_000 }, rental: { min: 10, max: 6_000 } },
-  commercial: { sale: { min: 50_000, max: 30_000_000 }, rental: { min: 100, max: 1_000_000 } },
+  // The sale ceiling is the most the price box accepts: whole buildings sell for far more than any average suggests.
+  commercial: { sale: { min: 50_000, max: 200_000_000 }, rental: { min: 100, max: 1_000_000 } },
 };
 
 /** The bounds a price or budget is judged against in a market. */

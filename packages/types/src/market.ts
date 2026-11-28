@@ -62,7 +62,8 @@ export interface MarketConfig {
   categories: ListingCategory[];
   /** Listing and requirement field keys this market does not offer. The US drops the fields that state a preference for
    * (or against) a kind of tenant: family or bachelor, vegetarians only, gender, food. Those read as discrimination
-   * under the Fair Housing Act. India has none. See docs/plans/us-market-audit-india-assumptions.md (item 13). */
+   * under the Fair Housing Act. It also drops India-only questions (RERA, water source and so on). India has none.
+   * See docs/plans/us-market-audit-india-assumptions.md (item 13) and docs/plans/us-listing-model.md. */
   hiddenFieldKeys: readonly string[];
   /** Search engines may index this market's pages. False until the market is launched. */
   indexable: boolean;
@@ -120,11 +121,32 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
     paymentsEnabled: false,
     indiaContent: false,
     contactConsentPreTicked: false,
-    // Starting set plus condo, townhouse and room for rent (docs/plans/us-categories-condo-townhouse-room.md); the wedge decision in the plan may change it.
-    // No PG, coworking, plots or furniture/interiors.
-    categories: ["house", "apartment", "villa", "storage", "commercial", "condo", "townhouse", "room"],
+    // Houses, apartments, condos, townhouses, rooms, storage and commercial space (docs/plans/us-listing-model.md).
+    // No villas, PG, coworking, plots or furniture/interiors.
+    categories: ["house", "apartment", "storage", "commercial", "condo", "townhouse", "room"],
     // The first four are Fair Housing; "entranceFacing" is Vastu (an India convention) and is a required field, so leaving it visible would force every US poster to pick a compass direction.
-    hiddenFieldKeys: ["preferredTenantTypes", "vegetariansOnly", "gender", "foodType", "entranceFacing"],
+    // The rest are questions US listings don't ask (docs/plans/us-listing-model.md): India's RERA register, water source and fire NOC, its ownership and
+    // possession lists, and the brokerage fee fields, whose rules differ by US state and city.
+    hiddenFieldKeys: [
+      "preferredTenantTypes",
+      "vegetariansOnly",
+      "gender",
+      "foodType",
+      "entranceFacing",
+      "reraRegistered",
+      "reraNumber",
+      "waterSource",
+      "gasPipeline",
+      "ownership",
+      "loanAvailable",
+      "possessionStatus",
+      "balconyCount",
+      "fireNoc",
+      "brokerageFeeApplicable",
+      "brokerageFeeType",
+      "brokerageFee",
+      "brokerageCommissionPercent",
+    ],
     indexable: false,
   },
 };

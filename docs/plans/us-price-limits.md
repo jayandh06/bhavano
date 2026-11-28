@@ -48,6 +48,9 @@ lower: [Apartment List](https://www.apartmentlist.com/research/national-rent-dat
 [StorageCafe unit prices](https://www.storagecafe.com/storage-unit-prices/),
 [Realmo Q3 2026](https://realmo.com/files/realmo-q3-2026-market-report.pdf).
 
+**Changed later by [us-listing-model.md](us-listing-model.md) phase 1:** villa is no longer a US category, apartments are
+only rented, and the commercial sale maximum is $200,000,000.
+
 ## Dollars in the same screens
 
 | Where | Before, on the US | Now |

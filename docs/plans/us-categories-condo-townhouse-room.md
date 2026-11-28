@@ -1,5 +1,8 @@
 # US categories: Condo, Townhouse and Room for rent
 
+> The US deal types, categories and menus described here were changed by [us-listing-model.md](us-listing-model.md)
+> (2026-11-28): no villas, apartments for rent only, "lease" for commercial space only, and "Condo / Co-op".
+
 ## Status: built 2026-11-26 (not yet deployed or exercised in a running US app)
 
 Part of [us-market-expansion.md](us-market-expansion.md). The owner asked to add three listing categories that exist in the US market and not in India's set (house, apartment, villa, PG, storage, coworking, furniture, interiors, plot, commercial). The

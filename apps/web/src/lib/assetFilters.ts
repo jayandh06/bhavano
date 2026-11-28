@@ -2,6 +2,8 @@ import type { ListingCategory } from "@bhavano/types";
 import type { HomeTabValue } from "./homeCategories";
 import { CATEGORY_LABELS, categoryGroupsFor, segmentsForHomeCategory } from "./seoRoute";
 import { amenityFieldsFor, CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
+import { isMarketCategory } from "@bhavano/types/market";
+import { buildMarket } from "./marketRobots";
 
 /**
  * Which attribute filters a given asset type has, derived from `CATEGORY_FIELD_CONFIG` rather
@@ -125,7 +127,9 @@ export function assetsForIntent(intent: HomeTabValue): ListingCategory[] {
   }
   return (Object.keys(CATEGORY_LABELS) as ListingCategory[]).filter(
     (category) =>
-      !SELF_INTENT_CATEGORIES.includes(category) && categoryGroupsFor(category).includes(transactionGroup),
+      !SELF_INTENT_CATEGORIES.includes(category) &&
+      (buildMarket().id === "in" || isMarketCategory(buildMarket().id, category)) &&
+      categoryGroupsFor(category).includes(transactionGroup),
   );
 }
 
