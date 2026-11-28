@@ -158,3 +158,7 @@ The US admin reads only the US database, so it holds no visits to the India site
 Not changed: rows recorded before the fix keep India's address (the real one was never stored), and the US server has no
 GeoIP database, so city and country stay blank.
 
+Deployed 2026-11-28 07:32 UTC (pull request 120, image `sha-76307221`: US `web` and `admin`). A test visit through
+`www.bhavano.com/us` straight after recorded the caller's own address, not India's server. The US admin screens were not
+viewed.
+
