@@ -222,8 +222,8 @@ export class RequirementsService {
     }
     if (category && transactionType) {
       const budgetIssue =
-        (dto.minPrice != null && requirementBudgetIssue(category, transactionType, dto.minPrice)) ||
-        (dto.maxPrice != null && requirementBudgetIssue(category, transactionType, dto.maxPrice));
+        (dto.minPrice != null && requirementBudgetIssue(category, transactionType, dto.minPrice, MARKET.id)) ||
+        (dto.maxPrice != null && requirementBudgetIssue(category, transactionType, dto.maxPrice, MARKET.id));
       if (budgetIssue) throw new BadRequestException(budgetIssue);
     }
     const attributes = category && dto.attributes
@@ -248,10 +248,12 @@ export class RequirementsService {
 
     const names = await this.prisma.area.findMany({ where: { id: { in: areaIds } }, select: { id: true, name: true } });
     const nameById = new Map(names.map((area) => [area.id, area.name]));
-    const searchLabel = formatRequirementLabel(criteria, {
-      cityName: city.name,
-      areaNames: areaIds.map((id) => nameById.get(id)).filter((name): name is string => Boolean(name)),
-    });
+    const searchLabel = formatRequirementLabel(
+      criteria,
+      { cityName: city.name, areaNames: areaIds.map((id) => nameById.get(id)).filter((name): name is string => Boolean(name)) },
+      undefined,
+      MARKET.id,
+    );
 
     const savedSearchId = await this.tryCreateAlert(userId, { ...dto, searchLabel, areaIds, bedroomOptions });
 
@@ -422,8 +424,8 @@ export class RequirementsService {
     // row already has a bad value stored (e.g. one saved before this check existed).
     if (category && transactionType) {
       const budgetIssue =
-        (dto.minPrice != null && requirementBudgetIssue(category, transactionType, dto.minPrice)) ||
-        (dto.maxPrice != null && requirementBudgetIssue(category, transactionType, dto.maxPrice));
+        (dto.minPrice != null && requirementBudgetIssue(category, transactionType, dto.minPrice, MARKET.id)) ||
+        (dto.maxPrice != null && requirementBudgetIssue(category, transactionType, dto.maxPrice, MARKET.id));
       if (budgetIssue) throw new BadRequestException(budgetIssue);
     }
 
@@ -459,10 +461,12 @@ export class RequirementsService {
       throw new BadRequestException(`Add ${describeRequirementGaps(missing)} first`);
     }
     const names = await areaNamesFor(this.prisma, [{ ...existing, areaIds }]);
-    const searchLabel = formatRequirementLabel(criteria, {
-      cityName: city?.name,
-      areaNames: areaIds.map((areaId) => names.get(areaId)).filter((name): name is string => Boolean(name)),
-    });
+    const searchLabel = formatRequirementLabel(
+      criteria,
+      { cityName: city?.name, areaNames: areaIds.map((areaId) => names.get(areaId)).filter((name): name is string => Boolean(name)) },
+      undefined,
+      MARKET.id,
+    );
 
     const row = await this.prisma.requirement.update({
       where: { id },

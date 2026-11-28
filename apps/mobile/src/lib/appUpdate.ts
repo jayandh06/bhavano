@@ -1,4 +1,6 @@
 import { isBelowMinAppVersion, type AppVersionSettingsDto } from "@bhavano/types/appVersion";
+import { isUsPhone } from "./deviceRegion";
+import { isMarketOffered } from "./marketState";
 
 export const ANDROID_PACKAGE = "com.finfolia.bhavano";
 export const IOS_APP_ID = "6811878602";
@@ -8,9 +10,17 @@ export const IOS_APP_ID = "6811878602";
 export const STORE_URLS = {
   android: `market://details?id=${ANDROID_PACKAGE}`,
   androidWeb: `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}`,
-  // India storefront and slug: without a country the App Store says the page cannot be found.
-  ios: `https://apps.apple.com/in/app/bhavano/id${IOS_APP_ID}`,
 } as const;
+
+/**
+ * The App Store page the iPhone Update button opens. It must name a country that lists the app (without one the App Store says the page cannot be
+ * found), and it is chosen by how the phone is set up, not by the market picked in the app, because the phone's Apple account decides which store
+ * can serve it. The US page only works once the app is listed there, so only a build that offers the US asks for it.
+ */
+export function iosStoreUrl(): string {
+  const country = isMarketOffered("us") && isUsPhone() ? "us" : "in";
+  return `https://apps.apple.com/${country}/app/bhavano/id${IOS_APP_ID}`;
+}
 
 export interface UpdateRequirement {
   required: boolean;

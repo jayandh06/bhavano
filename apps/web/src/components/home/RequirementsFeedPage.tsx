@@ -21,9 +21,10 @@ import {
   REQUIREMENT_BEDROOM_OPTIONS,
   REQUIREMENT_CATEGORY_LABELS,
   REQUIREMENT_INTENTS,
+  requirementIntentsFor,
   amenityOptionsFor,
   budgetPresetsFor,
-  formatCompactInr,
+  formatCompactMoney,
   sizeQuestionFor,
   type RequirementIntent,
 } from "@bhavano/types/requirementQuestions";
@@ -37,6 +38,7 @@ import { RequireLoginPrompt } from "./RequireLoginPrompt";
 import { RequirementsRoleQuestion } from "./RequirementsRoleQuestion";
 import { SERVER_MARKET } from "@/lib/serverMarket";
 import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
+import { bedWord } from "@bhavano/types/bedrooms";
 import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -107,9 +109,10 @@ function postedAgo(iso: string): string {
 
 function budgetText(card: RequirementFeedCardDto): string | null {
   const { minPrice, maxPrice } = card;
-  if (minPrice && maxPrice) return `${formatCompactInr(minPrice)}–${formatCompactInr(maxPrice)} ${card.budgetUnit}`;
-  if (maxPrice) return `Up to ${formatCompactInr(maxPrice)} ${card.budgetUnit}`;
-  if (minPrice) return `From ${formatCompactInr(minPrice)} ${card.budgetUnit}`;
+  const money = (amount: number) => formatCompactMoney(amount, SERVER_MARKET.id);
+  if (minPrice && maxPrice) return `${money(minPrice)}–${money(maxPrice)} ${card.budgetUnit}`;
+  if (maxPrice) return `Up to ${money(maxPrice)} ${card.budgetUnit}`;
+  if (minPrice) return `From ${money(minPrice)} ${card.budgetUnit}`;
   return null;
 }
 
@@ -271,7 +274,7 @@ function FeedFilters({
   const categories = intent ? INTENT_CATEGORIES[intent] : [];
   const category = filters.category ?? (categories.length === 1 ? categories[0] : undefined);
   const showBudget = Boolean(intent && (!transactionChoices || filters.transactionType));
-  const size = category ? sizeQuestionFor(category) : undefined;
+  const size = category ? sizeQuestionFor(category, SERVER_MARKET.id) : undefined;
   const questions = category
     ? requirementQuestionsFor(category, SERVER_MARKET.id).filter((q) => !q.transactionTypes || (transaction && q.transactionTypes.includes(transaction)))
     : [];
@@ -325,7 +328,7 @@ function FeedFilters({
         <Chip href={href(withIntent(filters, undefined))} active={!intent}>
           Any
         </Chip>
-        {REQUIREMENT_INTENTS.map((i) => (
+        {requirementIntentsFor(SERVER_MARKET.id).map((i) => (
           <Chip key={i.value} href={href(withIntent(filters, i.value))} active={intent === i.value}>
             {i.label} ({feed.facets.intents[i.value] ?? 0})
           </Chip>
@@ -359,8 +362,8 @@ function FeedFilters({
       )}
 
       {showBudget && (
-        <FilterGroup title={`Budget (${budgetPresetsFor(category, transaction).unit})`}>
-          {budgetPresetsFor(category, transaction).presets.map((p) => {
+        <FilterGroup title={`Budget (${budgetPresetsFor(category, transaction, SERVER_MARKET.id).unit})`}>
+          {budgetPresetsFor(category, transaction, SERVER_MARKET.id).presets.map((p) => {
             const active = filters.minBudget === p.min && filters.maxBudget === p.max;
             return (
               <Chip
@@ -376,10 +379,10 @@ function FeedFilters({
       )}
 
       {size?.kind === "bedrooms" && (
-        <FilterGroup title="BHK">
+        <FilterGroup title={SERVER_MARKET.id === "us" ? "Bedrooms" : "BHK"}>
           {REQUIREMENT_BEDROOM_OPTIONS.map((n) => (
             <Chip key={n} href={href({ ...filters, bedrooms: toggle(filters.bedrooms, n) })} active={Boolean(filters.bedrooms?.includes(n))}>
-              {bedroomLabel(n)} BHK
+              {bedroomLabel(n)} {bedWord(SERVER_MARKET.id)}
             </Chip>
           ))}
         </FilterGroup>
@@ -534,7 +537,7 @@ function FeedResults({
 
 function FeedCard({ card }: { card: RequirementFeedCardDto }) {
   const facts = [
-    card.bedroomOptions.length ? `${card.bedroomOptions.map(bedroomLabel).join(", ")} BHK` : null,
+    card.bedroomOptions.length ? `${card.bedroomOptions.map(bedroomLabel).join(", ")} ${bedWord(SERVER_MARKET.id)}` : null,
     budgetText(card),
     sizeText(card),
     moveInText(card.moveInBy),

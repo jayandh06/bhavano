@@ -243,8 +243,8 @@ export function RequirementRefineWizard({
   // canContinue can block on it too, not only show the warning text.
   const budgetIssue =
     draft.category && draft.transactionType
-      ? (parseAmount(budgetMin) !== undefined && requirementBudgetIssue(draft.category, draft.transactionType, parseAmount(budgetMin)!)) ||
-        (parseAmount(budgetMax) !== undefined && requirementBudgetIssue(draft.category, draft.transactionType, parseAmount(budgetMax)!)) ||
+      ? (parseAmount(budgetMin) !== undefined && requirementBudgetIssue(draft.category, draft.transactionType, parseAmount(budgetMin)!, market.id)) ||
+        (parseAmount(budgetMax) !== undefined && requirementBudgetIssue(draft.category, draft.transactionType, parseAmount(budgetMax)!, market.id)) ||
         null
       : null;
   const canContinue = stepKey === "review" || (canLeaveStep(stepKey, draft) && !(stepKey === "budget" && budgetIssue));
@@ -313,7 +313,7 @@ export function RequirementRefineWizard({
   function criteriaAnswers(): RequirementAnswers {
     const details = detailsPatch();
     const budget = budgetPatch();
-    const size = draft.category ? sizeQuestionFor(draft.category) : undefined;
+    const size = draft.category ? sizeQuestionFor(draft.category, market.id) : undefined;
     return {
       cityId: draft.cityId ?? "",
       category: draft.category,
@@ -466,7 +466,7 @@ export function RequirementRefineWizard({
 
   function renderDetails() {
     if (!draft.category) return null;
-    const size = sizeQuestionFor(draft.category);
+    const size = sizeQuestionFor(draft.category, market.id);
     const questions = requirementQuestionsFor(draft.category, market.id).filter(
       (q) => !q.transactionTypes || (draft.transactionType && q.transactionTypes.includes(draft.transactionType)),
     );
@@ -755,7 +755,12 @@ export function RequirementRefineWizard({
   }
 
   function renderReview() {
-    const label = formatRequirementLabel(criteriaAnswers(), { cityName: current.cityName, areaNames: selectedAreaNames.filter(Boolean) });
+    const label = formatRequirementLabel(
+      criteriaAnswers(),
+      { cityName: current.cityName, areaNames: selectedAreaNames.filter(Boolean) },
+      undefined,
+      market.id,
+    );
     return (
       <View style={{ gap: 14 }}>
         <View style={[styles.labelBox, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>

@@ -5,13 +5,13 @@ import Constants from "expo-constants";
 import { useQuery } from "@tanstack/react-query";
 import { useAppTheme } from "../theme/ThemeContext";
 import { fetchAppVersionSettings } from "../lib/bffClient";
-import { STORE_URLS, updateRequirement } from "../lib/appUpdate";
+import { STORE_URLS, iosStoreUrl, updateRequirement } from "../lib/appUpdate";
 
 const DEFAULT_MESSAGE = "A newer version of Bhavano is available. Please update to keep using the app.";
 
 async function openStore() {
   if (Platform.OS === "ios") {
-    await Linking.openURL(STORE_URLS.ios);
+    await Linking.openURL(iosStoreUrl());
     return;
   }
   // market:// opens the Play Store app straight to the listing; if nothing handles it, the web page.

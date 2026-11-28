@@ -1,9 +1,9 @@
 import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, TransactionType } from "./index";
 import { CATEGORY_FIELD_CONFIG, amenityFieldsFor, type FieldOption } from "./categoryFields";
 import { POSTABLE_TRANSACTION_TYPES } from "./postingRules";
-import { MAX_BEDROOMS, bedroomLabel } from "./bedrooms";
+import { MAX_BEDROOMS, bedWord, bedroomLabel } from "./bedrooms";
 import { convertArea, formatArea, type AreaUnit } from "./areaUnit";
-import { isMarketCategory, isMarketField, type MarketId } from "./market";
+import { MARKETS, formatMoney, isMarketCategory, isMarketField, type MarketId } from "./market";
 
 /**
  * The questions asked after "Yes, find this for me", and the vocabulary a refined requirement is
@@ -78,6 +78,13 @@ const US_INTENT_CATEGORIES: Partial<Record<RequirementIntent, ListingCategory[]>
   buy: ["house", "apartment", "condo", "townhouse", "villa", "commercial"],
   rentLease: ["house", "apartment", "condo", "townhouse", "room", "villa", "commercial", "storage"],
 };
+
+/** The "Looking to ..." choices with at least one category in the market (the US has no PG, coworking, furniture or interiors). India gets
+ * `REQUIREMENT_INTENTS` itself. */
+export function requirementIntentsFor(marketId: MarketId = "in"): typeof REQUIREMENT_INTENTS {
+  if (marketId === "in") return REQUIREMENT_INTENTS;
+  return REQUIREMENT_INTENTS.filter((intent) => intentCategories(intent.value, marketId).length > 0);
+}
 
 /** The categories an intent offers in a market. India (the default) gets `INTENT_CATEGORIES[intent]` itself, unchanged; the US gets its own list. */
 export function intentCategories(intent: RequirementIntent, marketId: MarketId = "in"): ListingCategory[] {
@@ -216,8 +223,14 @@ export type RequirementSizeQuestion =
   | { kind: "bedrooms"; label: string }
   | { kind: "area"; label: string; units: AreaUnit[] };
 
-/** The size question, when a category has one: BHK for homes, a floor/land area range otherwise. */
-export function sizeQuestionFor(category: ListingCategory): RequirementSizeQuestion | undefined {
+/** The size question, when a category has one: bedrooms for homes, a floor/land area range otherwise, in the market's area units. */
+export function sizeQuestionFor(category: ListingCategory, marketId: MarketId = "in"): RequirementSizeQuestion | undefined {
+  const size = anySizeQuestionFor(category);
+  if (marketId === "in" || size?.kind !== "area") return size;
+  return { ...size, units: size.units.filter((unit) => MARKETS[marketId].areaUnits.includes(unit)) };
+}
+
+function anySizeQuestionFor(category: ListingCategory): RequirementSizeQuestion | undefined {
   switch (category) {
     case "house":
     case "apartment":
@@ -316,6 +329,16 @@ export function formatCompactInr(amount: number): string {
   return `₹${Math.round(amount)}`;
 }
 
+/** A short amount for chips and labels in a market's money: "₹1.5L" in India, "$25k" or "$1.25M" in the US. */
+export function formatCompactMoney(amount: number, marketId: MarketId = "in"): string {
+  if (marketId === "in") return formatCompactInr(amount);
+  // Cut to two decimals, never rounded up, as the Indian short forms are.
+  const trim = (n: number) => String(Math.floor(n * 100 + 1e-9) / 100);
+  if (amount >= 1_000_000) return `${MARKETS[marketId].currencySymbol}${trim(amount / 1_000_000)}M`;
+  if (amount >= 1_000) return `${MARKETS[marketId].currencySymbol}${trim(amount / 1_000)}k`;
+  return formatMoney(marketId, amount);
+}
+
 function presets(bounds: number[]): BudgetPreset[] {
   const out: BudgetPreset[] = [{ label: `Under ${formatCompactInr(bounds[0])}`, max: bounds[0] }];
   for (let i = 0; i < bounds.length - 1; i++) {
@@ -333,14 +356,25 @@ const HOME_SALE = [3_000_000, 6_000_000, 10_000_000, 20_000_000, 50_000_000];
 const HOME_RENT = [10_000, 20_000, 35_000, 60_000, 100_000];
 const HOME_LEASE = [500_000, 1_000_000, 2_000_000];
 
+/** The budget bands to offer in a market, and the unit amounts are in. India's bands are rupee amounts and no dollar ones have been chosen,
+ * so elsewhere there are none: the seeker types the numbers. */
+export function budgetPresetsFor(
+  category: ListingCategory | undefined,
+  transactionType: TransactionType | undefined,
+  marketId: MarketId = "in",
+): { unit: string; presets: BudgetPreset[] } {
+  const india = indiaBudgetPresetsFor(category, transactionType);
+  return marketId === "in" ? india : { unit: india.unit, presets: [] };
+}
+
 /**
- * Preset budget bands for a category and transaction, and the unit they are in.
+ * India's preset budget bands for a category and transaction, and the unit they are in.
  *
  * A starting guess for Tier-1/2 cities, kept here so both apps get the same bands and they can be
  * tuned in one place. Without a category the unit is still right (rent is monthly, a sale is a
  * total), so the bands fall back to the home ones.
  */
-export function budgetPresetsFor(
+function indiaBudgetPresetsFor(
   category: ListingCategory | undefined,
   transactionType: TransactionType | undefined,
 ): { unit: string; presets: BudgetPreset[] } {
@@ -535,35 +569,36 @@ function optionLabel(category: ListingCategory, key: string, value: string): str
   return q?.options.find((o) => o.value === value)?.label ?? value;
 }
 
-function transactionPhrase(transactionType?: TransactionType): string {
+function transactionPhrase(transactionType: TransactionType | undefined, marketId: MarketId): string {
   if (transactionType === "buy" || transactionType === "sell") return "to buy";
   if (transactionType === "rent") return "for rent";
-  if (transactionType === "lease") return "on lease";
+  if (transactionType === "lease") return marketId === "us" ? "for lease" : "on lease";
   return "";
 }
 
-function budgetPhrase(c: RequirementCriteria): string | undefined {
+function budgetPhrase(c: RequirementCriteria, marketId: MarketId): string | undefined {
+  const money = (amount: number) => formatCompactMoney(amount, marketId);
   if (c.minPrice === undefined && c.maxPrice === undefined) return undefined;
   const range =
     c.minPrice !== undefined && c.maxPrice !== undefined
-      ? `${formatCompactInr(c.minPrice)}–${formatCompactInr(c.maxPrice).slice(1)}`
+      ? `${money(c.minPrice)}–${money(c.maxPrice).slice(1)}`
       : c.maxPrice !== undefined
-        ? `up to ${formatCompactInr(c.maxPrice)}`
-        : `${formatCompactInr(c.minPrice!)}+`;
+        ? `up to ${money(c.maxPrice)}`
+        : `${money(c.minPrice!)}+`;
   const monthly = c.transactionType === "rent" || c.category === "pg";
   return monthly ? `${range}/month` : c.transactionType === "lease" ? `${range} lease` : range;
 }
 
-function sizePhrase(c: RequirementCriteria): string | undefined {
+function sizePhrase(c: RequirementCriteria, marketId: MarketId): string | undefined {
   if (c.minAreaSqft === undefined && c.maxAreaSqft === undefined) return undefined;
   const unit = c.areaUnit ?? "sqft";
-  const show = (sqft: number) => formatArea(Math.round(convertArea(sqft, "sqft", unit) * 100) / 100, unit);
+  const show = (sqft: number) => formatArea(Math.round(convertArea(sqft, "sqft", unit) * 100) / 100, unit, marketId);
   if (c.minAreaSqft !== undefined && c.maxAreaSqft !== undefined) return `${show(c.minAreaSqft)} – ${show(c.maxAreaSqft)}`;
   return c.maxAreaSqft !== undefined ? `up to ${show(c.maxAreaSqft)}` : `from ${show(c.minAreaSqft!)}`;
 }
 
-function subjectPhrase(c: RequirementCriteria): string {
-  const txn = transactionPhrase(c.transactionType);
+function subjectPhrase(c: RequirementCriteria, marketId: MarketId): string {
+  const txn = transactionPhrase(c.transactionType, marketId);
   const attr = (key: string) => (c.category ? (c.attributes?.[key] ?? []).map((v) => optionLabel(c.category!, key, v)) : []);
 
   switch (c.category) {
@@ -584,7 +619,7 @@ function subjectPhrase(c: RequirementCriteria): string {
     }
     default: {
       const bhk = c.bedroomOptions?.length
-        ? `${joinOr([...c.bedroomOptions].sort((a, b) => a - b).map(bedroomLabel))} BHK`
+        ? `${joinOr([...c.bedroomOptions].sort((a, b) => a - b).map(bedroomLabel))} ${bedWord(marketId)}`
         : "";
       const furnished = joinOr(attr("furnished").map((f) => f.toLowerCase()));
       const noun =
@@ -620,6 +655,7 @@ export function formatRequirementLabel(
   c: RequirementCriteria,
   names: { cityName?: string; areaNames?: string[] },
   omit?: { budget?: boolean; size?: boolean; amenities?: boolean },
+  marketId: MarketId = "in",
 ): string {
   const where = names.areaNames?.length
     ? ` in ${joinOr(names.areaNames)}${names.cityName ? `, ${names.cityName}` : ""}`
@@ -627,15 +663,15 @@ export function formatRequirementLabel(
       ? ` in ${names.cityName}`
       : "";
   const extras = [
-    omit?.budget ? undefined : budgetPhrase(c),
-    omit?.size ? undefined : sizePhrase(c),
+    omit?.budget ? undefined : budgetPhrase(c, marketId),
+    omit?.size ? undefined : sizePhrase(c, marketId),
     !omit?.amenities && c.category && c.attributes?.amenities?.length
       ? c.attributes.amenities.map((a) => amenityOptionsFor(c.category!).find((o) => o.value === a)?.label.toLowerCase() ?? a).join(", ")
       : undefined,
   ].filter(Boolean);
   const missing = missingForLead(c);
   const gap = missing.length ? ` — ${joinAnd(missing.map((m) => REQUIREMENT_GAP_LABELS[m]))} not specified` : "";
-  const label = `${subjectPhrase(c)}${where}${extras.length ? ` · ${extras.join(" · ")}` : ""}${gap}`;
+  const label = `${subjectPhrase(c, marketId)}${where}${extras.length ? ` · ${extras.join(" · ")}` : ""}${gap}`;
   return label.length > 200 ? `${label.slice(0, 199)}…` : label;
 }
 

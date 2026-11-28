@@ -11,6 +11,7 @@ import { RequirementCityPicker, type PickedCity } from "./RequirementCityPicker"
 import { RequirementRefineDialog } from "./RequirementRefineDialog";
 import type { RequirementWizardSubject } from "./RequirementRefineWizard";
 import { marketCopy } from "@/lib/marketCopy";
+import { useMarket } from "@/lib/useMarket";
 
 // Market wording (India's strings unchanged): lib/marketCopy.ts.
 const COPY = marketCopy();
@@ -54,6 +55,7 @@ export function RequirementPrompt({
   variant?: "empty" | "inline";
 }) {
   const { requireLogin } = useAuthGate();
+  const market = useMarket();
   const [state, setState] = useState<"idle" | "checking" | "done">("idle");
   const [saved, setSaved] = useState<RequirementDto | null>(null);
   /** The questions for whatever the search didn't answer. "Rent 2 BHK Houses in Bengaluru" is too
@@ -74,7 +76,8 @@ export function RequirementPrompt({
   const needsCity = !criteria.cityId;
   const [city, setCity] = useState<PickedCity | undefined>(undefined);
   const cityId = criteria.cityId ?? city?.id;
-  const shownLabel = needsCity && city ? formatRequirementLabel({ ...criteria, cityId: city.id }, { cityName: city.name }) : label;
+  const shownLabel =
+    needsCity && city ? formatRequirementLabel({ ...criteria, cityId: city.id }, { cityName: city.name }, undefined, market.id) : label;
 
   /** Login comes before the questions, not after them: Google sign-in is a full-page redirect,
    * which would throw away every answer given so far. */

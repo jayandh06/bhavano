@@ -1,7 +1,8 @@
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { useMarket } from "../../lib/market";
 
-const PLACEHOLDER = "2BHK in Koramangala, sofa set…";
+const PLACEHOLDERS = { in: "2BHK in Koramangala, sofa set…", us: "2 bed apartment in Austin…" };
 
 /** The header's search field. The hint is drawn as an ordinary <Text> laid over the input while
  * it's empty, not through TextInput's own `placeholder` prop.
@@ -24,6 +25,7 @@ export function HeaderSearchInput({
   paddingVertical: number;
 }) {
   const { colors } = useAppTheme();
+  const market = useMarket();
   return (
     <View style={styles.wrap}>
       <TextInput
@@ -36,7 +38,7 @@ export function HeaderSearchInput({
       {value.length === 0 && (
         <View pointerEvents="none" style={styles.hintWrap}>
           <Text numberOfLines={1} style={[styles.hint, { color: colors.muted }]}>
-            {PLACEHOLDER}
+            {PLACEHOLDERS[market.id]}
           </Text>
         </View>
       )}

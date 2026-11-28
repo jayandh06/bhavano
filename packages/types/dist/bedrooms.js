@@ -2,10 +2,15 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MAX_BEDROOMS = void 0;
 exports.bedroomLabel = bedroomLabel;
+exports.bedWord = bedWord;
 exports.MAX_BEDROOMS = 5;
 /** The backend's bedroom filter treats the top bucket as "N or more" (see
  * ListingsService.list()), so the top bucket is genuinely 5-or-more listings, not exactly 5 —
  * label it "5+" everywhere rather than implying an exact count. */
 function bedroomLabel(n) {
     return n >= exports.MAX_BEDROOMS ? `${exports.MAX_BEDROOMS}+` : String(n);
+}
+/** "BHK" in India, "bed" in the US. */
+function bedWord(marketId = "in") {
+    return marketId === "us" ? "bed" : "BHK";
 }

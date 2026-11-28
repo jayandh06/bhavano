@@ -2,6 +2,7 @@ import type { ListingCategory, TransactionType } from "./index";
 import { areaUnitShortLabel, type AreaUnit } from "./areaUnit";
 import { PRICE_ON_REQUEST_CATEGORIES } from "./priceQualifiers";
 import { formatInrWithWords, groupInr } from "./priceWords";
+import { formatMoney, type MarketId } from "./market";
 
 export interface PriceBounds {
   min: number;
@@ -76,9 +77,18 @@ export function listingPriceIssue(
  * budget at all — this used to be a floor-only check for exactly that reason (a ceiling didn't
  * matter when budget was optional either way), until budget became required.
  */
-export function requirementBudgetIssue(category: ListingCategory, transactionType: TransactionType, value: number): string | null {
+export function requirementBudgetIssue(
+  category: ListingCategory,
+  transactionType: TransactionType,
+  value: number,
+  marketId: MarketId = "in",
+): string | null {
   const bounds = PRICE_BOUNDS[category][transactionType === "buy" || transactionType === "sell" ? "sale" : "rental"];
   if (value >= bounds.min && value <= bounds.max) return null;
+  if (marketId !== "in") {
+    const money = (amount: number) => formatMoney(marketId, amount);
+    return `${money(value)} is outside the typical range for this category (${money(bounds.min)} to ${money(bounds.max)})`;
+  }
   const range = `${formatInrWithWords(bounds.min)} to ${formatInrWithWords(bounds.max)}`;
   return `₹${groupInr(value)} is outside the typical range for this category (${range})`;
 }

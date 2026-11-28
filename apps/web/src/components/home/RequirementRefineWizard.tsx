@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Area, RefineRequirementInput, RequirementAnswers, RequirementDto } from "@bhavano/types";
 import { convertArea, type AreaUnit } from "@bhavano/types/areaUnit";
-import { bedroomLabel } from "@bhavano/types/bedrooms";
+import { bedWord, bedroomLabel } from "@bhavano/types/bedrooms";
 import { formatInrWithWords } from "@bhavano/types/priceWords";
 import { requirementBudgetIssue } from "@bhavano/types/priceBounds";
 import {
@@ -13,7 +13,6 @@ import {
   requirementQuestionsFor,
   REQUIREMENT_BEDROOM_OPTIONS,
   REQUIREMENT_CATEGORY_LABELS,
-  REQUIREMENT_INTENTS,
   REQUIREMENT_TIMELINE_OPTIONS,
   REQUIRED_REQUIREMENT_STEPS,
   amenityOptionsFor,
@@ -23,6 +22,7 @@ import {
   budgetPresetsFor,
   canLeaveStep,
   formatRequirementLabel,
+  requirementIntentsFor,
   intentOf,
   sanitizeRequirementAttributes,
   sizeQuestionFor,
@@ -200,8 +200,8 @@ export function RequirementRefineWizard({
   // below) so the Next button can block on it too, not only show the warning text.
   const budgetIssue =
     draft.category && draft.transactionType
-      ? (parseAmount(budgetMin) !== undefined && requirementBudgetIssue(draft.category, draft.transactionType, parseAmount(budgetMin)!)) ||
-        (parseAmount(budgetMax) !== undefined && requirementBudgetIssue(draft.category, draft.transactionType, parseAmount(budgetMax)!)) ||
+      ? (parseAmount(budgetMin) !== undefined && requirementBudgetIssue(draft.category, draft.transactionType, parseAmount(budgetMin)!, market.id)) ||
+        (parseAmount(budgetMax) !== undefined && requirementBudgetIssue(draft.category, draft.transactionType, parseAmount(budgetMax)!, market.id)) ||
         null
       : null;
 
@@ -269,7 +269,7 @@ export function RequirementRefineWizard({
   function criteriaAnswers(): RequirementAnswers {
     const details = detailsPatch();
     const budget = budgetPatch();
-    const size = draft.category ? sizeQuestionFor(draft.category) : undefined;
+    const size = draft.category ? sizeQuestionFor(draft.category, market.id) : undefined;
     return {
       cityId: draft.cityId ?? "",
       category: draft.category,
@@ -377,7 +377,7 @@ export function RequirementRefineWizard({
     return (
       <>
         <ChipRow>
-          {REQUIREMENT_INTENTS.map((option) => (
+          {requirementIntentsFor(market.id).map((option) => (
             <Chip
               key={option.value}
               active={intent === option.value}
@@ -422,7 +422,7 @@ export function RequirementRefineWizard({
 
   function DetailsStep() {
     if (!draft.category) return null;
-    const size = sizeQuestionFor(draft.category);
+    const size = sizeQuestionFor(draft.category, market.id);
     const questions = requirementQuestionsFor(draft.category, market.id).filter(
       (q) => !q.transactionTypes || (draft.transactionType && q.transactionTypes.includes(draft.transactionType)),
     );
@@ -443,7 +443,7 @@ export function RequirementRefineWizard({
                     }))
                   }
                 >
-                  {bedroomLabel(n)} BHK
+                  {bedroomLabel(n)} {bedWord(market.id)}
                 </Chip>
               ))}
             </ChipRow>
@@ -586,12 +586,12 @@ export function RequirementRefineWizard({
   }
 
   function BudgetStep() {
-    const { unit, presets } = budgetPresetsFor(draft.category, draft.transactionType);
+    const { unit, presets } = budgetPresetsFor(draft.category, draft.transactionType, market.id);
     const min = parseAmount(budgetMin);
     const max = parseAmount(budgetMax);
     return (
       <div className="flex flex-col gap-3">
-        <p className="m-0 text-[12.5px] text-muted">In rupees, {unit}.</p>
+        <p className="m-0 text-[12.5px] text-muted">In {market.id === "us" ? "dollars" : "rupees"}, {unit}.</p>
         <ChipRow>
           {presets.map((p) => (
             <Chip
@@ -610,12 +610,12 @@ export function RequirementRefineWizard({
           <label className="flex flex-col gap-1 min-w-0">
             <span className="text-[11.5px] text-muted font-bold">From <Currency /></span>
             <input inputMode="numeric" value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)} className={`${inputClass} w-full`} />
-            {min !== undefined && <span className="text-[11.5px] text-muted">{formatInrWithWords(min)}</span>}
+            {min !== undefined && <span className="text-[11.5px] text-muted">{formatInrWithWords(min, market.id)}</span>}
           </label>
           <label className="flex flex-col gap-1 min-w-0">
             <span className="text-[11.5px] text-muted font-bold">Up to <Currency /></span>
             <input inputMode="numeric" value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} className={`${inputClass} w-full`} />
-            {max !== undefined && <span className="text-[11.5px] text-muted">{formatInrWithWords(max)}</span>}
+            {max !== undefined && <span className="text-[11.5px] text-muted">{formatInrWithWords(max, market.id)}</span>}
           </label>
         </div>
         {budgetIssue && <p className="m-0 text-[12.5px] text-danger">{budgetIssue}</p>}
@@ -671,7 +671,12 @@ export function RequirementRefineWizard({
   }
 
   function ReviewStep() {
-    const label = formatRequirementLabel(criteriaAnswers(), { cityName: current.cityName, areaNames: selectedAreaNames.filter(Boolean) });
+    const label = formatRequirementLabel(
+      criteriaAnswers(),
+      { cityName: current.cityName, areaNames: selectedAreaNames.filter(Boolean) },
+      undefined,
+      market.id,
+    );
     const editable = applicableSteps(draft);
     return (
       <div className="flex flex-col gap-3">
