@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getContactSharePreferenceAction } from "@/app/actions/users";
+import { useMarket } from "@/lib/useMarket";
 
 /** One line under the contact area of a listing page, for a logged-in visitor, while the owner-sees-your-number feature is on and this person is shareable.
  * Fetched after load (it is about the visitor, not the ad), so the server-rendered listing page is unchanged. */
 export function ContactShareNotice() {
+  const market = useMarket();
   const [sharing, setSharing] = useState(false);
 
   useEffect(() => {
@@ -19,6 +21,8 @@ export function ContactShareNotice() {
     };
   }, []);
 
+  // Nothing is sold in this market, so Featured is not offered.
+  if (!market.paymentsEnabled) return null;
   if (!sharing) return null;
   return (
     <p className="m-0 mt-1 text-[12px] text-muted">

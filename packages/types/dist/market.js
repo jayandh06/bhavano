@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DEFAULT_MARKET_ID = exports.MARKETS = void 0;
+exports.entitlementFor = entitlementFor;
 exports.isMarketId = isMarketId;
 exports.getMarket = getMarket;
 exports.marketFromPath = marketFromPath;
@@ -97,6 +98,10 @@ exports.MARKETS = {
         indexable: false,
     },
 };
+/** An upload limit as a market words it: where nothing is sold, no limit says a Featured ad would raise it. */
+function entitlementFor(id, entitlement) {
+    return exports.MARKETS[id].paymentsEnabled ? entitlement : { ...entitlement, canUpgradeByBoosting: false };
+}
 /** The market every existing deployment and every caller that names none uses. */
 exports.DEFAULT_MARKET_ID = "in";
 function isMarketId(value) {

@@ -9,6 +9,7 @@ import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { AlertPreferenceCard } from "@/components/home/AlertPreferenceCard";
 import { ContactShareCard } from "@/components/home/ContactShareCard";
 import { ContactRevealBalanceCard } from "@/components/home/ContactRevealBalanceCard";
+import { SERVER_MARKET } from "@/lib/serverMarket";
 
 export default async function ProfilePage({
   searchParams,
@@ -58,18 +59,22 @@ export default async function ProfilePage({
                 >
                   View your requirements
                 </Link>
-                <Link
-                  href="/purchases"
-                  className="text-[13px] font-bold text-green border-[1.5px] border-green rounded-lg px-3.5 py-2 text-center whitespace-nowrap cursor-pointer bg-transparent"
-                >
-                  View your purchase history
-                </Link>
-                <Link
-                  href="/referrals"
-                  className="text-[13px] font-bold text-green border-[1.5px] border-green rounded-lg px-3.5 py-2 text-center whitespace-nowrap cursor-pointer bg-transparent"
-                >
-                  Referrals &amp; free boosts
-                </Link>
+                {SERVER_MARKET.paymentsEnabled && (
+                  <>
+                    <Link
+                      href="/purchases"
+                      className="text-[13px] font-bold text-green border-[1.5px] border-green rounded-lg px-3.5 py-2 text-center whitespace-nowrap cursor-pointer bg-transparent"
+                    >
+                      View your purchase history
+                    </Link>
+                    <Link
+                      href="/referrals"
+                      className="text-[13px] font-bold text-green border-[1.5px] border-green rounded-lg px-3.5 py-2 text-center whitespace-nowrap cursor-pointer bg-transparent"
+                    >
+                      Referrals &amp; free boosts
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </div>

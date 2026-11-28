@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
 import { reportPostAction } from "@/lib/postActionTrail";
 import { Currency } from "./Currency";
+import { buildMarket } from "@/lib/marketRobots";
 
 /** The "your slots are full" notice. `where` is the page-visits surface: "category" (shown before the form is filled in) or "review" (publish was refused).
  * The upgrade links are the main action; `onCheckAgain` (review only) lets someone who just closed an ad try publishing again. */
@@ -34,12 +35,12 @@ export function ListingSlotCapPrompt({
         {where === "category" ? " You can fill in your ad now and post it once there is a free slot." : ""}
       </p>
       <div className="flex flex-wrap items-center gap-3">
-        {pack && (
+        {buildMarket().paymentsEnabled && pack && (
           <Link href="/premium#seller-slots" onClick={click("pack")} className={upgradeClass}>
             Get {pack.totalSlots} slots · <Currency />{pack.monthlyPrice}/month
           </Link>
         )}
-        {pro && (
+        {buildMarket().paymentsEnabled && pro && (
           <Link
             href="/premium#agent-pro"
             onClick={click("pro")}

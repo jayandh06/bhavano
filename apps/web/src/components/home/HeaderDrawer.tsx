@@ -12,6 +12,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { Icon } from "./Icon";
 import { marketCopy } from "@/lib/marketCopy";
 import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
+import { buildMarket } from "@/lib/marketRobots";
 
 // Market wording (India's strings unchanged): lib/marketCopy.ts.
 const COPY = marketCopy();
@@ -87,9 +88,11 @@ export function HeaderDrawer({
           </Link>
         </>
       )}
-      <Link href={cityName ? `/premium?city=${toCitySlug(cityName)}` : "/premium"} prefetch={false} className={rowClass}>
-        <Icon name="sparkles" className="text-gold" /> Plans
-      </Link>
+      {buildMarket().paymentsEnabled && (
+        <Link href={cityName ? `/premium?city=${toCitySlug(cityName)}` : "/premium"} prefetch={false} className={rowClass}>
+          <Icon name="sparkles" className="text-gold" /> Plans
+        </Link>
+      )}
       <Link href={cityName ? `/requirements/${toCitySlug(cityName)}` : "/requirements"} prefetch={false} className={rowClass}>
         <Icon name="requirements" className="text-muted" /> Requirements
       </Link>

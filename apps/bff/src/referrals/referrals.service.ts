@@ -9,6 +9,7 @@ import {
   REFERRAL_SETTINGS_ID,
   type ReferralRewardSkipReason,
 } from './referrals.constants';
+import { MARKET } from '../market/market-config';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const IST_OFFSET_MS = 330 * 60 * 1000;
@@ -165,7 +166,7 @@ export class ReferralsService {
     });
     // A same-device signup is most likely the referrer themselves; telling them it worked would
     // only confirm the trick.
-    if (!sameDevice) void this.notifier.referralSignedUp(referralCode, newUser?.name ?? null);
+    if (!sameDevice && MARKET.paymentsEnabled) void this.notifier.referralSignedUp(referralCode, newUser?.name ?? null);
   }
 
   /** Grants the referrer's boost credit for a successful referral — called from
@@ -176,6 +177,8 @@ export class ReferralsService {
    * referred user's — written to the BR-2 ledger in the same transaction, so a concurrent second
    * reward for the same phone fails on the ledger's unique key instead of granting twice. */
   async grantReward(referralId: string, referrerId: string, phoneHash?: string): Promise<void> {
+    // The reward is a free Featured ad, which a market that sells none does not offer.
+    if (!MARKET.paymentsEnabled) return;
     const existing = await this.prisma.referralCreditBatch.findUnique({
       where: { referralId },
       select: { id: true },

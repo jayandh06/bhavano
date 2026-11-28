@@ -9,6 +9,8 @@ import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { HorizontalScroller } from "@/components/home/HorizontalScroller";
 import type { PaymentHistoryItemDto, PaymentPurpose, PaymentStatus } from "@bhavano/types";
 import { Currency } from "@/components/home/Currency";
+import { SERVER_MARKET } from "@/lib/serverMarket";
+import { redirect } from "next/navigation";
 
 const PURPOSE_LABELS: Record<PaymentPurpose, string> = {
   listing_boost: "Listing Feature",
@@ -55,6 +57,7 @@ export default async function PurchasesPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  if (!SERVER_MARKET.paymentsEnabled) redirect("/profile");
   const sp = await searchParams;
   const citySlug = typeof sp.city === "string" ? sp.city : undefined;
   const cursor = typeof sp.cursor === "string" ? sp.cursor : undefined;

@@ -14,6 +14,7 @@ import { getAlertPreferencesAction, saveAlertPrimaryChannelAction } from "@/app/
 import { Icon } from "./Icon";
 import { InstallAppAlertBanner } from "./InstallAppAlertBanner";
 import { AddEmailForAlerts } from "./AddEmailForAlerts";
+import { useMarket } from "@/lib/useMarket";
 
 /** Why a channel cannot be picked as the first choice. */
 const UNAVAILABLE_HINT: Record<OwnerAlertChannel, string> = {
@@ -26,6 +27,7 @@ const UNAVAILABLE_HINT: Record<OwnerAlertChannel, string> = {
 /** Where the advertiser says how to reach them when a seeker messages, shows interest or views their number. One primary channel is the whole question
  * (a ranked list is too heavy on a phone); the others follow in the default order as fallbacks. See docs/plans/owner-notification-channel-preferences.md. */
 export function AlertPreferenceCard({ preference }: { preference: OwnerAlertPreferenceDto }) {
+  const market = useMarket();
   const [current, setCurrent] = useState(preference);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -42,6 +44,8 @@ export function AlertPreferenceCard({ preference }: { preference: OwnerAlertPref
   const primary = current.confirmed ? current.channels[0] : null;
   const fallbacks = current.channels.filter((c) => c !== current.channels[0] && current.available[c]);
 
+  // The choice is between channels a Featured ad unlocks; nothing is sold in this market.
+  if (!market.paymentsEnabled) return null;
   return (
     <section className="border border-border rounded-2xl p-6 bg-surface">
       {!current.available.push && <InstallAppAlertBanner campaign="profile" />}

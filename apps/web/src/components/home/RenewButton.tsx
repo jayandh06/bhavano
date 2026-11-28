@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { renewListingAction } from "@/app/actions/listings";
+import { buildMarket } from "@/lib/marketRobots";
 
 /** "Renew" on /my-listings — pushes expiresAt forward by another 30 days. Unlike BoostButton
  * there's no payment step; the only failure worth special-casing is the slot cap, which gets the
@@ -29,6 +30,10 @@ export function RenewButton({ listingId }: { listingId: string }) {
     }
 
     router.refresh();
+  }
+
+  if (atCap && !buildMarket().paymentsEnabled) {
+    return <span className="text-[12px] text-muted">You&apos;re at your limit.</span>;
   }
 
   if (atCap) {

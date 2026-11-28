@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ListingCategory } from "@bhavano/types";
 import { useBoost } from "./BoostProvider";
 import { Icon } from "./Icon";
+import { useMarket } from "@/lib/useMarket";
 
 /** "Boost Ad" — the trigger only. The duration/price picker + Razorpay Checkout live in the one
  * shared `BoostProvider` modal (docs/plans/monetization-boosted-listings-premium-tiers.md); this
@@ -27,8 +28,11 @@ export function BoostButton({
   label?: string;
 }) {
   const { boost } = useBoost();
+  const market = useMarket();
   const [pendingActivation, setPendingActivation] = useState(false);
 
+  // Nothing is sold in this market, so Featured is not offered.
+  if (!market.paymentsEnabled) return null;
   if (pendingActivation) {
     return (
       <span className="inline-flex items-center justify-center gap-1.5 text-[13px] font-bold text-green whitespace-nowrap">

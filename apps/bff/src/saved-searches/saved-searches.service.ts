@@ -8,6 +8,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { LocationsService } from '../locations/locations.service';
 import { CreateSavedSearchDto } from './dto/create-saved-search.dto';
 import { UpdateSavedSearchDto } from '../admin/dto/update-saved-search.dto';
+import { MARKET } from '../market/market-config';
 
 /** Same single-row convention as CONTACT_REVEAL_SETTINGS_ID. */
 export const SAVED_SEARCH_SETTINGS_ID = 'saved-search-settings';
@@ -91,7 +92,9 @@ export class SavedSearchesService {
   async create(userId: string, dto: CreateSavedSearchDto): Promise<SavedSearchDto> {
     const allowance = await this.alertAllowance(userId);
     if (!allowance) {
-      throw new ForbiddenException('Bhavano Plus is required for more saved search alerts');
+      throw new ForbiddenException(
+        MARKET.paymentsEnabled ? 'Bhavano Plus is required for more saved search alerts' : 'You have used your free saved search alerts',
+      );
     }
     if (
       dto.minPrice !== undefined &&

@@ -1020,7 +1020,7 @@ export function PostAdWizard({
   }, [step, token]);
 
   const previewBoostDisplay = useMemo(() => {
-    if (!category || !planPricingSettings) return null;
+    if (!market.paymentsEnabled || !category || !planPricingSettings) return null;
     // Only once the seller has actually entered a number — an empty/partial price field (still
     // being typed) must not band-price off NaN/0, which would land in the cheapest band and
     // understate the real price the success screen will charge.
@@ -1033,7 +1033,7 @@ export function PostAdWizard({
       planPricingSettings.activeDiscountPercent,
       priceContext,
     );
-  }, [category, planPricingSettings, transactionType, price]);
+  }, [category, planPricingSettings, transactionType, price, market.paymentsEnabled]);
 
   const showPublishPanelOnReview = !assistedMode && !!(
     category &&
@@ -1415,7 +1415,7 @@ export function PostAdWizard({
           />
         )}
         {/* An extra, not a restriction: 3-6 photos and a video stay free (docs/plans/featured-ad-benefits-and-media-limits.md). */}
-        {!assistedMode && (
+        {!assistedMode && market.paymentsEnabled && (
           <div className="mt-2 rounded-lg border border-[color:var(--gold)]/50 bg-[color:var(--gold)]/10 px-3 py-2 text-xs text-text">
             <span className="font-bold text-[color:var(--gold)]">&#10024; Make it Featured to show more</span>
             <span className="block mt-0.5">
@@ -2399,7 +2399,7 @@ export function PostAdWizard({
     });
     // The ad is live and free at this point. With the Preview-step selector off, the optional
     // Featured offer gets its own screen before the confirmation (docs/plans/post-first-featured-upsell.md).
-    setStep(previewBoostDisplay?.showSelectorOnPreview ? "success" : "offer");
+    setStep(!market.paymentsEnabled || previewBoostDisplay?.showSelectorOnPreview ? "success" : "offer");
   }
 
   const currentStepIndex = STEP_TRACKER_ORDER.indexOf(step);
@@ -3383,7 +3383,7 @@ export function PostAdWizard({
               </div>
             )
           ) : (
-            !showRegenerateBanner && (
+            market.paymentsEnabled && !showRegenerateBanner && (
               <button
                 type="button"
                 onClick={() => {

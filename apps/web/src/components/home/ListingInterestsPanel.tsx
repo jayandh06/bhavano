@@ -129,6 +129,7 @@ export function ListingInterestsPanel({
     if (!summary) return "Unlock contact";
     if (summary.freeLeadReveals > 0) return "Unlock contact (free)";
     if (summary.creditsRemaining > 0) return "Unlock contact · 1 credit";
+    if (!market.paymentsEnabled) return "Unlock contact";
     return `Unlock contact · ${market.currencySymbol}${summary.creditPackPriceRupees} for ${summary.creditPackSize}`;
   };
 
@@ -202,7 +203,7 @@ export function ListingInterestsPanel({
               </div>
             </div>
           ))}
-          {summary?.enabled && !summary.featured && items?.some((r) => r.contact === "unlockable") && (
+          {market.paymentsEnabled && summary?.enabled && !summary.featured && items?.some((r) => r.contact === "unlockable") && (
             <p className="m-0 text-[12px] text-muted">
               A Featured ad shows every interested person&rsquo;s number free.{" "}
               <Link

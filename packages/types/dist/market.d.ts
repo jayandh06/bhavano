@@ -67,6 +67,10 @@ export interface MarketConfig {
     indexable: boolean;
 }
 export declare const MARKETS: Record<MarketId, MarketConfig>;
+/** An upload limit as a market words it: where nothing is sold, no limit says a Featured ad would raise it. */
+export declare function entitlementFor<T extends {
+    canUpgradeByBoosting: boolean;
+}>(id: MarketId, entitlement: T): T;
 /** The market every existing deployment and every caller that names none uses. */
 export declare const DEFAULT_MARKET_ID: MarketId;
 export declare function isMarketId(value: unknown): value is MarketId;

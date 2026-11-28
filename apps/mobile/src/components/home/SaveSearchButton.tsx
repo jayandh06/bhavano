@@ -51,7 +51,7 @@ export function SaveSearchButton({ criteria }: { criteria: Omit<CreateSavedSearc
     } catch (e) {
       // 402/403 is the BFF saying the free alerts are used up and there is no Plus subscription.
       if (e instanceof BffError && (e.status === 402 || e.status === 403)) {
-        setError("You've used your free saved search alerts. Get Bhavano Plus for unlimited alerts.");
+        setError(`You've used your free saved search alerts.${market.paymentsEnabled ? " Get Bhavano Plus for unlimited alerts." : ""}`);
       } else {
         setError(e instanceof Error ? e.message : "Couldn't save this search");
       }

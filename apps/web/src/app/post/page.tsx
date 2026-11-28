@@ -13,6 +13,8 @@ import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { PostAdWizard } from "@/components/home/PostAdWizard";
 import { PostPageTracker } from "@/components/home/PostPageTracker";
+import { entitlementFor } from "@bhavano/types/market";
+import { SERVER_MARKET } from "@/lib/serverMarket";
 
 export default async function PostAdPage({
   searchParams,
@@ -66,7 +68,7 @@ export default async function PostAdPage({
   const wizardCities = allCities.filter((c) => c.isServed || c.id === city?.id);
 
   const profile = loggedIn ? await fetchProfile(accessToken).catch(() => null) : null;
-  const videoEntitlement = resolveVideoEntitlement(profile ?? { agentProUntil: null });
+  const videoEntitlement = entitlementFor(SERVER_MARKET.id, resolveVideoEntitlement(profile ?? { agentProUntil: null }));
   // Every slot already in use: say so on the first step instead of after the whole form is filled in. Plan prices are read
   // only in that case, and a failed read just leaves the notice out (publish still refuses with the same details).
   const slotNotice =

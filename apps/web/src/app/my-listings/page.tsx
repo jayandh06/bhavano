@@ -158,10 +158,12 @@ async function MyListingsGrid({
       <Suspense fallback={null}>
         <AutoOpenPublishCheckout listings={listings} />
       </Suspense>
-      <AutoOpenPurchaseModal
-        listings={listings.map((l) => ({ id: l.id, category: l.category }))}
-        initialPricing={openBoostPricing}
-      />
+      {SERVER_MARKET.paymentsEnabled && (
+        <AutoOpenPurchaseModal
+          listings={listings.map((l) => ({ id: l.id, category: l.category }))}
+          initialPricing={openBoostPricing}
+        />
+      )}
       {upsellSettings.enabled && (
         <FeaturedUpsellDialog
           settings={upsellSettings}
@@ -181,7 +183,7 @@ async function MyListingsGrid({
         />
       )}
       <ListingSlotMeter profile={profile} />
-      {referrals && activeListings.some((item) => item.status === "active") && (
+      {SERVER_MARKET.paymentsEnabled && referrals && activeListings.some((item) => item.status === "active") && (
         <ReferralBanner referrals={referrals} />
       )}
       {activeListings.map((item) => (

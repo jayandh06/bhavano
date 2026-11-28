@@ -12,6 +12,7 @@ import { ReferralInviteActions } from "@/components/home/ReferralInviteActions";
 import { Icon } from "@/components/home/Icon";
 import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
 import { SERVER_MARKET } from "@/lib/serverMarket";
+import { redirect } from "next/navigation";
 
 // A signed-in dashboard: nothing here for a crawler. Set per page rather than in robots.txt.
 export const metadata: Metadata = {
@@ -35,6 +36,7 @@ export default async function ReferralsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  if (!SERVER_MARKET.paymentsEnabled) redirect("/profile");
   const sp = await searchParams;
   const citySlug = typeof sp.city === "string" ? sp.city : undefined;
   const [session, { city, cityAreas, allCities }] = await Promise.all([auth(), resolvePageCityContext(citySlug)]);
