@@ -114,16 +114,16 @@ const COPY: Record<MarketId, MarketCopy> = {
       "Bhavano is a marketplace for renting, buying and selling homes, condos, townhouses, rooms, storage and commercial space, listed by owners and agents. Sign in only when you want to post a listing, save a favorite, or message the owner — we use your account solely to power those features.",
     homeIntroShort: "Rent, buy & sell — message owners directly.",
     footerBlurb:
-      "Listings to rent or buy houses, apartments, condos, townhouses, villas, rooms for rent, storage and commercial spaces across the United States — no login needed to browse.",
+      "Listings to rent or buy houses, apartments, condos, townhouses, rooms for rent, storage and commercial spaces across the United States — no login needed to browse.",
     ownerBlurb:
       "List a house, apartment, condo, townhouse, room, storage space or commercial space and reach people searching in your city. You deal directly with renters and buyers.",
     helpAbout:
       "Bhavano is a property marketplace for homes, rooms, storage space and commercial space across the United States, so renting, buying or setting up a small business can be handled in one place.",
     helpWhatCanIList:
-      "Houses, apartments, condos, townhouses, villas, rooms for rent, storage space and commercial spaces — each with its own set of relevant fields (bedrooms, size, and so on).",
+      "Houses, apartments, condos, townhouses, rooms for rent, storage space and commercial spaces — each with its own set of relevant fields (bedrooms, size, and so on).",
     citiesDescription: "Every city Bhavano covers for renting and buying homes across the United States.",
     citiesIntro: (count) =>
-      `${count} cities across the United States — pick one to browse houses, apartments, condos, townhouses, villas, rooms, storage and commercial spaces there.`,
+      `${count} cities across the United States — pick one to browse houses, apartments, condos, townhouses, rooms, storage and commercial spaces there.`,
     notFoundBrowse: "Browse homes for rent and for sale, condos, townhouses, rooms, storage and commercial spaces",
     notFoundExampleCities: false,
     searchPlaceholder: (cityLabel, areaName) =>

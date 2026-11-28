@@ -8,7 +8,6 @@ import {
   type RequirementFeedMoveIn,
 } from "@bhavano/types/requirementFeed";
 import {
-  INTENT_TRANSACTION_CHOICES,
   requirementQuestionsFor,
   REQUIREMENT_BEDROOM_OPTIONS,
   REQUIREMENT_CATEGORY_LABELS,
@@ -16,10 +15,12 @@ import {
   budgetPresetsFor,
   sizeQuestionFor,
   type RequirementIntent,
+  transactionChoicesFor,
 } from "@bhavano/types/requirementQuestions";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { getCurrentMarketId } from "../../lib/market";
 import { bedroomText, budgetChoices, requirementCategoriesFor, requirementIntentsFor } from "../../lib/marketText";
+import { marketTransactionType } from "@bhavano/types/postingRules";
 
 /** Plot / commercial / storage size bands — not exported from the shared package (web keeps its
  * own copy inline in RequirementsFeedPage.tsx too), so this is this file's own copy of the same
@@ -122,10 +123,13 @@ export const RequirementsFeedFilters = forwardRef<
   }, [applied]);
 
   const intent = staged.intent;
-  const transactionChoices = intent ? INTENT_TRANSACTION_CHOICES[intent] : undefined;
-  const transaction = staged.transactionType ?? (intent === "buy" ? "sell" : intent === "pg" ? "rent" : undefined);
+  const transactionChoices = intent ? transactionChoicesFor(intent, getCurrentMarketId()) : undefined;
   const categories = intent ? requirementCategoriesFor(intent, getCurrentMarketId()) : [];
   const category = staged.category ?? (categories.length === 1 ? categories[0] : undefined);
+  // The US asks no "rent or lease": renting is implied, and commercial space is leased.
+  const impliedRent =
+    intent === "rentLease" && !transactionChoices ? (category ? marketTransactionType(category, "rent", getCurrentMarketId()) : "rent") : undefined;
+  const transaction = staged.transactionType ?? impliedRent ?? (intent === "buy" ? "sell" : intent === "pg" ? "rent" : undefined);
   const showBudget = Boolean(intent && (!transactionChoices || staged.transactionType));
   const size = category ? sizeQuestionFor(category, getCurrentMarketId()) : undefined;
   const questions = category

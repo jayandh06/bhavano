@@ -1,0 +1,163 @@
+# US listing model: property types, deal types and forms
+
+Status: **approved 2026-11-28 with the recommendations below; phase 1 built, not merged or deployed.** Part of the US launch
+([us-market-expansion.md](us-market-expansion.md)). Builds on
+[us-categories-condo-townhouse-room.md](us-categories-condo-townhouse-room.md) and, if approved, replaces parts of it
+and of [us-price-limits.md](us-price-limits.md).
+
+## Goal
+
+The US site should list property the way the large US sites do. Today it is India's model with a few fields hidden:
+
+- An apartment can be sold, as a single unit, with the same form as a condo.
+- Homes offer both "Rent" and "Lease".
+- There is no way to sell a multi-family building or land.
+- The forms ask India questions: RERA registered, water source (corporation or borewell), "Godown" storage, ownership by
+  power of attorney, carpet area, "Society / project name".
+- US facts are missing: HOA fee, year built, lot size, laundry, heating and cooling, lease term. Bathrooms are whole
+  numbers only, so 1.5 baths cannot be entered.
+
+## What US sites do
+
+| Site | For sale | For rent |
+|---|---|---|
+| Zillow | House, townhome, multi-family, condo / co-op, lot / land, manufactured | House, apartment / condo / co-op, townhome; rooms in its rental tool |
+| Redfin | House, condo, townhouse, multi-family, land, other (co-op and manufactured in its data) | not checked |
+| Realtor.com | Single family, condo, townhome, multi-family, mobile, farm, land | Separate rental search |
+| LoopNet (commercial) | Office, retail, industrial, apartment / multifamily, hospitality, self-storage, land | "For lease": office, retail, industrial, land |
+
+How sure this is: taken from web search on 2026-11-28, mostly third-party descriptions; the live filter menus were not
+opened. Sources disagree on one point: some tool documentation lists "Apartments" in Zillow's for-sale filter, while
+Zillow's own help article, Redfin and Realtor.com list no apartment among sale types.
+
+## Proposal
+
+### 1. Deal types
+
+| Property | US offers | Today |
+|---|---|---|
+| House, townhouse | For sale, For rent | Sale, Rent, Lease |
+| Condo / Co-op | For sale, For rent | Sale, Rent, Lease |
+| Apartment | **For rent only** | Sale, Rent, Lease |
+| Room | For rent | Same |
+| Multi-family (new) | For sale | not offered |
+| Land (new on US) | For sale | not offered |
+| Commercial | For sale, **For lease** | Sale, Rent, Lease |
+| Self-storage | For rent | Rent, Lease |
+
+- In US homes "lease" means renting; its length becomes a **Lease term** field. The tab "Rent & Lease" becomes "Rent".
+- Existing US ads: a home "lease" becomes "rent"; a commercial "rent" becomes "lease".
+
+### 2. Property types
+
+| Change | Detail |
+|---|---|
+| Rename | "Condo" to **"Condo / Co-op"** |
+| Remove | **Villa** (no US site above has it); existing ads become House |
+| Add | **Multi-family**: duplex to apartment building, with number of units. This replaces the earlier idea of an "Apartment building" option under Commercial |
+| Add | **Land**: the existing `plot` category, labelled Land, with US fields |
+| Later | Manufactured home |
+
+A whole apartment building is sold as Multi-family. A single unit someone owns is sold as Condo / Co-op.
+
+### 3. Forms
+
+A US field list of its own, instead of India's list with fields hidden.
+
+| Area | Remove on the US | Add or change |
+|---|---|---|
+| Size | "Carpet area" | **Square feet**; lot size (house, townhouse, multi-family, land); **year built** replaces "Property age" bands |
+| Rooms | Balcony count; required floor and total floors | **Half baths** (1, 1.5, 2); floor optional and only for apartment and condo |
+| Parking | Open / closed counts | Garage, driveway, street or none, with spaces |
+| Home | Water source, gas pipeline, "Society / project name" | **Laundry** (in unit, on site, none); heating; cooling; "Community / building name"; furnishing optional |
+| Sale | RERA, home loan available, ownership list, possession status, brokerage fields | **HOA fee** (monthly); yearly property tax (optional); new construction yes / no |
+| Rent | "Lock-in period", maintenance fee, brokerage fields | **Lease term**; security deposit (kept); application fee; pets (cats, dogs, none); utilities included; available date |
+| Commercial | Fire NOC, pantry, workstation capacity | Types: office, retail, industrial / warehouse, restaurant, hotel, self-storage facility, land, other |
+| Storage | "Godown", two-wheeler access | Types: self-storage unit, garage, vehicle / RV storage, warehouse space |
+
+- **Brokerage:** proposed to remove the fee fields and keep "Listed by: Owner / Agent". Broker-fee and commission rules
+  differ by state and city, so this needs legal review either way.
+- **Fair Housing:** a pets field must not suggest assistance animals can be refused; show a short note beside it.
+
+### 4. Price limits that change
+
+| Type | Allowed |
+|---|---|
+| Multi-family: sale | $50,000 to $200,000,000 |
+| Land: sale | $1,000 to $50,000,000 |
+| Commercial: sale | raise the maximum from $30,000,000 to $200,000,000 |
+
+These are wide guards, not based on researched averages. $200,000,000 is the most the price box accepts
+(`listingLimits.ts`). Apartment sale and the unused storage sale range go away.
+
+## Phases
+
+| Phase | Content | Needs |
+|---|---|---|
+| 1 | Deal types, apartment rent-only, villa removed, "Condo / Co-op", hide India-only questions | No database change |
+| 2 | US field list: new fields, half baths, lease term, HOA | No database change expected (attributes are stored as free-form data) |
+| 3 | Multi-family and Land | Database migration (new category), menus, filters, requirements |
+| 4 | Manufactured homes; commercial price per sq ft per year; search filters on the new fields | |
+
+Each phase touches the shared package, server, website, admin and app. India keeps its categories, fields and deal types,
+pinned by tests. Each phase needs a US deploy and a new app build.
+
+## Phase 1 as built
+
+- **Deal types:** `postableTransactionTypes(category, marketId)` (`postingRules.ts`). The server refuses a US pair outside
+  it with a plain message (`marketDealIssue`); India's server still checks nothing new.
+- **Commercial lease:** quoted per month only. Price per unit of area is offered for sales only, because US lease rates
+  are quoted per year and a typed rate would be read twelve times too high.
+- **Requirements:** the US asks no "rent or lease"; commercial space becomes a lease, everything else a rental. The
+  website's requirement screens were also offering India's categories on the US; they now offer the US list.
+- **Hidden questions:** RERA, water source, gas pipeline, ownership, home loan, possession status, balcony count, fire
+  NOC and the four brokerage fee fields (`hiddenFieldKeys`).
+- **Villa** removed from the US categories. **"Condo / Co-op"** in pickers, filters and the admin.
+- **Price limit:** the commercial sale maximum is $200,000,000.
+- **Addresses:** US apartment rentals keep `/rent-lease/apartment`. `/buy/apartment` redirects to `/buy/condo`, and
+  `villa` addresses redirect to `house` (`retiredPathSegments`).
+- **Existing data:** the US database had no ads, requirements or saved searches (counted 2026-11-28), so nothing was
+  converted.
+- **Left for phase 2:** "Carpet area" and "Society / project name" labels, "Godown" storage type, maintenance fee as HOA
+  fee, required floor fields, and everything in the "Add or change" column.
+- Tests: `apps/bff/src/market/us-listing-model.spec.ts`, `apps/web/src/lib/usCategories.test.ts`.
+
+## SEO
+
+US pages are not indexed yet (`indexable: false`), so no ranking is at risk. Addresses that stop existing (apartments for
+sale, villas, lease pages) still get a redirect to the nearest page, as the project's URL rules require.
+
+## Risks and checks before building
+
+- Count existing US ads by category and deal type (read-only) before converting any.
+- App builds made earlier will still offer the removed choices; the server refuses them with a message.
+- How commercial lease prices are labelled today has not been checked. US commercial rent is often quoted per sq ft per
+  year; phase 1 keeps a monthly total.
+- Saved searches, requirements, AI search and AI ad copy all use these categories and need checking in each phase.
+
+## Decisions
+
+| # | Question | Recommendation |
+|---|---|---|
+| 1 | Apartment rent-only | Yes |
+| 2 | Drop home "Lease", commercial "Rent" and storage "Lease" | Yes |
+| 3 | Remove Villa on the US | Yes |
+| 4 | Multi-family as its own type | Yes |
+| 5 | Add Land | Yes |
+| 6 | Remove brokerage fee fields on the US | Yes, pending legal review |
+| 7 | Manufactured homes now | No, later |
+
+## Sources
+
+[Zillow advanced search help](https://www.zillow.com/learn/zillow-advanced-search/),
+[SerpApi Zillow search API](https://serpapi.com/zillow-search-api),
+[Zillow rental feed guide](https://s3.amazonaws.com/files.hotpads.com/+guides/Rental+Listing+Bulk+Feed+Guide.pdf),
+[How to list a rental on Zillow](https://www.reallyo.com/blog/how-to-post-a-rental-on-zillow),
+[Redfin types of houses](https://www.redfin.com/blog/types-of-houses/),
+[a third-party Realtor.com search tool](https://apify.com/data_dino/realtor-scraper) (the Realtor.com row comes from
+tool pages like this one),
+[LoopNet](https://www.loopnet.com/),
+[Apartments.com search filters](https://www.apartments.com/grow/learning-center/new-rental-search-filters).
+
+The added fields (HOA fee, year built, lot size, laundry, heating and cooling) reflect general US listing practice; the
+searches did not return any site's form listing them.

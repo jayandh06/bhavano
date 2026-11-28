@@ -140,6 +140,7 @@ import {
 import { assistedClaimCutoff, assistedClaimUrl, maskClaimPhone } from './assisted-listing';
 import { isMetaTraffic, sendMetaConversion } from '../ads/meta-capi';
 import { MARKET } from '../market/market-config';
+import { allowsPerUnitPrice, marketDealIssue } from '@bhavano/types/postingRules';
 
 /** `create`'s admin-assisted mode — see ListingsService.createAssisted. */
 export interface AssistedCreateOptions {
@@ -174,10 +175,11 @@ const PROPERTY_TYPES_BY_TAB: Record<'buy' | 'rentLease', PropertyTypeFilter[]> =
     ],
   };
 
-/** The US market's tab lists: India's, plus condo and townhouse under both tabs and room for rent under Rent & Lease. India keeps the map above exactly. */
+/** The US market's tab lists (docs/plans/us-listing-model.md): apartments are rented, not bought, and there are no villas, plots or coworking. India keeps
+ * the map above exactly. */
 const US_PROPERTY_TYPES_BY_TAB: Record<'buy' | 'rentLease', PropertyTypeFilter[]> = {
-  buy: [...PROPERTY_TYPES_BY_TAB.buy, 'condo', 'townhouse'],
-  rentLease: [...PROPERTY_TYPES_BY_TAB.rentLease, 'condo', 'townhouse', 'room'],
+  buy: ['house', 'condo', 'townhouse', 'commercial'],
+  rentLease: ['house', 'apartment', 'condo', 'townhouse', 'room', 'storage', 'commercial'],
 };
 
 function buildHomeCategoryWhere(
@@ -1869,6 +1871,7 @@ export class ListingsService {
         : this.toDetailDto(existing, undefined, true, true);
     }
 
+    this.assertMarketDeal(input.category, input.transactionType);
     await this.listingSlotsService.assertCanPublish(ownerId);
     const inputAttributes = normalizeBrokerageAttributes(input.transactionType, input.attributes ?? {});
     // For an assisted listing the answer is the seller's, not the Bulk Import account's: it fills
@@ -2724,6 +2727,7 @@ export class ListingsService {
     const categoryOrTxnChanged =
       nextCategory !== existing.category ||
       nextTransactionType !== existing.transactionType;
+    if (categoryOrTxnChanged) this.assertMarketDeal(nextCategory, nextTransactionType);
 
     // A category/transactionType swap invalidates the old attributes object (different required
     // fields, different allowed keys) — reset to the new category's defaults exactly like the
@@ -3992,12 +3996,18 @@ export class ListingsService {
     }
   }
 
+  /** A category and transaction the market doesn't offer together, such as a US apartment for sale. */
+  private assertMarketDeal(category: ListingCategory, transactionType: TransactionType): void {
+    const issue = marketDealIssue(category, transactionType, MARKET.id);
+    if (issue) throw new BadRequestException(issue);
+  }
+
   private assertValidPriceQualifier(
     category: ListingCategory,
     transactionType: TransactionType,
     priceQualifier: string | undefined,
   ): void {
-    const validValues = getPriceQualifierOptions(category, transactionType).map(
+    const validValues = getPriceQualifierOptions(category, transactionType, MARKET.id).map(
       (o) => o.value,
     );
     if (!validValues.includes(priceQualifier ?? '')) {
@@ -4052,8 +4062,10 @@ export class ListingsService {
   ): { price: number; priceUnit: AreaUnit | null; area?: number } {
     if (!priceUnit) return { price, priceUnit: null };
 
-    if (transactionType !== 'sell' && transactionType !== 'lease') {
-      throw new BadRequestException('Price per unit is only available for Sell or Lease listings');
+    if (!allowsPerUnitPrice(transactionType, MARKET.id)) {
+      throw new BadRequestException(
+        MARKET.id === 'us' ? 'Price per unit is only available for Sell listings' : 'Price per unit is only available for Sell or Lease listings',
+      );
     }
     const areaField = this.areaFieldFor(category);
     if (!areaField) {

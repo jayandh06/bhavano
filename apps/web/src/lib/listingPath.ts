@@ -1,6 +1,6 @@
 import { slugify } from "@bhavano/types/slugify";
 import type { ListingCategory } from "@bhavano/types";
-import { buildFacetSlug, categoryGroupsFor, type TransactionGroup } from "./seoRoute";
+import { buildFacetSlug, categoryGroupsFor, type TransactionGroup, keepsTransactionGroup } from "./seoRoute";
 import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
 
 // Moved to @bhavano/types/listingPath so the BFF can build a listing's URL too (see
@@ -31,8 +31,12 @@ export function buildBrowsePath(params: {
   // This is presentation, not meaning: callers still pass the group they mean, and
   // `parseSegments` still accepts the long form, so already-indexed URLs keep resolving and the
   // catch-all's canonical redirect 301s them to the short one.
-  const groupIsRedundant = params.category !== undefined && categoryGroupsFor(params.category).length === 1;
-  if (params.transactionGroup && !groupIsRedundant) parts.push(params.transactionGroup);
+  const keptGroup = params.category !== undefined ? keepsTransactionGroup(params.category) : undefined;
+  const groupIsRedundant = params.category !== undefined && !keptGroup && categoryGroupsFor(params.category).length === 1;
+  // A requested "buy" is kept as asked, so a US search for an apartment to buy reaches the redirect to condos
+  // instead of silently turning into rentals.
+  const group = params.transactionGroup ?? keptGroup;
+  if (group && !groupIsRedundant) parts.push(group);
   if (params.category) parts.push(params.category);
   if (params.category && params.facetValue !== undefined) parts.push(buildFacetSlug(params.category, params.facetValue));
   return `/${parts.join("/")}`;

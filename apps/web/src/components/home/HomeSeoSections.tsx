@@ -3,7 +3,7 @@ import type { City, ListingCategory } from "@bhavano/types";
 import type { PublishedAreaOverviewLink } from "@bhavano/types/areaOverview";
 import { JsonLd } from "@/components/JsonLd";
 import { buildBrowsePath } from "@/lib/listingPath";
-import { CATEGORY_LABELS, type TransactionGroup } from "@/lib/seoRoute";
+import { CATEGORY_LABELS, type TransactionGroup, categoryGroupsFor } from "@/lib/seoRoute";
 import { sortedPosts } from "@/lib/blog/posts";
 import { homeFaqs, homeSteps } from "@bhavano/types/homeContent";
 import { isMarketCategory } from "@bhavano/types/market";
@@ -39,8 +39,10 @@ const ALL_RENT: { group: TransactionGroup; category: ListingCategory }[] = [
 ];
 
 // Only the categories the market offers: India lists all of them, the US drops plots, PG and coworking.
-const BUY = ALL_BUY.filter(({ category }) => isMarketCategory(MARKET.id, category));
-const RENT = ALL_RENT.filter(({ category }) => isMarketCategory(MARKET.id, category));
+const offered = ({ group, category }: { group: TransactionGroup; category: ListingCategory }) =>
+  isMarketCategory(MARKET.id, category) && categoryGroupsFor(category).includes(group);
+const BUY = ALL_BUY.filter(offered);
+const RENT = ALL_RENT.filter(offered);
 
 const TOOLS = [
   { href: "/tools/emi-calculator", label: "EMI calculator" },

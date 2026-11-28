@@ -1,4 +1,5 @@
 import type { ListingCategory, TransactionType } from "./index";
+import type { MarketId } from "./market";
 
 export interface PriceQualifierOption {
   value: string;
@@ -73,7 +74,10 @@ export const PRICE_QUALIFIER_OPTIONS: Record<ListingCategory, Partial<Record<Tra
 export function getPriceQualifierOptions(
   category: ListingCategory,
   transactionType: TransactionType,
+  marketId: MarketId = "in",
 ): PriceQualifierOption[] {
+  // A US lease is quoted by the month; the lump sum "for the lease term" is India's lease.
+  if (marketId === "us" && transactionType === "lease") return PRICE_QUALIFIER_OPTIONS[category]?.lease ? MONTHLY_OPTIONS : [];
   return PRICE_QUALIFIER_OPTIONS[category]?.[transactionType] ?? [];
 }
 

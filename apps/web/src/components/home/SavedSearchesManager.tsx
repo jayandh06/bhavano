@@ -5,15 +5,17 @@ import Link from "next/link";
 import type { Area, City, ListingCategory, SavedSearchDto, TransactionType } from "@bhavano/types";
 import { formatInrWithWords } from "@bhavano/types/priceWords";
 import { MAX_BEDROOMS, bedroomLabel } from "@bhavano/types/bedrooms";
-import { MAX_REQUIREMENT_AREAS } from "@bhavano/types/requirementQuestions";
+import { MAX_REQUIREMENT_AREAS, REQUIREMENT_CATEGORY_LABELS } from "@bhavano/types/requirementQuestions";
 import { createSavedSearchAction, deleteSavedSearchAction } from "@/app/actions/saved-searches";
 import { listAllAreasAction } from "@/app/actions/locations";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { fieldClass, labelClass, outlineButtonClass, primaryButtonClass, secondaryButtonClass } from "@/lib/formStyles";
 import { SelectField } from "./SelectField";
 import { Currency } from "./Currency";
+import { MARKETS } from "@bhavano/types/market";
+import { buildMarket } from "@/lib/marketRobots";
 
-const CATEGORY_OPTIONS: { value: ListingCategory; label: string }[] = [
+const INDIA_CATEGORY_OPTIONS: { value: ListingCategory; label: string }[] = [
   { value: "house", label: "House" },
   { value: "apartment", label: "Apartment" },
   { value: "villa", label: "Villa" },
@@ -26,6 +28,12 @@ const CATEGORY_OPTIONS: { value: ListingCategory; label: string }[] = [
   // docs/plans/furniture-interiors-paused.md. Any saved search already created for one of these
   // keeps running; this just stops a new one being set up here.
 ];
+
+/** The US offers its own categories (docs/plans/us-listing-model.md); India's list above is unchanged. */
+const CATEGORY_OPTIONS =
+  buildMarket().id === "us"
+    ? MARKETS.us.categories.map((value) => ({ value, label: REQUIREMENT_CATEGORY_LABELS[value] }))
+    : INDIA_CATEGORY_OPTIONS;
 
 const TRANSACTION_TYPE_OPTIONS: { value: TransactionType; label: string }[] = [
   { value: "buy", label: "Buy" },

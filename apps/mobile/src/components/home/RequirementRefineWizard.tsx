@@ -19,7 +19,6 @@ import { areaUnitShortLabel, convertArea, type AreaUnit } from "@bhavano/types/a
 import { formatInrWithWords } from "@bhavano/types/priceWords";
 import { requirementBudgetIssue } from "@bhavano/types/priceBounds";
 import {
-  INTENT_TRANSACTION_CHOICES,
   MAX_REQUIREMENT_AREAS,
   requirementQuestionsFor,
   REQUIREMENT_BEDROOM_OPTIONS,
@@ -38,6 +37,7 @@ import {
   stepsToAsk,
   type RequirementCriteria,
   type RequirementStep,
+  transactionChoicesFor,
 } from "@bhavano/types/requirementQuestions";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { refineMyRequirement } from "../../lib/bffClient";
@@ -47,6 +47,7 @@ import { RequirementCityPicker, type PickedCity } from "./RequirementCityPicker"
 import { Currency } from "./Currency";
 import { useMarket } from "../../lib/market";
 import { bedroomText, budgetChoices, requirementCategoriesFor, requirementIntentsFor } from "../../lib/marketText";
+import { marketTransactionType } from "@bhavano/types/postingRules";
 
 type WizardStep = RequirementStep | "review";
 type Colors = ReturnType<typeof useAppTheme>["colors"];
@@ -413,7 +414,7 @@ export function RequirementRefineWizard({
   }
 
   function renderIntent() {
-    const choices = intent ? INTENT_TRANSACTION_CHOICES[intent] : undefined;
+    const choices = intent ? transactionChoicesFor(intent, market.id) : undefined;
     return (
       <>
         <ChipRow>
@@ -422,7 +423,7 @@ export function RequirementRefineWizard({
               key={option.value}
               colors={colors}
               active={intent === option.value}
-              onPress={() => setDraft((d) => ({ ...d, ...applyIntent(option.value, d) }))}
+              onPress={() => setDraft((d) => ({ ...d, ...applyIntent(option.value, d, market.id) }))}
               label={option.label}
             />
           ))}
@@ -456,7 +457,13 @@ export function RequirementRefineWizard({
             key={category}
             colors={colors}
             active={draft.category === category}
-            onPress={() => setDraft((d) => ({ ...d, category }))}
+            onPress={() =>
+              setDraft((d) => ({
+                ...d,
+                category,
+                transactionType: d.transactionType && marketTransactionType(category, d.transactionType, market.id),
+              }))
+            }
             label={REQUIREMENT_CATEGORY_LABELS[category]}
           />
         ))}

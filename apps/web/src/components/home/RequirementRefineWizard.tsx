@@ -7,8 +7,6 @@ import { bedWord, bedroomLabel } from "@bhavano/types/bedrooms";
 import { formatInrWithWords } from "@bhavano/types/priceWords";
 import { requirementBudgetIssue } from "@bhavano/types/priceBounds";
 import {
-  INTENT_CATEGORIES,
-  INTENT_TRANSACTION_CHOICES,
   MAX_REQUIREMENT_AREAS,
   requirementQuestionsFor,
   REQUIREMENT_BEDROOM_OPTIONS,
@@ -29,12 +27,15 @@ import {
   stepsToAsk,
   type RequirementCriteria,
   type RequirementStep,
+  intentCategories,
+  transactionChoicesFor,
 } from "@bhavano/types/requirementQuestions";
 import { refineRequirementAction } from "@/app/actions/requirements";
 import { listAllAreasAction } from "@/app/actions/locations";
 import { RequirementCityPicker, type PickedCity } from "./RequirementCityPicker";
 import { Currency } from "./Currency";
 import { useMarket } from "@/lib/useMarket";
+import { marketTransactionType } from "@bhavano/types/postingRules";
 
 type WizardStep = RequirementStep | "review";
 
@@ -373,7 +374,7 @@ export function RequirementRefineWizard({
   }
 
   function IntentStep() {
-    const choices = intent ? INTENT_TRANSACTION_CHOICES[intent] : undefined;
+    const choices = intent ? transactionChoicesFor(intent, market.id) : undefined;
     return (
       <>
         <ChipRow>
@@ -381,7 +382,7 @@ export function RequirementRefineWizard({
             <Chip
               key={option.value}
               active={intent === option.value}
-              onClick={() => setDraft((d) => ({ ...d, ...applyIntent(option.value, d) }))}
+              onClick={() => setDraft((d) => ({ ...d, ...applyIntent(option.value, d, market.id) }))}
             >
               {option.label}
             </Chip>
@@ -408,11 +409,21 @@ export function RequirementRefineWizard({
   }
 
   function CategoryStep() {
-    const options = intent ? INTENT_CATEGORIES[intent] : [];
+    const options = intent ? intentCategories(intent, market.id) : [];
     return (
       <ChipRow>
         {options.map((category) => (
-          <Chip key={category} active={draft.category === category} onClick={() => setDraft((d) => ({ ...d, category }))}>
+          <Chip
+            key={category}
+            active={draft.category === category}
+            onClick={() =>
+              setDraft((d) => ({
+                ...d,
+                category,
+                transactionType: d.transactionType && marketTransactionType(category, d.transactionType, market.id),
+              }))
+            }
+          >
             {REQUIREMENT_CATEGORY_LABELS[category]}
           </Chip>
         ))}

@@ -49,10 +49,17 @@ const BEDROOM_COUNTS = [1, 2, 3, 4, 5];
 
 /** House/Apartment under Buy or Rent & Lease — column 2 is the 5 "N BHK ..." links, each a
  * real clean SEO path (/{city}/{group}/{category}/{Nbhk}) via `buildBrowsePath`. */
-function bhkColumn1Item(group: TransactionGroup, actionLabel: string, category: ListingCategory, label: string): MegaMenuColumn1Item {
+function bhkColumn1Item(
+  group: TransactionGroup,
+  actionLabel: string,
+  category: ListingCategory,
+  label: string,
+  /** The column heading, where it says more than the links under it do. */
+  heading: string = label,
+): MegaMenuColumn1Item {
   return {
     value: category,
-    label,
+    label: heading,
     href: (cityName) => buildBrowsePath({ cityName, transactionGroup: group, category }),
     links: (cityName) =>
       BEDROOM_COUNTS.map((n) => ({
@@ -94,9 +101,10 @@ export const HOME_TABS: HomeTab[] = [
     icon: "home",
     column1: [
       bhkColumn1Item("buy", "Buy", "house", "House"),
-      bhkColumn1Item("buy", "Buy", "apartment", "Apartment"),
-      ...(US ? [bhkColumn1Item("buy", "Buy", "condo", "Condo"), bhkColumn1Item("buy", "Buy", "townhouse", "Townhouse")] : []),
-      bhkColumn1Item("buy", "Buy", "villa", "Villa"),
+      // The US buys condos and townhouses; apartments there are rentals, and it lists no villas (docs/plans/us-listing-model.md).
+      ...(US
+        ? [bhkColumn1Item("buy", "Buy", "condo", "Condo", "Condo / Co-op"), bhkColumn1Item("buy", "Buy", "townhouse", "Townhouse")]
+        : [bhkColumn1Item("buy", "Buy", "apartment", "Apartment"), bhkColumn1Item("buy", "Buy", "villa", "Villa")]),
       // PG, Coworking and Plots are not US categories (MARKETS.us.categories), so the US menus do not offer them.
       ...(US ? [] : [singleLinkColumn1Item("plot", "Plots", { transactionGroup: "buy", category: "plot" })]),
       singleLinkColumn1Item("commercial", "Commercial", { transactionGroup: "buy", category: "commercial" }),
@@ -104,19 +112,19 @@ export const HOME_TABS: HomeTab[] = [
   },
   {
     value: "rentLease",
-    label: "Rent & Lease",
+    label: US ? "Rent" : "Rent & Lease",
     icon: "key",
     column1: [
       bhkColumn1Item("rent-lease", "Rent", "house", "House"),
       bhkColumn1Item("rent-lease", "Rent", "apartment", "Apartment"),
       ...(US
         ? [
-            bhkColumn1Item("rent-lease", "Rent", "condo", "Condo"),
+            bhkColumn1Item("rent-lease", "Rent", "condo", "Condo", "Condo / Co-op"),
             bhkColumn1Item("rent-lease", "Rent", "townhouse", "Townhouse"),
             singleLinkColumn1Item("room", "Room for rent", { transactionGroup: "rent-lease", category: "room" }),
           ]
         : []),
-      bhkColumn1Item("rent-lease", "Rent", "villa", "Villa"),
+      ...(US ? [] : [bhkColumn1Item("rent-lease", "Rent", "villa", "Villa")]),
       singleLinkColumn1Item("storage", "Storage", { transactionGroup: "rent-lease", category: "storage" }),
       singleLinkColumn1Item("commercial", "Commercial", { transactionGroup: "rent-lease", category: "commercial" }),
     ],

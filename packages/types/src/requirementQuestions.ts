@@ -1,6 +1,6 @@
 import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, TransactionType } from "./index";
 import { CATEGORY_FIELD_CONFIG, amenityFieldsFor, type FieldOption } from "./categoryFields";
-import { POSTABLE_TRANSACTION_TYPES } from "./postingRules";
+import { marketTransactionType, postableTransactionTypes } from "./postingRules";
 import { MAX_BEDROOMS, bedWord, bedroomLabel } from "./bedrooms";
 import { convertArea, formatArea, type AreaUnit } from "./areaUnit";
 import { MARKETS, formatMoney, isMarketCategory, isMarketField, type MarketId } from "./market";
@@ -72,18 +72,30 @@ export const INTENT_CATEGORIES: Record<RequirementIntent, ListingCategory[]> = {
   interiors: ["interiors"],
 };
 
-/** The US market's categories for the two property intents: its own order, and condo, townhouse and room for rent. The other intents (PG, coworking,
- * furniture, interiors) have no category in the US. India's lists above are unchanged. */
+/** The US market's categories for the two property intents: its own order, condo, townhouse and room for rent, and apartments for rent only. The other
+ * intents (PG, coworking, furniture, interiors) have no category in the US. India's lists above are unchanged. */
 const US_INTENT_CATEGORIES: Partial<Record<RequirementIntent, ListingCategory[]>> = {
-  buy: ["house", "apartment", "condo", "townhouse", "villa", "commercial"],
-  rentLease: ["house", "apartment", "condo", "townhouse", "room", "villa", "commercial", "storage"],
+  buy: ["house", "condo", "townhouse", "commercial"],
+  rentLease: ["house", "apartment", "condo", "townhouse", "room", "commercial", "storage"],
 };
 
 /** The "Looking to ..." choices with at least one category in the market (the US has no PG, coworking, furniture or interiors). India gets
  * `REQUIREMENT_INTENTS` itself. */
 export function requirementIntentsFor(marketId: MarketId = "in"): typeof REQUIREMENT_INTENTS {
   if (marketId === "in") return REQUIREMENT_INTENTS;
-  return REQUIREMENT_INTENTS.filter((intent) => intentCategories(intent.value, marketId).length > 0);
+  return REQUIREMENT_INTENTS.filter((intent) => intentCategories(intent.value, marketId).length > 0).map((intent) =>
+    intent.value === "rentLease" ? { ...intent, label: "Rent" } : intent,
+  );
+}
+
+/** The follow-up question an intent asks in a market, if any. The US never asks "rent or lease": the category decides
+ * (commercial space is leased, everything else rented). */
+export function transactionChoicesFor(
+  intent: RequirementIntent,
+  marketId: MarketId = "in",
+): { value: TransactionType; label: string }[] | undefined {
+  if (marketId === "us" && intent === "rentLease") return undefined;
+  return INTENT_TRANSACTION_CHOICES[intent];
 }
 
 /** The categories an intent offers in a market. India (the default) gets `INTENT_CATEGORIES[intent]` itself, unchanged; the US gets its own list. */
@@ -96,7 +108,7 @@ export const REQUIREMENT_CATEGORY_LABELS: Record<ListingCategory, string> = {
   house: "House",
   apartment: "Apartment",
   villa: "Villa",
-  condo: "Condo",
+  condo: "Condo / Co-op",
   townhouse: "Townhouse",
   room: "Room for rent",
   pg: "PG",
@@ -135,8 +147,11 @@ export function intentOf(category?: ListingCategory, transactionType?: Transacti
 export function applyIntent(
   intent: RequirementIntent,
   current: Pick<RequirementCriteria, "category" | "transactionType">,
+  marketId: MarketId = "in",
 ): Pick<RequirementCriteria, "category" | "transactionType"> {
-  const keepCategory = current.category && INTENT_CATEGORIES[intent].includes(current.category) ? current.category : undefined;
+  const keepCategory = current.category && intentCategories(intent, marketId).includes(current.category) ? current.category : undefined;
+  if (marketId === "us" && intent === "rentLease")
+    return { category: keepCategory, transactionType: keepCategory ? marketTransactionType(keepCategory, "rent", marketId) : "rent" };
   switch (intent) {
     case "buy":
       return { category: keepCategory, transactionType: "sell" };
@@ -155,9 +170,13 @@ export function applyIntent(
 
 /** Whether a category can be had on this transaction at all — the posting rules, with `buy`
  * read as `sell`. */
-export function isValidRequirementTransaction(category: ListingCategory, transactionType: TransactionType): boolean {
+export function isValidRequirementTransaction(
+  category: ListingCategory,
+  transactionType: TransactionType,
+  marketId: MarketId = "in",
+): boolean {
   const asListing: TransactionType = transactionType === "buy" ? "sell" : transactionType;
-  return POSTABLE_TRANSACTION_TYPES[category].includes(asListing);
+  return postableTransactionTypes(category, marketId).includes(asListing);
 }
 
 // ---------------------------------------------------------------------------
@@ -364,7 +383,9 @@ export function budgetPresetsFor(
   marketId: MarketId = "in",
 ): { unit: string; presets: BudgetPreset[] } {
   const india = indiaBudgetPresetsFor(category, transactionType);
-  return marketId === "in" ? india : { unit: india.unit, presets: [] };
+  if (marketId === "in") return india;
+  // A US lease is a monthly figure, not India's lump sum.
+  return { unit: transactionType === "lease" ? "per month" : india.unit, presets: [] };
 }
 
 /**
@@ -585,7 +606,7 @@ function budgetPhrase(c: RequirementCriteria, marketId: MarketId): string | unde
       : c.maxPrice !== undefined
         ? `up to ${money(c.maxPrice)}`
         : `${money(c.minPrice!)}+`;
-  const monthly = c.transactionType === "rent" || c.category === "pg";
+  const monthly = c.transactionType === "rent" || c.category === "pg" || (marketId === "us" && c.transactionType === "lease");
   return monthly ? `${range}/month` : c.transactionType === "lease" ? `${range} lease` : range;
 }
 
