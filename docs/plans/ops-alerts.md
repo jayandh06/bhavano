@@ -1,6 +1,6 @@
 # Alerts for a full disk, a failed backup and a site that is down
 
-Status: **approved 2026-11-27, partly built; no alert exists yet** (see Order of work). Prompted by the outage of the same day
+Status: **approved 2026-11-27, partly built; the India site-down alerts exist** (see Order of work). Prompted by the outage of the same day
 ([postgres-backup-finfolia.md](postgres-backup-finfolia.md), "Incident 2026-11-27").
 
 ## What exists (checked 2026-11-27)
@@ -44,7 +44,7 @@ On the India dump script, read the whole dump (`pg_restore -f /dev/null`) before
 |---|---|---|---|
 | 0a | Grow `vol-046b184a044c7c1c4` to 30 GB, then extend the file system | Owner in AWS; then on the server | Waiting for the owner |
 | 0b | Clear the build cache on the India app server (after a Docker restart) | On the server | **Done**, disk 81% to 34% |
-| 1 | Site-down health checks and alarms; first, because it covers any cause | Owner | Waiting |
+| 1 | Site-down health checks and alarms; first, because it covers any cause | AWS console, with the owner signed in | **Done**; test-fired and the email received |
 | 2 | IAM role `bhavano-monitoring` on the 4 instances | Owner (IAM) | Waiting |
 | 3 | Install AWS's CloudWatch agent package, configure it, create 4 disk alarms | On the servers | After 2 |
 | 4a | India dump script reads the whole dump before uploading | On the DB server | **Done**, test run succeeded |
@@ -90,12 +90,29 @@ is 2), so containers cannot use the role. No restart is needed for any of these.
 
 **Extra recipient**: SNS → the topic → Create subscription → Email, then confirm from the message.
 
+## Site-down checks as created (2026-11-27)
+
+| Health check | Address | Alarm |
+|---|---|---|
+| `bhavano-india-api` | `https://api.bhavano.com/health` | `bhavano-india-api-alarm` |
+| `bhavano-india-web` | `https://www.bhavano.com/` | `bhavano-india-web-alarm` |
+
+Every 30 seconds from all 8 checker regions, unhealthy after 6 failures in a row, SNI on, no string matching or latency
+graphs. Each alarm is `HealthCheckStatus` minimum below 1 for 1 minute (missing data left as missing), notifying
+`bhavano-us-alerts` in `us-east-1` on alarm only, not on recovery. To test the email, point a check's path at an address
+that does not exist, wait about 5 minutes, and change it back. India's records are DNS only, so the checkers reach the
+server directly.
+
+Tested 2026-11-27 with the API check pointed at `/alert-test`: the alarm fired 5 minutes later and AWS reported the
+notification sent; the owner received the email, and the alarm returned to `OK` after the path was restored.
+
 ## Cost (estimate, check the pricing pages)
 
 About **$6 a month**:
 
-- Two HTTPS health checks on non-AWS endpoints: about $2.75 each. The $0.75 base comes from an AWS re:Post answer and
-  the HTTPS add-on figure was not clearly labelled on the pricing page.
+- Two HTTPS health checks ([pricing](https://aws.amazon.com/route53/pricing/), read 2026-11-27): about $2 a month in
+  all if billed as AWS endpoints (the servers are in this account: basic checks free up to 50, HTTPS $1 each), $5.50 if
+  billed as non-AWS endpoints ($0.75 plus $2.00 each).
 - 6 custom metrics: inside the free allowance of 10.
 - 16 alarms in total, 10 free, the rest about $0.10 each (third-party figure).
 
@@ -117,5 +134,4 @@ About **$6 a month**:
 
 ## Not verified
 
-- That Cloudflare lets Route 53's checkers through; confirm all checkers report healthy before adding the alarm actions.
 - Reporting backup success through the agent (StatsD on the local port) has not been tried.
