@@ -96,7 +96,7 @@ export function CategoryFieldsForm({
   const visibleFields = categoryFieldsFor(category, market.id).filter((field) =>
     fieldIsVisible(field, transactionType, attributes, market.id),
   );
-  const fieldSections = groupFieldsBySection(visibleFields);
+  const fieldSections = groupFieldsBySection(visibleFields, market.id);
   // A category can have no field of its own in a given section (e.g. pg/coworking have no
   // category-specific "pricing" field) while the caller still passes a sectionExtras entry for
   // it (the Price/Price qualifier inputs) — groupFieldsBySection alone would drop that section's

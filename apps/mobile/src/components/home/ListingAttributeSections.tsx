@@ -41,7 +41,7 @@ export function ListingAttributeSections({
     return true;
   });
   if (visibleFields.length === 0) return null;
-  const sections = groupFieldsBySection(visibleFields);
+  const sections = groupFieldsBySection(visibleFields, market.id);
 
   return (
     <View style={{ gap: 12 }}>

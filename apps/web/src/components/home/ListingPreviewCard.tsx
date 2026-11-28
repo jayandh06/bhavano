@@ -135,7 +135,7 @@ export function ListingPreviewCard({
           />
           <div className="absolute top-3 left-3 flex gap-1.5">
             <span className="bg-green text-on-green text-[11px] font-bold px-2.5 py-1 rounded-md">
-              {deriveTag({ category, transactionType })}
+              {deriveTag({ category, transactionType }, market.id)}
             </span>
             {featured && (
               <span className="bg-gold text-[#3a2e0f] text-[11px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1">

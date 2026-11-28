@@ -4,13 +4,14 @@ import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, Transacti
 import { AMENITY_KEYS, CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
 
 const HOME_CATEGORIES: HomeCategoryFilter[] = ['buy', 'rentLease', 'pg', 'furniture', 'interiors'];
-const PROPERTY_TYPES: PropertyTypeFilter[] = ['house', 'apartment', 'villa', 'condo', 'townhouse', 'room', 'storage', 'coworking', 'plot', 'commercial'];
+const PROPERTY_TYPES: PropertyTypeFilter[] = ['house', 'apartment', 'villa', 'condo', 'townhouse', 'multifamily', 'room', 'storage', 'coworking', 'plot', 'commercial'];
 const LISTING_CATEGORIES: ListingCategory[] = [
   'house',
   'apartment',
   'villa',
   'condo',
   'townhouse',
+  'multifamily',
   'room',
   'pg',
   'storage',

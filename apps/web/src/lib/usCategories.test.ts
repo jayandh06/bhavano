@@ -44,7 +44,7 @@ describe("market category lists", () => {
     }
     expect(INTENT_CATEGORIES.buy).toEqual(["house", "apartment", "villa", "plot", "commercial"]);
     expect(INTENT_CATEGORIES.rentLease).toEqual(["house", "apartment", "villa", "commercial", "storage"]);
-    expect(intentCategories("buy", "us")).toEqual(["house", "condo", "townhouse", "commercial"]);
+    expect(intentCategories("buy", "us")).toEqual(["house", "condo", "townhouse", "multifamily", "plot", "commercial"]);
     expect(intentCategories("rentLease", "us")).toEqual(["house", "apartment", "condo", "townhouse", "room", "commercial", "storage"]);
     expect(intentCategories("pg", "us")).toEqual([]);
   });
@@ -126,7 +126,7 @@ describe("menus", () => {
 
   it("adds condo, townhouse and room to the US menus, with bed wording", async () => {
     const { HOME_TABS } = await loadWith<Home>("./homeCategories", "us");
-    expect(values(HOME_TABS, "buy")).toEqual(["house", "condo", "townhouse", "commercial"]);
+    expect(values(HOME_TABS, "buy")).toEqual(["house", "condo", "townhouse", "multifamily", "plot", "commercial"]);
     expect(values(HOME_TABS, "rentLease")).toEqual(["house", "apartment", "condo", "townhouse", "room", "storage", "commercial"]);
     expect(HOME_TABS.find((t) => t.value === "rentLease")!.label).toBe("Rent");
     const condo = HOME_TABS.find((t) => t.value === "buy")!.column1.find((c) => c.value === "condo")!;
@@ -134,7 +134,7 @@ describe("menus", () => {
     expect(condo.href!("Austin")).toBe("/austin-tx/buy/condo");
   });
 
-  it("offers no PG, Coworking or Plots in the US, and still offers them in India", async () => {
+  it("offers no PG or Coworking in the US, and still offers them in India", async () => {
     const us = (await loadWith<Home>("./homeCategories", "us")).HOME_TABS.map((t) => t.value);
     expect(us).toEqual(["all", "buy", "rentLease"]);
     const india = (await loadWith<Home>("./homeCategories", "")).HOME_TABS.map((t) => t.value);
@@ -165,6 +165,34 @@ describe("US addresses", () => {
     expect(buildBrowsePath({ cityName: "Austin", transactionGroup: "buy", category: "apartment" })).toMatch(/\/buy\/apartment$/);
     const india = await loadWith<Paths>("./listingPath", "");
     expect(india.buildBrowsePath({ cityName: "Pune", category: "apartment" })).toBe("/pune/apartment");
+  });
+});
+
+describe("multi-family and land", () => {
+  type Seo = typeof import("./seoRoute");
+  type Paths = typeof import("./listingPath");
+  type Parse = typeof import("./parseSearchQuery");
+
+  it("calls a plot Land in the US only", async () => {
+    expect((await loadWith<Seo>("./seoRoute", "us")).CATEGORY_LABELS.plot).toBe("Land");
+    expect((await loadWith<Seo>("./seoRoute", "")).CATEGORY_LABELS.plot).toBe("Plots");
+  });
+
+  it("gives each a browse address", async () => {
+    const { buildBrowsePath } = await loadWith<Paths>("./listingPath", "us");
+    expect(buildBrowsePath({ cityName: "Austin", transactionGroup: "buy", category: "multifamily" })).toMatch(/\/multifamily$/);
+    expect(buildBrowsePath({ cityName: "Austin", transactionGroup: "buy", category: "plot" })).toMatch(/\/plot$/);
+  });
+
+  it("reads the US words, and not in India", async () => {
+    const us = (await loadWith<Parse>("./parseSearchQuery", "us")).parseSearchQuery;
+    for (const words of ["duplex for sale in Austin", "multi family in Austin", "apartment building for sale"])
+      expect(us(words).category, words).toBe("multifamily");
+    expect(us("land for sale in Austin").category).toBe("plot");
+    expect(us("2 bed apartment").category).toBe("apartment");
+    const india = (await loadWith<Parse>("./parseSearchQuery", "")).parseSearchQuery;
+    expect(india("duplex in Pune").category).toBeUndefined();
+    expect(india("apartment complex in Pune").category).toBe("apartment");
   });
 });
 

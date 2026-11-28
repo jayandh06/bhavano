@@ -99,7 +99,7 @@ function formatFieldLabel(field) {
  * `SECTION_ORDER` (fields without a `section` land in a trailing "other" bucket). Generic so
  * it works over plain `FieldDef`s (the forms) or `{ section, ... }` display tuples (the
  * listing detail page). */
-function groupFieldsBySection(fields) {
+function groupFieldsBySection(fields, marketId = "in") {
     const buckets = new Map();
     for (const field of fields) {
         const section = field.section ?? "other";
@@ -114,7 +114,7 @@ function groupFieldsBySection(fields) {
         .filter((section) => buckets.has(section))
         .map((section) => ({
         section,
-        label: section === "other" ? "Other details" : exports.SECTION_LABELS[section],
+        label: section === "other" ? "Other details" : ((marketId === "us" ? US_SECTION_LABELS[section] : undefined) ?? exports.SECTION_LABELS[section]),
         fields: buckets.get(section),
     }));
 }
@@ -134,6 +134,7 @@ exports.SECTION_FIELD_GROUPS = {
                 "applicationFee",
                 "hoaFee",
                 "propertyTaxYearly",
+                "yearlyGrossRent",
                 "rentEscalationPercent",
                 "dayPassPrice",
                 "singleSharingRent",
@@ -150,7 +151,7 @@ exports.SECTION_FIELD_GROUPS = {
     ],
     basics: [
         { id: "rooms", label: "Rooms", keys: ["bedrooms", "bathrooms", "halfBathrooms", "balconyCount"] },
-        { id: "size", label: "Size & floor", keys: ["carpetAreaSqft", "plotAreaSqft", "lotSizeAcres", "yearBuilt", "floor", "totalFloors", "entranceFacing"] },
+        { id: "size", label: "Size & floor", keys: ["unitCount", "occupiedUnits", "carpetAreaSqft", "plotAreaSqft", "lotSizeAcres", "yearBuilt", "floor", "totalFloors", "entranceFacing"] },
         { id: "parking", label: "Parking", keys: ["openParkingCount", "closedParkingCount", "parkingType", "parkingSpaces"] },
         { id: "furnishing", label: "Furnishing & utilities", keys: ["furnished", "laundry", "heating", "cooling", "utilitiesIncluded", "waterSource", "gasPipeline"] },
         { id: "society", label: "Society & outdoor space", keys: ["societyName", "gatedCommunity", "privateGarden", "privateTerrace"] },
@@ -196,13 +197,15 @@ exports.SECTION_FIELD_GROUPS = {
         { id: "contact", label: "Website", keys: ["website"] },
     ],
     plotDetails: [
-        { id: "plot", label: "Plot", keys: ["plotAreaSqft", "plotDimensions", "facing", "plotType", "roadWidthFt", "cornerPlot"] },
+        { id: "plot", label: "Plot", keys: ["plotAreaSqft", "plotDimensions", "facing", "plotType", "utilitiesAvailable", "roadAccess", "roadWidthFt", "cornerPlot"] },
         { id: "approvals", label: "Boundary & approvals", keys: ["boundaryWall", "gatedLayout", "approvedBy", "titleDocuments"] },
         { id: "legal", label: "Ownership & legal", keys: ["ownership", "reraRegistered", "reraNumber"] },
     ],
 };
 /** Group headings the US words differently: it has no housing societies and asks no brokerage fee. */
-const US_GROUP_LABELS = { society: "Community", postedBy: "Posted by" };
+const US_GROUP_LABELS = { society: "Community", postedBy: "Posted by", plot: "Land" };
+/** Section headings the US words differently. */
+const US_SECTION_LABELS = { plotDetails: "Land details" };
 /** Splits one section's already-visible fields into `SECTION_FIELD_GROUPS`' sub-groups, in that list's order; empty groups are
  * dropped. Inside a group, fields follow the group's own key order (each list puts a question before its follow-up). A field the
  * list doesn't name goes into a trailing "More details" group, in category order, so a field added later can't vanish from the
@@ -1174,6 +1177,8 @@ exports.CATEGORY_FIELD_CONFIG = {
     condo: RESIDENTIAL_FIELDS,
     townhouse: RESIDENTIAL_FIELDS,
     room: ROOM_FIELDS,
+    // US-only: its one list lives with the other US forms.
+    multifamily: usCategoryFields_1.MULTIFAMILY_FIELDS,
     pg: [
         {
             // Multi-select, not select — a PG can genuinely offer more than one sharing type at once

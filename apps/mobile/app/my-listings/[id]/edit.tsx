@@ -23,7 +23,7 @@ import {
 } from "@bhavano/types/listingLimits";
 import { MAX_PHOTOS, PHOTO_LIMITS } from "@bhavano/types/photoLimits";
 import { perDay } from "@bhavano/types/featuredPerformance";
-import { POST_CATEGORIES } from "@bhavano/types/postCategories";
+import { marketPostCategories } from "@bhavano/types/postCategories";
 import { useAppTheme } from "../../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../../src/context/HomeSheetsProvider";
 import { useCitiesQuery, useMyListingQuery } from "../../../src/lib/queries";
@@ -315,7 +315,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
       <Text style={[styles.label, { color: colors.textSoft }]}>Category / transaction</Text>
       <View style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
         <Text style={{ color: colors.textSoft, fontSize: 14 }}>
-          {POST_CATEGORIES.find((c) => c.value === listing.category)?.label} · {listing.transactionType}
+          {marketPostCategories(market.id).find((c) => c.value === listing.category)?.label} · {listing.transactionType}
         </Text>
       </View>
 
@@ -373,7 +373,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
 
       <View style={[styles.divider, { borderColor: colors.border, marginTop: 18 }]}>
         <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
-          {POST_CATEGORIES.find((c) => c.value === listing.category)?.label} details
+          {marketPostCategories(market.id).find((c) => c.value === listing.category)?.label} details
         </Text>
         <CategoryFieldsForm
           category={listing.category}

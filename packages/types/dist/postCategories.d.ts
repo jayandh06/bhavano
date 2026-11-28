@@ -37,3 +37,6 @@ export declare const POST_CATEGORIES: PostCategoryOption[];
 /** The category groups offered in the posting wizard in this market: only categories the market has, and no empty group.
  * India's list is `POST_CATEGORY_GROUPS` without the US-only categories, which is exactly what it offered before they were added. */
 export declare function marketPostCategoryGroups(id: MarketId): PostCategoryGroup[];
+/** The flat list to look a category's name up in. India gets `POST_CATEGORIES` itself; elsewhere it is the market's
+ * picker, worded the market's way ("Land", not "Plot"). */
+export declare function marketPostCategories(id: MarketId): PostCategoryOption[];

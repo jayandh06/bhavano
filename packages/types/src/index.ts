@@ -20,6 +20,7 @@ export type ListingCategory =
   // US-only categories (docs/plans/us-categories-condo-townhouse-room.md): in the US market's category list, not India's.
   | "condo"
   | "townhouse"
+  | "multifamily"
   | "room";
 
 export type TransactionType = "buy" | "sell" | "rent" | "lease";
@@ -94,7 +95,7 @@ export type SellerType = "owner" | "agent";
 export type HomeCategoryFilter = "buy" | "rentLease" | "pg" | "coworking" | "furniture" | "interiors";
 
 /** Sub-filter shown under the Buy / Rent & Lease tabs only. */
-export type PropertyTypeFilter = "house" | "apartment" | "villa" | "condo" | "townhouse" | "room" | "storage" | "coworking" | "plot" | "commercial";
+export type PropertyTypeFilter = "house" | "apartment" | "villa" | "condo" | "townhouse" | "multifamily" | "room" | "storage" | "coworking" | "plot" | "commercial";
 
 export interface City {
   id: string;

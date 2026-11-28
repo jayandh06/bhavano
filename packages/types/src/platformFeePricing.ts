@@ -22,7 +22,7 @@ export const DEFAULT_PLATFORM_FEE_SETTINGS: PlatformFeeSettings = {
 };
 
 // Condo, townhouse and room are the US categories for homes; India does not offer them.
-const PROPERTY_CATEGORIES = new Set<ListingCategory>(["house", "apartment", "villa", "condo", "townhouse", "room", "plot", "commercial"]);
+const PROPERTY_CATEGORIES = new Set<ListingCategory>(["house", "apartment", "villa", "condo", "townhouse", "multifamily", "room", "plot", "commercial"]);
 const MID_VALUE_CATEGORIES = new Set<ListingCategory>(["coworking", "pg", "storage"]);
 
 export function platformFeeFor(

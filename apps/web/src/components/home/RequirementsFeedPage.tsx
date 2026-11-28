@@ -17,7 +17,6 @@ import {
 import {
   requirementQuestionsFor,
   REQUIREMENT_BEDROOM_OPTIONS,
-  REQUIREMENT_CATEGORY_LABELS,
   REQUIREMENT_INTENTS,
   requirementIntentsFor,
   amenityOptionsFor,
@@ -27,6 +26,7 @@ import {
   type RequirementIntent,
   intentCategories,
   transactionChoicesFor,
+  requirementCategoryLabel,
 } from "@bhavano/types/requirementQuestions";
 import { auth } from "@/auth";
 import { BffAuthError, fetchRequirementFeed, fetchRequirementFeedSummary } from "@/lib/bff";
@@ -215,7 +215,7 @@ function SummaryCounts({ summary, citySlug }: { summary: RequirementFeedSummaryD
         <div className="flex flex-wrap gap-2 mb-4">
           {summary.types.map((type) => (
             <span key={`${type.intent}:${type.category}`} className="text-[12.5px] bg-surface-alt rounded-full px-3 py-1">
-              {intentLabel(type.intent)} · {REQUIREMENT_CATEGORY_LABELS[type.category]} ({type.count})
+              {intentLabel(type.intent)} · {requirementCategoryLabel(type.category, SERVER_MARKET.id)} ({type.count})
             </span>
           ))}
         </div>
@@ -359,7 +359,7 @@ function FeedFilters({
           </Chip>
           {categories.map((c) => (
             <Chip key={c} href={href(withCategory(filters, c))} active={filters.category === c}>
-              {REQUIREMENT_CATEGORY_LABELS[c]} ({feed.facets.categories[c] ?? 0})
+              {requirementCategoryLabel(c, SERVER_MARKET.id)} ({feed.facets.categories[c] ?? 0})
             </Chip>
           ))}
         </FilterGroup>

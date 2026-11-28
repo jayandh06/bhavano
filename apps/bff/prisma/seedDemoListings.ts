@@ -41,6 +41,7 @@ const CATEGORY_STYLE: Record<ListingCategory, { label: string; bg: string; fg: s
   villa: { label: 'Villa', bg: '#2f6b4f', fg: '#eaf7ef' },
   condo: { label: 'Condo', bg: '#2a5f7a', fg: '#e8f3f8' },
   townhouse: { label: 'Townhouse', bg: '#3a6b3f', fg: '#eaf6ec' },
+  multifamily: { label: 'Multi-family', bg: '#5a4a3a', fg: '#f6efe8' },
   room: { label: 'Room for rent', bg: '#7a5a2a', fg: '#fbf1e2' },
   pg: { label: 'PG / Co-living', bg: '#8a4b1f', fg: '#fdf0e6' },
   storage: { label: 'Storage', bg: '#4a4f57', fg: '#f0f2f5' },
@@ -175,6 +176,15 @@ function deriveFields(category: ListingCategory, transactionType: TransactionTyp
         title: `${bedrooms} BHK ${noun} ${suffix} in ${areaName}`,
         specs: [`${bedrooms} Beds`, `${bathrooms} Bath`, `${sqft} sqft`],
         attributes: { bedrooms, bathrooms, sqft, furnished },
+      };
+    }
+    case 'multifamily': {
+      const unitCount = [2, 4, 12][i];
+      const sqft = [2400, 4800, 14000][i];
+      return {
+        title: `${unitCount}-unit building ${suffix} in ${areaName}`,
+        specs: [`${unitCount} Units`, `${sqft} sqft`],
+        attributes: { unitCount, carpetAreaSqft: sqft },
       };
     }
     case 'room': {

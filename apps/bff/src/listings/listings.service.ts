@@ -175,10 +175,10 @@ const PROPERTY_TYPES_BY_TAB: Record<'buy' | 'rentLease', PropertyTypeFilter[]> =
     ],
   };
 
-/** The US market's tab lists (docs/plans/us-listing-model.md): apartments are rented, not bought, and there are no villas, plots or coworking. India keeps
- * the map above exactly. */
+/** The US market's tab lists (docs/plans/us-listing-model.md): apartments are rented, not bought (a whole building sells as multi-family), plots are Land,
+ * and there are no villas or coworking. India keeps the map above exactly. */
 const US_PROPERTY_TYPES_BY_TAB: Record<'buy' | 'rentLease', PropertyTypeFilter[]> = {
-  buy: ['house', 'condo', 'townhouse', 'commercial'],
+  buy: ['house', 'condo', 'townhouse', 'multifamily', 'plot', 'commercial'],
   rentLease: ['house', 'apartment', 'condo', 'townhouse', 'room', 'storage', 'commercial'],
 };
 
@@ -1982,7 +1982,7 @@ export class ListingsService {
       // and a null keeps the "has a description" check a single test everywhere downstream.
       description,
       attributes: attributes as Prisma.InputJsonValue,
-      tag: deriveTag(input),
+      tag: deriveTag(input, MARKET.id),
       ownerId,
       expiresAt,
       lat: input.lat,

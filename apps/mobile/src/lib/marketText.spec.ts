@@ -26,12 +26,13 @@ describe("the US", () => {
     expect(MARKETS.us).toMatchObject({ paymentsEnabled: false, phoneOtpAvailable: false, indiaContent: false, contactConsentPreTicked: false });
   });
 
-  it("offers its own categories: no PG, coworking or plots, with condo, townhouse and room", () => {
+  it("offers its own categories: no PG or coworking, with condo, townhouse, multi-family, land and room", () => {
     const tabs = homeTabs("us");
     expect(tabs.map((t) => t.value)).toEqual(["all", "buy", "rentLease"]);
     const offered = tabs.flatMap((t) => t.subFilter.options.map((o) => o.value));
-    expect(offered).toEqual(expect.arrayContaining(["condo", "townhouse", "room"]));
-    expect(offered).not.toContain("plot");
+    expect(offered).toEqual(expect.arrayContaining(["condo", "townhouse", "multifamily", "plot", "room"]));
+    expect(tabs.flatMap((t) => t.subFilter.options).find((o) => o.value === "plot")?.label).toBe("Land");
+    expect(homeTabs("in").flatMap((t) => t.subFilter.options.map((o) => o.value))).not.toContain("multifamily");
     // Every category offered is one the market can post.
     for (const value of offered) expect(MARKETS.us.categories).toContain(value);
   });

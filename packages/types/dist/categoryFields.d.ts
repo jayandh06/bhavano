@@ -105,7 +105,7 @@ export declare function formatFieldLabel(field: FieldDef): string;
  * listing detail page). */
 export declare function groupFieldsBySection<F extends {
     section?: FieldSection;
-}>(fields: F[]): {
+}>(fields: F[], marketId?: MarketId): {
     section: FieldSection | "other";
     label: string;
     fields: F[];

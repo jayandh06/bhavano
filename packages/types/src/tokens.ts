@@ -117,6 +117,7 @@ export const categoryImagePlaceholder: Record<
   villa: { imgA: "#DED0B6", imgB: "#C9B587", imgLabel: "photo: villa exterior" },
   condo: { imgA: "#CBC6B8", imgB: "#B3AB93", imgLabel: "photo: condo living room" },
   townhouse: { imgA: "#D4C7AE", imgB: "#BFAE8A", imgLabel: "photo: townhouse exterior" },
+  multifamily: { imgA: "#C9BBA8", imgB: "#AD9A80", imgLabel: "photo: multi-family building" },
   room: { imgA: "#D2C8B4", imgB: "#BBAE92", imgLabel: "photo: room" },
   pg: { imgA: "#C9BFA5", imgB: "#B3A681", imgLabel: "photo: PG room" },
   storage: { imgA: "#C2C2B8", imgB: "#A9A99A", imgLabel: "photo: storage space" },

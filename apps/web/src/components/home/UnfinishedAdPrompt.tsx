@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
-import { POST_CATEGORIES } from "@bhavano/types/postCategories";
+import { marketPostCategories } from "@bhavano/types/postCategories";
 import { peekPostAdDraft } from "@/lib/postAdDraft";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { Icon } from "./Icon";
 import { withBasePath } from "@/lib/basePath";
+import { buildMarket } from "@/lib/marketRobots";
 
 const DISMISSED_KEY = "bhavano:finish-ad-dismissed";
 const SHOWN_KEY = "bhavano:finish-ad-shown";
@@ -21,7 +22,7 @@ function hiddenOn(pathname: string): boolean {
 }
 
 function describe(category: ListingCategory, transactionType: TransactionType | null): string {
-  const label = POST_CATEGORIES.find((c) => c.value === category)?.label ?? "property";
+  const label = marketPostCategories(buildMarket().id).find((c) => c.value === category)?.label ?? "property";
   const word = transactionType ? TRANSACTION_WORD[transactionType] : undefined;
   return word ? `${label} for ${word}` : label;
 }

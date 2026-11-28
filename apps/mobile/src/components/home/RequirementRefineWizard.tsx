@@ -22,7 +22,6 @@ import {
   MAX_REQUIREMENT_AREAS,
   requirementQuestionsFor,
   REQUIREMENT_BEDROOM_OPTIONS,
-  REQUIREMENT_CATEGORY_LABELS,
   REQUIREMENT_TIMELINE_OPTIONS,
   REQUIRED_REQUIREMENT_STEPS,
   amenityOptionsFor,
@@ -38,6 +37,7 @@ import {
   type RequirementCriteria,
   type RequirementStep,
   transactionChoicesFor,
+  requirementCategoryLabel,
 } from "@bhavano/types/requirementQuestions";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { refineMyRequirement } from "../../lib/bffClient";
@@ -464,7 +464,7 @@ export function RequirementRefineWizard({
                 transactionType: d.transactionType && marketTransactionType(category, d.transactionType, market.id),
               }))
             }
-            label={REQUIREMENT_CATEGORY_LABELS[category]}
+            label={requirementCategoryLabel(category, market.id)}
           />
         ))}
       </ChipRow>

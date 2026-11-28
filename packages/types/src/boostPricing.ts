@@ -212,7 +212,7 @@ export function defaultBoostDuration(offered: readonly BoostDurationDays[]): Boo
 }
 
 // Condo, townhouse and room are the US categories for homes; India does not offer them.
-const PROPERTY_CATEGORIES = new Set<ListingCategory>(["house", "apartment", "villa", "condo", "townhouse", "room", "plot", "commercial"]);
+const PROPERTY_CATEGORIES = new Set<ListingCategory>(["house", "apartment", "villa", "condo", "townhouse", "multifamily", "room", "plot", "commercial"]);
 const MID_VALUE_CATEGORIES = new Set<ListingCategory>(["coworking", "pg", "storage"]);
 // furniture/interiors fall through to the remaining low-value tier below.
 

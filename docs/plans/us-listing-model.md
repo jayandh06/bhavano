@@ -2,7 +2,7 @@
 
 Status: **approved 2026-11-28 with the recommendations below; phase 1 deployed to the US the same day** (pull request 111,
 image `sha-a621e459`: `bff`, `web`, `admin`; India not deployed). **Phase 2 deployed to the US the same day** (pull request 112, image `sha-c4806155`: `bff`, `web`, `admin`). The app needs a
-new build. Part of the US launch
+new build. **Phase 3 built, not merged or deployed.** Part of the US launch
 ([us-market-expansion.md](us-market-expansion.md)). Builds on
 [us-categories-condo-townhouse-room.md](us-categories-condo-townhouse-room.md) and, if approved, replaces parts of it
 and of [us-price-limits.md](us-price-limits.md).
@@ -164,6 +164,23 @@ Tests: `apps/bff/src/market/us-listing-form.spec.ts`.
 Checked live after the deploy: the apartment-for-rent form shows the fields above with US wording and no AI language
 choice, the US server returns the new field list and "2.5 Baths", and the main US and India pages answer. Signed-in
 preview and publishing were not tried.
+
+## Phase 3 as built
+
+- **Multi-family** is a new category, `multifamily` (migration `20261128090000_add_multifamily_category`, one added enum
+  value). **Land** is the existing `plot` category, offered in the US and named "Land" there. Both are for sale only.
+- Multi-family asks: number of units (2 or more), occupied units, building square feet, lot size, year built, parking,
+  yearly gross rent, property tax.
+- Land asks: lot size (sq ft or acres, also usable for a price per unit), zoning, utilities at the lot, road access,
+  dimensions, property tax.
+- Price limits as proposed in section 4.
+- Menus, filters, search words ("duplex", "apartment building", "land"), buyers' requests, cards and the admin include
+  both. Address segments are the category values: `/multifamily` and `/plot`. A `/land` address was not added; it is
+  cheap to add only while US pages are not indexed.
+- The US About and Terms pages now name the two types.
+- India offers nothing new. Its database receives the same added enum value at its next deploy.
+- Not done: the admin's saved-search editor still lists India's categories; buyers' requests ask no zoning question.
+- Tests: `apps/bff/src/market/us-multifamily-land.spec.ts`.
 
 ## SEO
 

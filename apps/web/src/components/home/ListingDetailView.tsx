@@ -104,7 +104,7 @@ export async function ListingDetailView({
     if (field.key === "brokerageFeeType") return false;
     return true;
   });
-  const displaySections = groupFieldsBySection(visibleFields);
+  const displaySections = groupFieldsBySection(visibleFields, SERVER_MARKET.id);
 
   // The header describes where the *visitor* is browsing, not where this listing happens to be.
   // It used to take both from the listing, so opening an Ahmedabad flat while browsing all
