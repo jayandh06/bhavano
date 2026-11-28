@@ -90,9 +90,8 @@ describe('money fields', () => {
     expect(formatFieldValue(field('apartment', 'securityDeposit'), 150_000)).toBe('₹1,50,000');
   });
 
-  it('keeps the rupee minimum on a brokerage fee in India only', () => {
-    expect(numberFieldIssue(field('apartment', 'brokerageFee', 'us'), 100)).toBeNull();
-    expect(numberFieldIssue(field('apartment', 'brokerageFee', 'us'), 0)).toContain('Brokerage Fee ($)');
+  it('asks no brokerage fee in the US, and keeps its rupee minimum in India', () => {
+    expect(categoryFieldsFor('apartment', 'us').map((f) => f.key)).not.toContain('brokerageFee');
     expect(numberFieldIssue(field('apartment', 'brokerageFee'), 100)).toContain('at least 500');
   });
 });
@@ -158,8 +157,9 @@ describe('the post form on the US', () => {
     expect(postDetailsIssues(input('apartment')).map((issue) => issue.target)).toContain('attr:entranceFacing');
   });
 
-  it('names a missing money field in dollars', () => {
-    const issue = listingAttributesIssue('apartment', 'rent', { maintenanceFeeApplicable: 'yes', bedrooms: '2' }, 2_000, 'us');
-    expect(issue ?? '').not.toContain('₹');
+  it('words its first problem without rupees', () => {
+    const issue = listingAttributesIssue('apartment', 'rent', { bedrooms: '2' }, 2_000, 'us');
+    expect(issue).toBeTruthy();
+    expect(issue).not.toContain('₹');
   });
 });

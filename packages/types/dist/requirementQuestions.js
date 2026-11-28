@@ -213,8 +213,8 @@ function anySizeQuestionFor(category) {
 }
 exports.REQUIREMENT_BEDROOM_OPTIONS = Array.from({ length: bedrooms_1.MAX_BEDROOMS }, (_, i) => i + 1);
 /** The amenities a category declares, as a must-haves question. Empty for categories with none. */
-function amenityOptionsFor(category) {
-    return (0, categoryFields_1.amenityFieldsFor)(category).map((field) => ({ value: field.key, label: field.label }));
+function amenityOptionsFor(category, marketId = "in") {
+    return (0, categoryFields_1.amenityFieldsFor)(category, marketId).map((field) => ({ value: field.key, label: field.label }));
 }
 /**
  * Checks attributes against a category and drops what doesn't apply.
@@ -227,7 +227,7 @@ function sanitizeRequirementAttributes(category, transactionType, attributes, ma
     const out = {};
     const errors = [];
     const questions = new Map(requirementQuestionsFor(category, marketId).map((q) => [q.key, q]));
-    const amenityKeys = new Set(amenityOptionsFor(category).map((o) => o.value));
+    const amenityKeys = new Set(amenityOptionsFor(category, marketId).map((o) => o.value));
     for (const [key, raw] of Object.entries(attributes)) {
         if (!Array.isArray(raw) || raw.some((v) => typeof v !== "string")) {
             errors.push(`${key} must be a list of strings`);
@@ -501,8 +501,8 @@ function joinOr(items) {
         return items.join("");
     return `${items.slice(0, -1).join(", ")} or ${items[items.length - 1]}`;
 }
-function optionLabel(category, key, value) {
-    const q = exports.REQUIREMENT_ATTRIBUTE_QUESTIONS[category].find((x) => x.key === key);
+function optionLabel(category, key, value, marketId) {
+    const q = requirementQuestionsFor(category, marketId).find((x) => x.key === key);
     return q?.options.find((o) => o.value === value)?.label ?? value;
 }
 function transactionPhrase(transactionType, marketId) {
@@ -537,7 +537,7 @@ function sizePhrase(c, marketId) {
 }
 function subjectPhrase(c, marketId) {
     const txn = transactionPhrase(c.transactionType, marketId);
-    const attr = (key) => (c.category ? (c.attributes?.[key] ?? []).map((v) => optionLabel(c.category, key, v)) : []);
+    const attr = (key) => (c.category ? (c.attributes?.[key] ?? []).map((v) => optionLabel(c.category, key, v, marketId)) : []);
     switch (c.category) {
         case undefined:
             return ["Property", txn].filter(Boolean).join(" ");
@@ -596,7 +596,7 @@ function formatRequirementLabel(c, names, omit, marketId = "in") {
         omit?.budget ? undefined : budgetPhrase(c, marketId),
         omit?.size ? undefined : sizePhrase(c, marketId),
         !omit?.amenities && c.category && c.attributes?.amenities?.length
-            ? c.attributes.amenities.map((a) => amenityOptionsFor(c.category).find((o) => o.value === a)?.label.toLowerCase() ?? a).join(", ")
+            ? c.attributes.amenities.map((a) => amenityOptionsFor(c.category, marketId).find((o) => o.value === a)?.label.toLowerCase() ?? a).join(", ")
             : undefined,
     ].filter(Boolean);
     const missing = missingForLead(c);
@@ -659,5 +659,15 @@ function requirementCriteriaFromBrowse(f) {
  * gender, food in the US) are left out. India gets the full list. */
 function requirementQuestionsFor(category, marketId) {
     const all = exports.REQUIREMENT_ATTRIBUTE_QUESTIONS[category];
-    return marketId ? all.filter((q) => (0, market_1.isMarketField)(marketId, q.key)) : all;
+    if (!marketId)
+        return all;
+    const offered = all.filter((q) => (0, market_1.isMarketField)(marketId, q.key));
+    if (marketId === "in")
+        return offered;
+    // Outside India the choices are the ones that market's listing form offers, so a request can be matched to an ad.
+    const fields = (0, categoryFields_1.categoryFieldsFor)(category, marketId);
+    return offered.flatMap((q) => {
+        const options = fields.find((f) => f.key === q.key)?.options;
+        return options ? [{ ...q, options }] : [];
+    });
 }

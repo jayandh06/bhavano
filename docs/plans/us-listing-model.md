@@ -1,6 +1,8 @@
 # US listing model: property types, deal types and forms
 
-Status: **approved 2026-11-28 with the recommendations below; phase 1 built, not merged or deployed.** Part of the US launch
+Status: **approved 2026-11-28 with the recommendations below; phase 1 deployed to the US the same day** (pull request 111,
+image `sha-a621e459`: `bff`, `web`, `admin`; India not deployed). **Phase 2 built, not merged or deployed.** The app needs a
+new build. Part of the US launch
 ([us-market-expansion.md](us-market-expansion.md)). Builds on
 [us-categories-condo-townhouse-room.md](us-categories-condo-townhouse-room.md) and, if approved, replaces parts of it
 and of [us-price-limits.md](us-price-limits.md).
@@ -121,6 +123,43 @@ pinned by tests. Each phase needs a US deploy and a new app build.
 - **Left for phase 2:** "Carpet area" and "Society / project name" labels, "Godown" storage type, maintenance fee as HOA
   fee, required floor fields, and everything in the "Add or change" column.
 - Tests: `apps/bff/src/market/us-listing-model.spec.ts`, `apps/web/src/lib/usCategories.test.ts`.
+- Checked live after the deploy: the post form lists the US types, "Sell" disables apartment, room and storage, the condo
+  form asks none of the hidden questions, the old apartment-sale and villa addresses redirect, and India's apartment and
+  villa pages still answer.
+
+Also seen on the live condo form, to take into phase 2 or its own change: the AI copy helper offers Indian languages;
+amenities use India's words ("Lift", "Power backup", "Club house"); and the form still mentions Featured ads and assisted
+posting although nothing is sold in the US.
+
+## Phase 2 as built
+
+The US has a field list of its own (`packages/types/src/usCategoryFields.ts`), read through
+`categoryFieldsFor(category, "us")`. India still reads `CATEGORY_FIELD_CONFIG` itself. A key is kept wherever the meaning
+is the same, so cards, filters, saved searches and requests keep reading one value.
+
+| Form | Asked in the US |
+|---|---|
+| House, townhouse | Bedrooms, full and half bathrooms, square feet, lot size (acres), year built, parking type and spaces, furnishing (optional), laundry, heating, cooling, community name, gated community |
+| Apartment, condo | The same without lot size, plus an optional floor |
+| Home for rent | Security deposit, application fee, utilities included, available from, lease term, pets, price negotiable |
+| Home for sale | Monthly HOA fee, yearly property tax, new construction |
+| Storage | Size, type (self-storage, garage, vehicle / RV, warehouse), access hours, ceiling height, drive-up access, loading dock, on-site security, climate control, deposit, available from, lease term, website |
+| Commercial | Area (sq ft or acres), property type (office, retail, industrial / warehouse, restaurant, hotel, self-storage, land, other), floor, furnishing, restrooms, parking spaces, year built, elevator; for lease: deposit, available from, lease term, yearly increase; for sale: property tax |
+| Room | Unchanged; its pet question moved beside the room details |
+
+Differences from the proposal:
+
+- Half bathrooms are a count of their own, as US listing services record them; a card shows "2.5 Baths".
+- Pets are a multiple choice; "no pets" reads "No pets (assistance animals are welcome)".
+- Furnishing item counts (sofas, geysers and so on) are not asked.
+- Amenities are security cameras, elevator, fitness center, pool, clubhouse and playground.
+- The US server still refuses the questions it must not ask, although the US list no longer names them.
+- Buyers' requests offer the same choices as the US ad form.
+- The AI writing helper no longer offers Indian languages on the website (the app already did not).
+
+Not done: Featured and assisted-posting mentions on the US form; half bathrooms in the pages' structured data; search
+filters on the new fields (phase 4); the website's test-ad scenarios still fill India's answers.
+Tests: `apps/bff/src/market/us-listing-form.spec.ts`.
 
 ## SEO
 

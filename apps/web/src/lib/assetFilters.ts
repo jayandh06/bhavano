@@ -1,7 +1,7 @@
 import type { ListingCategory } from "@bhavano/types";
 import type { HomeTabValue } from "./homeCategories";
 import { CATEGORY_LABELS, categoryGroupsFor, segmentsForHomeCategory } from "./seoRoute";
-import { amenityFieldsFor, CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
+import { amenityFieldsFor, CATEGORY_FIELD_CONFIG, categoryFieldsFor } from "@bhavano/types/categoryFields";
 import { isMarketCategory } from "@bhavano/types/market";
 import { buildMarket } from "./marketRobots";
 
@@ -55,8 +55,8 @@ const FILTER_LABELS: Record<FilterableKey, string> = {
 
 export function assetFiltersFor(category: ListingCategory | undefined): AssetFilter[] {
   if (!category) return [];
-  const fields = CATEGORY_FIELD_CONFIG[category];
-  if (!fields) return [];
+  if (!CATEGORY_FIELD_CONFIG[category]) return [];
+  const fields = categoryFieldsFor(category, buildMarket().id);
 
   return fields
     .filter((field): field is (typeof fields)[number] & { key: FilterableKey } =>
@@ -86,7 +86,7 @@ export function assetFiltersFor(category: ListingCategory | undefined): AssetFil
  */
 export function amenityOptionsFor(category: ListingCategory | undefined): AssetFilterOption[] {
   if (!category) return [];
-  return amenityFieldsFor(category).map((field) => ({ value: field.key, label: field.label }));
+  return amenityFieldsFor(category, buildMarket().id).map((field) => ({ value: field.key, label: field.label }));
 }
 
 export function hasAssetFilter(category: ListingCategory | undefined, key: FilterableKey): boolean {

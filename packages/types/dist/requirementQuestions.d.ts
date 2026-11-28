@@ -98,7 +98,7 @@ export type RequirementSizeQuestion = {
 export declare function sizeQuestionFor(category: ListingCategory, marketId?: MarketId): RequirementSizeQuestion | undefined;
 export declare const REQUIREMENT_BEDROOM_OPTIONS: number[];
 /** The amenities a category declares, as a must-haves question. Empty for categories with none. */
-export declare function amenityOptionsFor(category: ListingCategory): FieldOption[];
+export declare function amenityOptionsFor(category: ListingCategory, marketId?: MarketId): FieldOption[];
 /**
  * Checks attributes against a category and drops what doesn't apply.
  *

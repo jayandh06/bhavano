@@ -361,6 +361,7 @@ function cardSpecs(listing: { category: ListingCategory; attributes: unknown; sp
   const derived = deriveCardSpecs(
     listing.category,
     listing.attributes as Record<string, unknown>,
+    MARKET.id,
   );
   return derived.length > 0 ? derived.slice(0, 3) : listing.specs;
 }
@@ -2736,7 +2737,7 @@ export class ListingsService {
     const rawAttributes = dto.attributes
       ? normalizeBrokerageAttributes(nextTransactionType, dto.attributes)
       : categoryOrTxnChanged
-        ? defaultAttributesFor(nextCategory)
+        ? defaultAttributesFor(nextCategory, MARKET.id)
         : undefined;
     if (rawAttributes !== undefined) {
       this.assertValidAttributes(
@@ -3846,7 +3847,7 @@ export class ListingsService {
     attributes: Record<string, unknown>,
   ): Record<string, unknown> {
     const normalized: Record<string, unknown> = { ...attributes };
-    for (const field of CATEGORY_FIELD_CONFIG[category]) {
+    for (const field of categoryFieldsFor(category, MARKET.id)) {
       // `area` is a number with an accompanying unit — the number itself normalizes exactly like
       // `number` does; the unit sibling key isn't touched here; validated/defaulted in
       // assertValidAttributes and normalizeAreaUnit below.
@@ -3866,6 +3867,12 @@ export class ListingsService {
     /** Field keys whose "required" is waived for this call (bulk imports only). */
     notRequired?: ReadonlySet<string>,
   ): void {
+    // Questions this market must not ask (Fair Housing and the like) are refused even though its form doesn't list them.
+    for (const key of MARKET.hiddenFieldKeys) {
+      if (attributes[key] === undefined) continue;
+      const label = CATEGORY_FIELD_CONFIG[category].find((f) => f.key === key)?.label ?? key;
+      throw new BadRequestException(`${label} is not applicable`);
+    }
     for (const field of categoryFieldsFor(category, MARKET.id)) {
       const value = attributes[field.key];
       if (!fieldIsVisible(field, transactionType, attributes, MARKET.id)) {
@@ -4040,7 +4047,7 @@ export class ListingsService {
   }
 
   private areaFieldFor(category: ListingCategory): FieldDef | undefined {
-    return CATEGORY_FIELD_CONFIG[category].find((f) => f.type === 'area');
+    return categoryFieldsFor(category, MARKET.id).find((f) => f.type === 'area');
   }
 
   /** `price`/`priceUnit` as submitted by the client (`CreateListingInput`/`UpdateListingInput`)

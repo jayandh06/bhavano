@@ -671,7 +671,7 @@ export function PostAdWizard({
           ? postable[0]
           : null;
     setCategory(presetCategory);
-    setAttributes({ ...defaultAttributesFor(presetCategory), ...fromBrokerDefault(presetCategory, preset.sellerType) });
+    setAttributes({ ...defaultAttributesFor(presetCategory, market.id), ...fromBrokerDefault(presetCategory, preset.sellerType) });
     setSelectedBoostPlan({ duration: 15, includeInstantAlerts: true });
     setTransactionType(presetType);
     setPriceQualifier(presetType ? (getPriceQualifierOptions(presetCategory, presetType, market.id)[0]?.value ?? "") : "");
@@ -1273,7 +1273,7 @@ export function PostAdWizard({
     userStartedRef.current = true;
     discardOfferedDraft();
     setCategory(next);
-    setAttributes({ ...defaultAttributesFor(next), ...fromBrokerDefault(next, profileSellerType) });
+    setAttributes({ ...defaultAttributesFor(next, market.id), ...fromBrokerDefault(next, profileSellerType) });
     // A category swap can invalidate "price per unit" (the new category might have no area field
     // at all, or a different one) — reset to the plain default rather than risk submitting a
     // priceUnit that no longer matches anything.
@@ -1766,7 +1766,7 @@ export function PostAdWizard({
   }, [step, category, token, assistedMode]);
   const lastAdPreview =
     lastAd && category && lastAd.category === category && transactionType && lastAdCopied === null
-      ? reuseAttributes(category, transactionType, attributes, lastAd.attributes)
+      ? reuseAttributes(category, transactionType, attributes, lastAd.attributes, market.id)
       : null;
   function useLastAd() {
     if (!lastAdPreview || !category) return;
@@ -1810,7 +1810,7 @@ export function PostAdWizard({
   const showRequiredBorders = formVariant === "v2";
   const requiredKeys =
     showRequiredBorders && category && transactionType
-      ? CATEGORY_FIELD_CONFIG[category].filter((f) => f.required && fieldIsVisible(f, transactionType, attributes, market.id)).map((f) => f.key)
+      ? categoryFieldsFor(category, market.id).filter((f) => f.required && fieldIsVisible(f, transactionType, attributes, market.id)).map((f) => f.key)
       : [];
   const attributeStates = showRequiredBorders ? requiredAttributeStates(requiredKeys, issues, shownMessages) : undefined;
   const stateOf = (target: string) => (showRequiredBorders ? requiredState(issueForTarget(issues, target), target in shownMessages) : undefined);
@@ -2825,24 +2825,28 @@ export function PostAdWizard({
             <div>
               <div className="font-lora font-bold text-[15px] text-text">✨ Let AI write your title and description</div>
               <p className="m-0 mt-0.5 text-[13px] text-text-soft">
-                Fill in the details above, then generate a polished title and description from them — in English or
-                your own language.
+                Fill in the details above, then generate a polished title and description from them
+                {market.indiaContent ? " — in English or your own language." : "."}
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <label className="text-[13px] font-bold text-text-soft shrink-0">Language:</label>
-              <SelectField
-                narrow
-                value={generationLanguage}
-                onChange={(e) => setGenerationLanguage(e.target.value as IndianLanguage | "")}
-              >
-                <option value="">English</option>
-                {INDIAN_LANGUAGES.map((lang) => (
-                  <option key={lang} value={lang}>
-                    {INDIAN_LANGUAGE_LABELS[lang]}
-                  </option>
-                ))}
-              </SelectField>
+              {market.indiaContent && (
+                <>
+                  <label className="text-[13px] font-bold text-text-soft shrink-0">Language:</label>
+                  <SelectField
+                    narrow
+                    value={generationLanguage}
+                    onChange={(e) => setGenerationLanguage(e.target.value as IndianLanguage | "")}
+                  >
+                    <option value="">English</option>
+                    {INDIAN_LANGUAGES.map((lang) => (
+                      <option key={lang} value={lang}>
+                        {INDIAN_LANGUAGE_LABELS[lang]}
+                      </option>
+                    ))}
+                  </SelectField>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => void handleGenerateCopy("title")}
@@ -3425,18 +3429,20 @@ export function PostAdWizard({
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                <SelectField
-                  narrow
-                  value={secondLanguageChoice}
-                  onChange={(e) => setSecondLanguageChoice(e.target.value as IndianLanguage | "")}
-                >
-                  <option value="">English only</option>
-                  {INDIAN_LANGUAGES.map((lang) => (
-                    <option key={lang} value={lang}>
-                      + {INDIAN_LANGUAGE_LABELS[lang]}
-                    </option>
-                  ))}
-                </SelectField>
+                {market.indiaContent && (
+                  <SelectField
+                    narrow
+                    value={secondLanguageChoice}
+                    onChange={(e) => setSecondLanguageChoice(e.target.value as IndianLanguage | "")}
+                  >
+                    <option value="">English only</option>
+                    {INDIAN_LANGUAGES.map((lang) => (
+                      <option key={lang} value={lang}>
+                        + {INDIAN_LANGUAGE_LABELS[lang]}
+                      </option>
+                    ))}
+                  </SelectField>
+                )}
                 <button
                   type="button"
                   onClick={() =>

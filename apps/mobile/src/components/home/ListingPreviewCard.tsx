@@ -94,7 +94,7 @@ export function ListingPreviewCard({
     priceNum > 0 && priceUnit && priceArea && priceArea > 0
       ? perUnitTotalPrice(Math.round(priceNum * priceArea), priceArea, priceUnit, market.id)
       : null;
-  const specs = deriveCardSpecs(category, attributes);
+  const specs = deriveCardSpecs(category, attributes, market.id);
 
   return (
     <View>

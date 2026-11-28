@@ -1,6 +1,6 @@
 import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, TransactionType } from "@bhavano/types";
 import type { HomeTabValue } from "./homeCategories";
-import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
+import { CATEGORY_FIELD_CONFIG, categoryFieldsFor } from "@bhavano/types/categoryFields";
 import { POSTABLE_TRANSACTION_TYPES, postableTransactionTypes } from "@bhavano/types/postingRules";
 import { MAX_BEDROOMS, bedroomLabel } from "@bhavano/types/bedrooms";
 
@@ -204,7 +204,7 @@ export function formatINR(n: number): string {
 }
 
 function facetOptionValues(category: ListingCategory, key: string): string[] {
-  return CATEGORY_FIELD_CONFIG[category].find((f) => f.key === key)?.options?.map((o) => o.value) ?? [];
+  return categoryFieldsFor(category, buildMarket().id).find((f) => f.key === key)?.options?.map((o) => o.value) ?? [];
 }
 
 /** Parses a facet URL segment for the given category — returns `undefined` if it doesn't match
@@ -462,7 +462,7 @@ const GROUP_VERBS: Record<TransactionGroup, string> = { buy: "Buy", "rent-lease"
  * cannot drift apart. */
 function furnishingLabel(value: string | undefined): string | undefined {
   if (!value) return undefined;
-  return CATEGORY_FIELD_CONFIG.apartment.find((f) => f.key === "furnished")?.options?.find((o) => o.value === value)
+  return categoryFieldsFor("apartment", buildMarket().id).find((f) => f.key === "furnished")?.options?.find((o) => o.value === value)
     ?.label;
 }
 

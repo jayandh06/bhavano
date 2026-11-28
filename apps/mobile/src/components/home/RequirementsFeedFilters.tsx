@@ -135,7 +135,7 @@ export const RequirementsFeedFilters = forwardRef<
   const questions = category
     ? requirementQuestionsFor(category, getCurrentMarketId()).filter((q) => !q.transactionTypes || (transaction && q.transactionTypes.includes(transaction)))
     : [];
-  const amenities = category ? amenityOptionsFor(category) : [];
+  const amenities = category ? amenityOptionsFor(category, getCurrentMarketId()) : [];
 
   function reset() {
     setStaged({});

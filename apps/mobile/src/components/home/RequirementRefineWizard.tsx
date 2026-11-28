@@ -259,7 +259,7 @@ export function RequirementRefineWizard({
       maxAreaSqft: max === undefined ? null : Math.round(convertArea(max, sizeUnit, "sqft")),
       areaUnit: min === undefined && max === undefined ? null : sizeUnit,
       attributes: draft.category
-        ? sanitizeRequirementAttributes(draft.category, draft.transactionType, draft.attributes ?? {}).attributes
+        ? sanitizeRequirementAttributes(draft.category, draft.transactionType, draft.attributes ?? {}, market.id).attributes
         : undefined,
     };
   }
@@ -270,7 +270,7 @@ export function RequirementRefineWizard({
 
   function patchFor(step: WizardStep): RefineRequirementInput {
     const attributes = draft.category
-      ? sanitizeRequirementAttributes(draft.category, draft.transactionType, draft.attributes ?? {}).attributes
+      ? sanitizeRequirementAttributes(draft.category, draft.transactionType, draft.attributes ?? {}, market.id).attributes
       : undefined;
     switch (step) {
       case "city":
@@ -712,7 +712,7 @@ export function RequirementRefineWizard({
     if (!draft.category) return null;
     return (
       <ChipRow>
-        {amenityOptionsFor(draft.category).map((option) => (
+        {amenityOptionsFor(draft.category, market.id).map((option) => (
           <Chip
             key={option.value}
             colors={colors}

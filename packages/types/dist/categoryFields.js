@@ -19,6 +19,7 @@ exports.inferBrokerageFeeType = inferBrokerageFeeType;
 exports.amenityFieldsFor = amenityFieldsFor;
 exports.categoryFieldsFor = categoryFieldsFor;
 const market_1 = require("./market");
+const usCategoryFields_1 = require("./usCategoryFields");
 exports.SECTION_LABELS = {
     basics: "Property details",
     pricing: "Pricing & fees",
@@ -130,6 +131,9 @@ exports.SECTION_FIELD_GROUPS = {
                 "securityDeposit",
                 "maintenanceFeeApplicable",
                 "monthlyMaintenanceFee",
+                "applicationFee",
+                "hoaFee",
+                "propertyTaxYearly",
                 "rentEscalationPercent",
                 "dayPassPrice",
                 "singleSharingRent",
@@ -145,12 +149,12 @@ exports.SECTION_FIELD_GROUPS = {
         },
     ],
     basics: [
-        { id: "rooms", label: "Rooms", keys: ["bedrooms", "bathrooms", "balconyCount"] },
-        { id: "size", label: "Size & floor", keys: ["carpetAreaSqft", "plotAreaSqft", "floor", "totalFloors", "entranceFacing"] },
-        { id: "parking", label: "Parking", keys: ["openParkingCount", "closedParkingCount"] },
-        { id: "furnishing", label: "Furnishing & utilities", keys: ["furnished", "waterSource", "gasPipeline"] },
+        { id: "rooms", label: "Rooms", keys: ["bedrooms", "bathrooms", "halfBathrooms", "balconyCount"] },
+        { id: "size", label: "Size & floor", keys: ["carpetAreaSqft", "plotAreaSqft", "lotSizeAcres", "yearBuilt", "floor", "totalFloors", "entranceFacing"] },
+        { id: "parking", label: "Parking", keys: ["openParkingCount", "closedParkingCount", "parkingType", "parkingSpaces"] },
+        { id: "furnishing", label: "Furnishing & utilities", keys: ["furnished", "laundry", "heating", "cooling", "utilitiesIncluded", "waterSource", "gasPipeline"] },
         { id: "society", label: "Society & outdoor space", keys: ["societyName", "gatedCommunity", "privateGarden", "privateTerrace"] },
-        { id: "availability", label: "Availability", keys: ["availableFrom", "lockInPeriod", "possessionStatus", "propertyAge"] },
+        { id: "availability", label: "Availability", keys: ["availableFrom", "leaseTerm", "lockInPeriod", "petPolicy", "newConstruction", "possessionStatus", "propertyAge"] },
         { id: "legal", label: "Ownership & legal", keys: ["ownership", "loanAvailable", "reraRegistered", "reraNumber"] },
     ],
     roomDetails: [
@@ -158,7 +162,7 @@ exports.SECTION_FIELD_GROUPS = {
         { id: "rooms", label: "Rooms & occupants", keys: ["sharingType", "gender", "roomsAvailable", "roomType", "bathroom"] },
         { id: "utilities", label: "Utilities", keys: ["utilitiesIncluded"] },
         { id: "food", label: "Food", keys: ["meals", "foodType", "mealTimings"] },
-        { id: "rules", label: "House rules & availability", keys: ["gateTimings", "visitorsAllowed", "noticePeriod", "availableFrom"] },
+        { id: "rules", label: "House rules & availability", keys: ["petsAllowed", "gateTimings", "visitorsAllowed", "noticePeriod", "availableFrom"] },
         { id: "contact", label: "Website", keys: ["website"] },
     ],
     workspaceDetails: [
@@ -167,7 +171,7 @@ exports.SECTION_FIELD_GROUPS = {
         { id: "more", label: "Amenities & website", keys: ["amenities", "website"] },
     ],
     spaceDetails: [
-        { id: "space", label: "Space", keys: ["sqft", "sizeSqft", "purpose", "storageType", "floor", "furnished", "ceilingHeightFt"] },
+        { id: "space", label: "Space", keys: ["sqft", "sizeSqft", "purpose", "storageType", "floor", "furnished", "yearBuilt", "ceilingHeightFt"] },
         {
             id: "facilities",
             label: "Facilities & access",
@@ -181,12 +185,13 @@ exports.SECTION_FIELD_GROUPS = {
                 "fireNoc",
                 "accessHours",
                 "vehicleAccess",
+                "driveUp",
                 "loadingDock",
                 "securityGuard",
                 "climateControlled",
             ],
         },
-        { id: "availability", label: "Availability", keys: ["availableFrom", "lockInPeriod", "possessionStatus", "propertyAge"] },
+        { id: "availability", label: "Availability", keys: ["availableFrom", "leaseTerm", "lockInPeriod", "possessionStatus", "propertyAge"] },
         { id: "legal", label: "Ownership & legal", keys: ["ownership", "reraRegistered", "reraNumber"] },
         { id: "contact", label: "Website", keys: ["website"] },
     ],
@@ -196,11 +201,13 @@ exports.SECTION_FIELD_GROUPS = {
         { id: "legal", label: "Ownership & legal", keys: ["ownership", "reraRegistered", "reraNumber"] },
     ],
 };
+/** Group headings the US words differently: it has no housing societies and asks no brokerage fee. */
+const US_GROUP_LABELS = { society: "Community", postedBy: "Posted by" };
 /** Splits one section's already-visible fields into `SECTION_FIELD_GROUPS`' sub-groups, in that list's order; empty groups are
  * dropped. Inside a group, fields follow the group's own key order (each list puts a question before its follow-up). A field the
  * list doesn't name goes into a trailing "More details" group, in category order, so a field added later can't vanish from the
  * form. When only one group is left it is returned unlabelled. */
-function groupSectionFields(section, fields) {
+function groupSectionFields(section, fields, marketId = "in") {
     const defs = section === "other" ? undefined : exports.SECTION_FIELD_GROUPS[section];
     if (!defs)
         return fields.length > 0 ? [{ id: "all", label: null, fields }] : [];
@@ -209,7 +216,11 @@ function groupSectionFields(section, fields) {
         for (const key of def.keys)
             if (!groupOf.has(key))
                 groupOf.set(key, def.id);
-    const groups = defs.map((def) => ({ id: def.id, label: def.label, fields: [] }));
+    const groups = defs.map((def) => ({
+        id: def.id,
+        label: (marketId === "us" ? US_GROUP_LABELS[def.id] : undefined) ?? def.label,
+        fields: [],
+    }));
     const more = { id: "more-details", label: "More details", fields: [] };
     for (const field of fields) {
         const id = groupOf.get(field.key);
@@ -226,7 +237,7 @@ function groupSectionFields(section, fields) {
  * it. Iterates to a fixpoint since hiding one field can cascade to hide the next. */
 function pruneHiddenAttributes(category, transactionType, attributes, marketId) {
     const next = { ...attributes };
-    const fields = exports.CATEGORY_FIELD_CONFIG[category];
+    const fields = categoryFieldsFor(category, marketId);
     let removedAny = true;
     while (removedAny) {
         removedAny = false;
@@ -243,6 +254,9 @@ function pruneHiddenAttributes(category, transactionType, attributes, marketId) 
             }
         }
     }
+    if (marketId)
+        for (const key of market_1.MARKETS[marketId].hiddenFieldKeys)
+            delete next[key];
     return next;
 }
 /**
@@ -365,9 +379,9 @@ function listingCompleteness(category, transactionType, attributes, marketId) {
 /** The attributes a freshly-chosen category starts with — the counts, at zero. Called instead
  * of resetting to an empty object so a stepper has a number to increment from and the form opens
  * with honest answers rather than blanks the poster has to fill in to say "none". */
-function defaultAttributesFor(category) {
+function defaultAttributesFor(category, marketId = "in") {
     const out = {};
-    for (const field of exports.CATEGORY_FIELD_CONFIG[category]) {
+    for (const field of categoryFieldsFor(category, marketId)) {
         if (field.defaultValue !== undefined)
             out[field.key] = field.defaultValue;
     }
@@ -1145,7 +1159,7 @@ const ROOM_FIELDS = [
         key: "petsAllowed",
         label: "Pets allowed",
         type: "select",
-        section: "preferences",
+        section: "roomDetails",
         options: [
             { value: "yes", label: "Yes" },
             { value: "no", label: "No" },
@@ -1935,8 +1949,8 @@ exports.AMENITY_KEYS = [
 ];
 /** The amenity fields of one category, in the order the config declares them — empty for the
  * categories that have none (plot, commercial, furniture, interiors, storage). */
-function amenityFieldsFor(category) {
-    return (exports.CATEGORY_FIELD_CONFIG[category] ?? []).filter((field) => field.section === "amenities");
+function amenityFieldsFor(category, marketId = "in") {
+    return (exports.CATEGORY_FIELD_CONFIG[category] ? categoryFieldsFor(category, marketId) : []).filter((field) => field.section === "amenities");
 }
 const marketFields = new Map();
 /** A money field as a market without rupees words it: its own symbol in the label, and no rupee minimum on the
@@ -1947,15 +1961,16 @@ function inMarketCurrency(field, marketId) {
     const label = field.label.split("₹").join(market_1.MARKETS[marketId].currencySymbol);
     return field.key === "brokerageFee" ? { ...field, label, min: 1 } : { ...field, label };
 }
-/** `CATEGORY_FIELD_CONFIG` for one market: what a form or a listing page shows and what its checks say. India gets the
- * config itself. Which fields a market offers is still decided by `fieldIsVisible`. */
+/** The fields of one market: what a form or a listing page shows and what its checks say. India gets
+ * `CATEGORY_FIELD_CONFIG` itself; the US gets its own list (`US_CATEGORY_FIELDS`), and for a category without one the
+ * shared list worded in dollars. Which fields a market offers is still decided by `fieldIsVisible`. */
 function categoryFieldsFor(category, marketId = "in") {
     if (marketId === "in")
         return exports.CATEGORY_FIELD_CONFIG[category];
     const key = `${marketId}|${category}`;
     let fields = marketFields.get(key);
     if (!fields) {
-        fields = exports.CATEGORY_FIELD_CONFIG[category].map((field) => inMarketCurrency(field, marketId));
+        fields = (marketId === "us" ? usCategoryFields_1.US_CATEGORY_FIELDS[category] : undefined) ?? exports.CATEGORY_FIELD_CONFIG[category].map((field) => inMarketCurrency(field, marketId));
         marketFields.set(key, fields);
     }
     return fields;
