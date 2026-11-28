@@ -1,7 +1,7 @@
 # US price limits
 
-Status: **built 2026-11-28, not merged or deployed.** The first proposal's limits were replaced, at the owner's request,
-by limits based on US averages. Part of the US launch ([us-market-expansion.md](us-market-expansion.md)).
+Status: **deployed to the US 2026-11-28** (pull request 109, image `sha-35f6139f`: `bff`, `web`, `admin`). India was not
+deployed. The first proposal's limits were replaced, at the owner's request, by limits based on US averages. Part of the US launch ([us-market-expansion.md](us-market-expansion.md)).
 
 ## Problem
 
@@ -74,8 +74,11 @@ blocked on the website and the app. It now takes the market. The admin edit form
 
 ## Deploy
 
-US `bff`, `web` and `admin`. The app needs a new build: builds made before this change keep the old limits and still ask
-a US home ad for the entrance facing. India's behaviour is unchanged, so India needs no deploy.
+US `bff`, `web` and `admin`: done. The app still needs a new build: builds made before this change keep the old limits
+and still ask a US home ad for the entrance facing. India's behaviour is unchanged, so India needs no deploy.
+
+Checked after the deploy: `/us`, `/us/post`, the US admin sign-in redirect and the India home page answered; inside the
+US server a $950 apartment rent is accepted, $20 is refused in dollars and the money labels show `($)`.
 
 ## Not verified
 
