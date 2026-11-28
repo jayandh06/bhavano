@@ -22,6 +22,7 @@ import { FeedbackRequestMessageCard } from "./FeedbackRequestMessageCard";
 import { ScreenHeader } from "./ScreenHeader";
 import { ReportSheet } from "./ReportSheet";
 import { useMarket } from "../../lib/market";
+import { Trellis } from "../Trellis";
 
 /** The thread body shared by an existing conversation ([id].tsx) and a not-yet-created one
  * (new/[listingId].tsx) — see docs/plans/message-delete-and-lazy-conversation-creation.md.
@@ -203,6 +204,7 @@ export function ConversationThread({
   // (often under the keyboard / below the tab bar). See app/_layout.tsx's KeyboardProvider.
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader
         title="Conversation"

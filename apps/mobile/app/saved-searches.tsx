@@ -15,6 +15,7 @@ import { Icon } from "../src/components/Icon";
 import { useMarket } from "../src/lib/market";
 import type { MarketId } from "@bhavano/types/market";
 import { bedroomListText, savedSearchMoney } from "../src/lib/marketText";
+import { Trellis } from "../src/components/Trellis";
 
 function criteriaLine(s: SavedSearchDto, id: MarketId): string {
   const parts: string[] = [];
@@ -101,6 +102,7 @@ export default function SavedSearchesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader title="Saved searches" onBack={() => router.back()} />
 

@@ -36,6 +36,7 @@ import { ListingLocationEditor, type ListingLocationChange } from "../../../src/
 import { useMarket } from "../../../src/lib/market";
 import { allowsPerUnitPrice } from "@bhavano/types/postingRules";
 import { AnnualRateInput } from "../../../src/components/home/AnnualRateInput";
+import { Trellis } from "../../../src/components/Trellis";
 
 const ALLOWED_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const ALLOWED_VIDEO_MIME_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/3gpp", "video/x-matroska"];
@@ -60,6 +61,7 @@ export default function EditListingScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader title="Edit listing" onBack={() => router.back()} />
       {isLoading || !accessToken ? (
@@ -274,7 +276,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
   // shrinks the available space, it never scrolls a newly-focused field (this form's fields nest
   // several conditional levels deep) into the space it shrunk.
   return (
-    <KeyboardAwareScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}>
+    <KeyboardAwareScrollView contentContainerStyle={styles.container}>
       {listing.featuredPerformance && (
         <View style={{ borderWidth: 1, borderColor: colors.gold, backgroundColor: colors.surfaceAlt, borderRadius: 14, padding: 14, marginBottom: 12, gap: 6 }}>
           <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>

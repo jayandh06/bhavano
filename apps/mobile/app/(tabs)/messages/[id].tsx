@@ -9,6 +9,7 @@ import { fetchConversation } from "../../../src/lib/bffClient";
 import { ConversationThread } from "../../../src/components/home/ConversationThread";
 import { ScreenHeader } from "../../../src/components/home/ScreenHeader";
 import { GatedScreen } from "../../../src/components/home/GatedScreen";
+import { Trellis } from "../../../src/components/Trellis";
 
 // Nested under (tabs)/messages/_layout.tsx's own Stack rather than a top-level app/messages/[id]
 // route, so pushing here keeps the outer Tabs bar mounted and visible — see _layout.tsx's own
@@ -49,6 +50,7 @@ export default function ConversationScreen() {
   if (!isLoggedIn || !accessToken) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <Trellis surface="body" />
         <Stack.Screen options={{ headerShown: false }} />
         <ScreenHeader title="Conversation" onBack={() => router.back()} />
         <GatedScreen title="Conversation" />
@@ -59,6 +61,7 @@ export default function ConversationScreen() {
   if (isError && !initialMessages) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <Trellis surface="body" />
         <Stack.Screen options={{ headerShown: false }} />
         <ScreenHeader title="Conversation" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 }}>
@@ -79,6 +82,7 @@ export default function ConversationScreen() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <Trellis surface="body" />
         <Stack.Screen options={{ headerShown: false }} />
         <ScreenHeader title="Conversation" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>

@@ -8,6 +8,7 @@ import { ListingCard } from "../src/components/home/ListingCard";
 import { ScreenHeader } from "../src/components/home/ScreenHeader";
 import { useMarket } from "../src/lib/market";
 import { spell } from "../src/lib/marketText";
+import { Trellis } from "../src/components/Trellis";
 
 // Moved out of the bottom tab bar (was `(tabs)/saved.tsx`) in favour of a Messages tab — reachable
 // now from the Account tab's "Saved listings" row instead, same pattern as Purchase history.
@@ -20,6 +21,7 @@ export default function SavedScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader title="Saved listings" onBack={() => router.back()} />
 

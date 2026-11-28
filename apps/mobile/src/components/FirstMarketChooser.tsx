@@ -5,6 +5,7 @@ import type { MarketId } from "@bhavano/types/market";
 import { useAppTheme } from "../theme/ThemeContext";
 import { chooseFirstMarket } from "../lib/market";
 import { CountryOption } from "./CountryOption";
+import { Trellis } from "./Trellis";
 
 /** Asked once, on a new install on a phone set up for the US, with the US picked already. Drawn before the app itself, so it uses no navigation. */
 export function FirstMarketChooser() {
@@ -24,6 +25,7 @@ export function FirstMarketChooser() {
         gap: 12,
       }}
     >
+      <Trellis surface="body" />
       <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 24, color: colors.text }}>Where are you looking?</Text>
       <Text style={{ fontSize: 14, lineHeight: 20, color: colors.textSoft, marginBottom: 8 }}>
         Bhavano shows homes and listings for one country at a time. You can change this later in your account or the menu.

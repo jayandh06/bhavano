@@ -15,7 +15,7 @@ export function GatedScreen({ title }: { title: string }) {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+    <View style={styles.container}>
       {isLoggedIn && <Text style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>{title}</Text>}
     </View>
   );

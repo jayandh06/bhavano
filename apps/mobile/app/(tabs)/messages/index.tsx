@@ -9,6 +9,7 @@ import { useConversationsQuery } from "../../../src/lib/queries";
 import { GatedScreen } from "../../../src/components/home/GatedScreen";
 import { ScreenHeader } from "../../../src/components/home/ScreenHeader";
 import { Icon } from "../../../src/components/Icon";
+import { Trellis } from "../../../src/components/Trellis";
 
 /** dd/mm/yyyy hh:mm:ss, in the device's local time zone — mirrors the web app's identical
  * helper on `/messages`. An explicit absolute timestamp rather than a relative "3h ago", so two
@@ -45,6 +46,7 @@ export default function MessagesScreen() {
   if (!isLoggedIn || !accessToken) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <Trellis surface="body" />
         <ScreenHeader title="Messages" />
         <GatedScreen title="Messages" />
       </View>
@@ -53,6 +55,7 @@ export default function MessagesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <ScreenHeader title="Messages" />
 
       {isLoading ? (

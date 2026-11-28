@@ -12,6 +12,7 @@ import {
   RequirementRefineWizard,
   type RequirementWizardSubject,
 } from "../../src/components/home/RequirementRefineWizard";
+import { Trellis } from "../../src/components/Trellis";
 
 /**
  * The requirement questions for a new capture — docs/plans/requirement-refinement-questions.md.
@@ -71,6 +72,7 @@ export default function NewRequirementScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader title="Tell us more" onBack={leave} />
       {subject ? (

@@ -26,9 +26,20 @@ declared in `:root` and overridden in `:root[data-theme="dark"]`. Colours cannot
 inside a data URI, so each theme has its own tile. No image request, no JavaScript, no change to
 server or client components, so no SEO impact. Cards and inputs are opaque, so they sit cleanly on top.
 
-## Not done
+## In the app (built 2026-11-28, not yet released)
 
-The mobile app still has its flat background. The same tile can be drawn with `react-native-svg`
-behind the screens; it would ship in the next app release.
+The app draws the same tile with `react-native-svg` (`components/Trellis.tsx`; the numbers are in `theme/trellis.ts`, and a test fails
+if they drift from `globals.css`).
+
+| Surface | App |
+|---|---|
+| `band` | The utility bar and the bottom tab bar |
+| `head` | The header rows on Home, Requirements and Blog, the slim collapsed bar and every screen's title bar, over a surface-to-page fade |
+| `body` | Behind every screen's content, the first-launch country chooser and the forced-update screen |
+
+Cards, inputs, the category strip, sheets and footers inside a screen stay solid. Checked in a browser build in light and dark mode;
+scrolling on a lower-end Android phone is not yet checked.
+
+## Website note
 
 Page wrappers (`min-h-screen bg-bg`, on every page) paint solid cream over the body, so `globals.css` also puts the body tile on `.min-h-screen.bg-bg`. Without that the body trellis never showed on the listing area.

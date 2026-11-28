@@ -1965,7 +1965,7 @@ export function PostAdWizard({
     <KeyboardAwareScrollView
       ref={scrollRef}
       style={{ flex: 1 }}
-      contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}
+      contentContainerStyle={styles.container}
     >
       {step !== "success" && step !== "offer" && (
         // A vector icon, not a "→" text glyph, between steps — a Unicode arrow's rendering

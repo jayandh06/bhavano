@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useMarket } from "../../lib/market";
+import { Trellis } from "../Trellis";
 
 /**
  * Mirrors the web app's green utility strip above the main header (For Owners / Tools / Plans /
@@ -21,6 +22,7 @@ export function UtilityBar() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.green }]}>
+      <Trellis surface="band" />
       <Pressable onPress={() => router.push("/post?from=utility_bar")}>
         <Text style={[styles.link, { color: colors.onGreen }]}>For Owners</Text>
       </Pressable>

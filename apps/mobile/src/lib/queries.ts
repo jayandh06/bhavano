@@ -25,6 +25,7 @@ import {
   type ListingsQuery,
 } from "./bffClient";
 import { getSocket } from "./socket";
+import { withTimeLimit } from "./timeLimit";
 import { setAppBadgeCount } from "./push";
 
 export const UNREAD_QUERY_KEY = ["unread"] as const;
@@ -58,10 +59,14 @@ export function useLoginNudgeSettingsQuery(enabled: boolean) {
   });
 }
 
+/** How long one try at the city list may take, with one retry: a screen waiting on it (Post Ad) can then offer "Try again". */
+const CITIES_TIME_LIMIT_MS = 12_000;
+
 export function useCitiesQuery(q?: string, all?: boolean) {
   return useQuery({
     queryKey: ["cities", q ?? "", !!all],
-    queryFn: () => fetchCities(q, all),
+    queryFn: () => withTimeLimit(fetchCities(q, all), CITIES_TIME_LIMIT_MS),
+    retry: 1,
   });
 }
 

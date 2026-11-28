@@ -20,6 +20,7 @@ import { iosPurchases } from "../src/lib/iosPurchasesClient";
 import { useMarket } from "../src/lib/market";
 import { Currency } from "../src/components/home/Currency";
 import { Redirect } from "expo-router";
+import { Trellis } from "../src/components/Trellis";
 
 interface PlanCard {
   tier: SubscriptionTier;
@@ -153,6 +154,7 @@ function PlansContent() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader title="Plans & upgrades" onBack={() => (router.canGoBack() ? router.back() : router.replace("/"))} />
 

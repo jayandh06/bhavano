@@ -28,6 +28,7 @@ import { useMarket } from "../../src/lib/market";
 import { siteUrl } from "../../src/lib/marketEndpoints";
 import { openCountryPicker } from "../../src/lib/countryPicker";
 import { CountryRow } from "../../src/components/CountryRow";
+import { Trellis } from "../../src/components/Trellis";
 
 type PhoneStep = "idle" | "otpSent";
 
@@ -66,8 +67,9 @@ export default function AccountScreen() {
     // reachable *without* an account — a verification reviewer won't sign up to find it.
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <Trellis surface="body" />
         <ScreenHeader title="Account" onBack={onBack} />
-        <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
           <LegalFooter />
         </ScrollView>
       </View>
@@ -77,8 +79,9 @@ export default function AccountScreen() {
   if (!profile || !accessToken) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <Trellis surface="body" />
         <ScreenHeader title="Account" onBack={onBack} />
-        <View style={[styles.container, { backgroundColor: colors.bg }]}>
+        <View style={styles.container}>
           <ActivityIndicator color={colors.green} />
         </View>
       </View>
@@ -379,6 +382,7 @@ function ProfileFields({
   // mechanism that doesn't depend on either. See app/_layout.tsx's KeyboardProvider.
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <ScreenHeader title="Account" onBack={onBack} />
       <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Profile</Text>
