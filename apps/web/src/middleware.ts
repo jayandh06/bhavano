@@ -6,6 +6,7 @@ import { citySlugForRoute } from "@/lib/cityFromRoute";
 import { shouldReplaceAcquisition } from "@/lib/acquisitionCookie";
 import { sessionCookieOptions } from "@/lib/sessionCookie";
 import { cookieName } from "@/lib/cookieNames";
+import { visitorIp } from "@/lib/clientIp";
 
 const ACQUISITION_COOKIE = cookieName("bhavano_acq");
 const SESSION_COOKIE = cookieName("bhavano_sid");
@@ -115,18 +116,9 @@ function isOwnHost(refererHost: string, request: NextRequest): boolean {
   return candidates.some((candidate) => candidate && bare(candidate) === referer);
 }
 
-/** The visitor's IP as Caddy saw it.
- *
- * The LAST entry, not the first. Caddy appends the connecting peer to whatever X-Forwarded-For
- * arrived, so a client that sends its own header produces "spoofed, real" — the leftmost value is
- * attacker-controlled and the rightmost is the address Caddy actually observed. With exactly one
- * trusted proxy in front of us, that last hop is the one to trust.
- */
+/** The visitor's IP: see `lib/clientIp` for which `X-Forwarded-For` entry that is. */
 function clientIp(request: NextRequest): string | undefined {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (!forwarded) return undefined;
-  const hops = forwarded.split(",").map((v) => v.trim()).filter(Boolean);
-  return hops[hops.length - 1];
+  return visitorIp(request.headers.get("x-forwarded-for"));
 }
 
 function safeHostname(url: string | null): string | undefined {

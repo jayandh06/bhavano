@@ -3,17 +3,12 @@
 import { headers } from "next/headers";
 import type { ClientErrorInput } from "@bhavano/types";
 import { reportClientError } from "@/lib/bff";
+import { visitorIp } from "@/lib/clientIp";
 
-/** Last hop of X-Forwarded-For, same trust reasoning as middleware.ts's own `clientIp` — Caddy
- * appends the connecting peer to whatever header arrived, so the leftmost value is
- * attacker-controlled and the rightmost is the address Caddy actually observed. Needed here (and
- * not left to the BFF's own `req.ip`) because this call reaches the BFF from the web container
- * itself, not the visitor's browser — see `ClientErrorInput.ip`'s own doc comment. */
+/** The visitor's IP (see `lib/clientIp`). Needed here (and not left to the BFF's own `req.ip`) because this call reaches
+ * the BFF from the web container itself, not the visitor's browser — see `ClientErrorInput.ip`'s own doc comment. */
 async function clientIp(): Promise<string | undefined> {
-  const forwarded = (await headers()).get("x-forwarded-for");
-  if (!forwarded) return undefined;
-  const hops = forwarded.split(",").map((v) => v.trim()).filter(Boolean);
-  return hops[hops.length - 1];
+  return visitorIp((await headers()).get("x-forwarded-for"));
 }
 
 /** Called from error.tsx/global-error.tsx — a UI crash reported to the BFF's Loki-backed logging.

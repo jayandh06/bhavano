@@ -142,3 +142,19 @@ Remove the DNS record or stop the `admin` container; nothing else depends on it.
 
 - No admin screen has been run against the US backend; some may fail on empty or US-shaped data.
 - Whether Cloudflare Access fits the current Cloudflare plan.
+
+## Page visits looked like India's (found and fixed 2026-11-28)
+
+The US admin reads only the US database, so it holds no visits to the India site. It still looked that way:
+
+- **Addresses.** `www.bhavano.com/us` is forwarded by India's Caddy, and the US website recorded the last
+  `X-Forwarded-For` entry, which is India's server (`13.205.0.54`). Every visitor since the route went live
+  (64 of 168 sessions on 2026-11-28) shows that address; the earlier ones are direct visits to the US server before
+  launch. Fixed by `TRUSTED_PROXY_IPS` on the US website (`lib/clientIp.ts`), which skips our own forwarding server.
+  The same fix gives the US server's per-visitor limits a real address.
+- **Paths and links.** Paths are stored without `/us`, and the admin showed them so and linked them to
+  `www.bhavano.com/<path>`, the India site. The US admin now shows `/us/...` and links to it.
+
+Not changed: rows recorded before the fix keep India's address (the real one was never stored), and the US server has no
+GeoIP database, so city and country stay blank.
+
