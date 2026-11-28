@@ -1,6 +1,7 @@
 # US listing model: property types, deal types and forms
 
-Status: **approved 2026-11-28 with the recommendations below; phase 1 built, not merged or deployed.** Part of the US launch
+Status: **approved 2026-11-28 with the recommendations below; phase 1 deployed to the US the same day** (pull request 111,
+image `sha-a621e459`: `bff`, `web`, `admin`; India not deployed). The app needs a new build. Part of the US launch
 ([us-market-expansion.md](us-market-expansion.md)). Builds on
 [us-categories-condo-townhouse-room.md](us-categories-condo-townhouse-room.md) and, if approved, replaces parts of it
 and of [us-price-limits.md](us-price-limits.md).
@@ -121,6 +122,13 @@ pinned by tests. Each phase needs a US deploy and a new app build.
 - **Left for phase 2:** "Carpet area" and "Society / project name" labels, "Godown" storage type, maintenance fee as HOA
   fee, required floor fields, and everything in the "Add or change" column.
 - Tests: `apps/bff/src/market/us-listing-model.spec.ts`, `apps/web/src/lib/usCategories.test.ts`.
+- Checked live after the deploy: the post form lists the US types, "Sell" disables apartment, room and storage, the condo
+  form asks none of the hidden questions, the old apartment-sale and villa addresses redirect, and India's apartment and
+  villa pages still answer.
+
+Also seen on the live condo form, to take into phase 2 or its own change: the AI copy helper offers Indian languages;
+amenities use India's words ("Lift", "Power backup", "Club house"); and the form still mentions Featured ads and assisted
+posting although nothing is sold in the US.
 
 ## SEO
 
