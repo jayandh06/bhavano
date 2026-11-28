@@ -8,7 +8,7 @@ import { leavingActiveNotice, statusOptionsFor } from "@bhavano/types/listingSta
 import {
   brokerageFeeIssue,
   brokerageFeeNote,
-  CATEGORY_FIELD_CONFIG,
+  categoryFieldsFor,
   fieldIsVisible,
 } from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
@@ -113,7 +113,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
 
-  const fieldConfig = CATEGORY_FIELD_CONFIG[listing.category];
+  const fieldConfig = categoryFieldsFor(listing.category, market.id);
   const visibleFields = fieldConfig.filter((field) => fieldIsVisible(field, listing.transactionType, attributes, market.id));
   const priceUnitAreaField =
     listing.transactionType === "sell" || listing.transactionType === "lease"
@@ -129,8 +129,8 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
   const priceArea = priceUnitAreaField ? Number(attributes[priceUnitAreaField.key]) : NaN;
   const totalPrice =
     priceMode === "perUnit" && priceUnitAreaField ? (priceArea > 0 ? Math.round(priceValue * priceArea) : null) : priceValue;
-  const brokerageIssue = brokerageFeeIssue(listing.transactionType, totalPrice, attributes);
-  const brokerageNote = brokerageFeeNote(listing.transactionType, totalPrice, attributes);
+  const brokerageIssue = brokerageFeeIssue(listing.transactionType, totalPrice, attributes, market.id);
+  const brokerageNote = brokerageFeeNote(listing.transactionType, totalPrice, attributes, market.id);
   const priceOnRequestAllowed = PRICE_ON_REQUEST_CATEGORIES.has(listing.category);
   // Only checked once actually touched — a listing posted before the 50-character minimum existed
   // can still have its price or status changed without being forced to write a description first.

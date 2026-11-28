@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { getMarket, type MarketId } from "@bhavano/types/market";
 import type { Area, City, ListingDetailDto, ListingCategory, ListingStatus, TransactionType } from "@bhavano/types";
 import {
-  CATEGORY_FIELD_CONFIG,
+  categoryFieldsFor,
   brokerageFeeIssue,
   brokerageFeeNote,
   defaultAttributesFor,
@@ -568,7 +568,7 @@ export function AdminEditListingForm({
     // A category swap invalidates the old attributes entirely (different fields, different
     // required keys) — reset to the new category's defaults, same as the posting wizard does on
     // a category change, then prune anything the new transaction type doesn't apply to.
-    setAttributes(pruneHiddenAttributes(newCategory, newTransactionType, defaultAttributesFor(newCategory)));
+    setAttributes(pruneHiddenAttributes(newCategory, newTransactionType, defaultAttributesFor(newCategory), marketId));
     const newQualifierOptions = getPriceQualifierOptions(newCategory, newTransactionType);
     if (!newQualifierOptions.some((opt) => opt.value === priceQualifier)) {
       setPriceQualifier(newQualifierOptions[0]?.value ?? "");
@@ -583,7 +583,7 @@ export function AdminEditListingForm({
     setTransactionType(newTransactionType);
     // Same category, but a field can be transaction-type-gated (field.transactionTypes) — prune
     // whatever no longer applies so the server's assertValidAttributes doesn't reject a stale key.
-    setAttributes((prev) => pruneHiddenAttributes(category, newTransactionType, prev));
+    setAttributes((prev) => pruneHiddenAttributes(category, newTransactionType, prev, marketId));
     const newQualifierOptions = getPriceQualifierOptions(category, newTransactionType);
     if (!newQualifierOptions.some((opt) => opt.value === priceQualifier)) {
       setPriceQualifier(newQualifierOptions[0]?.value ?? "");
@@ -622,8 +622,8 @@ export function AdminEditListingForm({
       lngNum >= -180 &&
       lngNum <= 180);
 
-  const fieldConfig = CATEGORY_FIELD_CONFIG[category];
-  const visibleFields = fieldConfig.filter((field) => fieldIsVisible(field, transactionType, attributes));
+  const fieldConfig = categoryFieldsFor(category, marketId);
+  const visibleFields = fieldConfig.filter((field) => fieldIsVisible(field, transactionType, attributes, marketId));
   const fieldSections = groupFieldsBySection(visibleFields);
   // Price/Price qualifier aren't category-specific fields, but they belong with the rest of
   // "pricing" all the same — same reasoning as the web app's sectionExtras (CategoryFieldsAccordion),
@@ -640,7 +640,7 @@ export function AdminEditListingForm({
   const priceOnRequestAllowed = PRICE_ON_REQUEST_CATEGORIES.has(category);
   const priceUnitAreaField =
     transactionType === "sell" || transactionType === "lease"
-      ? CATEGORY_FIELD_CONFIG[category].find((field) => field.type === "area")
+      ? fieldConfig.find((field) => field.type === "area")
       : undefined;
   const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
   const priceValue = Number(price.replace(/[^0-9.]/g, ""));
@@ -654,11 +654,11 @@ export function AdminEditListingForm({
   // as the BFF's applyUpdate.
   const priceChanged = price !== initialPrice || priceMode !== initialPriceMode;
   const attributesIssue = attributesChanged
-    ? listingAttributesIssue(category, transactionType, attributes, totalPrice)
+    ? listingAttributesIssue(category, transactionType, attributes, totalPrice, marketId)
     : priceChanged
-      ? brokerageFeeIssue(transactionType, totalPrice, attributes)
+      ? brokerageFeeIssue(transactionType, totalPrice, attributes, marketId)
       : null;
-  const brokerageNote = brokerageFeeNote(transactionType, totalPrice, attributes);
+  const brokerageNote = brokerageFeeNote(transactionType, totalPrice, attributes, marketId);
   // Only checked once actually touched — same reasoning as attributesChanged above.
   // Only checked when the title is touched, like the description: a listing titled before the 20-character minimum can still
   // have its price or status changed without being forced to retitle it.
@@ -689,11 +689,11 @@ export function AdminEditListingForm({
       ];
 
   function setFieldValue(field: FieldDef, value: string | string[]) {
-    setAttributes((prev) => pruneHiddenAttributes(category, transactionType, { ...prev, [field.key]: value }));
+    setAttributes((prev) => pruneHiddenAttributes(category, transactionType, { ...prev, [field.key]: value }, marketId));
   }
 
   function setFieldUnit(field: FieldDef, unit: string) {
-    setAttributes((prev) => pruneHiddenAttributes(category, transactionType, { ...prev, [`${field.key}Unit`]: unit }));
+    setAttributes((prev) => pruneHiddenAttributes(category, transactionType, { ...prev, [`${field.key}Unit`]: unit }, marketId));
   }
 
   async function onSave() {

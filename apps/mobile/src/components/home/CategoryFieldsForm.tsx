@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
 import {
   CATEGORY_FIELD_CONFIG,
+  categoryFieldsFor,
   fieldIsVisible,
   groupFieldsBySection,
   groupSectionFields,
@@ -92,7 +93,7 @@ export function CategoryFieldsForm({
   const optionSheetRef = useRef<BottomSheetModal>(null);
   const [openField, setOpenField] = useState<FieldConfig | null>(null);
 
-  const visibleFields = CATEGORY_FIELD_CONFIG[category].filter((field) =>
+  const visibleFields = categoryFieldsFor(category, market.id).filter((field) =>
     fieldIsVisible(field, transactionType, attributes, market.id),
   );
   const fieldSections = groupFieldsBySection(visibleFields);

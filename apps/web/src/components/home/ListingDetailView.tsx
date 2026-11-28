@@ -6,7 +6,7 @@ import type { Area, City, ListingDetailDto } from "@bhavano/types";
 import { postedByLabel } from "@bhavano/types/sellerType";
 import { toGuestSave } from "@bhavano/types/guestSaves";
 import {
-  CATEGORY_FIELD_CONFIG,
+  categoryFieldsFor,
   fieldIsVisible,
   formatFieldLabel,
   formatFieldValue,
@@ -96,7 +96,7 @@ export async function ListingDetailView({
   // additionally dropped when "no" — they read as a badge list of what the place *has*, so a
   // present-but-negative flag (e.g. "🏊 Swimming pool: No") would just be noise here, unlike on
   // the posting/edit forms where every amenity needs to stay editable either way.
-  const visibleFields = CATEGORY_FIELD_CONFIG[listing.category].filter((field) => {
+  const visibleFields = categoryFieldsFor(listing.category, SERVER_MARKET.id).filter((field) => {
     if (!(field.key in attributes)) return false;
     if (!fieldIsVisible(field, listing.transactionType, attributes, SERVER_MARKET.id)) return false;
     if (field.section === "amenities" && attributes[field.key] !== "yes") return false;
@@ -286,7 +286,7 @@ export async function ListingDetailView({
                               {String(attributes[field.key])}
                             </a>
                           ) : (
-                            formatFieldValue(field, attributes[field.key])
+                            formatFieldValue(field, attributes[field.key], SERVER_MARKET.id)
                           )}
                         </div>
                       ))}

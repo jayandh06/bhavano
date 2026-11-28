@@ -94,10 +94,10 @@ export interface FieldDef {
  * listing detail page so all three agree on what's visible. */
 export declare function fieldIsVisible(field: FieldDef, transactionType: TransactionType, attributes: Record<string, unknown>, marketId?: MarketId): boolean;
 /** A stored attribute as the listing page prints it: the option's label for a select ("North-East"
- * rather than "north-east"), "Yes"/"No", rupees grouped the Indian way, a unit suffix. Shared by
- * the web and mobile detail pages so they cannot word the same value differently. */
-export declare function formatFieldValue(field: FieldDef, value: unknown): string;
-/** The label to show beside `formatFieldValue`'s output — a rupee field drops its "(₹)". */
+ * rather than "north-east"), "Yes"/"No", money in the market's currency and grouping, a unit suffix.
+ * Shared by the web and mobile detail pages so they cannot word the same value differently. */
+export declare function formatFieldValue(field: FieldDef, value: unknown, marketId?: MarketId): string;
+/** The label to show beside `formatFieldValue`'s output — a money field drops its "(₹)" or "($)". */
 export declare function formatFieldLabel(field: FieldDef): string;
 /** Groups an already-visibility-filtered field list into sections, ordered per
  * `SECTION_ORDER` (fields without a `section` land in a trailing "other" bucket). Generic so
@@ -196,18 +196,18 @@ export declare const BROKERAGE_FEE_PERCENT = "percent";
  */
 export declare function normalizeBrokerageAttributes(transactionType: TransactionType, attributes: Record<string, unknown>): Record<string, unknown>;
 /**
- * Why the brokerage ₹ amount is out of line with the listing's price, or null. Sits on top of the
- * fields' own min/max (which already hold the % to 0.25–5): a sale's fee is ₹1,000 up to 5% of the
- * price, a rent/lease fee up to 2 months' rent. `price` is the listing's total — the monthly rent
- * for rent/lease — and a missing or zero price skips the ceiling. Shared by the forms and the BFF.
- * See docs/plans/residential-rent-buy-details.md.
+ * Why the fixed brokerage amount is out of line with the listing's price, or null. Sits on top of the
+ * fields' own min/max (which already hold the % to 0.25–5): a sale's fee is up to 5% of the price (and
+ * in India at least ₹1,000), a rent/lease fee up to 2 months' rent. `price` is the listing's total —
+ * the monthly rent for rent/lease — and a missing or zero price skips the ceiling. Shared by the forms
+ * and the BFF. See docs/plans/residential-rent-buy-details.md and docs/plans/us-price-limits.md.
  */
-export declare function brokerageFeeIssue(transactionType: TransactionType, price: number | null | undefined, attributes: Record<string, unknown>): string | null;
+export declare function brokerageFeeIssue(transactionType: TransactionType, price: number | null | undefined, attributes: Record<string, unknown>, marketId?: MarketId): string | null;
 /**
- * A line shown under the brokerage amount while it is being typed: what a % comes to in rupees
- * ("≈ ₹1,30,000 of ₹65,00,000"), or the most a ₹ amount may be. Null with no price to go on.
+ * A line shown under the brokerage amount while it is being typed: what a % comes to in money
+ * ("≈ ₹1,30,000 of ₹65,00,000"), or the most a fixed amount may be. Null with no price to go on.
  */
-export declare function brokerageFeeNote(transactionType: TransactionType, price: number | null | undefined, attributes: Record<string, unknown>): {
+export declare function brokerageFeeNote(transactionType: TransactionType, price: number | null | undefined, attributes: Record<string, unknown>, marketId?: MarketId): {
     key: string;
     text: string;
 } | null;
@@ -229,3 +229,6 @@ export declare const AMENITY_KEYS: string[];
 /** The amenity fields of one category, in the order the config declares them — empty for the
  * categories that have none (plot, commercial, furniture, interiors, storage). */
 export declare function amenityFieldsFor(category: ListingCategory): FieldDef[];
+/** `CATEGORY_FIELD_CONFIG` for one market: what a form or a listing page shows and what its checks say. India gets the
+ * config itself. Which fields a market offers is still decided by `fieldIsVisible`. */
+export declare function categoryFieldsFor(category: ListingCategory, marketId?: MarketId): FieldDef[];

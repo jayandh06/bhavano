@@ -1,5 +1,6 @@
 import type { ListingCategory, TransactionType } from "./index";
 import { brokerageFeeIssue, listingAttributeIssues } from "./categoryFields";
+import type { MarketId } from "./market";
 
 /** What is still wrong on the posting wizard's Details step, as an ordered list (form order) instead of the
  * single "first problem" the step used to compute. Shared by the web and mobile wizards so both agree with each
@@ -46,6 +47,9 @@ export interface DetailsIssueInput {
   titleMin: number;
   description: string;
   descriptionMin: number;
+  /** Which market's fields apply (a field the market hides is never asked for) and whose currency the messages
+   * use. India when not given. */
+  marketId?: MarketId;
 }
 
 export const ATTR_TARGET_PREFIX = "attr:";
@@ -72,7 +76,7 @@ export function postDetailsIssues(input: DetailsIssueInput): DetailsIssue[] {
   if (input.needsPostedBy && !input.postedByAnswered) other("posted_by", "Choose Owner or Broker / Agent under Posted by", true);
 
   if (input.category && input.transactionType) {
-    for (const issue of listingAttributeIssues(input.category, input.transactionType, input.attributes)) {
+    for (const issue of listingAttributeIssues(input.category, input.transactionType, input.attributes, undefined, input.marketId)) {
       // The brokerage-against-price check (no field) is made below with the real total; and Posted by was
       // already reported above with its own wording.
       if (!issue.key) continue;
@@ -85,7 +89,7 @@ export function postDetailsIssues(input: DetailsIssueInput): DetailsIssue[] {
   else if (input.priceIssue) other("price", input.priceIssue, false);
 
   if (input.transactionType) {
-    const brokerage = brokerageFeeIssue(input.transactionType, input.totalPrice, input.attributes);
+    const brokerage = brokerageFeeIssue(input.transactionType, input.totalPrice, input.attributes, input.marketId);
     if (brokerage) other("brokerage", brokerage, false);
   }
 

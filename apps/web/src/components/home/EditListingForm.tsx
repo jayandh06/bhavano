@@ -6,7 +6,7 @@ import type { City, ListingDetailDto, ListingStatus, SellerType } from "@bhavano
 import {
   brokerageFeeIssue,
   brokerageFeeNote,
-  CATEGORY_FIELD_CONFIG,
+  categoryFieldsFor,
   listingAttributesIssue,
 } from "@bhavano/types/categoryFields";
 import { fromBrokerDefault } from "@bhavano/types/sellerType";
@@ -106,7 +106,7 @@ export function EditListingForm({
     text: string;
   } | null>(null);
 
-  const fieldConfig = CATEGORY_FIELD_CONFIG[listing.category];
+  const fieldConfig = categoryFieldsFor(listing.category, market.id);
   const priceUnitAreaField =
     listing.transactionType === "sell" || listing.transactionType === "lease"
       ? fieldConfig.find((field) => field.type === "area")
@@ -129,9 +129,9 @@ export function EditListingForm({
   const attributesIssue = attributesChanged
     ? listingAttributesIssue(listing.category, listing.transactionType, attributes, totalPrice, market.id)
     : priceChanged
-      ? brokerageFeeIssue(listing.transactionType, totalPrice, attributes)
+      ? brokerageFeeIssue(listing.transactionType, totalPrice, attributes, market.id)
       : null;
-  const brokerageNote = brokerageFeeNote(listing.transactionType, totalPrice, attributes);
+  const brokerageNote = brokerageFeeNote(listing.transactionType, totalPrice, attributes, market.id);
   // 0 is a real, submittable price ("Contact for price") for pg/coworking — see
   // PRICE_ON_REQUEST_CATEGORIES's own doc comment. Every other category still needs a real one.
   const priceOnRequestAllowed = PRICE_ON_REQUEST_CATEGORIES.has(listing.category);

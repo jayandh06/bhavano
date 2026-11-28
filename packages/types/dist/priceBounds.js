@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PRICE_BOUNDS = void 0;
+exports.US_PRICE_BOUNDS = exports.PRICE_BOUNDS = void 0;
+exports.priceBoundsFor = priceBoundsFor;
 exports.listingPriceIssue = listingPriceIssue;
 exports.requirementBudgetIssue = requirementBudgetIssue;
 const areaUnit_1 = require("./areaUnit");
@@ -15,8 +16,7 @@ exports.PRICE_BOUNDS = {
     house: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
     apartment: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
     villa: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
-    // US-only categories. Same numbers as their India siblings (US dollar amounts are numerically smaller than rupee ones, so normal US prices are inside
-    // these bands); a room rents for much less than a home, and is rent-only so its sale band is never reached.
+    // US-only categories, judged by US_PRICE_BOUNDS below; these rows only complete the record.
     condo: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
     townhouse: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
     room: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 100, max: 100_000 } },
@@ -33,25 +33,49 @@ exports.PRICE_BOUNDS = {
     // shares the standard real-estate-sale band used by every other sellable category.
     commercial: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 5_000, max: 2_000_000 } },
 };
+/** US plausibility bounds in dollars: a tenth of the national average to fifty times it, rounded. Averages (late 2026)
+ * and their sources are in docs/plans/us-price-limits.md: home sale $416,700, home rent about $2,000 a month, room rent
+ * about $1,000, a 10x10 storage unit about $119, commercial sale (median) $575,000. No national figure exists for
+ * commercial rent or for a storage unit's sale price, so those two are simply wide. */
+const US_HOME = { sale: { min: 40_000, max: 20_000_000 }, rental: { min: 200, max: 100_000 } };
+/** Only the categories the US offers; any other keeps the shared bounds above. */
+exports.US_PRICE_BOUNDS = {
+    house: US_HOME,
+    apartment: US_HOME,
+    villa: US_HOME,
+    condo: US_HOME,
+    townhouse: US_HOME,
+    // Rent-only, so the sale band is never reached.
+    room: { sale: US_HOME.sale, rental: { min: 100, max: 50_000 } },
+    storage: { sale: { min: 1_000, max: 10_000_000 }, rental: { min: 10, max: 6_000 } },
+    commercial: { sale: { min: 50_000, max: 30_000_000 }, rental: { min: 100, max: 1_000_000 } },
+};
+/** The bounds a price or budget is judged against in a market. */
+function priceBoundsFor(category, transactionType, marketId = "in") {
+    const byCategory = (marketId === "us" ? exports.US_PRICE_BOUNDS[category] : undefined) ?? exports.PRICE_BOUNDS[category];
+    return byCategory[transactionType === "buy" || transactionType === "sell" ? "sale" : "rental"];
+}
 /**
  * Why a listing's price can't be posted, or null. Always judged on the total stored in
  * `Listing.price`, never on a per-unit figure: ₹12,500 per sq ft is a normal house rate, and the
  * ₹1 lakh minimum is for the whole property. When the seller priced per unit, pass what they
  * typed so the message can show the working. Shared by the BFF (the authority) and both post
  * forms, which check before the preview so a seller never learns this after uploading photos.
+ * Bounds and wording follow `marketId` (India when not given).
  */
-function listingPriceIssue(category, transactionType, total, perUnit) {
+function listingPriceIssue(category, transactionType, total, perUnit, marketId = "in") {
     if (total === 0 && priceQualifiers_1.PRICE_ON_REQUEST_CATEGORIES.has(category))
         return null;
-    const bounds = exports.PRICE_BOUNDS[category][transactionType === "buy" || transactionType === "sell" ? "sale" : "rental"];
+    const bounds = priceBoundsFor(category, transactionType, marketId);
     if (total >= bounds.min && total <= bounds.max)
         return null;
-    const range = `${(0, priceWords_1.formatInrWithWords)(bounds.min)} to ${(0, priceWords_1.formatInrWithWords)(bounds.max)}`;
+    const words = (amount) => (marketId === "in" ? (0, priceWords_1.formatInrWithWords)(amount) : (0, market_1.formatMoney)(marketId, amount));
+    const range = `${words(bounds.min)} to ${words(bounds.max)}`;
     if (!perUnit)
-        return `Price ${(0, priceWords_1.formatInrWithWords)(total)} is outside the expected range (${range}) for this category`;
+        return `Price ${words(total)} is outside the expected range (${range}) for this category`;
     const unit = (0, areaUnit_1.areaUnitShortLabel)(perUnit.unit, 1);
-    return (`₹${(0, priceWords_1.groupInr)(perUnit.price)}/${unit} × ${(0, priceWords_1.groupInr)(perUnit.area)} ${(0, areaUnit_1.areaUnitShortLabel)(perUnit.unit, perUnit.area)} ` +
-        `comes to ${(0, priceWords_1.formatInrWithWords)(total)}, outside the expected range (${range}) for this category. ` +
+    return (`${(0, market_1.formatMoney)(marketId, perUnit.price)}/${unit} × ${(0, market_1.groupAmount)(marketId, perUnit.area)} ${(0, areaUnit_1.areaUnitShortLabel)(perUnit.unit, perUnit.area)} ` +
+        `comes to ${words(total)}, outside the expected range (${range}) for this category. ` +
         `Check the price per ${unit} and the area.`);
 }
 /**
@@ -65,7 +89,7 @@ function listingPriceIssue(category, transactionType, total, perUnit) {
  * matter when budget was optional either way), until budget became required.
  */
 function requirementBudgetIssue(category, transactionType, value, marketId = "in") {
-    const bounds = exports.PRICE_BOUNDS[category][transactionType === "buy" || transactionType === "sell" ? "sale" : "rental"];
+    const bounds = priceBoundsFor(category, transactionType, marketId);
     if (value >= bounds.min && value <= bounds.max)
         return null;
     if (marketId !== "in") {

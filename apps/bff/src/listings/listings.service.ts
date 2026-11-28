@@ -50,6 +50,7 @@ import { deriveTag } from '@bhavano/types/listingTag';
 import {
   brokerageFeeIssue,
   CATEGORY_FIELD_CONFIG,
+  categoryFieldsFor,
   defaultAttributesFor,
   fieldIsVisible,
   normalizeBrokerageAttributes,
@@ -3861,7 +3862,7 @@ export class ListingsService {
     /** Field keys whose "required" is waived for this call (bulk imports only). */
     notRequired?: ReadonlySet<string>,
   ): void {
-    for (const field of CATEGORY_FIELD_CONFIG[category]) {
+    for (const field of categoryFieldsFor(category, MARKET.id)) {
       const value = attributes[field.key];
       if (!fieldIsVisible(field, transactionType, attributes, MARKET.id)) {
         if (value !== undefined)
@@ -3937,7 +3938,7 @@ export class ListingsService {
     price: number,
     attributes: Record<string, unknown>,
   ): void {
-    const issue = brokerageFeeIssue(transactionType, price, attributes);
+    const issue = brokerageFeeIssue(transactionType, price, attributes, MARKET.id);
     if (issue) throw new BadRequestException(issue);
   }
 
@@ -3963,7 +3964,7 @@ export class ListingsService {
       );
     }
 
-    const amountField = CATEGORY_FIELD_CONFIG[category].find(
+    const amountField = categoryFieldsFor(category, MARKET.id).find(
       (field) =>
         field.dependsOn?.key === applicableKey &&
         field.dependsOn.value === 'yes' &&
@@ -4092,6 +4093,7 @@ export class ListingsService {
       resolved.priceUnit && resolved.area
         ? { price: typedPrice, area: resolved.area, unit: resolved.priceUnit }
         : undefined,
+      MARKET.id,
     );
     if (issue) throw new BadRequestException(issue);
   }

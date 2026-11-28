@@ -1,7 +1,7 @@
 import { Linking, StyleSheet, Text, View } from "react-native";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
 import {
-  CATEGORY_FIELD_CONFIG,
+  categoryFieldsFor,
   fieldIsVisible,
   formatFieldLabel,
   formatFieldValue,
@@ -32,7 +32,7 @@ export function ListingAttributeSections({
   const market = useMarket();
   const { colors } = useAppTheme();
   const attrs = attributes as Record<string, string | string[]>;
-  const visibleFields = CATEGORY_FIELD_CONFIG[category].filter((field) => {
+  const visibleFields = categoryFieldsFor(category, market.id).filter((field) => {
     if (!(field.key in attrs)) return false;
     if (!fieldIsVisible(field, transactionType, attrs, market.id)) return false;
     if (field.section === "amenities" && attrs[field.key] !== "yes") return false;
@@ -77,7 +77,7 @@ export function ListingAttributeSections({
                     <Text style={{ fontSize: 13, color: colors.textSoft, flexShrink: 1 }}>
                       <Text style={{ fontWeight: "700", color: colors.text }}>{formatFieldLabel(field)}</Text>
                       {": "}
-                      {formatFieldValue(field, attrs[field.key])}
+                      {formatFieldValue(field, attrs[field.key], market.id)}
                     </Text>
                   )}
                 </View>

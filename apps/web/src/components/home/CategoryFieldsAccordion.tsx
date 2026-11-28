@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
 import type { FieldDef, FieldOption, FieldSection, ListingCompleteness } from "@bhavano/types/categoryFields";
 import {
-  CATEGORY_FIELD_CONFIG,
+  categoryFieldsFor,
   fieldIsVisible,
   groupFieldsBySection,
   groupSectionFields,
@@ -707,7 +707,7 @@ export function CategoryFieldsAccordion({
   feedback?: FieldFeedback;
 }) {
   const market = useMarket();
-  const visibleFields = CATEGORY_FIELD_CONFIG[category].filter(
+  const visibleFields = categoryFieldsFor(category, market.id).filter(
     (field) => fieldIsVisible(field, transactionType, attributes, market.id),
   );
   const completeness = listingCompleteness(category, transactionType, attributes, market.id);
