@@ -10,12 +10,12 @@ import {
 import {
   requirementQuestionsFor,
   REQUIREMENT_BEDROOM_OPTIONS,
-  REQUIREMENT_CATEGORY_LABELS,
   amenityOptionsFor,
   budgetPresetsFor,
   sizeQuestionFor,
   type RequirementIntent,
   transactionChoicesFor,
+  requirementCategoryLabel,
 } from "@bhavano/types/requirementQuestions";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { getCurrentMarketId } from "../../lib/market";
@@ -207,7 +207,7 @@ export const RequirementsFeedFilters = forwardRef<
             {categories.map((c) => (
               <Chip
                 key={c}
-                label={`${REQUIREMENT_CATEGORY_LABELS[c]} (${facets.categories[c] ?? 0})`}
+                label={`${requirementCategoryLabel(c, getCurrentMarketId())} (${facets.categories[c] ?? 0})`}
                 active={staged.category === c}
                 onPress={() => setStaged(withCategory(staged, c))}
               />

@@ -79,11 +79,13 @@ const HOUSE = option("house", "House");
 const APARTMENT = option("apartment", "Apartment");
 const CONDO = option("condo", "Condo / Co-op");
 const TOWNHOUSE = option("townhouse", "Townhouse");
+const MULTIFAMILY = option("multifamily", "Multi-family");
+const LAND = option("plot", "Land");
 const COMMERCIAL = option("commercial", "Commercial");
 
-/** The US lists, as on the website (docs/plans/us-listing-model.md): apartments are only rented, and there are no villas, plots, PG or coworking. */
+/** The US lists, as on the website (docs/plans/us-listing-model.md): apartments are only rented, plots are Land, and there are no villas, PG or coworking. */
 const US_OPTIONS: Partial<Record<HomeTabValue, PropertyOption[]>> = {
-  buy: [HOUSE, CONDO, TOWNHOUSE, COMMERCIAL],
+  buy: [HOUSE, CONDO, TOWNHOUSE, MULTIFAMILY, LAND, COMMERCIAL],
   rentLease: [HOUSE, APARTMENT, CONDO, TOWNHOUSE, option("room", "Room for rent"), option("storage", "Storage"), COMMERCIAL],
 };
 

@@ -6,7 +6,7 @@ import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import type { AdminUpdateSavedSearchInput } from '@bhavano/types';
 
 const LISTING_CATEGORIES: ListingCategory[] = [
-  'house', 'apartment', 'villa', 'pg', 'storage', 'coworking', 'furniture', 'interiors', 'plot', 'commercial', 'condo', 'townhouse', 'room',
+  'house', 'apartment', 'villa', 'pg', 'storage', 'coworking', 'furniture', 'interiors', 'plot', 'commercial', 'condo', 'townhouse', 'room', 'multifamily',
 ];
 const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
 

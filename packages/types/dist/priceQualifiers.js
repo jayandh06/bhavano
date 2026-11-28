@@ -49,6 +49,7 @@ exports.PRICE_QUALIFIER_OPTIONS = {
     villa: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
     condo: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
     townhouse: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
+    multifamily: { sell: SELL_OPTIONS },
     room: { rent: MONTHLY_OPTIONS },
     pg: { rent: PG_RENT_OPTIONS },
     storage: { rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },

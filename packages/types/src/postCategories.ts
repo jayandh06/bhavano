@@ -44,6 +44,7 @@ export const POST_CATEGORY_GROUPS: PostCategoryGroup[] = [
       // US-only (not in India's market category list, so India's picker is unchanged): they reuse the existing icons.
       { value: "condo", label: "Condo / Co-op", icon: "🏙️", iconName: "catApartment" },
       { value: "townhouse", label: "Townhouse", icon: "🏠", iconName: "catHouse" },
+      { value: "multifamily", label: "Multi-family", icon: "🏘️", iconName: "catApartment" },
       { value: "room", label: "Room for rent", icon: "🛏️", iconName: "catPg" },
       { value: "plot", label: "Plot", icon: "🗺️", iconName: "catPlot" },
       // Land, whichever way it is eventually used. Someone with a plot to sell thinks of it as
@@ -71,7 +72,14 @@ export const POST_CATEGORIES: PostCategoryOption[] = POST_CATEGORY_GROUPS.flatMa
 /** The category groups offered in the posting wizard in this market: only categories the market has, and no empty group.
  * India's list is `POST_CATEGORY_GROUPS` without the US-only categories, which is exactly what it offered before they were added. */
 export function marketPostCategoryGroups(id: MarketId): PostCategoryGroup[] {
-  return POST_CATEGORY_GROUPS.map((g) => ({ ...g, options: g.options.filter((o) => isMarketCategory(id, o.value)) })).filter(
-    (g) => g.options.length > 0,
-  );
+  return POST_CATEGORY_GROUPS.map((g) => ({
+    ...g,
+    options: g.options.filter((o) => isMarketCategory(id, o.value)).map((o) => (id === "us" && o.value === "plot" ? { ...o, label: "Land" } : o)),
+  })).filter((g) => g.options.length > 0);
+}
+
+/** The flat list to look a category's name up in. India gets `POST_CATEGORIES` itself; elsewhere it is the market's
+ * picker, worded the market's way ("Land", not "Plot"). */
+export function marketPostCategories(id: MarketId): PostCategoryOption[] {
+  return id === "in" ? POST_CATEGORIES : marketPostCategoryGroups(id).flatMap((g) => g.options);
 }

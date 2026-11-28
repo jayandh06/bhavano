@@ -103,9 +103,14 @@ export const HOME_TABS: HomeTab[] = [
       bhkColumn1Item("buy", "Buy", "house", "House"),
       // The US buys condos and townhouses; apartments there are rentals, and it lists no villas (docs/plans/us-listing-model.md).
       ...(US
-        ? [bhkColumn1Item("buy", "Buy", "condo", "Condo", "Condo / Co-op"), bhkColumn1Item("buy", "Buy", "townhouse", "Townhouse")]
+        ? [
+            bhkColumn1Item("buy", "Buy", "condo", "Condo", "Condo / Co-op"),
+            bhkColumn1Item("buy", "Buy", "townhouse", "Townhouse"),
+            singleLinkColumn1Item("multifamily", "Multi-family", { transactionGroup: "buy", category: "multifamily" }),
+            singleLinkColumn1Item("plot", "Land", { transactionGroup: "buy", category: "plot" }),
+          ]
         : [bhkColumn1Item("buy", "Buy", "apartment", "Apartment"), bhkColumn1Item("buy", "Buy", "villa", "Villa")]),
-      // PG, Coworking and Plots are not US categories (MARKETS.us.categories), so the US menus do not offer them.
+      // PG and Coworking are not US categories (MARKETS.us.categories); the US calls plots Land and lists them above.
       ...(US ? [] : [singleLinkColumn1Item("plot", "Plots", { transactionGroup: "buy", category: "plot" })]),
       singleLinkColumn1Item("commercial", "Commercial", { transactionGroup: "buy", category: "commercial" }),
     ],

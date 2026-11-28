@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Area, City, ListingCategory, SavedSearchDto, TransactionType } from "@bhavano/types";
 import { formatInrWithWords } from "@bhavano/types/priceWords";
 import { MAX_BEDROOMS, bedroomLabel } from "@bhavano/types/bedrooms";
-import { MAX_REQUIREMENT_AREAS, REQUIREMENT_CATEGORY_LABELS } from "@bhavano/types/requirementQuestions";
+import { MAX_REQUIREMENT_AREAS, requirementCategoryLabel } from "@bhavano/types/requirementQuestions";
 import { createSavedSearchAction, deleteSavedSearchAction } from "@/app/actions/saved-searches";
 import { listAllAreasAction } from "@/app/actions/locations";
 import { pushDataLayerEvent } from "@/lib/gtm";
@@ -32,7 +32,7 @@ const INDIA_CATEGORY_OPTIONS: { value: ListingCategory; label: string }[] = [
 /** The US offers its own categories (docs/plans/us-listing-model.md); India's list above is unchanged. */
 const CATEGORY_OPTIONS =
   buildMarket().id === "us"
-    ? MARKETS.us.categories.map((value) => ({ value, label: REQUIREMENT_CATEGORY_LABELS[value] }))
+    ? MARKETS.us.categories.map((value) => ({ value, label: requirementCategoryLabel(value, "us") }))
     : INDIA_CATEGORY_OPTIONS;
 
 const TRANSACTION_TYPE_OPTIONS: { value: TransactionType; label: string }[] = [

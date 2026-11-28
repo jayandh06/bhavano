@@ -4,6 +4,7 @@ exports.REQUIREMENT_GAP_PHRASES = exports.REQUIREMENT_GAP_LABELS = exports.REQUI
 exports.requirementIntentsFor = requirementIntentsFor;
 exports.transactionChoicesFor = transactionChoicesFor;
 exports.intentCategories = intentCategories;
+exports.requirementCategoryLabel = requirementCategoryLabel;
 exports.intentOf = intentOf;
 exports.applyIntent = applyIntent;
 exports.isValidRequirementTransaction = isValidRequirementTransaction;
@@ -62,7 +63,7 @@ exports.INTENT_CATEGORIES = {
 /** The US market's categories for the two property intents: its own order, condo, townhouse and room for rent, and apartments for rent only. The other
  * intents (PG, coworking, furniture, interiors) have no category in the US. India's lists above are unchanged. */
 const US_INTENT_CATEGORIES = {
-    buy: ["house", "condo", "townhouse", "commercial"],
+    buy: ["house", "condo", "townhouse", "multifamily", "plot", "commercial"],
     rentLease: ["house", "apartment", "condo", "townhouse", "room", "commercial", "storage"],
 };
 /** The "Looking to ..." choices with at least one category in the market (the US has no PG, coworking, furniture or interiors). India gets
@@ -91,6 +92,7 @@ exports.REQUIREMENT_CATEGORY_LABELS = {
     villa: "Villa",
     condo: "Condo / Co-op",
     townhouse: "Townhouse",
+    multifamily: "Multi-family",
     room: "Room for rent",
     pg: "PG",
     storage: "Storage",
@@ -100,6 +102,10 @@ exports.REQUIREMENT_CATEGORY_LABELS = {
     plot: "Plot",
     commercial: "Commercial",
 };
+/** A category's name in a market: the US calls a plot "Land". */
+function requirementCategoryLabel(category, marketId = "in") {
+    return marketId === "us" && category === "plot" ? "Land" : exports.REQUIREMENT_CATEGORY_LABELS[category];
+}
 /** The follow-up for the two intents that span two transaction types. Rent vs lease matters more
  * than it looks: a lease is a lump sum, so the budget question is a different question. */
 exports.INTENT_TRANSACTION_CHOICES = {
@@ -173,6 +179,7 @@ exports.REQUIREMENT_ATTRIBUTE_QUESTIONS = {
     villa: residentialQuestions("villa"),
     condo: residentialQuestions("condo"),
     townhouse: residentialQuestions("townhouse"),
+    multifamily: [],
     room: [question("room", "roomType", "Room type", true), question("room", "bathroom", "Bathroom", true)],
     pg: [
         question("pg", "sharingType", "Sharing", true),
@@ -559,13 +566,17 @@ function subjectPhrase(c, marketId) {
                 ? `${joinOr([...c.bedroomOptions].sort((a, b) => a - b).map(bedrooms_1.bedroomLabel))} ${(0, bedrooms_1.bedWord)(marketId)}`
                 : "";
             const furnished = joinOr(attr("furnished").map((f) => f.toLowerCase()));
-            const noun = c.category === "commercial"
-                ? "commercial space"
-                : c.category === "storage"
-                    ? "storage space"
-                    : c.category === "coworking"
-                        ? "coworking seat"
-                        : c.category;
+            const noun = c.category === "multifamily"
+                ? "multi-family building"
+                : c.category === "plot" && marketId === "us"
+                    ? "land"
+                    : c.category === "commercial"
+                        ? "commercial space"
+                        : c.category === "storage"
+                            ? "storage space"
+                            : c.category === "coworking"
+                                ? "coworking seat"
+                                : c.category;
             const head = [bhk, furnished, noun, txn].filter(Boolean).join(" ");
             return `${head[0].toUpperCase()}${head.slice(1)}`;
         }

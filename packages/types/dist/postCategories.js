@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.POST_CATEGORIES = exports.POST_CATEGORY_GROUPS = void 0;
 exports.marketPostCategoryGroups = marketPostCategoryGroups;
+exports.marketPostCategories = marketPostCategories;
 const market_1 = require("./market");
 /**
  * The posting wizard's first step, grouped.
@@ -28,6 +29,7 @@ exports.POST_CATEGORY_GROUPS = [
             // US-only (not in India's market category list, so India's picker is unchanged): they reuse the existing icons.
             { value: "condo", label: "Condo / Co-op", icon: "🏙️", iconName: "catApartment" },
             { value: "townhouse", label: "Townhouse", icon: "🏠", iconName: "catHouse" },
+            { value: "multifamily", label: "Multi-family", icon: "🏘️", iconName: "catApartment" },
             { value: "room", label: "Room for rent", icon: "🛏️", iconName: "catPg" },
             { value: "plot", label: "Plot", icon: "🗺️", iconName: "catPlot" },
             // Land, whichever way it is eventually used. Someone with a plot to sell thinks of it as
@@ -53,5 +55,13 @@ exports.POST_CATEGORIES = exports.POST_CATEGORY_GROUPS.flatMap((g) => g.options)
 /** The category groups offered in the posting wizard in this market: only categories the market has, and no empty group.
  * India's list is `POST_CATEGORY_GROUPS` without the US-only categories, which is exactly what it offered before they were added. */
 function marketPostCategoryGroups(id) {
-    return exports.POST_CATEGORY_GROUPS.map((g) => ({ ...g, options: g.options.filter((o) => (0, market_1.isMarketCategory)(id, o.value)) })).filter((g) => g.options.length > 0);
+    return exports.POST_CATEGORY_GROUPS.map((g) => ({
+        ...g,
+        options: g.options.filter((o) => (0, market_1.isMarketCategory)(id, o.value)).map((o) => (id === "us" && o.value === "plot" ? { ...o, label: "Land" } : o)),
+    })).filter((g) => g.options.length > 0);
+}
+/** The flat list to look a category's name up in. India gets `POST_CATEGORIES` itself; elsewhere it is the market's
+ * picker, worded the market's way ("Land", not "Plot"). */
+function marketPostCategories(id) {
+    return id === "in" ? exports.POST_CATEGORIES : marketPostCategoryGroups(id).flatMap((g) => g.options);
 }

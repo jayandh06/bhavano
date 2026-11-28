@@ -22,6 +22,7 @@ const ALL_BUY: { group: TransactionGroup; category: ListingCategory }[] = [
   { group: "buy", category: "villa" },
   { group: "buy", category: "condo" },
   { group: "buy", category: "townhouse" },
+  { group: "buy", category: "multifamily" },
   { group: "buy", category: "plot" },
   { group: "buy", category: "commercial" },
 ];

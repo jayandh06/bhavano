@@ -10,7 +10,6 @@ import {
   MAX_REQUIREMENT_AREAS,
   requirementQuestionsFor,
   REQUIREMENT_BEDROOM_OPTIONS,
-  REQUIREMENT_CATEGORY_LABELS,
   REQUIREMENT_TIMELINE_OPTIONS,
   REQUIRED_REQUIREMENT_STEPS,
   amenityOptionsFor,
@@ -29,6 +28,7 @@ import {
   type RequirementStep,
   intentCategories,
   transactionChoicesFor,
+  requirementCategoryLabel,
 } from "@bhavano/types/requirementQuestions";
 import { refineRequirementAction } from "@/app/actions/requirements";
 import { listAllAreasAction } from "@/app/actions/locations";
@@ -424,7 +424,7 @@ export function RequirementRefineWizard({
               }))
             }
           >
-            {REQUIREMENT_CATEGORY_LABELS[category]}
+            {requirementCategoryLabel(category, market.id)}
           </Chip>
         ))}
       </ChipRow>

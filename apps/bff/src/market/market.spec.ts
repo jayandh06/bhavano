@@ -225,7 +225,7 @@ describe('market categories and area units', () => {
     const offered = marketPostCategoryGroups('us').flatMap((g) => g.options.map((o) => o.value));
     expect(offered).toEqual(expect.arrayContaining(['house', 'apartment', 'commercial', 'storage']));
     expect(offered).not.toEqual(expect.arrayContaining(['pg']));
-    for (const c of ['pg', 'coworking', 'plot', 'furniture', 'interiors', 'villa'] as const) {
+    for (const c of ['pg', 'coworking', 'furniture', 'interiors', 'villa'] as const) {
       expect(isMarketCategory('us', c)).toBe(false);
       expect(offered).not.toContain(c);
     }

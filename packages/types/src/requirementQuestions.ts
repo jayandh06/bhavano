@@ -75,7 +75,7 @@ export const INTENT_CATEGORIES: Record<RequirementIntent, ListingCategory[]> = {
 /** The US market's categories for the two property intents: its own order, condo, townhouse and room for rent, and apartments for rent only. The other
  * intents (PG, coworking, furniture, interiors) have no category in the US. India's lists above are unchanged. */
 const US_INTENT_CATEGORIES: Partial<Record<RequirementIntent, ListingCategory[]>> = {
-  buy: ["house", "condo", "townhouse", "commercial"],
+  buy: ["house", "condo", "townhouse", "multifamily", "plot", "commercial"],
   rentLease: ["house", "apartment", "condo", "townhouse", "room", "commercial", "storage"],
 };
 
@@ -110,6 +110,7 @@ export const REQUIREMENT_CATEGORY_LABELS: Record<ListingCategory, string> = {
   villa: "Villa",
   condo: "Condo / Co-op",
   townhouse: "Townhouse",
+  multifamily: "Multi-family",
   room: "Room for rent",
   pg: "PG",
   storage: "Storage",
@@ -119,6 +120,11 @@ export const REQUIREMENT_CATEGORY_LABELS: Record<ListingCategory, string> = {
   plot: "Plot",
   commercial: "Commercial",
 };
+
+/** A category's name in a market: the US calls a plot "Land". */
+export function requirementCategoryLabel(category: ListingCategory, marketId: MarketId = "in"): string {
+  return marketId === "us" && category === "plot" ? "Land" : REQUIREMENT_CATEGORY_LABELS[category];
+}
 
 /** The follow-up for the two intents that span two transaction types. Rent vs lease matters more
  * than it looks: a lease is a lump sum, so the budget question is a different question. */
@@ -224,6 +230,7 @@ export const REQUIREMENT_ATTRIBUTE_QUESTIONS: Record<ListingCategory, Requiremen
   villa: residentialQuestions("villa"),
   condo: residentialQuestions("condo"),
   townhouse: residentialQuestions("townhouse"),
+  multifamily: [],
   room: [question("room", "roomType", "Room type", true), question("room", "bathroom", "Bathroom", true)],
   pg: [
     question("pg", "sharingType", "Sharing", true),
@@ -644,7 +651,11 @@ function subjectPhrase(c: RequirementCriteria, marketId: MarketId): string {
         : "";
       const furnished = joinOr(attr("furnished").map((f) => f.toLowerCase()));
       const noun =
-        c.category === "commercial"
+        c.category === "multifamily"
+          ? "multi-family building"
+          : c.category === "plot" && marketId === "us"
+            ? "land"
+            : c.category === "commercial"
           ? "commercial space"
           : c.category === "storage"
             ? "storage space"

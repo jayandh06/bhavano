@@ -59,6 +59,8 @@ export declare function transactionChoicesFor(intent: RequirementIntent, marketI
 /** The categories an intent offers in a market. India (the default) gets `INTENT_CATEGORIES[intent]` itself, unchanged; the US gets its own list. */
 export declare function intentCategories(intent: RequirementIntent, marketId?: MarketId): ListingCategory[];
 export declare const REQUIREMENT_CATEGORY_LABELS: Record<ListingCategory, string>;
+/** A category's name in a market: the US calls a plot "Land". */
+export declare function requirementCategoryLabel(category: ListingCategory, marketId?: MarketId): string;
 /** The follow-up for the two intents that span two transaction types. Rent vs lease matters more
  * than it looks: a lease is a lump sum, so the budget question is a different question. */
 export declare const INTENT_TRANSACTION_CHOICES: Partial<Record<RequirementIntent, {

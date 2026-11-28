@@ -38,7 +38,7 @@ import {
   TITLE_MIN_LENGTH,
 } from "@bhavano/types/listingLimits";
 import { listingPriceIssue } from "@bhavano/types/priceBounds";
-import { POST_CATEGORIES, marketPostCategoryGroups } from "@bhavano/types/postCategories";
+import { marketPostCategoryGroups, marketPostCategories } from "@bhavano/types/postCategories";
 import { reverseGeocodeAction } from "@/app/actions/locations";
 import { AdminTestScenarios } from "./AdminTestScenarios";
 import { AdminFormVersionSwitch } from "./AdminFormVersionSwitch";
@@ -2418,7 +2418,7 @@ export function PostAdWizard({
           </div>
           <p className="m-0 text-[13px] text-text-soft">
             {(() => {
-              const label = POST_CATEGORIES.find((c) => c.value === category)?.label;
+              const label = marketPostCategories(market.id).find((c) => c.value === category)?.label;
               return label ? `You are continuing your ${label} ad from where you left off. ` : "";
             })()}
             Check the category and details before you post, or start a new ad.
@@ -2492,7 +2492,7 @@ export function PostAdWizard({
               <div className="font-lora font-bold text-[15px] mb-1">You have an unfinished ad on this device</div>
               <p className="m-0 text-[13px] text-text-soft">
                 {[
-                  POST_CATEGORIES.find((c) => c.value === offeredDraft.draft.category)?.label,
+                  marketPostCategories(market.id).find((c) => c.value === offeredDraft.draft.category)?.label,
                   offeredDraft.draft.transactionType ? TRANSACTION_TYPE_LABELS[offeredDraft.draft.transactionType] : null,
                   offeredDraft.draft.title.trim() ? `“${offeredDraft.draft.title.trim()}”` : null,
                   offeredDraft.photos.length > 0
@@ -2533,7 +2533,7 @@ export function PostAdWizard({
             </div>
             {category && !transactionType && (
               <p className="m-0 mt-2 text-[13px] text-muted">
-                Now choose what you want to do with your {POST_CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()}.
+                Now choose what you want to do with your {marketPostCategories(market.id).find((c) => c.value === category)?.label.toLowerCase()}.
               </p>
             )}
           </div>
@@ -2616,7 +2616,7 @@ export function PostAdWizard({
             </div>
           )}
           <h2 className="font-lora text-xl font-semibold text-text m-0 max-w-[720px]">
-            Tell us about the {POST_CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()} you&apos;re{" "}
+            Tell us about the {marketPostCategories(market.id).find((c) => c.value === category)?.label.toLowerCase()} you&apos;re{" "}
             {transactionType === "sell" ? "selling" : transactionType === "rent" ? "renting out" : "leasing out"}
           </h2>
           {draftSavedAt !== null && (
@@ -2734,7 +2734,7 @@ export function PostAdWizard({
 
           <div className="border-t border-border pt-4">
             <div className="text-[13px] font-bold text-text mb-3">
-              {POST_CATEGORIES.find((c) => c.value === category)?.label} details
+              {marketPostCategories(market.id).find((c) => c.value === category)?.label} details
             </div>
             <CategoryFieldsAccordion
               category={category}

@@ -51,6 +51,10 @@ const RECIPES: Record<ListingCategory, Chip[]> = {
   villa: PROPERTY,
   condo: PROPERTY,
   townhouse: PROPERTY,
+  multifamily: [
+    { kind: "count", key: "unitCount", one: "Unit", many: "Units" },
+    { kind: "unit", key: "carpetAreaSqft", suffix: "sqft" },
+  ],
   room: [
     { kind: "option", key: "roomType" },
     { kind: "option", key: "bathroom" },
@@ -80,6 +84,15 @@ const RECIPES: Record<ListingCategory, Chip[]> = {
     { kind: "unit", key: "sqft", suffix: "sqft" },
     { kind: "option", key: "purpose" },
     { kind: "option", key: "furnished" },
+  ],
+};
+
+/** Where a US card shows something else: its land has zoning, not a compass facing. */
+const US_RECIPES: Partial<Record<ListingCategory, Chip[]>> = {
+  plot: [
+    { kind: "unit", key: "plotAreaSqft", suffix: "sqft" },
+    { kind: "option", key: "plotType" },
+    { kind: "text", key: "plotDimensions" },
   ],
 };
 
@@ -126,7 +139,7 @@ export function deriveCardSpecs(
   if (!attributes) return [];
   const chips: string[] = [];
 
-  for (const chip of RECIPES[category] ?? []) {
+  for (const chip of (marketId === "us" ? US_RECIPES[category] : undefined) ?? RECIPES[category] ?? []) {
     const raw = attributes[chip.key];
     if (raw === undefined || raw === null || raw === "") continue;
 

@@ -10,6 +10,7 @@ export const POSTABLE_TRANSACTION_TYPES: Record<ListingCategory, TransactionType
   villa: ["sell", "rent", "lease"],
   condo: ["sell", "rent", "lease"],
   townhouse: ["sell", "rent", "lease"],
+  multifamily: ["sell"],
   room: ["rent"],
   pg: ["rent"],
   storage: ["rent", "lease"],

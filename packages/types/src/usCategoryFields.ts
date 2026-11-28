@@ -242,6 +242,51 @@ const COMMERCIAL_FIELDS: FieldDef[] = [
   fromBroker,
 ];
 
+/** A whole building of two or more homes: a duplex up to an apartment block, sold as one property. */
+const MULTIFAMILY_FIELDS: FieldDef[] = [
+  { key: "unitCount", label: "Number of units", type: "number", min: 2, maxDigits: 4, required: true, section: "basics" },
+  { key: "occupiedUnits", label: "Occupied units", type: "number", min: 0, maxDigits: 4, section: "basics" },
+  { key: "carpetAreaSqft", label: "Building square feet", type: "number", min: 1, maxDigits: 7, required: true, section: "basics" },
+  { key: "lotSizeAcres", label: "Lot size (acres)", type: "number", decimal: true, min: 0.01, unit: "acres", section: "basics" },
+  yearBuilt("basics"),
+  { key: "parkingSpaces", label: "Parking spaces", type: "number", min: 0, maxDigits: 4, section: "basics" },
+  { key: "yearlyGrossRent", label: "Yearly gross rent ($)", type: "number", min: 0, maxDigits: 9, rupees: true, section: "pricing", transactionTypes: ["sell"] },
+  dollars("propertyTaxYearly", "Yearly property tax ($)", ["sell"]),
+  fromBroker,
+];
+
+/** Land with no building to describe. The stored category is `plot`; the US calls it Land. */
+const LAND_FIELDS: FieldDef[] = [
+  { key: "plotAreaSqft", label: "Lot size", type: "area", units: ["sqft", "acre"], min: 0.01, required: true, section: "plotDetails" },
+  {
+    key: "plotType",
+    label: "Zoning",
+    type: "select",
+    section: "plotDetails",
+    options: [
+      option("residential", "Residential"),
+      option("commercial", "Commercial"),
+      option("agricultural", "Agricultural"),
+      option("industrial", "Industrial"),
+      option("mixed-use", "Mixed use"),
+      option("other", "Other / unzoned"),
+    ],
+  },
+  {
+    key: "utilitiesAvailable",
+    label: "Utilities at the lot",
+    type: "multi-select",
+    section: "plotDetails",
+    options: [option("water", "Water"), option("sewer", "Sewer"), option("electricity", "Electricity"), option("gas", "Gas")],
+  },
+  yesNo("roadAccess", "Road access", "plotDetails"),
+  { key: "plotDimensions", label: "Dimensions", type: "text", compact: true, section: "plotDetails", placeholder: "e.g. 100 x 200 ft" },
+  dollars("propertyTaxYearly", "Yearly property tax ($)", ["sell"]),
+  fromBroker,
+];
+
+export { MULTIFAMILY_FIELDS };
+
 const HOUSE_FIELDS = homeFields({ lot: true });
 const UNIT_FIELDS = homeFields({ floor: true });
 
@@ -251,6 +296,8 @@ export const US_CATEGORY_FIELDS: Partial<Record<ListingCategory, FieldDef[]>> = 
   townhouse: HOUSE_FIELDS,
   apartment: UNIT_FIELDS,
   condo: UNIT_FIELDS,
+  multifamily: MULTIFAMILY_FIELDS,
+  plot: LAND_FIELDS,
   storage: STORAGE_FIELDS,
   commercial: COMMERCIAL_FIELDS,
 };

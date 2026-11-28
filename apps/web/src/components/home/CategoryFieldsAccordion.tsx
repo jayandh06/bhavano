@@ -711,7 +711,7 @@ export function CategoryFieldsAccordion({
     (field) => fieldIsVisible(field, transactionType, attributes, market.id),
   );
   const completeness = listingCompleteness(category, transactionType, attributes, market.id);
-  const fieldSections = groupFieldsBySection(visibleFields);
+  const fieldSections = groupFieldsBySection(visibleFields, market.id);
   // A category can have no field of its own in a given section (e.g. pg/coworking have no
   // category-specific "pricing" field — no maintenance fee, no brokerage) while a caller still
   // passes a sectionExtras entry for it (PostAdWizard/EditListingForm fold the shared Price/Price

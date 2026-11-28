@@ -47,6 +47,8 @@ describe('deal types', () => {
       storage: ['rent'],
       commercial: ['sell', 'lease'],
       room: ['rent'],
+      multifamily: ['sell'],
+      plot: ['sell'],
     });
   });
 

@@ -2,7 +2,7 @@ import type { ListingCategory, TransactionType } from "./index";
 import type { AreaUnit } from "./areaUnit";
 import { groupInr } from "./priceWords";
 import { formatMoney, isMarketField, MARKETS, type MarketId } from "./market";
-import { US_CATEGORY_FIELDS } from "./usCategoryFields";
+import { MULTIFAMILY_FIELDS, US_CATEGORY_FIELDS } from "./usCategoryFields";
 
 export interface FieldOption {
   value: string;
@@ -183,6 +183,7 @@ export function formatFieldLabel(field: FieldDef): string {
  * listing detail page). */
 export function groupFieldsBySection<F extends { section?: FieldSection }>(
   fields: F[],
+  marketId: MarketId = "in",
 ): { section: FieldSection | "other"; label: string; fields: F[] }[] {
   const buckets = new Map<FieldSection | "other", F[]>();
   for (const field of fields) {
@@ -196,7 +197,7 @@ export function groupFieldsBySection<F extends { section?: FieldSection }>(
     .filter((section) => buckets.has(section))
     .map((section) => ({
       section,
-      label: section === "other" ? "Other details" : SECTION_LABELS[section],
+      label: section === "other" ? "Other details" : ((marketId === "us" ? US_SECTION_LABELS[section] : undefined) ?? SECTION_LABELS[section]),
       fields: buckets.get(section)!,
     }));
 }
@@ -225,6 +226,7 @@ export const SECTION_FIELD_GROUPS: Partial<Record<FieldSection, FieldGroupDef[]>
         "applicationFee",
         "hoaFee",
         "propertyTaxYearly",
+        "yearlyGrossRent",
         "rentEscalationPercent",
         "dayPassPrice",
         "singleSharingRent",
@@ -241,7 +243,7 @@ export const SECTION_FIELD_GROUPS: Partial<Record<FieldSection, FieldGroupDef[]>
   ],
   basics: [
     { id: "rooms", label: "Rooms", keys: ["bedrooms", "bathrooms", "halfBathrooms", "balconyCount"] },
-    { id: "size", label: "Size & floor", keys: ["carpetAreaSqft", "plotAreaSqft", "lotSizeAcres", "yearBuilt", "floor", "totalFloors", "entranceFacing"] },
+    { id: "size", label: "Size & floor", keys: ["unitCount", "occupiedUnits", "carpetAreaSqft", "plotAreaSqft", "lotSizeAcres", "yearBuilt", "floor", "totalFloors", "entranceFacing"] },
     { id: "parking", label: "Parking", keys: ["openParkingCount", "closedParkingCount", "parkingType", "parkingSpaces"] },
     { id: "furnishing", label: "Furnishing & utilities", keys: ["furnished", "laundry", "heating", "cooling", "utilitiesIncluded", "waterSource", "gasPipeline"] },
     { id: "society", label: "Society & outdoor space", keys: ["societyName", "gatedCommunity", "privateGarden", "privateTerrace"] },
@@ -287,14 +289,17 @@ export const SECTION_FIELD_GROUPS: Partial<Record<FieldSection, FieldGroupDef[]>
     { id: "contact", label: "Website", keys: ["website"] },
   ],
   plotDetails: [
-    { id: "plot", label: "Plot", keys: ["plotAreaSqft", "plotDimensions", "facing", "plotType", "roadWidthFt", "cornerPlot"] },
+    { id: "plot", label: "Plot", keys: ["plotAreaSqft", "plotDimensions", "facing", "plotType", "utilitiesAvailable", "roadAccess", "roadWidthFt", "cornerPlot"] },
     { id: "approvals", label: "Boundary & approvals", keys: ["boundaryWall", "gatedLayout", "approvedBy", "titleDocuments"] },
     { id: "legal", label: "Ownership & legal", keys: ["ownership", "reraRegistered", "reraNumber"] },
   ],
 };
 
 /** Group headings the US words differently: it has no housing societies and asks no brokerage fee. */
-const US_GROUP_LABELS: Record<string, string> = { society: "Community", postedBy: "Posted by" };
+const US_GROUP_LABELS: Record<string, string> = { society: "Community", postedBy: "Posted by", plot: "Land" };
+
+/** Section headings the US words differently. */
+const US_SECTION_LABELS: Partial<Record<FieldSection, string>> = { plotDetails: "Land details" };
 
 /** One sub-group of a section's fields as the forms draw it. `label` is null when the section has a single group, since a
  * heading that repeats the section's own heading adds nothing. */
@@ -1341,6 +1346,8 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
   condo: RESIDENTIAL_FIELDS,
   townhouse: RESIDENTIAL_FIELDS,
   room: ROOM_FIELDS,
+  // US-only: its one list lives with the other US forms.
+  multifamily: MULTIFAMILY_FIELDS,
   pg: [
     {
       // Multi-select, not select — a PG can genuinely offer more than one sharing type at once

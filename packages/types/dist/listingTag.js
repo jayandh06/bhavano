@@ -5,7 +5,7 @@ exports.deriveTag = deriveTag;
  * per-listing so it can never drift from the category/transaction it describes — lives here
  * alongside the other domain rules so the seed scripts can reuse it without pulling in the
  * BFF's Nest DI graph. */
-function deriveTag(input) {
+function deriveTag(input, marketId = "in") {
     if (input.category === "coworking")
         return "COWORKING";
     if (input.category === "pg")
@@ -17,7 +17,9 @@ function deriveTag(input) {
     if (input.category === "interiors")
         return "INTERIORS";
     if (input.category === "plot")
-        return "PLOT";
+        return marketId === "us" ? "LAND" : "PLOT";
+    if (input.category === "multifamily")
+        return "MULTI-FAMILY";
     if (input.category === "commercial")
         return "COMMERCIAL";
     return input.transactionType === "rent" || input.transactionType === "lease" ? "FOR RENT" : "FOR SALE";

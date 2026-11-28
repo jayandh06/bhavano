@@ -28,6 +28,7 @@ export const LISTING_CATEGORIES: ListingCategory[] = [
   "condo",
   "townhouse",
   "room",
+  "multifamily",
 ];
 
 export function isTransactionType(value: string): value is TransactionType {
@@ -38,7 +39,7 @@ export function isListingCategory(value: string): value is ListingCategory {
   return (LISTING_CATEGORIES as string[]).includes(value);
 }
 
-export const CATEGORY_LABELS: Record<ListingCategory, string> = {
+const SHARED_CATEGORY_LABELS: Record<ListingCategory, string> = {
   house: "Houses",
   apartment: "Apartments",
   villa: "Villas",
@@ -51,8 +52,13 @@ export const CATEGORY_LABELS: Record<ListingCategory, string> = {
   commercial: "Commercial Spaces",
   condo: "Condos",
   townhouse: "Townhouses",
+  multifamily: "Multi-Family Homes",
   room: "Rooms for Rent",
 };
+
+/** The US calls a plot "Land". */
+export const CATEGORY_LABELS: Record<ListingCategory, string> =
+  buildMarket().id === "us" ? { ...SHARED_CATEGORY_LABELS, plot: "Land" } : SHARED_CATEGORY_LABELS;
 
 export const TRANSACTION_LABELS: Record<TransactionType, string> = {
   buy: "for Sale",
@@ -168,7 +174,7 @@ export function parseEnum<T extends string>(value: string | string[] | undefined
 }
 
 export const FURNISHING_VALUES = ["unfurnished", "semi", "furnished"] as const;
-export const PROPERTY_TYPE_VALUES: PropertyTypeFilter[] = ["house", "apartment", "villa", "condo", "townhouse", "room", "storage", "coworking"];
+export const PROPERTY_TYPE_VALUES: PropertyTypeFilter[] = ["house", "apartment", "villa", "condo", "townhouse", "multifamily", "room", "storage", "coworking"];
 export const SHARING_TYPE_VALUES = CATEGORY_FIELD_CONFIG.pg.find((f) => f.key === "sharingType")!.options!.map((o) => o.value);
 export const CONDITION_VALUES = CATEGORY_FIELD_CONFIG.furniture.find((f) => f.key === "condition")!.options!.map((o) => o.value);
 export const SERVICE_TYPE_VALUES = CATEGORY_FIELD_CONFIG.interiors.find((f) => f.key === "serviceType")!.options!.map((o) => o.value);

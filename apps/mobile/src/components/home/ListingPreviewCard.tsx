@@ -133,7 +133,7 @@ export function ListingPreviewCard({
           <View style={styles.tagRow}>
             <View style={[styles.tag, { backgroundColor: colors.green }]}>
               <Text style={{ color: colors.onGreen, fontSize: 10, fontWeight: "700" }}>
-                {deriveTag({ category, transactionType })}
+                {deriveTag({ category, transactionType }, market.id)}
               </Text>
             </View>
             {featured && (

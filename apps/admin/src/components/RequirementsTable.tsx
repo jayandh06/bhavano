@@ -7,11 +7,11 @@ import type { AdminRequirementDto, RequirementStatus } from "@bhavano/types";
 import { areaUnitShortLabel, convertArea } from "@bhavano/types/areaUnit";
 import { bedroomLabel } from "@bhavano/types/bedrooms";
 import {
-  REQUIREMENT_CATEGORY_LABELS,
   REQUIREMENT_GAP_LABELS,
   amenityOptionsFor,
   missingForLead,
   requirementQuestionsFor,
+  requirementCategoryLabel,
 } from "@bhavano/types/requirementQuestions";
 import { formatInrRangeWithWords } from "@bhavano/types/priceWords";
 import { updateRequirementAction } from "@/app/actions/admin";
@@ -125,7 +125,7 @@ function RequirementCard({ item, marketId }: { item: AdminRequirementDto; market
               item.bedroomOptions.length ? `${item.bedroomOptions.map(bedroomLabel).join(" or ")} BHK` : null,
               sizeText(item),
               budgetText(item),
-              item.category ? REQUIREMENT_CATEGORY_LABELS[item.category] : null,
+              item.category ? requirementCategoryLabel(item.category, marketId) : null,
               item.transactionType,
             ]
               .filter(Boolean)

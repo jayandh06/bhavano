@@ -20,6 +20,7 @@ function audienceFor(category, transactionType) {
         case "house":
         case "apartment":
         case "villa":
+        case "multifamily":
         case "plot":
         case "commercial":
             if (transactionType === "rent" || transactionType === "lease")

@@ -24,7 +24,7 @@ import { AREA_UNIT_LABELS, areaUnitShortLabel, formatArea, type AreaUnit } from 
 import { TITLE_MAX_LENGTH, TITLE_MIN_LENGTH } from "@bhavano/types/listingLimits";
 import { formatInrWithWords } from "@bhavano/types/priceWords";
 import { clampDigits, DESCRIPTION_MIN_LENGTH } from "@bhavano/types/listingLimits";
-import { POST_CATEGORIES, marketPostCategoryGroups } from "@bhavano/types/postCategories";
+import { marketPostCategories } from "@bhavano/types/postCategories";
 import { allowsPerUnitPrice, postableTransactionTypes } from "@bhavano/types/postingRules";
 import { setListingStatusAction, updateListingAction } from "@/app/actions/admin";
 import { fetchAreasForCityAction } from "@/app/actions/locations";
@@ -542,7 +542,7 @@ export function AdminEditListingForm({
   const [latStr, setLatStr] = useState(initialLat);
   const [lngStr, setLngStr] = useState(initialLng);
 
-  const categoryLabel = (value: string) => POST_CATEGORIES.find((c) => c.value === value)?.label ?? value;
+  const categoryLabel = (value: string) => marketPostCategories(marketId).find((c) => c.value === value)?.label ?? value;
   const priceChangeText = (value: string, mode: "total" | "perUnit") =>
     value === "" || Number(value) === 0 ? "" : `${currencySymbol}${Number(value).toLocaleString(locale)}${mode === "perUnit" ? " per unit" : ""}`;
 
@@ -623,7 +623,7 @@ export function AdminEditListingForm({
 
   const fieldConfig = categoryFieldsFor(category, marketId);
   const visibleFields = fieldConfig.filter((field) => fieldIsVisible(field, transactionType, attributes, marketId));
-  const fieldSections = groupFieldsBySection(visibleFields);
+  const fieldSections = groupFieldsBySection(visibleFields, marketId);
   // Price/Price qualifier aren't category-specific fields, but they belong with the rest of
   // "pricing" all the same — same reasoning as the web app's sectionExtras (CategoryFieldsAccordion),
   // folded into the SAME "Pricing & fees" box as any category-specific pricing fields (maintenance
@@ -735,7 +735,7 @@ export function AdminEditListingForm({
         <div style={{ flex: 1, minWidth: 180, maxWidth: 260 }}>
           <label style={labelStyle}>Category</label>
           <SelectField value={category} onChange={(e) => onCategoryChange(e.target.value)} style={inputStyle}>
-            {(marketId === "in" ? POST_CATEGORIES : marketPostCategoryGroups(marketId).flatMap((g) => g.options)).map((c) => (
+            {marketPostCategories(marketId).map((c) => (
               <option key={c.value} value={c.value}>
                 {c.label}
               </option>

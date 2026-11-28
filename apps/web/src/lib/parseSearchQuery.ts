@@ -13,6 +13,8 @@ const ALL_CATEGORY_PATTERNS: [RegExp, ListingCategory][] = [
   // US-only words first, so "townhouse" is not read as "house" and "condo apartment" is a condo. Dropped for India by the market filter below.
   [/\bcondos?\b|\bcondominiums?\b/i, "condo"],
   [/\btown\s*(houses?|homes?)\b|\brow\s+houses?\b/i, "townhouse"],
+  // Before "apartment": an apartment building or complex is the whole thing, sold as multi-family.
+  [/\bmulti[\s-]?family\b|\b(?:du|tri|four)plex(?:es)?\b|\bapartment\s+(?:buildings?|complex(?:es)?)\b/i, "multifamily"],
   // "room" is only a category when it is a room to rent: "2 bedroom" never matches (no word boundary), "room for rent" and roommate or sublet words do.
   [/\b(?:private\s+|shared\s+)?rooms?\b(?=\s+(?:for|to)\s+rent|\s+available)|\broommates?\b|\bsublets?\b/i, "room"],
   [/\b(apartments?|flats?)\b/i, "apartment"],
@@ -39,7 +41,7 @@ const ALL_CATEGORY_PATTERNS: [RegExp, ListingCategory][] = [
   [/\boffice\s*spaces?\b/i, "commercial"],
 ];
 
-// Only the categories this build's market has: India keeps exactly its old list (the US-only patterns drop out), and the US drops PG, plot and the rest.
+// Only the categories this build's market has: India keeps exactly its old list (the US-only patterns drop out), and the US drops PG and the rest.
 const CATEGORY_PATTERNS = ALL_CATEGORY_PATTERNS.filter(([, category]) => isMarketCategory(buildMarket().id, category));
 
 const TRANSACTION_PATTERNS: [RegExp, TransactionGroup][] = [

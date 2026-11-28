@@ -50,7 +50,7 @@ export function HomeExploreFooter() {
         <Text style={heading}>Own or manage a property?</Text>
         <Text style={{ fontSize: 13.5, lineHeight: 20, color: colors.textSoft, marginBottom: 10 }}>
           {market.id === "us"
-            ? "List a house, apartment, condo, townhouse, room or commercial space and reach people searching in your city."
+            ? "List a house, apartment, condo, townhouse, multi-family building, land, room or commercial space and reach people searching in your city."
             : "List a house, flat, plot, PG, coworking desk or commercial space and reach people searching in your city."}
         </Text>
         <Pressable

@@ -18,6 +18,10 @@ const RECIPES = {
     villa: PROPERTY,
     condo: PROPERTY,
     townhouse: PROPERTY,
+    multifamily: [
+        { kind: "count", key: "unitCount", one: "Unit", many: "Units" },
+        { kind: "unit", key: "carpetAreaSqft", suffix: "sqft" },
+    ],
     room: [
         { kind: "option", key: "roomType" },
         { kind: "option", key: "bathroom" },
@@ -47,6 +51,14 @@ const RECIPES = {
         { kind: "unit", key: "sqft", suffix: "sqft" },
         { kind: "option", key: "purpose" },
         { kind: "option", key: "furnished" },
+    ],
+};
+/** Where a US card shows something else: its land has zoning, not a compass facing. */
+const US_RECIPES = {
+    plot: [
+        { kind: "unit", key: "plotAreaSqft", suffix: "sqft" },
+        { kind: "option", key: "plotType" },
+        { kind: "text", key: "plotDimensions" },
     ],
 };
 /** Attributes arrive as JSON, so a number may be a number or the string a form submitted. */
@@ -88,7 +100,7 @@ function deriveCardSpecs(category, attributes, marketId = "in") {
     if (!attributes)
         return [];
     const chips = [];
-    for (const chip of RECIPES[category] ?? []) {
+    for (const chip of (marketId === "us" ? US_RECIPES[category] : undefined) ?? RECIPES[category] ?? []) {
         const raw = attributes[chip.key];
         if (raw === undefined || raw === null || raw === "")
             continue;

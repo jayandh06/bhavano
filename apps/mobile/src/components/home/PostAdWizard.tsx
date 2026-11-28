@@ -43,7 +43,7 @@ import {
   SECTION_ORDER,
   type FieldSection,
 } from "@bhavano/types/categoryFields";
-import { POST_CATEGORIES, marketPostCategoryGroups } from "@bhavano/types/postCategories";
+import { marketPostCategoryGroups, marketPostCategories } from "@bhavano/types/postCategories";
 import {
   AREA_NAME_MAX_LENGTH,
   clampPrice,
@@ -1347,7 +1347,7 @@ export function PostAdWizard({
   // `extraOnlySections` guarantees a "pricing" box exists even for a category with none of its
   // own pricing-section fields (pg/coworking has neither brokerage nor maintenance fee), since
   // the Price/qualifier inputs below must always show somewhere.
-  const fieldSections = groupFieldsBySection(visibleFields);
+  const fieldSections = groupFieldsBySection(visibleFields, market.id);
   const orderIndex = (section: FieldSection | "other") =>
     section === "other" ? SECTION_ORDER.length : SECTION_ORDER.indexOf(section);
   const sections = fieldSections.some((s) => s.section === "pricing")
@@ -2003,7 +2003,7 @@ export function PostAdWizard({
           </Text>
           <Text style={{ color: colors.textSoft, fontSize: 13 }}>
             {(() => {
-              const label = POST_CATEGORIES.find((c) => c.value === category)?.label;
+              const label = marketPostCategories(market.id).find((c) => c.value === category)?.label;
               return label ? `You are continuing your ${label} ad from where you left off. ` : "";
             })()}
             Check the category and details before you post, or start a new ad.
@@ -2047,7 +2047,7 @@ export function PostAdWizard({
               </Text>
               <Text style={{ color: colors.textSoft, fontSize: 13 }}>
                 {[
-                  POST_CATEGORIES.find((c) => c.value === offeredDraft.draft.category)?.label,
+                  marketPostCategories(market.id).find((c) => c.value === offeredDraft.draft.category)?.label,
                   offeredDraft.draft.transactionType ? TRANSACTION_TYPE_LABELS[offeredDraft.draft.transactionType] : null,
                   offeredDraft.draft.title.trim() ? `“${offeredDraft.draft.title.trim()}”` : null,
                   offeredDraft.draft.photoUris.length > 0
@@ -2109,7 +2109,7 @@ export function PostAdWizard({
             </View>
             {category && !transactionType ? (
               <Text style={{ color: colors.muted, fontSize: 13 }}>
-                Now choose what you want to do with your {POST_CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()}.
+                Now choose what you want to do with your {marketPostCategories(market.id).find((c) => c.value === category)?.label.toLowerCase()}.
               </Text>
             ) : null}
           </View>
@@ -2151,7 +2151,7 @@ export function PostAdWizard({
       {step === "details" && category && transactionType && detailsReady && (
         <View style={{ gap: 4 }} onStartShouldSetResponderCapture={noteFirstTouch}>
           <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700", marginBottom: 4 }}>
-            Tell us about the {POST_CATEGORIES.find((c) => c.value === category)?.label.toLowerCase()} you&apos;re{" "}
+            Tell us about the {marketPostCategories(market.id).find((c) => c.value === category)?.label.toLowerCase()} you&apos;re{" "}
             {transactionType === "sell" ? "selling" : transactionType === "rent" ? "renting out" : "leasing out"}
           </Text>
           <View style={{ marginBottom: 6 }}>
@@ -2387,7 +2387,7 @@ export function PostAdWizard({
             * (deriveCardSpecs), so a typed "3 Beds" only repeated them in another spelling. */}
           <View style={[styles.divider, { borderColor: colors.border }]}>
             <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
-              {POST_CATEGORIES.find((c) => c.value === category)?.label} details
+              {marketPostCategories(market.id).find((c) => c.value === category)?.label} details
             </Text>
             {category && transactionType && (
               <CompletenessMeter completeness={listingCompleteness(category, transactionType, attributes, market.id)} />

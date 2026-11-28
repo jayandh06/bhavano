@@ -21,6 +21,8 @@ enum ListingCategory {
   condo
   townhouse
   room
+  // US-only too (docs/plans/us-listing-model.md, phase 3): a whole building of two or more homes.
+  multifamily
 }
 
 enum TransactionType {
