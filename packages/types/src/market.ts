@@ -121,9 +121,9 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
     paymentsEnabled: false,
     indiaContent: false,
     contactConsentPreTicked: false,
-    // Houses, apartments, condos, townhouses, multi-family buildings, rooms, land ("plot"), storage and commercial space
+    // Houses, apartments, condos, townhouses, manufactured homes, multi-family buildings, rooms, land ("plot"), storage and commercial space
     // (docs/plans/us-listing-model.md). No villas, PG, coworking or furniture/interiors.
-    categories: ["house", "apartment", "storage", "commercial", "condo", "townhouse", "room", "multifamily", "plot"],
+    categories: ["house", "apartment", "storage", "commercial", "condo", "townhouse", "room", "multifamily", "manufactured", "plot"],
     // The first four are Fair Housing; "entranceFacing" is Vastu (an India convention) and is a required field, so leaving it visible would force every US poster to pick a compass direction.
     // The rest are questions US listings don't ask (docs/plans/us-listing-model.md): India's RERA register, water source and fire NOC, its ownership and
     // possession lists, and the brokerage fee fields, whose rules differ by US state and city.

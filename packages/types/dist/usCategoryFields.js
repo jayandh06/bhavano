@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.US_CATEGORY_FIELDS = exports.MULTIFAMILY_FIELDS = void 0;
+exports.US_CATEGORY_FIELDS = exports.MULTIFAMILY_FIELDS = exports.MANUFACTURED_FIELDS = void 0;
 /**
  * What a US listing is asked, per category (docs/plans/us-listing-model.md, phase 2). A list of the US's own, not India's
  * with fields hidden. Read it through `categoryFieldsFor(category, "us")`.
@@ -265,6 +265,27 @@ const LAND_FIELDS = [
     dollars("propertyTaxYearly", "Yearly property tax ($)", ["sell"]),
     fromBroker,
 ];
+/** A factory-built home: a home's questions, plus how wide it is and whether the land under it comes with it. */
+const MANUFACTURED_FIELDS = [
+    ...homeFields({ lot: true }),
+    {
+        key: "homeWidth",
+        label: "Home size",
+        type: "select",
+        section: "basics",
+        options: [option("single", "Single-wide"), option("double", "Double-wide"), option("triple", "Triple-wide or larger")],
+    },
+    {
+        key: "lotOwnership",
+        label: "Land",
+        type: "select",
+        section: "basics",
+        options: [option("owned", "Land included"), option("leased", "On a leased lot")],
+    },
+    // Asked beside the question that opens it, not among the price fields.
+    { ...dollars("lotRent", "Monthly lot rent ($)", ["sell", "rent"]), section: "basics", dependsOn: { key: "lotOwnership", value: "leased" } },
+];
+exports.MANUFACTURED_FIELDS = MANUFACTURED_FIELDS;
 const HOUSE_FIELDS = homeFields({ lot: true });
 const UNIT_FIELDS = homeFields({ floor: true });
 /** The US categories with a list of their own. Room for rent is a US-only category, so its one list serves. */
@@ -274,6 +295,7 @@ exports.US_CATEGORY_FIELDS = {
     apartment: UNIT_FIELDS,
     condo: UNIT_FIELDS,
     multifamily: MULTIFAMILY_FIELDS,
+    manufactured: MANUFACTURED_FIELDS,
     plot: LAND_FIELDS,
     storage: STORAGE_FIELDS,
     commercial: COMMERCIAL_FIELDS,

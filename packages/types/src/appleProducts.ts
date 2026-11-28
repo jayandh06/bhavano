@@ -37,7 +37,7 @@ export type AppleBoostTier = "property" | "other";
 
 export const APPLE_BOOST_DAYS: readonly BoostDurationDays[] = [7, 15, 30];
 
-const PROPERTY_CATEGORIES = new Set<ListingCategory>(["house", "apartment", "villa", "condo", "townhouse", "multifamily", "room", "plot", "commercial"]);
+const PROPERTY_CATEGORIES = new Set<ListingCategory>(["house", "apartment", "villa", "condo", "townhouse", "multifamily", "manufactured", "room", "plot", "commercial"]);
 const OTHER_CATEGORIES = new Set<ListingCategory>(["coworking", "pg", "storage"]);
 
 /** The boost tier a listing falls in, or null when iOS has no boost product for it (furniture and

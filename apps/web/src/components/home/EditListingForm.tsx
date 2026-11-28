@@ -12,7 +12,7 @@ import {
 import { fromBrokerDefault } from "@bhavano/types/sellerType";
 import { ownerStatusLabel } from "@bhavano/types/listingStatusInfo";
 import { ListingStatusPicker } from "./ListingStatusPicker";
-import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
+import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES, showsAnnualRate } from "@bhavano/types/priceQualifiers";
 import { areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import { updateListingAction } from "@/app/actions/listings";
 import {
@@ -33,6 +33,7 @@ import { FeaturedPerformanceCard } from "./FeaturedPerformanceCard";
 import { ListingLocationEditor, type ListingLocationChange } from "./ListingLocationEditor";
 import { useMarket } from "@/lib/useMarket";
 import { allowsPerUnitPrice } from "@bhavano/types/postingRules";
+import { AnnualRateInput } from "./AnnualRateInput";
 
 function attributesToStrings(
   attributes: Record<string, unknown>,
@@ -314,6 +315,14 @@ export function EditListingForm({
                     />
                     {priceMode === "perUnit" && priceUnitAreaField && (
                       <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit, market.id) : null} />
+                    )}
+                    {showsAnnualRate(listing.category, listing.transactionType, market.id) && (
+                      <AnnualRateInput
+                        price={price}
+                        area={Number(attributes.sqft)}
+                        unit={(attributes.sqftUnit as AreaUnit | undefined) ?? "sqft"}
+                        onMonthly={(monthly) => setPrice(clampPrice(monthly, listing.transactionType))}
+                      />
                     )}
                   </div>
                   <div className="flex-1">

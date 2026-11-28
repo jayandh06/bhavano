@@ -208,6 +208,7 @@ export default function ListingDetailScreen() {
       {/* Mirrors ListingDetailView.tsx's own note on web — pg/coworking's price=0 ("Contact for
         * price") is already rendered as that literal string by the BFF's toCardDto, but the
         * reason behind it needs spelling out so it doesn't just look like a missing price. */}
+      {!!listing.annualRate && <Text style={{ fontSize: 13, fontWeight: "600", color: colors.textSoft, marginTop: 4 }}>{listing.annualRate}</Text>}
       {listing.priceOnRequest && !listing.ownerUnverified && (
         <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>
           Plans and pricing vary — reach out to the owner for a quote.

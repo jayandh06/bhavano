@@ -44,6 +44,7 @@ export const POST_CATEGORY_GROUPS: PostCategoryGroup[] = [
       // US-only (not in India's market category list, so India's picker is unchanged): they reuse the existing icons.
       { value: "condo", label: "Condo / Co-op", icon: "🏙️", iconName: "catApartment" },
       { value: "townhouse", label: "Townhouse", icon: "🏠", iconName: "catHouse" },
+      { value: "manufactured", label: "Manufactured home", icon: "🏠", iconName: "catHouse" },
       { value: "multifamily", label: "Multi-family", icon: "🏘️", iconName: "catApartment" },
       { value: "room", label: "Room for rent", icon: "🛏️", iconName: "catPg" },
       { value: "plot", label: "Plot", icon: "🗺️", iconName: "catPlot" },

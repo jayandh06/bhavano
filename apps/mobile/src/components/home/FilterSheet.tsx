@@ -2,7 +2,8 @@ import { forwardRef, useEffect, useRef, useState } from "react";
 import { Keyboard, Pressable, StyleSheet, Text, View } from "react-native";
 import { BottomSheetModal, BottomSheetScrollView, BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import type { BottomSheetScrollViewMethods } from "@gorhom/bottom-sheet";
-import type { Area, PropertyTypeFilter } from "@bhavano/types";
+import type { Area, ListingCategory, PropertyTypeFilter } from "@bhavano/types";
+import { searchFactsFor, type SearchFacts } from "@bhavano/types/searchFacts";
 import { MAX_BEDROOMS } from "@bhavano/types/bedrooms";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { parseAmount } from "../../lib/priceInput";
@@ -32,6 +33,8 @@ export interface AppliedFilters {
   sharingType?: string;
   condition?: string;
   serviceType?: string;
+  /** US filters on the listing form's answers, for the chosen property type. */
+  facts?: SearchFacts;
 }
 
 export const EMPTY_FILTERS: AppliedFilters = { areaIds: [], bedrooms: [] };
@@ -43,7 +46,8 @@ export function activeFilterCount(f: AppliedFilters): number {
     (f.minPrice !== undefined || f.maxPrice !== undefined ? 1 : 0) +
     (f.furnished ? 1 : 0) +
     (f.ownersOnly ? 1 : 0) +
-    (f.propertyType || f.sharingType || f.condition || f.serviceType ? 1 : 0)
+    (f.propertyType || f.sharingType || f.condition || f.serviceType ? 1 : 0) +
+    Object.values(f.facts ?? {}).filter(Boolean).length
   );
 }
 
@@ -119,10 +123,13 @@ export const FilterSheet = forwardRef<
 
   function selectSubFilter(value: string | undefined) {
     if (!subFilterParam) return;
-    setStaged((prev) => ({ ...prev, [subFilterParam]: value }) as AppliedFilters);
+    // Another property type has other filters, so the ones picked for the old one go.
+    setStaged((prev) => ({ ...prev, [subFilterParam]: value, facts: undefined }) as AppliedFilters);
   }
 
-  const showBhkAndFurnished = ["house", "apartment", "condo", "townhouse"].includes(staged.propertyType ?? "");
+  const showBhkAndFurnished = ["house", "apartment", "condo", "townhouse", "manufactured"].includes(staged.propertyType ?? "");
+  // Property type values are category names; India has no filters of this kind.
+  const factFilters = staged.propertyType ? searchFactsFor(staged.propertyType as ListingCategory, market.id) : [];
   const showOwnersOnly = category === "buy" || category === "rentLease";
 
   // Free min/max entry, not fixed brackets — matches web's own price filter (BrowseFilterBar.tsx's
@@ -470,6 +477,26 @@ export const FilterSheet = forwardRef<
             </View>
           </View>
         )}
+
+        {factFilters.map((filter) => (
+          <View key={filter.key} style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>{filter.label.toUpperCase()}</Text>
+            <View style={styles.wrapRow}>
+              {[{ value: "", label: "Any" }, ...filter.options].map((option) => {
+                const active = (staged.facts?.[filter.key] ?? "") === option.value;
+                return (
+                  <Pressable
+                    key={option.value || "any"}
+                    onPress={() => setStaged((prev) => ({ ...prev, facts: { ...prev.facts, [filter.key]: option.value || undefined } }))}
+                    style={chipStyle(active, colors)}
+                  >
+                    <Text style={{ fontSize: 13, color: active ? colors.green : colors.text }}>{option.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ))}
 
         {showOwnersOnly && (
           <View style={styles.section}>

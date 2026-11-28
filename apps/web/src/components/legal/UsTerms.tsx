@@ -22,7 +22,7 @@ export function UsTerms() {
 
       <PageSection heading="2. What Bhavano is">
         <p className="m-0">
-          Bhavano is a classifieds marketplace where people can browse, post, rent, buy and sell homes, condos, townhouses, multi-family buildings, land, rooms, storage
+          Bhavano is a classifieds marketplace where people can browse, post, rent, buy and sell homes, condos, townhouses, manufactured homes, multi-family buildings, land, rooms, storage
           space and commercial space. Listings can be browsed without an account; you need to sign in to post a listing, save a favorite or
           message another user. Bhavano is not a party to any transaction between users. We provide the platform that connects them.
         </p>

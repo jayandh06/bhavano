@@ -9,6 +9,7 @@ const LISTING_CATEGORIES: ListingCategory[] = [
   'condo',
   'townhouse',
   'multifamily',
+  'manufactured',
   'room',
   'pg',
   'storage',

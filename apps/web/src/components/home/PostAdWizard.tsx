@@ -45,7 +45,7 @@ import { AdminFormVersionSwitch } from "./AdminFormVersionSwitch";
 import { PostExitPrompt } from "./PostExitPrompt";
 import { scenarioAttributes, scenarioById, scenarioCopy, scenarioPhotos, scenarioPrice, scenarioQualifier } from "@/lib/postAdScenarios";
 import { allowsPerUnitPrice, postableTransactionTypes } from "@bhavano/types/postingRules";
-import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
+import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES, showsAnnualRate } from "@bhavano/types/priceQualifiers";
 import type { VideoEntitlement } from "@bhavano/types/videoLimits";
 import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { MAX_PHOTOS, MAX_PHOTO_BYTES, MIN_PHOTOS, PHOTO_LIMITS } from "@bhavano/types/photoLimits";
@@ -143,6 +143,7 @@ import { UploadZone } from "./UploadZone";
 import { useMarket } from "@/lib/useMarket";
 import { withBasePath } from "@/lib/basePath";
 import { isMarketCategory } from "@bhavano/types/market";
+import { AnnualRateInput } from "./AnnualRateInput";
 
 
 // Same fallback BrowseListingsView.tsx uses — buildListingPath is relative, and the "Feedback"
@@ -2789,6 +2790,14 @@ export function PostAdWizard({
                         />
                         {pricedPerUnit && (
                           <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit, market.id) : null} />
+                        )}
+                        {showsAnnualRate(category, transactionType, market.id) && (
+                          <AnnualRateInput
+                            price={price}
+                            area={Number(attributes.sqft)}
+                            unit={(attributes.sqftUnit as AreaUnit | undefined) ?? "sqft"}
+                            onMonthly={(monthly) => setPrice(clampPrice(monthly, transactionType))}
+                          />
                         )}
                         {priceIssue && <p className="text-xs text-[#b3413a] mt-1.5 m-0">{priceIssue}</p>}
                         {!priceIssue && fieldMessage("price")}

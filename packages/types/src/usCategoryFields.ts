@@ -285,7 +285,28 @@ const LAND_FIELDS: FieldDef[] = [
   fromBroker,
 ];
 
-export { MULTIFAMILY_FIELDS };
+/** A factory-built home: a home's questions, plus how wide it is and whether the land under it comes with it. */
+const MANUFACTURED_FIELDS: FieldDef[] = [
+  ...homeFields({ lot: true }),
+  {
+    key: "homeWidth",
+    label: "Home size",
+    type: "select",
+    section: "basics",
+    options: [option("single", "Single-wide"), option("double", "Double-wide"), option("triple", "Triple-wide or larger")],
+  },
+  {
+    key: "lotOwnership",
+    label: "Land",
+    type: "select",
+    section: "basics",
+    options: [option("owned", "Land included"), option("leased", "On a leased lot")],
+  },
+  // Asked beside the question that opens it, not among the price fields.
+  { ...dollars("lotRent", "Monthly lot rent ($)", ["sell", "rent"]), section: "basics", dependsOn: { key: "lotOwnership", value: "leased" } },
+];
+
+export { MANUFACTURED_FIELDS, MULTIFAMILY_FIELDS };
 
 const HOUSE_FIELDS = homeFields({ lot: true });
 const UNIT_FIELDS = homeFields({ floor: true });
@@ -297,6 +318,7 @@ export const US_CATEGORY_FIELDS: Partial<Record<ListingCategory, FieldDef[]>> = 
   apartment: UNIT_FIELDS,
   condo: UNIT_FIELDS,
   multifamily: MULTIFAMILY_FIELDS,
+  manufactured: MANUFACTURED_FIELDS,
   plot: LAND_FIELDS,
   storage: STORAGE_FIELDS,
   commercial: COMMERCIAL_FIELDS,

@@ -58,10 +58,17 @@ import {
   type FieldDef,
 } from '@bhavano/types/categoryFields';
 import { deriveCardSpecs } from '@bhavano/types/cardSpecs';
-import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from '@bhavano/types/priceQualifiers';
+import {
+  getPriceQualifierOptions,
+  PRICE_ON_REQUEST_CATEGORIES,
+  annualRatePerSqft,
+  formatAnnualRate,
+  showsAnnualRate,
+} from '@bhavano/types/priceQualifiers';
 import { areaUnitShortLabel, type AreaUnit } from '@bhavano/types/areaUnit';
 import { formatInrInWords, perUnitTotalPrice } from '@bhavano/types/priceWords';
 import { listingPriceIssue } from '@bhavano/types/priceBounds';
+import { MULTI_VALUE_FACTS, SEARCH_FACT_KEYS } from '@bhavano/types/searchFacts';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
 import { countFittingRequirements } from '../requirements/requirement-lead-ready';
@@ -178,8 +185,8 @@ const PROPERTY_TYPES_BY_TAB: Record<'buy' | 'rentLease', PropertyTypeFilter[]> =
 /** The US market's tab lists (docs/plans/us-listing-model.md): apartments are rented, not bought (a whole building sells as multi-family), plots are Land,
  * and there are no villas or coworking. India keeps the map above exactly. */
 const US_PROPERTY_TYPES_BY_TAB: Record<'buy' | 'rentLease', PropertyTypeFilter[]> = {
-  buy: ['house', 'condo', 'townhouse', 'multifamily', 'plot', 'commercial'],
-  rentLease: ['house', 'apartment', 'condo', 'townhouse', 'room', 'storage', 'commercial'],
+  buy: ['house', 'condo', 'townhouse', 'manufactured', 'multifamily', 'plot', 'commercial'],
+  rentLease: ['house', 'apartment', 'condo', 'townhouse', 'manufactured', 'room', 'storage', 'commercial'],
 };
 
 function buildHomeCategoryWhere(
@@ -357,13 +364,30 @@ const LISTING_MEDIA_INCLUDE = {
  * An empty derived array is a real answer ("nothing to show") but indistinguishable here from
  * "this predates the field", so the fallback wins whenever there is nothing to derive.
  */
-function cardSpecs(listing: { category: ListingCategory; attributes: unknown; specs: string[] }): string[] {
+function cardSpecs(listing: {
+  category: ListingCategory;
+  transactionType: TransactionType;
+  price: number;
+  attributes: unknown;
+  specs: string[];
+}): string[] {
   const derived = deriveCardSpecs(
     listing.category,
     listing.attributes as Record<string, unknown>,
     MARKET.id,
   );
+  // US commercial rent is compared by the yearly rate, so it takes the second place on the card.
+  const rate = annualRateText(listing);
+  if (rate) derived.splice(Math.min(1, derived.length), 0, rate);
   return derived.length > 0 ? derived.slice(0, 3) : listing.specs;
+}
+
+/** "$24.50/sq ft/yr" for a US commercial lease with an area and a price; otherwise undefined. */
+function annualRateText(listing: { category: ListingCategory; transactionType: TransactionType; price: number; attributes: unknown }): string | undefined {
+  if (!showsAnnualRate(listing.category, listing.transactionType, MARKET.id)) return undefined;
+  const attributes = (listing.attributes as Record<string, unknown> | null) ?? {};
+  const rate = annualRatePerSqft(listing.price, Number(attributes.sqft), (attributes.sqftUnit as AreaUnit | undefined) ?? 'sqft');
+  return rate === null ? undefined : formatAnnualRate(rate);
 }
 
 /** A listing's own "Posted by Broker / Agent" (`fromBroker`) answer as a SellerType — null when
@@ -670,6 +694,13 @@ export class ListingsService {
       attributeFilters.push({
         attributes: { path: ['serviceType'], equals: serviceType },
       });
+    for (const key of SEARCH_FACT_KEYS) {
+      const value = query[key];
+      if (!value) continue;
+      attributeFilters.push({
+        attributes: MULTI_VALUE_FACTS.has(key) ? { path: [key], array_contains: value } : { path: [key], equals: value },
+      });
+    }
 
     // Word match, not phrase match, and typo-tolerant: each word in `q` must appear *somewhere*
     // in the title, in any order — "wooden wardrobe" matches "Wooden Wardrobe for sale" as well
@@ -4265,6 +4296,7 @@ export class ListingsService {
 
     return {
       ...this.toCardDto(listing, favouritedIds),
+      annualRate: annualRateText(listing),
       priceUnit: listing.priceUnit as AreaUnit | null,
       description: listing.description,
       status: listing.status,

@@ -7,6 +7,7 @@ import { buildBrowsePath } from "./listingPath";
 import { parseAmount } from "./priceInput";
 import { MAX_BEDROOMS, segmentsForHomeCategory, type ParsedSegments, type TransactionGroup } from "./seoRoute";
 import type { HomeTabValue } from "./homeCategories";
+import { SEARCH_FACT_KEYS } from "@bhavano/types/searchFacts";
 
 /** Everything the filter section can change before Apply. A missing key means "not touched": the URL's own value stands. Nothing here reaches the URL until
  * `buildAppliedUrl` runs on Apply, which writes every pending change in one navigation (so one search, and the area, BHK, type and query filters can never
@@ -84,7 +85,7 @@ function groupFor(base: FilterBase): TransactionGroup | undefined {
   return segmentsForHomeCategory(base.intent).transactionGroup ?? base.segments?.transactionGroup;
 }
 
-const SELECT_FILTER_KEYS: Exclude<FilterableKey, "bedrooms">[] = ["furnished", "sharingType", "condition", "serviceType"];
+const SELECT_FILTER_KEYS: Exclude<FilterableKey, "bedrooms">[] = ["furnished", "sharingType", "condition", "serviceType", ...SEARCH_FACT_KEYS];
 
 /** Furnishing, sharing, condition, service type and amenities belong to one asset: they only mean something where its config offers them, and a value has to be one of that
  * asset's own options. When the asset changes, whatever the URL (or a pending pick) holds for the old one would otherwise ride along, so a leftover PG `sharingType` could end
@@ -173,7 +174,7 @@ export function buildAppliedUrl(base: FilterBase, draft: FilterDraft): string {
 /** The URL with every filter cleared: same city, tab and search text, no area, asset, BHK, price or other narrowing. */
 export function buildResetUrl(base: FilterBase): string {
   const params = new URLSearchParams(base.search);
-  for (const key of ["areas", "bedrooms", "minPrice", "maxPrice", "furnished", "sharingType", "condition", "serviceType", "amenities", "postedBy", "page", "propertyType"]) {
+  for (const key of ["areas", "bedrooms", "minPrice", "maxPrice", "furnished", "sharingType", "condition", "serviceType", ...SEARCH_FACT_KEYS, "amenities", "postedBy", "page", "propertyType"]) {
     params.delete(key);
   }
   if (base.urlMode === "query") {
@@ -198,7 +199,7 @@ export function activeFilterCount(base: FilterBase): number {
   if (base.category && intentOffersAssets(base.intent)) n++;
   if (hasAssetFilter(base.category, "bedrooms") && currentBhk(base).length !== BEDROOM_COUNTS.length) n++;
   if (params.get("minPrice") || params.get("maxPrice")) n++;
-  for (const key of ["amenities", "furnished", "sharingType", "condition", "serviceType"]) if (params.get(key)) n++;
+  for (const key of ["amenities", "furnished", "sharingType", "condition", "serviceType", ...SEARCH_FACT_KEYS]) if (params.get(key)) n++;
   if (params.get("postedBy") === "owner") n++;
   return n;
 }

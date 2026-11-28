@@ -54,7 +54,7 @@ import {
 } from "@bhavano/types/listingLimits";
 import { listingPriceIssue } from "@bhavano/types/priceBounds";
 import { allowsPerUnitPrice, postableTransactionTypes } from "@bhavano/types/postingRules";
-import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
+import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES, showsAnnualRate } from "@bhavano/types/priceQualifiers";
 import { AREA_UNIT_LABELS, areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import { MAX_VIDEO_BYTES, resolveVideoEntitlement } from "@bhavano/types/videoLimits";
 import { runWithConcurrency } from "@bhavano/types/concurrencyPool";
@@ -114,6 +114,7 @@ import { iosPurchases } from "../../lib/iosPurchasesClient";
 import { IosBoostSheet } from "./IosPurchaseSheets";
 import { useMarket } from "../../lib/market";
 import { marketAreaUnits, type MarketId } from "@bhavano/types/market";
+import { AnnualRateInput } from "./AnnualRateInput";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
 
@@ -2451,6 +2452,14 @@ export function PostAdWizard({
                 />
                 {pricedPerUnit && (
                   <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit, market.id) : null} />
+                )}
+                {showsAnnualRate(category, transactionType, market.id) && (
+                  <AnnualRateInput
+                    price={price}
+                    area={Number(attributes.sqft)}
+                    unit={(attributes.sqftUnit as AreaUnit | undefined) ?? "sqft"}
+                    onMonthly={(monthly) => setPrice(clampPrice(monthly, transactionType))}
+                  />
                 )}
                 {price.length > 0 && !priceIsValid(price, category) ? (
                   <Text style={styles.fieldError}>Enter a price greater than 0.</Text>

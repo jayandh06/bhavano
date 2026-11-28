@@ -75,8 +75,8 @@ export const INTENT_CATEGORIES: Record<RequirementIntent, ListingCategory[]> = {
 /** The US market's categories for the two property intents: its own order, condo, townhouse and room for rent, and apartments for rent only. The other
  * intents (PG, coworking, furniture, interiors) have no category in the US. India's lists above are unchanged. */
 const US_INTENT_CATEGORIES: Partial<Record<RequirementIntent, ListingCategory[]>> = {
-  buy: ["house", "condo", "townhouse", "multifamily", "plot", "commercial"],
-  rentLease: ["house", "apartment", "condo", "townhouse", "room", "commercial", "storage"],
+  buy: ["house", "condo", "townhouse", "manufactured", "multifamily", "plot", "commercial"],
+  rentLease: ["house", "apartment", "condo", "townhouse", "manufactured", "room", "commercial", "storage"],
 };
 
 /** The "Looking to ..." choices with at least one category in the market (the US has no PG, coworking, furniture or interiors). India gets
@@ -111,6 +111,7 @@ export const REQUIREMENT_CATEGORY_LABELS: Record<ListingCategory, string> = {
   condo: "Condo / Co-op",
   townhouse: "Townhouse",
   multifamily: "Multi-family",
+  manufactured: "Manufactured home",
   room: "Room for rent",
   pg: "PG",
   storage: "Storage",
@@ -231,6 +232,8 @@ export const REQUIREMENT_ATTRIBUTE_QUESTIONS: Record<ListingCategory, Requiremen
   condo: residentialQuestions("condo"),
   townhouse: residentialQuestions("townhouse"),
   multifamily: [],
+  // US-only, so no tenant-type question.
+  manufactured: [question("manufactured", "furnished", "Furnishing", true)],
   room: [question("room", "roomType", "Room type", true), question("room", "bathroom", "Bathroom", true)],
   pg: [
     question("pg", "sharingType", "Sharing", true),
@@ -263,6 +266,7 @@ function anySizeQuestionFor(category: ListingCategory): RequirementSizeQuestion 
     case "villa":
     case "condo":
     case "townhouse":
+    case "manufactured":
       return { kind: "bedrooms", label: "How many bedrooms?" };
     case "plot":
       return { kind: "area", label: "Plot size", units: ["sqft", "cent", "acre", "hectare", "sqm"] };
@@ -651,7 +655,9 @@ function subjectPhrase(c: RequirementCriteria, marketId: MarketId): string {
         : "";
       const furnished = joinOr(attr("furnished").map((f) => f.toLowerCase()));
       const noun =
-        c.category === "multifamily"
+        c.category === "manufactured"
+          ? "manufactured home"
+          : c.category === "multifamily"
           ? "multi-family building"
           : c.category === "plot" && marketId === "us"
             ? "land"

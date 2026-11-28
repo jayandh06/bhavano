@@ -2,7 +2,7 @@ import type { ListingCategory, TransactionType } from "./index";
 import type { AreaUnit } from "./areaUnit";
 import { groupInr } from "./priceWords";
 import { formatMoney, isMarketField, MARKETS, type MarketId } from "./market";
-import { MULTIFAMILY_FIELDS, US_CATEGORY_FIELDS } from "./usCategoryFields";
+import { MANUFACTURED_FIELDS, MULTIFAMILY_FIELDS, US_CATEGORY_FIELDS } from "./usCategoryFields";
 
 export interface FieldOption {
   value: string;
@@ -247,6 +247,7 @@ export const SECTION_FIELD_GROUPS: Partial<Record<FieldSection, FieldGroupDef[]>
     { id: "parking", label: "Parking", keys: ["openParkingCount", "closedParkingCount", "parkingType", "parkingSpaces"] },
     { id: "furnishing", label: "Furnishing & utilities", keys: ["furnished", "laundry", "heating", "cooling", "utilitiesIncluded", "waterSource", "gasPipeline"] },
     { id: "society", label: "Society & outdoor space", keys: ["societyName", "gatedCommunity", "privateGarden", "privateTerrace"] },
+    { id: "manufactured", label: "Home and land", keys: ["homeWidth", "lotOwnership", "lotRent"] },
     { id: "availability", label: "Availability", keys: ["availableFrom", "leaseTerm", "lockInPeriod", "petPolicy", "newConstruction", "possessionStatus", "propertyAge"] },
     { id: "legal", label: "Ownership & legal", keys: ["ownership", "loanAvailable", "reraRegistered", "reraNumber"] },
   ],
@@ -1348,6 +1349,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
   room: ROOM_FIELDS,
   // US-only: its one list lives with the other US forms.
   multifamily: MULTIFAMILY_FIELDS,
+  manufactured: MANUFACTURED_FIELDS,
   pg: [
     {
       // Multi-select, not select — a PG can genuinely offer more than one sharing type at once

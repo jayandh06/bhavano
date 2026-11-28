@@ -1,5 +1,6 @@
 import type { ListingCategory, TransactionType } from "./index";
 import type { MarketId } from "./market";
+import { type AreaUnit } from "./areaUnit";
 export interface PriceQualifierOption {
     value: string;
     label: string;
@@ -15,3 +16,11 @@ export declare function getPriceQualifierOptions(category: ListingCategory, tran
  * PostAdWizard/EditListingForm (web + mobile) gate their own "can I submit?" checks on the same
  * set, so a client-side validity gate can never silently disagree with what the API accepts. */
 export declare const PRICE_ON_REQUEST_CATEGORIES: ReadonlySet<ListingCategory>;
+/** Whether a listing also shows its rent as a yearly rate per square foot. The stored price stays the monthly figure. */
+export declare function showsAnnualRate(category: ListingCategory, transactionType: TransactionType, marketId?: MarketId): boolean;
+/** What a monthly rent comes to per square foot per year, to the cent; null without both figures. */
+export declare function annualRatePerSqft(monthly: number, area: number, unit?: AreaUnit): number | null;
+/** The monthly rent a yearly rate per square foot comes to, in whole dollars; null without both figures. */
+export declare function monthlyFromAnnualRate(rate: number, area: number, unit?: AreaUnit): number | null;
+/** "$24.50/sq ft/yr" */
+export declare function formatAnnualRate(rate: number): string;

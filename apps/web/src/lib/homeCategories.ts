@@ -106,6 +106,7 @@ export const HOME_TABS: HomeTab[] = [
         ? [
             bhkColumn1Item("buy", "Buy", "condo", "Condo", "Condo / Co-op"),
             bhkColumn1Item("buy", "Buy", "townhouse", "Townhouse"),
+            singleLinkColumn1Item("manufactured", "Manufactured", { transactionGroup: "buy", category: "manufactured" }),
             singleLinkColumn1Item("multifamily", "Multi-family", { transactionGroup: "buy", category: "multifamily" }),
             singleLinkColumn1Item("plot", "Land", { transactionGroup: "buy", category: "plot" }),
           ]
@@ -126,6 +127,7 @@ export const HOME_TABS: HomeTab[] = [
         ? [
             bhkColumn1Item("rent-lease", "Rent", "condo", "Condo", "Condo / Co-op"),
             bhkColumn1Item("rent-lease", "Rent", "townhouse", "Townhouse"),
+            singleLinkColumn1Item("manufactured", "Manufactured", { transactionGroup: "rent-lease", category: "manufactured" }),
             singleLinkColumn1Item("room", "Room for rent", { transactionGroup: "rent-lease", category: "room" }),
           ]
         : []),

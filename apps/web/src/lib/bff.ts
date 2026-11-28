@@ -75,6 +75,7 @@ import type { LinkIdentifierResult } from "@bhavano/types";
 import { isListingSlotCapErrorBody, ListingSlotCapError } from "@/lib/listingSlotErrors";
 import { isDuplicatePhotoErrorBody, DuplicatePhotoError } from "@/lib/duplicatePhotoErrors";
 import { cookieName } from "@/lib/cookieNames";
+import type { SearchFacts } from "@bhavano/types/searchFacts";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
 
@@ -204,6 +205,8 @@ export interface ListingsQuery {
   sharingType?: string;
   condition?: string;
   serviceType?: string;
+  /** US filters, each sent as its own parameter. */
+  facts?: SearchFacts;
   cursor?: string;
   /** Offset-based page window for numbered `?page=N` pagination (browse pages + homepage) —
    * see docs/plans/seo-distinct-window-pagination.md. Mutually exclusive with `cursor`. */
@@ -236,6 +239,7 @@ export function fetchListings(query: ListingsQuery, accessToken?: string): Promi
   if (query.sharingType) params.set("sharingType", query.sharingType);
   if (query.condition) params.set("condition", query.condition);
   if (query.serviceType) params.set("serviceType", query.serviceType);
+  for (const [key, value] of Object.entries(query.facts ?? {})) params.set(key, value);
   if (query.cursor) params.set("cursor", query.cursor);
   if (query.offset !== undefined) params.set("offset", String(query.offset));
   if (query.limit) params.set("limit", String(query.limit));

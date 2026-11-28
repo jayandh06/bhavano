@@ -63,6 +63,7 @@ import type {
 import { installAcquisitionFields } from "./installReferrer";
 import { isTrackingAuthorized } from "./trackingConsent";
 import { apiUrl } from "./marketEndpoints";
+import type { SearchFacts } from "@bhavano/types/searchFacts";
 
 /** Error thrown for any non-2xx BFF response — carries the HTTP `status` so callers can tell an
  * auth failure (stale/invalid token) from a transient network or server error. */
@@ -208,6 +209,8 @@ export interface ListingsQuery {
   furnished?: "unfurnished" | "semi" | "furnished";
   /** "Owners only" — listings labelled Owner. */
   postedBy?: "owner";
+  /** US filters, each sent as its own parameter. */
+  facts?: SearchFacts;
   /** Append-style infinite-scroll cursor — pass back the previous page's `nextCursor`. */
   cursor?: string;
   limit?: number;
@@ -229,6 +232,7 @@ export function fetchListings(query: ListingsQuery, accessToken?: string | null)
   if (query.bedrooms && query.bedrooms.length > 0) params.set("bedrooms", query.bedrooms.join(","));
   if (query.furnished) params.set("furnished", query.furnished);
   if (query.postedBy) params.set("postedBy", query.postedBy);
+  for (const [key, value] of Object.entries(query.facts ?? {})) if (value) params.set(key, value);
   if (query.cursor) params.set("cursor", query.cursor);
   if (query.limit) params.set("limit", String(query.limit));
   if (query.sort) params.set("sort", query.sort);

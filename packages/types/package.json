@@ -161,6 +161,10 @@
       "types": "./dist/cityIcons.d.ts",
       "default": "./dist/cityIcons.js"
     },
+    "./searchFacts": {
+      "types": "./dist/searchFacts.d.ts",
+      "default": "./dist/searchFacts.js"
+    },
     "./listingTag": {
       "types": "./dist/listingTag.d.ts",
       "default": "./dist/listingTag.js"

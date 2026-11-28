@@ -44,8 +44,8 @@ describe("market category lists", () => {
     }
     expect(INTENT_CATEGORIES.buy).toEqual(["house", "apartment", "villa", "plot", "commercial"]);
     expect(INTENT_CATEGORIES.rentLease).toEqual(["house", "apartment", "villa", "commercial", "storage"]);
-    expect(intentCategories("buy", "us")).toEqual(["house", "condo", "townhouse", "multifamily", "plot", "commercial"]);
-    expect(intentCategories("rentLease", "us")).toEqual(["house", "apartment", "condo", "townhouse", "room", "commercial", "storage"]);
+    expect(intentCategories("buy", "us")).toEqual(["house", "condo", "townhouse", "manufactured", "multifamily", "plot", "commercial"]);
+    expect(intentCategories("rentLease", "us")).toEqual(["house", "apartment", "condo", "townhouse", "manufactured", "room", "commercial", "storage"]);
     expect(intentCategories("pg", "us")).toEqual([]);
   });
 });
@@ -126,8 +126,8 @@ describe("menus", () => {
 
   it("adds condo, townhouse and room to the US menus, with bed wording", async () => {
     const { HOME_TABS } = await loadWith<Home>("./homeCategories", "us");
-    expect(values(HOME_TABS, "buy")).toEqual(["house", "condo", "townhouse", "multifamily", "plot", "commercial"]);
-    expect(values(HOME_TABS, "rentLease")).toEqual(["house", "apartment", "condo", "townhouse", "room", "storage", "commercial"]);
+    expect(values(HOME_TABS, "buy")).toEqual(["house", "condo", "townhouse", "manufactured", "multifamily", "plot", "commercial"]);
+    expect(values(HOME_TABS, "rentLease")).toEqual(["house", "apartment", "condo", "townhouse", "manufactured", "room", "storage", "commercial"]);
     expect(HOME_TABS.find((t) => t.value === "rentLease")!.label).toBe("Rent");
     const condo = HOME_TABS.find((t) => t.value === "buy")!.column1.find((c) => c.value === "condo")!;
     expect(condo.links("Austin")[1].label).toBe("Buy 2 bed Condo in Austin");
@@ -193,6 +193,41 @@ describe("multi-family and land", () => {
     const india = (await loadWith<Parse>("./parseSearchQuery", "")).parseSearchQuery;
     expect(india("duplex in Pune").category).toBeUndefined();
     expect(india("apartment complex in Pune").category).toBe("apartment");
+  });
+});
+
+describe("US search filters", () => {
+  type Filters = typeof import("./assetFilters");
+  type Apply = typeof import("./filterApply");
+  type Parse = typeof import("./parseSearchQuery");
+
+  it("appear for the US form's answers, and never in India", async () => {
+    const us = (await loadWith<Filters>("./assetFilters", "us")).assetFiltersFor;
+    expect(us("apartment").map((f) => f.key)).toEqual(expect.arrayContaining(["furnished", "laundry", "parkingType", "petPolicy"]));
+    expect(us("commercial").map((f) => f.key)).toContain("purpose");
+    expect(us("plot").map((f) => f.key)).toEqual(["plotType"]);
+    const india = (await loadWith<Filters>("./assetFilters", "")).assetFiltersFor;
+    for (const category of ["apartment", "commercial", "plot", "storage"] as const)
+      for (const key of ["laundry", "purpose", "plotType", "storageType"]) expect(india(category).map((f) => f.key)).not.toContain(key);
+  });
+
+  it("are cleared by Reset and counted on the Filters button", async () => {
+    const { buildResetUrl, activeFilterCount } = await loadWith<Apply>("./filterApply", "us");
+    const base = {
+      urlMode: "path",
+      intent: "rentLease",
+      cityName: "Austin",
+      category: "apartment",
+      areas: [],
+      search: "laundry=in-unit&petPolicy=dogs",
+    } as unknown as Parameters<Apply["buildResetUrl"]>[0];
+    expect(buildResetUrl(base)).not.toMatch(/laundry|petPolicy/);
+    expect(activeFilterCount(base)).toBeGreaterThanOrEqual(2);
+  });
+
+  it("reads a mobile home as a manufactured home", async () => {
+    const us = (await loadWith<Parse>("./parseSearchQuery", "us")).parseSearchQuery;
+    for (const words of ["mobile home for sale", "manufactured homes in Austin"]) expect(us(words).category, words).toBe("manufactured");
   });
 });
 

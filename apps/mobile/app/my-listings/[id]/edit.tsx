@@ -11,7 +11,7 @@ import {
   categoryFieldsFor,
   fieldIsVisible,
 } from "@bhavano/types/categoryFields";
-import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
+import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES, showsAnnualRate } from "@bhavano/types/priceQualifiers";
 import { areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import {
   clampPrice,
@@ -35,6 +35,7 @@ import { CategoryFieldsForm } from "../../../src/components/home/CategoryFieldsF
 import { ListingLocationEditor, type ListingLocationChange } from "../../../src/components/home/ListingLocationEditor";
 import { useMarket } from "../../../src/lib/market";
 import { allowsPerUnitPrice } from "@bhavano/types/postingRules";
+import { AnnualRateInput } from "../../../src/components/home/AnnualRateInput";
 
 const ALLOWED_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const ALLOWED_VIDEO_MIME_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/3gpp", "video/x-matroska"];
@@ -421,6 +422,14 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
                     />
                     {priceMode === "perUnit" && priceUnitAreaField && (
                       <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit, market.id) : null} />
+                    )}
+                    {showsAnnualRate(listing.category, listing.transactionType, market.id) && (
+                      <AnnualRateInput
+                        price={price}
+                        area={Number(attributes.sqft)}
+                        unit={(attributes.sqftUnit as AreaUnit | undefined) ?? "sqft"}
+                        onMonthly={(monthly) => setPrice(clampPrice(monthly, listing.transactionType))}
+                      />
                     )}
                   </View>
                   <View style={{ flex: 1 }}>

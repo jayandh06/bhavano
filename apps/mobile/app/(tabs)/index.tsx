@@ -101,6 +101,7 @@ export default function HomeScreen() {
       minPrice: filters.minPrice,
       maxPrice: filters.maxPrice,
       furnished: filters.furnished,
+      facts: filters.facts,
       postedBy: (category === "buy" || category === "rentLease") && filters.ownersOnly ? "owner" : undefined,
       sort,
       limit: 20,

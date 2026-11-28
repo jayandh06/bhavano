@@ -49,6 +49,7 @@ describe('deal types', () => {
       room: ['rent'],
       multifamily: ['sell'],
       plot: ['sell'],
+      manufactured: ['sell', 'rent'],
     });
   });
 

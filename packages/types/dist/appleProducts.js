@@ -27,7 +27,7 @@ function appleSubscriptionsFor(tier) {
     return exports.APPLE_SUBSCRIPTIONS.filter((p) => p.tier === tier);
 }
 exports.APPLE_BOOST_DAYS = [7, 15, 30];
-const PROPERTY_CATEGORIES = new Set(["house", "apartment", "villa", "condo", "townhouse", "multifamily", "room", "plot", "commercial"]);
+const PROPERTY_CATEGORIES = new Set(["house", "apartment", "villa", "condo", "townhouse", "multifamily", "manufactured", "room", "plot", "commercial"]);
 const OTHER_CATEGORIES = new Set(["coworking", "pg", "storage"]);
 /** The boost tier a listing falls in, or null when iOS has no boost product for it (furniture and
  * interiors are paused). */

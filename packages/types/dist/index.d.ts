@@ -5,7 +5,7 @@ import type { FeaturedPerformanceDto } from "./featuredPerformance";
 import type { BoostDurationDays } from "./boostPricing";
 import type { AreaUnit } from "./areaUnit";
 import type { RequirementAttributes } from "./requirementQuestions";
-export type ListingCategory = "house" | "apartment" | "villa" | "pg" | "storage" | "coworking" | "furniture" | "interiors" | "plot" | "commercial" | "condo" | "townhouse" | "multifamily" | "room";
+export type ListingCategory = "house" | "apartment" | "villa" | "pg" | "storage" | "coworking" | "furniture" | "interiors" | "plot" | "commercial" | "condo" | "townhouse" | "multifamily" | "manufactured" | "room";
 export type TransactionType = "buy" | "sell" | "rent" | "lease";
 export type ListingStatus = "active" | "sold" | "rented" | "deactivated";
 /** Whether a newly created listing is visible in browse and has fired post-live side effects.
@@ -52,7 +52,7 @@ export type SellerType = "owner" | "agent";
  * (+ an optional propertyType sub-filter); "pg"/"furniture" filter by category alone. */
 export type HomeCategoryFilter = "buy" | "rentLease" | "pg" | "coworking" | "furniture" | "interiors";
 /** Sub-filter shown under the Buy / Rent & Lease tabs only. */
-export type PropertyTypeFilter = "house" | "apartment" | "villa" | "condo" | "townhouse" | "multifamily" | "room" | "storage" | "coworking" | "plot" | "commercial";
+export type PropertyTypeFilter = "house" | "apartment" | "villa" | "condo" | "townhouse" | "multifamily" | "manufactured" | "room" | "storage" | "coworking" | "plot" | "commercial";
 export interface City {
     id: string;
     name: string;
@@ -208,6 +208,8 @@ export interface PopularSearchDto {
     count: number;
 }
 export interface ListingDetailDto extends ListingCardDto {
+    /** US commercial rent as a yearly rate per square foot ("$24.50/sq ft/yr"); absent for everything else. */
+    annualRate?: string;
     /** The seller's own prose. Null for anything posted before the field existed — most listings.
      * Distinct from `specs`, which are the short chips the card renders in one row. */
     description: string | null;

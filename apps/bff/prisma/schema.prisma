@@ -23,6 +23,8 @@ enum ListingCategory {
   room
   // US-only too (docs/plans/us-listing-model.md, phase 3): a whole building of two or more homes.
   multifamily
+  // US-only: a factory-built home, on its own land or a leased lot.
+  manufactured
 }
 
 enum TransactionType {

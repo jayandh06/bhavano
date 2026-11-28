@@ -13,6 +13,8 @@ const ALL_CATEGORY_PATTERNS: [RegExp, ListingCategory][] = [
   // US-only words first, so "townhouse" is not read as "house" and "condo apartment" is a condo. Dropped for India by the market filter below.
   [/\bcondos?\b|\bcondominiums?\b/i, "condo"],
   [/\btown\s*(houses?|homes?)\b|\brow\s+houses?\b/i, "townhouse"],
+  // Before "home" and "house": a mobile or manufactured home is its own type.
+  [/\b(?:manufactured|mobile|modular)\s+(?:homes?|houses?)\b/i, "manufactured"],
   // Before "apartment": an apartment building or complex is the whole thing, sold as multi-family.
   [/\bmulti[\s-]?family\b|\b(?:du|tri|four)plex(?:es)?\b|\bapartment\s+(?:buildings?|complex(?:es)?)\b/i, "multifamily"],
   // "room" is only a category when it is a room to rent: "2 bedroom" never matches (no word boundary), "room for rent" and roommate or sublet words do.
