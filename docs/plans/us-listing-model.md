@@ -3,7 +3,8 @@
 Status: **approved 2026-11-28 with the recommendations below; phase 1 deployed to the US the same day** (pull request 111,
 image `sha-a621e459`: `bff`, `web`, `admin`; India not deployed). **Phase 2 deployed to the US the same day** (pull request 112, image `sha-c4806155`: `bff`, `web`, `admin`). The app needs a
 new build. **Phase 3 deployed to the US the same day** (pull request 114,
-image `sha-040f8e56`; the migration was applied to the US database). **Phase 4 built, not merged or deployed.** Part of the US launch
+image `sha-040f8e56`; the migration was applied to the US database). **Phase 4 deployed to the US the same day** (pull request 116, image
+`sha-ccb1736c`; the migration was applied to the US database). All four phases are live on the US website, server and admin. Part of the US launch
 ([us-market-expansion.md](us-market-expansion.md)). Builds on
 [us-categories-condo-townhouse-room.md](us-categories-condo-townhouse-room.md) and, if approved, replaces parts of it
 and of [us-price-limits.md](us-price-limits.md).
@@ -202,6 +203,18 @@ signed-in preview and publishing were not tried.
 - Not done: filters on number ranges (square feet, year built, units); saved searches and AI search do not keep or read
   the new filters.
 - Tests: `apps/bff/src/market/us-phase4.spec.ts`, `apps/web/src/lib/usCategories.test.ts`.
+
+Checked live after the deploy: the migration ran; manufactured-home browse pages answer; the apartment filter panel shows
+Laundry, Parking and Pets, and applying "Dogs allowed" adds `?petPolicy=dogs`; the server accepts the new filters and
+refuses an unknown value; on the commercial lease form, 2,000 sq ft at $24.50 fills $4,083 a month. India pages answer.
+Signed-in preview and publishing were not tried.
+
+Found on the live site, still open:
+
+- The website writes the line under a typed price in rupees on the US ("₹4,083 (4.08 Thousand)"): `PriceWordsHint` and
+  `PerUnitTotalHint` in the web's `PriceWithWords.tsx` do not pass the market.
+- The US filter bar says "All BHK".
+- On the commercial lease form the yearly-rate box sits above the area it needs.
 
 ## SEO
 
