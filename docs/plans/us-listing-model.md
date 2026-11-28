@@ -1,7 +1,7 @@
 # US listing model: property types, deal types and forms
 
 Status: **approved 2026-11-28 with the recommendations below; phase 1 deployed to the US the same day** (pull request 111,
-image `sha-a621e459`: `bff`, `web`, `admin`; India not deployed). **Phase 2 built, not merged or deployed.** The app needs a
+image `sha-a621e459`: `bff`, `web`, `admin`; India not deployed). **Phase 2 deployed to the US the same day** (pull request 112, image `sha-c4806155`: `bff`, `web`, `admin`). The app needs a
 new build. Part of the US launch
 ([us-market-expansion.md](us-market-expansion.md)). Builds on
 [us-categories-condo-townhouse-room.md](us-categories-condo-townhouse-room.md) and, if approved, replaces parts of it
@@ -160,6 +160,10 @@ Differences from the proposal:
 Not done: Featured and assisted-posting mentions on the US form; half bathrooms in the pages' structured data; search
 filters on the new fields (phase 4); the website's test-ad scenarios still fill India's answers.
 Tests: `apps/bff/src/market/us-listing-form.spec.ts`.
+
+Checked live after the deploy: the apartment-for-rent form shows the fields above with US wording and no AI language
+choice, the US server returns the new field list and "2.5 Baths", and the main US and India pages answer. Signed-in
+preview and publishing were not tried.
 
 ## SEO
 
