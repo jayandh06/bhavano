@@ -1,12 +1,12 @@
 import type { ListingCategory, TransactionType } from '@bhavano/types';
 import type { RequirementFeedFilters } from '@bhavano/types/requirementFeed';
 import {
-  REQUIREMENT_ATTRIBUTE_QUESTIONS,
   REQUIREMENT_TIMELINE_OPTIONS,
   amenityOptionsFor,
   intentOf,
   sizeQuestionFor,
   type RequirementCriteria,
+  requirementQuestionsFor,
 } from '@bhavano/types/requirementQuestions';
 import { MARKET } from '../market/market-config';
 
@@ -66,7 +66,7 @@ function intersects(
 
 function attributeLabel(category: ListingCategory, key: string): string {
   return (
-    REQUIREMENT_ATTRIBUTE_QUESTIONS[category].find((q) => q.key === key)
+    requirementQuestionsFor(category, MARKET.id).find((q) => q.key === key)
       ?.label ?? key
   );
 }
@@ -166,7 +166,7 @@ export function feedDetails(
   const category = criteria.category;
   if (!category) return [];
   const attributes = criteria.attributes ?? {};
-  const details = REQUIREMENT_ATTRIBUTE_QUESTIONS[category]
+  const details = requirementQuestionsFor(category, MARKET.id)
     .filter((q) => attributes[q.key]?.length)
     .map((q) => ({
       label: q.label,
@@ -175,7 +175,7 @@ export function feedDetails(
       ),
     }));
   if (attributes.amenities?.length) {
-    const options = amenityOptionsFor(category);
+    const options = amenityOptionsFor(category, MARKET.id);
     details.push({
       label: 'Must have',
       values: attributes.amenities.map(

@@ -75,7 +75,7 @@ export function ListingPreviewCard({
     priceNum > 0 && priceUnit && priceArea && priceArea > 0
       ? perUnitTotalPrice(Math.round(priceNum * priceArea), priceArea, priceUnit, market.id)
       : null;
-  const specs = deriveCardSpecs(category, attributes);
+  const specs = deriveCardSpecs(category, attributes, market.id);
 
   // Same cycle as the real ListingCard.tsx, gated the same way on *whether* it runs at all — only
   // a Featured listing with more than one photo gets it, since that's exactly what the real card

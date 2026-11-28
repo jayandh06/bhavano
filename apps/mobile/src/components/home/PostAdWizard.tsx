@@ -113,7 +113,7 @@ import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
 import { iosPurchases } from "../../lib/iosPurchasesClient";
 import { IosBoostSheet } from "./IosPurchaseSheets";
 import { useMarket } from "../../lib/market";
-import { marketAreaUnits } from "@bhavano/types/market";
+import { marketAreaUnits, type MarketId } from "@bhavano/types/market";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
 
@@ -176,9 +176,9 @@ function maxCountFor(field: FieldConfig): number {
 /** Counters start at 0 and yes/no toggles at "no", so the form opens in a stated, submittable
  * state instead of a page of blanks the seller must confirm one by one. Only fields the seller
  * has not touched are seeded — selectCategory clears attributes first, so this never overwrites. */
-function defaultAttributesFor(category: ListingCategory): Record<string, string | string[]> {
+function defaultAttributesFor(category: ListingCategory, marketId: MarketId): Record<string, string | string[]> {
   const defaults: Record<string, string | string[]> = {};
-  for (const field of CATEGORY_FIELD_CONFIG[category]) {
+  for (const field of categoryFieldsFor(category, marketId)) {
     // Not a counter whose minimum is above 0 (total floors): a seeded "0" is below it, and the BFF
     // rejected every post that left it untouched. Those start blank instead.
     if (isCounter(field)) {
@@ -187,7 +187,10 @@ function defaultAttributesFor(category: ListingCategory): Record<string, string 
     // Multi-selects open on their first option (Family, for preferred tenant type) rather than
     // empty — the common answer, and it stops a required multi-select blocking submission before
     // the seller has looked at it. Still fully deselectable.
-    else if (field.type === "multi-select" && field.options?.[0]) defaults[field.key] = [field.options[0].value];
+    // Outside India only a required one is seeded: an unasked "Cats allowed" would state something the seller never said.
+    else if (field.type === "multi-select" && field.options?.[0]) {
+      if (marketId === "in" || field.required) defaults[field.key] = [field.options[0].value];
+    }
     // Not "Posted by Broker / Agent": a preset "No" would label every agent's listing "Owner".
     // It starts from the account's answer instead (fromBrokerDefault), or blank.
     else if (field.key !== "fromBroker" && field.options?.some((o) => o.value === "no") && field.options.length === 2) {
@@ -909,7 +912,7 @@ export function PostAdWizard({
     userStartedRef.current = true;
     discardOfferedDraft();
     setCategory(next);
-    setAttributes({ ...defaultAttributesFor(next), ...fromBrokerDefault(next, profile?.sellerType ?? null) });
+    setAttributes({ ...defaultAttributesFor(next, market.id), ...fromBrokerDefault(next, profile?.sellerType ?? null) });
     // A category swap can invalidate "price per unit" (the new category might have no area field
     // at all, or a different one) — reset to the plain default.
     setPriceMode("total");
@@ -1558,7 +1561,7 @@ export function PostAdWizard({
   }, [step, category, accessToken]);
   const lastAdPreview =
     lastAd && category && lastAd.category === category && transactionType && lastAdCopied === null
-      ? reuseAttributes(category, transactionType, attributes, lastAd.attributes)
+      ? reuseAttributes(category, transactionType, attributes, lastAd.attributes, market.id)
       : null;
   function useLastAd() {
     if (!lastAdPreview || !category) return;
@@ -2473,7 +2476,7 @@ export function PostAdWizard({
             {/* Two per row: these are mostly one-word labels over a small control, so a full-width
                 row wasted most of its width and made the section three screens long. Long sections are split into the
                 shared sub-groups (Rooms, Size & floor, ...), the same ones the website shows. */}
-            {groupSectionFields(section, fields).map((group, i) => (
+            {groupSectionFields(section, fields, market.id).map((group, i) => (
               <View key={group.id} style={group.label && i > 0 ? [styles.attrGroup, { borderTopColor: colors.border }] : undefined}>
                 {group.label && <Text style={[styles.attrGroupHeading, { color: colors.muted }]}>{group.label}</Text>}
                 <View style={styles.attrGrid}>{group.fields.flatMap(renderFieldCells)}</View>

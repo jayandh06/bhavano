@@ -1,5 +1,5 @@
 import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, TransactionType } from "./index";
-import { CATEGORY_FIELD_CONFIG, amenityFieldsFor, type FieldOption } from "./categoryFields";
+import { CATEGORY_FIELD_CONFIG, amenityFieldsFor, type FieldOption, categoryFieldsFor } from "./categoryFields";
 import { marketTransactionType, postableTransactionTypes } from "./postingRules";
 import { MAX_BEDROOMS, bedWord, bedroomLabel } from "./bedrooms";
 import { convertArea, formatArea, type AreaUnit } from "./areaUnit";
@@ -271,8 +271,8 @@ function anySizeQuestionFor(category: ListingCategory): RequirementSizeQuestion 
 export const REQUIREMENT_BEDROOM_OPTIONS: number[] = Array.from({ length: MAX_BEDROOMS }, (_, i) => i + 1);
 
 /** The amenities a category declares, as a must-haves question. Empty for categories with none. */
-export function amenityOptionsFor(category: ListingCategory): FieldOption[] {
-  return amenityFieldsFor(category).map((field) => ({ value: field.key, label: field.label }));
+export function amenityOptionsFor(category: ListingCategory, marketId: MarketId = "in"): FieldOption[] {
+  return amenityFieldsFor(category, marketId).map((field) => ({ value: field.key, label: field.label }));
 }
 
 /**
@@ -291,7 +291,7 @@ export function sanitizeRequirementAttributes(
   const out: RequirementAttributes = {};
   const errors: string[] = [];
   const questions = new Map(requirementQuestionsFor(category, marketId).map((q) => [q.key, q]));
-  const amenityKeys = new Set(amenityOptionsFor(category).map((o) => o.value));
+  const amenityKeys = new Set(amenityOptionsFor(category, marketId).map((o) => o.value));
 
   for (const [key, raw] of Object.entries(attributes)) {
     if (!Array.isArray(raw) || raw.some((v) => typeof v !== "string")) {
@@ -585,8 +585,8 @@ function joinOr(items: string[]): string {
   return `${items.slice(0, -1).join(", ")} or ${items[items.length - 1]}`;
 }
 
-function optionLabel(category: ListingCategory, key: string, value: string): string {
-  const q = REQUIREMENT_ATTRIBUTE_QUESTIONS[category].find((x) => x.key === key);
+function optionLabel(category: ListingCategory, key: string, value: string, marketId: MarketId): string {
+  const q = requirementQuestionsFor(category, marketId).find((x) => x.key === key);
   return q?.options.find((o) => o.value === value)?.label ?? value;
 }
 
@@ -620,7 +620,7 @@ function sizePhrase(c: RequirementCriteria, marketId: MarketId): string | undefi
 
 function subjectPhrase(c: RequirementCriteria, marketId: MarketId): string {
   const txn = transactionPhrase(c.transactionType, marketId);
-  const attr = (key: string) => (c.category ? (c.attributes?.[key] ?? []).map((v) => optionLabel(c.category!, key, v)) : []);
+  const attr = (key: string) => (c.category ? (c.attributes?.[key] ?? []).map((v) => optionLabel(c.category!, key, v, marketId)) : []);
 
   switch (c.category) {
     case undefined:
@@ -687,7 +687,7 @@ export function formatRequirementLabel(
     omit?.budget ? undefined : budgetPhrase(c, marketId),
     omit?.size ? undefined : sizePhrase(c, marketId),
     !omit?.amenities && c.category && c.attributes?.amenities?.length
-      ? c.attributes.amenities.map((a) => amenityOptionsFor(c.category!).find((o) => o.value === a)?.label.toLowerCase() ?? a).join(", ")
+      ? c.attributes.amenities.map((a) => amenityOptionsFor(c.category!, marketId).find((o) => o.value === a)?.label.toLowerCase() ?? a).join(", ")
       : undefined,
   ].filter(Boolean);
   const missing = missingForLead(c);
@@ -775,5 +775,13 @@ export function requirementCriteriaFromBrowse(f: BrowseFiltersForRequirement): R
  * gender, food in the US) are left out. India gets the full list. */
 export function requirementQuestionsFor(category: ListingCategory, marketId?: MarketId): RequirementAttributeQuestion[] {
   const all = REQUIREMENT_ATTRIBUTE_QUESTIONS[category];
-  return marketId ? all.filter((q) => isMarketField(marketId, q.key)) : all;
+  if (!marketId) return all;
+  const offered = all.filter((q) => isMarketField(marketId, q.key));
+  if (marketId === "in") return offered;
+  // Outside India the choices are the ones that market's listing form offers, so a request can be matched to an ad.
+  const fields = categoryFieldsFor(category, marketId);
+  return offered.flatMap((q) => {
+    const options = fields.find((f) => f.key === q.key)?.options;
+    return options ? [{ ...q, options }] : [];
+  });
 }

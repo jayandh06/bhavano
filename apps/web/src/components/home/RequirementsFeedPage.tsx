@@ -282,7 +282,7 @@ function FeedFilters({
   const questions = category
     ? requirementQuestionsFor(category, SERVER_MARKET.id).filter((q) => !q.transactionTypes || (transaction && q.transactionTypes.includes(transaction)))
     : [];
-  const amenities = category ? amenityOptionsFor(category) : [];
+  const amenities = category ? amenityOptionsFor(category, SERVER_MARKET.id) : [];
   const hasFilters = Object.keys(encodeRequirementFeedQuery(filters, false)).length > 0;
 
   return (

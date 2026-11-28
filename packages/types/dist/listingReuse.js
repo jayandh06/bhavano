@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.isReusableField = isReusableField;
 exports.reuseAttributes = reuseAttributes;
 const categoryFields_1 = require("./categoryFields");
+const market_1 = require("./market");
 /** Sections whose answers describe the seller or how they let/sell, not the particular property. Size, floor,
  * bedrooms, price and the like are NOT here: they differ from one property to the next, so copying them would
  * quietly publish a wrong fact. */
@@ -25,11 +26,13 @@ function asFormValue(value) {
 /** Fills the blanks in `current` from `previous` for the fields that are safe to reuse. Never overwrites anything
  * the seller already entered, only copies a value the current form could hold (a select option that still exists),
  * and drops fields the new transaction type hides. Returns the merged attributes and which keys were copied. */
-function reuseAttributes(category, transactionType, current, previous) {
+function reuseAttributes(category, transactionType, current, previous, marketId = "in") {
     const merged = { ...current };
     const copiedKeys = [];
-    for (const field of categoryFields_1.CATEGORY_FIELD_CONFIG[category]) {
+    for (const field of (0, categoryFields_1.categoryFieldsFor)(category, marketId)) {
         if (!isReusableField(field))
+            continue;
+        if (!(0, market_1.isMarketField)(marketId, field.key))
             continue;
         if (!isBlank(current[field.key]))
             continue;
@@ -45,11 +48,11 @@ function reuseAttributes(category, transactionType, current, previous) {
         merged[field.key] = value;
         copiedKeys.push(field.key);
     }
-    const pruned = (0, categoryFields_1.pruneHiddenAttributes)(category, transactionType, merged);
+    const pruned = (0, categoryFields_1.pruneHiddenAttributes)(category, transactionType, merged, marketId);
     // A copied key can disappear if a copied answer hides it (e.g. brokerage fee after "no brokerage").
     const visible = copiedKeys.filter((key) => {
-        const field = categoryFields_1.CATEGORY_FIELD_CONFIG[category].find((f) => f.key === key);
-        return field && (0, categoryFields_1.fieldIsVisible)(field, transactionType, pruned) && !isBlank(pruned[key]);
+        const field = (0, categoryFields_1.categoryFieldsFor)(category, marketId).find((f) => f.key === key);
+        return field && (0, categoryFields_1.fieldIsVisible)(field, transactionType, pruned, marketId) && !isBlank(pruned[key]);
     });
     return { attributes: pruned, copiedKeys: visible };
 }

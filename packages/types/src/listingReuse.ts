@@ -1,5 +1,6 @@
 import type { ListingCategory, TransactionType } from "./index";
-import { CATEGORY_FIELD_CONFIG, fieldIsVisible, pruneHiddenAttributes, type FieldDef } from "./categoryFields";
+import { categoryFieldsFor, fieldIsVisible, pruneHiddenAttributes, type FieldDef } from "./categoryFields";
+import { isMarketField, type MarketId } from "./market";
 
 /** The seller's most recent ad in a category, for "Use details from your last ad?" on the posting form
  * (docs/plans/post-details-step-experience.md, Phase 2). Only the raw attributes travel; what is safe to reuse is
@@ -38,11 +39,13 @@ export function reuseAttributes(
   transactionType: TransactionType,
   current: Record<string, string | string[]>,
   previous: Record<string, unknown>,
+  marketId: MarketId = "in",
 ): { attributes: Record<string, string | string[]>; copiedKeys: string[] } {
   const merged: Record<string, string | string[]> = { ...current };
   const copiedKeys: string[] = [];
-  for (const field of CATEGORY_FIELD_CONFIG[category]) {
+  for (const field of categoryFieldsFor(category, marketId)) {
     if (!isReusableField(field)) continue;
+    if (!isMarketField(marketId, field.key)) continue;
     if (!isBlank(current[field.key])) continue;
     const value = asFormValue(previous[field.key]);
     if (value === null || isBlank(value)) continue;
@@ -54,11 +57,11 @@ export function reuseAttributes(
     merged[field.key] = value;
     copiedKeys.push(field.key);
   }
-  const pruned = pruneHiddenAttributes(category, transactionType, merged);
+  const pruned = pruneHiddenAttributes(category, transactionType, merged, marketId);
   // A copied key can disappear if a copied answer hides it (e.g. brokerage fee after "no brokerage").
   const visible = copiedKeys.filter((key) => {
-    const field = CATEGORY_FIELD_CONFIG[category].find((f) => f.key === key);
-    return field && fieldIsVisible(field, transactionType, pruned) && !isBlank(pruned[key]);
+    const field = categoryFieldsFor(category, marketId).find((f) => f.key === key);
+    return field && fieldIsVisible(field, transactionType, pruned, marketId) && !isBlank(pruned[key]);
   });
   return { attributes: pruned, copiedKeys: visible };
 }

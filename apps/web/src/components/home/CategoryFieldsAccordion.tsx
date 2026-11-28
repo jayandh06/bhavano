@@ -777,7 +777,7 @@ export function CategoryFieldsAccordion({
             return (
               <div className="flex flex-col gap-4 px-4 pb-4">
                 {extra}
-                {groupSectionFields(section, fields).map((group, i) => (
+                {groupSectionFields(section, fields, market.id).map((group, i) => (
                   <div
                     key={group.id}
                     role={group.label ? "group" : undefined}

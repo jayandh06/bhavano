@@ -300,7 +300,7 @@ export function CategoryFieldsForm({
             {label}
           </Text>
           {section !== "other" && sectionExtras?.[section]}
-          {groupSectionFields(section, fields).map((group, i) => (
+          {groupSectionFields(section, fields, market.id).map((group, i) => (
             <View key={group.id} style={group.label && i > 0 ? [styles.attrGroup, { borderTopColor: colors.border }] : undefined}>
               {group.label && <Text style={[styles.attrGroupHeading, { color: colors.muted }]}>{group.label}</Text>}
               <View style={styles.attrGrid}>{group.fields.flatMap(renderFieldCells)}</View>

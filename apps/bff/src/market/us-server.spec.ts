@@ -181,3 +181,18 @@ describe('price check', () => {
     expect(load<Bounds>('in', '../moderation/priceBounds').checkPriceSanity('apartment', 'rent', 950)).toMatch(/₹950/);
   });
 });
+
+describe('questions the US must not ask', () => {
+  type Service = typeof import('../listings/listings.service');
+  const check = (market: Id, attributes: Record<string, unknown>) => {
+    const { ListingsService } = load<Service>(market, '../listings/listings.service');
+    const service = ListingsService.prototype as unknown as {
+      assertValidAttributes: (category: string, transactionType: string, attributes: Record<string, unknown>) => void;
+    };
+    return () => service.assertValidAttributes.call(service, 'apartment', 'rent', attributes);
+  };
+
+  it('are refused by the US server even though its form does not list them', () => {
+    expect(check('us', { vegetariansOnly: 'yes' })).toThrow('Vegetarians only is not applicable');
+  });
+});

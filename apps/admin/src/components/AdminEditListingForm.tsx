@@ -568,7 +568,7 @@ export function AdminEditListingForm({
     // A category swap invalidates the old attributes entirely (different fields, different
     // required keys) — reset to the new category's defaults, same as the posting wizard does on
     // a category change, then prune anything the new transaction type doesn't apply to.
-    setAttributes(pruneHiddenAttributes(newCategory, newTransactionType, defaultAttributesFor(newCategory), marketId));
+    setAttributes(pruneHiddenAttributes(newCategory, newTransactionType, defaultAttributesFor(newCategory, marketId), marketId));
     const newQualifierOptions = getPriceQualifierOptions(newCategory, newTransactionType, marketId);
     if (!newQualifierOptions.some((opt) => opt.value === priceQualifier)) {
       setPriceQualifier(newQualifierOptions[0]?.value ?? "");

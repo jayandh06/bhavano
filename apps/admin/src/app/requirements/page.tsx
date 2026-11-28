@@ -5,6 +5,7 @@ import { fetchRequirements } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { Pagination } from "@/components/Pagination";
 import { RequirementsTable } from "@/components/RequirementsTable";
+import { adminMarket } from "@/lib/market";
 
 const STATUS_OPTIONS: { value: RequirementStatus | "any"; label: string }[] = [
   { value: "open", label: "Open" },
@@ -67,7 +68,7 @@ export default async function RequirementsPage({ searchParams }: { searchParams:
           })}
         </div>
 
-        <RequirementsTable items={result.items} />
+        <RequirementsTable items={result.items} marketId={adminMarket().id} />
 
         <Pagination
           currentPage={currentPage}

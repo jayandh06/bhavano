@@ -134,7 +134,7 @@ export interface SectionFieldGroup<F> {
  * form. When only one group is left it is returned unlabelled. */
 export declare function groupSectionFields<F extends {
     key: string;
-}>(section: FieldSection | "other", fields: F[]): SectionFieldGroup<F>[];
+}>(section: FieldSection | "other", fields: F[], marketId?: MarketId): SectionFieldGroup<F>[];
 /** Strips any attribute whose field is no longer visible (its `dependsOn` condition broke,
  * possibly several links back in a chain) — run after every attribute/transaction-type change
  * so a hidden field's stale value can't linger and reappear if a descendant field depends on
@@ -186,7 +186,7 @@ export declare function listingCompleteness(category: ListingCategory, transacti
 /** The attributes a freshly-chosen category starts with — the counts, at zero. Called instead
  * of resetting to an empty object so a stepper has a number to increment from and the form opens
  * with honest answers rather than blanks the poster has to fill in to say "none". */
-export declare function defaultAttributesFor(category: ListingCategory): Record<string, string>;
+export declare function defaultAttributesFor(category: ListingCategory, marketId?: MarketId): Record<string, string>;
 export declare const BROKERAGE_FEE_FIXED = "fixed";
 export declare const BROKERAGE_FEE_PERCENT = "percent";
 /**
@@ -228,7 +228,8 @@ export declare const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]>;
 export declare const AMENITY_KEYS: string[];
 /** The amenity fields of one category, in the order the config declares them — empty for the
  * categories that have none (plot, commercial, furniture, interiors, storage). */
-export declare function amenityFieldsFor(category: ListingCategory): FieldDef[];
-/** `CATEGORY_FIELD_CONFIG` for one market: what a form or a listing page shows and what its checks say. India gets the
- * config itself. Which fields a market offers is still decided by `fieldIsVisible`. */
+export declare function amenityFieldsFor(category: ListingCategory, marketId?: MarketId): FieldDef[];
+/** The fields of one market: what a form or a listing page shows and what its checks say. India gets
+ * `CATEGORY_FIELD_CONFIG` itself; the US gets its own list (`US_CATEGORY_FIELDS`), and for a category without one the
+ * shared list worded in dollars. Which fields a market offers is still decided by `fieldIsVisible`. */
 export declare function categoryFieldsFor(category: ListingCategory, marketId?: MarketId): FieldDef[];

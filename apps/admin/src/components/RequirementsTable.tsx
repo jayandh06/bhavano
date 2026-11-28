@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import type { MarketId } from "@bhavano/types/market";
 import Link from "next/link";
 import type { AdminRequirementDto, RequirementStatus } from "@bhavano/types";
 import { areaUnitShortLabel, convertArea } from "@bhavano/types/areaUnit";
 import { bedroomLabel } from "@bhavano/types/bedrooms";
 import {
-  REQUIREMENT_ATTRIBUTE_QUESTIONS,
   REQUIREMENT_CATEGORY_LABELS,
   REQUIREMENT_GAP_LABELS,
   amenityOptionsFor,
   missingForLead,
+  requirementQuestionsFor,
 } from "@bhavano/types/requirementQuestions";
 import { formatInrRangeWithWords } from "@bhavano/types/priceWords";
 import { updateRequirementAction } from "@/app/actions/admin";
@@ -47,11 +48,11 @@ function sizeText(item: AdminRequirementDto): string | null {
 
 /** Attribute answers as "Furnishing: Semi-furnished, Furnished" lines, with option labels
  * rather than stored values. */
-function attributeLines(item: AdminRequirementDto): string[] {
+function attributeLines(item: AdminRequirementDto, marketId: MarketId): string[] {
   if (!item.category) return [];
   const questions = [
-    ...REQUIREMENT_ATTRIBUTE_QUESTIONS[item.category],
-    { key: "amenities", label: "Must-haves", options: amenityOptionsFor(item.category) },
+    ...requirementQuestionsFor(item.category, marketId),
+    { key: "amenities", label: "Must-haves", options: amenityOptionsFor(item.category, marketId) },
   ];
   return questions
     .map((q) => {
@@ -75,20 +76,20 @@ function attributeLines(item: AdminRequirementDto): string[] {
  * is the admin surface for the person who will actually make the call; the plan's paid,
  * consent-gated contact path governs the eventual *public* feed, not this.
  */
-export function RequirementsTable({ items }: { items: AdminRequirementDto[] }) {
+export function RequirementsTable({ items, marketId }: { items: AdminRequirementDto[]; marketId: MarketId }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {items.length === 0 && (
         <p style={{ fontSize: 13, color: "var(--muted)" }}>Nothing here — no captured requirements match this filter.</p>
       )}
       {items.map((item) => (
-        <RequirementCard key={item.id} item={item} />
+        <RequirementCard key={item.id} item={item} marketId={marketId} />
       ))}
     </div>
   );
 }
 
-function RequirementCard({ item }: { item: AdminRequirementDto }) {
+function RequirementCard({ item, marketId }: { item: AdminRequirementDto; marketId: MarketId }) {
   const [status, setStatus] = useState<RequirementStatus>(item.status);
   const [note, setNote] = useState(item.adminNote ?? "");
   const [saving, setSaving] = useState(false);
@@ -106,7 +107,7 @@ function RequirementCard({ item }: { item: AdminRequirementDto }) {
   }
 
   const missing = missingForLead(item);
-  const attributes = attributeLines(item);
+  const attributes = attributeLines(item, marketId);
   const refinement = item.refinedAt
     ? "refined"
     : item.originalSearchLabel

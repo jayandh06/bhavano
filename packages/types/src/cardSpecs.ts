@@ -1,5 +1,6 @@
 import type { ListingCategory } from "./index";
-import { CATEGORY_FIELD_CONFIG } from "./categoryFields";
+import { categoryFieldsFor } from "./categoryFields";
+import type { MarketId } from "./market";
 import { areaUnitShortLabel, type AreaUnit } from "./areaUnit";
 
 const AREA_UNITS: readonly AreaUnit[] = ["sqft", "sqm", "acre", "hectare", "cent"];
@@ -96,8 +97,8 @@ function toNumber(value: unknown): number | undefined {
  * with — so the chip and the detail page cannot disagree about what "double" is called. A
  * multi-select value (e.g. pg's sharingType, gender) joins every selected option's label with
  * ", " — "Single, Double sharing" — rather than only ever handling a scalar. */
-function optionLabel(category: ListingCategory, key: string, value: unknown): string | undefined {
-  const field = CATEGORY_FIELD_CONFIG[category]?.find((f) => f.key === key);
+function optionLabel(category: ListingCategory, key: string, value: unknown, marketId: MarketId): string | undefined {
+  const field = categoryFieldsFor(category, marketId)?.find((f) => f.key === key);
   if (!field) return undefined;
   const values = Array.isArray(value)
     ? value
@@ -120,6 +121,7 @@ function optionLabel(category: ListingCategory, key: string, value: unknown): st
 export function deriveCardSpecs(
   category: ListingCategory,
   attributes: Record<string, unknown> | null | undefined,
+  marketId: MarketId = "in",
 ): string[] {
   if (!attributes) return [];
   const chips: string[] = [];
@@ -129,7 +131,10 @@ export function deriveCardSpecs(
     if (raw === undefined || raw === null || raw === "") continue;
 
     if (chip.kind === "count") {
-      const n = toNumber(raw);
+      let n = toNumber(raw);
+      // US homes count half bathrooms apart ("2.5 Baths"); only US listings carry the answer.
+      const halves = chip.key === "bathrooms" ? toNumber(attributes.halfBathrooms) : undefined;
+      if (halves) n = (n ?? 0) + halves / 2;
       if (n === undefined || n <= 0) continue;
       chips.push(`${n} ${n === 1 ? chip.one : chip.many}`);
     } else if (chip.kind === "unit") {
@@ -147,7 +152,7 @@ export function deriveCardSpecs(
     } else if (chip.kind === "text") {
       if (typeof raw === "string" && raw.trim() !== "") chips.push(raw.trim());
     } else {
-      const label = optionLabel(category, chip.key, raw);
+      const label = optionLabel(category, chip.key, raw, marketId);
       if (!label) continue;
       chips.push(chip.kind === "optionSuffix" ? `${label} ${chip.suffix}` : label);
     }
