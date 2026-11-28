@@ -335,8 +335,8 @@ export function PostAdWizard({
   // boosted, so only an active Agent Pro subscription can elevate the tier — falls back to the
   // default (unelevated) tier for a logged-out visitor exactly like the website does.
   const videoEntitlement = useMemo(
-    () => entitlementFor(market.id, resolveVideoEntitlement(profile ?? { agentProUntil: null })),
-    [profile, market.id],
+    () => entitlementFor(market.paymentsEnabled, resolveVideoEntitlement(profile ?? { agentProUntil: null })),
+    [profile, market.paymentsEnabled],
   );
 
   const [step, setStep] = useState<Step>("category");

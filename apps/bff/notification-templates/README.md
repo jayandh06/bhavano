@@ -36,7 +36,8 @@ whatsapp/boost-promotion/ the "boost_promotion" template's wording — NOT yet s
 A market other than India may have its own copy of a folder under `<market>/email/`. The US uses `us/email/<name>/` when that folder
 exists, and `email/<name>/` otherwise. A market folder replaces the whole template: include every file it needs, and leave out a
 button it should not have. US copies exist for the emails that name India or offer something to buy: `welcome`, `listing-posted`,
-`listing-posted-reminder`, `requirement-captured-no-alert` and `claim-listing`. When changing one of those in `email/`, check
+`listing-posted-reminder`, `requirement-captured-no-alert`, `claim-listing`, `boost-promotion` and
+`boost-promotion-offer` (dollars). When changing one of those in `email/`, check
 whether its US copy needs the same change. US text must not describe residents, safety or schools (Fair Housing).
 
 ## `email/` — takes effect on the next send, no rebuild or restart

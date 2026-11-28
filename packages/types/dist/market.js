@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DEFAULT_MARKET_ID = exports.MARKETS = void 0;
 exports.entitlementFor = entitlementFor;
+exports.appMarket = appMarket;
 exports.isMarketId = isMarketId;
 exports.getMarket = getMarket;
 exports.marketFromPath = marketFromPath;
@@ -39,6 +40,7 @@ exports.MARKETS = {
         publishRequiresVerifiedPhone: true,
         phoneOtpAvailable: true,
         paymentsEnabled: true,
+        appPaymentsEnabled: true,
         indiaContent: true,
         contactConsentPreTicked: true,
         categories: ["house", "apartment", "villa", "pg", "storage", "coworking", "furniture", "interiors", "plot", "commercial"],
@@ -67,6 +69,7 @@ exports.MARKETS = {
         publishRequiresVerifiedPhone: false,
         phoneOtpAvailable: false,
         paymentsEnabled: false,
+        appPaymentsEnabled: false,
         indiaContent: false,
         contactConsentPreTicked: false,
         // Houses, apartments, condos, townhouses, manufactured homes, multi-family buildings, rooms, land ("plot"), storage and commercial space
@@ -98,9 +101,23 @@ exports.MARKETS = {
         indexable: false,
     },
 };
-/** An upload limit as a market words it: where nothing is sold, no limit says a Featured ad would raise it. */
-function entitlementFor(id, entitlement) {
-    return exports.MARKETS[id].paymentsEnabled ? entitlement : { ...entitlement, canUpgradeByBoosting: false };
+/** An upload limit as it should be worded: where nothing is sold (`sells` false), no limit says a Featured ad would raise it. */
+function entitlementFor(sells, entitlement) {
+    return sells ? entitlement : { ...entitlement, canUpgradeByBoosting: false };
+}
+const APP_MARKETS = new Map();
+/** A market as the phone apps see it: `paymentsEnabled` there means the app itself sells. The same object each time for a market, so
+ * it is safe as a hook dependency. */
+function appMarket(id) {
+    const market = exports.MARKETS[id];
+    if (market.paymentsEnabled === market.appPaymentsEnabled)
+        return market;
+    let seen = APP_MARKETS.get(id);
+    if (!seen) {
+        seen = { ...market, paymentsEnabled: market.appPaymentsEnabled };
+        APP_MARKETS.set(id, seen);
+    }
+    return seen;
 }
 /** The market every existing deployment and every caller that names none uses. */
 exports.DEFAULT_MARKET_ID = "in";

@@ -1,0 +1,5 @@
+Hi {{name}},
+
+Your ad "{{title}}" is live. Feature puts it above other listings in {{location}}, with a Featured badge, and it includes Instant Alerts, so you hear the moment someone messages you about it.
+
+Feature it for {{boostDays}} days from ${{boostPrice}}, or pick 15 or 30 days for a lower price per day. One-time payment, no subscription. Either way your ad stays live and free for its full term.

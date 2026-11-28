@@ -473,7 +473,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
           <Text style={{ color: colors.muted, fontSize: 12 }}>{maxPhotos - listing.photosFull.length} more allowed</Text>
         </Pressable>
       )}
-      {listing.photosFull.length >= maxPhotos && listing.photoEntitlement?.canUpgradeByBoosting && (
+      {listing.photosFull.length >= maxPhotos && market.paymentsEnabled && listing.photoEntitlement?.canUpgradeByBoosting && (
         <Text style={{ color: colors.muted, fontSize: 12 }}>Feature this listing to add up to {PHOTO_LIMITS.elevated.maxPhotos} photos.</Text>
       )}
       {listing.photosFull.length > 0 && (
@@ -520,7 +520,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
               <Text style={{ color: colors.muted, fontSize: 12 }}>up to {listing.videoEntitlement.maxDurationSec}s</Text>
             </Pressable>
           ) : (
-            listing.videoEntitlement.canUpgradeByBoosting && (
+            market.paymentsEnabled && listing.videoEntitlement.canUpgradeByBoosting && (
               <Text style={{ color: colors.muted, fontSize: 12 }}>Boost this listing to add up to 5 videos, up to 3 minutes each.</Text>
             )
           )}
