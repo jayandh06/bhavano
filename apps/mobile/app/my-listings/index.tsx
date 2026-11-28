@@ -18,6 +18,7 @@ import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import { appWebUrl } from "../../src/lib/appWebUrl";
 import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
 import { getCurrentMarketId } from "../../src/lib/market";
+import { Trellis } from "../../src/components/Trellis";
 
 function statusColor(status: ListingStatus, colors: { green: string; muted: string }): string {
   return status === "active" ? colors.green : status === "deactivated" ? "#b3413a" : colors.muted;
@@ -70,6 +71,7 @@ export default function MyListingsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader title="My listings" onBack={() => router.back()} />
 

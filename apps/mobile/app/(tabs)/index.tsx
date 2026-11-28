@@ -32,6 +32,7 @@ import { homeTabs, type HomeTabValue } from "../../src/components/home/categorie
 import { HeaderSearchInput } from "../../src/components/home/HeaderSearchInput";
 import { SaveSearchButton } from "../../src/components/home/SaveSearchButton";
 import { useMarket } from "../../src/lib/market";
+import { Trellis } from "../../src/components/Trellis";
 /** Below this width, `FlatList` renders one column; at/above it, two — comfortably below every
  * iPad's portrait width (744pt+) and above every phone's, including large phones in portrait. */
 const WIDE_SCREEN_BREAKPOINT = 700;
@@ -172,6 +173,7 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <FlatList
         ref={listRef}
         refreshControl={<RefreshControl

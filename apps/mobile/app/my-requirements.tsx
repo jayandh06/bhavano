@@ -16,6 +16,7 @@ import { BffError, fetchMyRequirements } from "../src/lib/bffClient";
 import { ScreenHeader } from "../src/components/home/ScreenHeader";
 import { Icon } from "../src/components/Icon";
 import { MyRequirementCard } from "../src/components/home/MyRequirementCard";
+import { Trellis } from "../src/components/Trellis";
 
 /**
  * Phase 1 of docs/plans/property-requirements-demand-side.md — mobile counterpart to web's
@@ -68,6 +69,7 @@ export default function MyRequirementsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader title="Your requirements" onBack={() => router.back()} />
 

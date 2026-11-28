@@ -17,6 +17,7 @@ import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import { useTabHeader } from "../../src/components/home/useTabHeader";
 import { RequirementsFeedFilters } from "../../src/components/home/RequirementsFeedFilters";
 import { RequirementFeedCard } from "../../src/components/home/RequirementFeedCard";
+import { Trellis } from "../../src/components/Trellis";
 
 /**
  * Mobile counterpart to web's `/requirements` (RequirementsFeedPage.tsx) — what buyers and
@@ -89,6 +90,7 @@ export default function RequirementsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <Stack.Screen options={{ headerShown: false }} />
       {/* The same category strip as Home, with Requirements highlighted, so this reads as one of
         * Home's tabs rather than a separate page with a back button. */}

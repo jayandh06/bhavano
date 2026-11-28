@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAppTheme } from "../theme/ThemeContext";
 import { fetchAppVersionSettings } from "../lib/bffClient";
 import { STORE_URLS, iosStoreUrl, updateRequirement } from "../lib/appUpdate";
+import { Trellis } from "./Trellis";
 
 const DEFAULT_MESSAGE = "A newer version of Bhavano is available. Please update to keep using the app.";
 
@@ -54,6 +55,7 @@ export function UpdateGate() {
     // No onRequestClose action: the Android back button must not dismiss it.
     <Modal visible animationType="none" statusBarTranslucent onRequestClose={() => undefined}>
       <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center", padding: 28 }}>
+        <Trellis surface="body" />
         <Image source={require("../../assets/logo.png")} style={{ width: 72, height: 72, borderRadius: 18, marginBottom: 22 }} />
         <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 22, color: colors.text, marginBottom: 10 }}>
           Update required

@@ -8,6 +8,7 @@ import { ScreenHeader } from "../src/components/home/ScreenHeader";
 import { Currency } from "../src/components/home/Currency";
 import { useMarket } from "../src/lib/market";
 import { Redirect } from "expo-router";
+import { Trellis } from "../src/components/Trellis";
 
 const PURPOSE_LABELS: Record<PaymentPurpose, string> = {
   listing_boost: "Listing boost",
@@ -55,6 +56,7 @@ function PurchasesContent() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader title="Purchase history" onBack={() => router.back()} />
 

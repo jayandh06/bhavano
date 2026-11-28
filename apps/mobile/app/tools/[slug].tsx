@@ -6,6 +6,7 @@ import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import { CALCULATORS } from "../../src/components/tools/Calculators";
 import { TOOLS } from "../../src/components/tools/toolsRegistry";
 import { useMarket } from "../../src/lib/market";
+import { Trellis } from "../../src/components/Trellis";
 
 // One screen for all six calculators, keyed by the website path's last segment, so
 // bhavano.com/tools/emi-calculator opens the matching screen via App Links.
@@ -20,6 +21,7 @@ function ToolContent() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <ScreenHeader title={tool.title} onBack={() => (router.canGoBack() ? router.back() : router.replace("/tools"))} />
       <KeyboardAwareScrollView
         style={{ flex: 1 }}

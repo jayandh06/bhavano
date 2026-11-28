@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
+import { Trellis } from "../Trellis";
 
 /** A consistent title bar for screens that don't have Home's own rich inline header — the tab
  * screens (Messages, Post Ad, Account) use it bare, and pushed screens (a listing, a
@@ -35,6 +36,7 @@ export function ScreenHeader({
         backgroundColor: colors.bg,
       }}
     >
+      <Trellis surface="head" />
       {onBack && (
         <Pressable onPress={onBack} hitSlop={8} accessibilityLabel="Go back">
           <Icon name="chevronLeft" size={20} color={colors.text} />

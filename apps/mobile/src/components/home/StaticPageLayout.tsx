@@ -3,6 +3,7 @@ import { ScrollView, Text, View, type NativeScrollEvent, type NativeSyntheticEve
 import { useRouter, type Href } from "expo-router";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { ScreenHeader } from "./ScreenHeader";
+import { Trellis } from "../Trellis";
 
 /** Shared shell for the legal/help screens (About, Terms, Privacy, Contact, Help) — mirrors the
  * website's own StaticPageLayout/PageSection, content duplicated here (not loaded from a
@@ -32,6 +33,7 @@ export function StaticPageLayout({
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       {!header && <ScreenHeader title={title} onBack={() => router.back()} />}
       <ScrollView
         onScroll={onScroll}

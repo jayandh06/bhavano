@@ -7,6 +7,7 @@ import { useHomeSheets } from "../../../src/context/HomeSheetsProvider";
 import { fetchMyPostFeedback } from "../../../src/lib/bffClient";
 import { ScreenHeader } from "../../../src/components/home/ScreenHeader";
 import { PostFeedbackForm } from "../../../src/components/home/PostFeedbackForm";
+import { Trellis } from "../../../src/components/Trellis";
 
 /** Where the "How was posting this ad?" message's button (and a push with this path) lands — docs/plans/post-ad-experience-feedback.md.
  * `?src=push|in_app_message` says which brought the owner here; anything else is recorded as a plain link. A listing that is not theirs
@@ -45,6 +46,7 @@ export default function PostFeedbackScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader title="How was posting your ad?" onBack={() => router.back()} />
       {!isLoggedIn || !accessToken ? (

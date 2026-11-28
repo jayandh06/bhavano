@@ -9,6 +9,7 @@ import { Icon, type IconName } from "../Icon";
 import { setTabBarHeight } from "../../lib/tabBarHeight";
 import { useMarket } from "../../lib/market";
 import { spell } from "../../lib/marketText";
+import { Trellis } from "../Trellis";
 
 interface TabDef {
   key: string;
@@ -93,6 +94,7 @@ export function BottomTabBar() {
         paddingBottom: insets.bottom + 6,
       }}
     >
+      <Trellis surface="band" />
       {tabs.map((tab) => {
         const active = isActive(pathname, tab);
         const color = active ? colors.onGreen : colors.onGreenMuted;

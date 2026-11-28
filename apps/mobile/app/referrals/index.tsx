@@ -11,6 +11,7 @@ import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
 import { getCurrentMarketId } from "../../src/lib/market";
 import { useMarket } from "../../src/lib/market";
 import { Redirect } from "expo-router";
+import { Trellis } from "../../src/components/Trellis";
 
 const INVITE_TEXT = "I use Bhavano to buy, sell and rent property. Post your own ad here:";
 
@@ -178,6 +179,7 @@ function ReferralsContent() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader title="Referrals & free boosts" onBack={() => router.back()} />
       <ScrollView

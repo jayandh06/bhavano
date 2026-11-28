@@ -21,6 +21,7 @@ import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import { ListingPrice } from "../../src/components/home/PriceWithWords";
 import { ReportSheet } from "../../src/components/home/ReportSheet";
 import { useMarket } from "../../src/lib/market";
+import { Trellis } from "../../src/components/Trellis";
 
 /** Same URL shape as the website's ListingDetailView.tsx — no origin, so Google Maps prompts for
  * the visitor's own location instead. `lat`/`lng` are already a server-side jittered
@@ -148,6 +149,7 @@ export default function ListingDetailScreen() {
   if (isLoading || !listing) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <Trellis surface="body" />
         <Stack.Screen options={{ headerShown: false }} />
         <ScreenHeader title="Listing" onBack={goBack} />
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
@@ -159,6 +161,7 @@ export default function ListingDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <Stack.Screen options={{ headerShown: false }} />
       {/* Generic, not listing.title — the body already shows the full title (and lets it wrap,
           rather than truncating to an ellipsis in the header's narrower width alongside the back

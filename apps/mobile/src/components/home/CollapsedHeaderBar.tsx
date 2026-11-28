@@ -3,6 +3,7 @@ import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 
 import { HeaderSearchInput } from "./HeaderSearchInput";
+import { Trellis } from "../Trellis";
 /** The bar's own height (its one row only — the search-reveal row is a separate, optional
  * extension, and the two are mutually exclusive with the drawer this bar's hamburger opens, so
  * the drawer only ever needs to sit below this base height). `HomeDrawer` positions itself right
@@ -38,6 +39,7 @@ export function CollapsedHeaderBar({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg, borderBottomColor: colors.border }]}>
+      <Trellis surface="head" />
       <View style={styles.row}>
         <Pressable
           onPress={onOpenMenu}

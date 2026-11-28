@@ -7,6 +7,7 @@ import { useHomeSheets } from "../../../src/context/HomeSheetsProvider";
 import { BffError, fetchMyRequirement } from "../../../src/lib/bffClient";
 import { ScreenHeader } from "../../../src/components/home/ScreenHeader";
 import { RequirementRefineWizard } from "../../../src/components/home/RequirementRefineWizard";
+import { Trellis } from "../../../src/components/Trellis";
 
 /**
  * The refinement questions — docs/plans/requirement-refinement-questions.md, Phase B. A pushed
@@ -60,6 +61,7 @@ export default function RefineRequirementScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Trellis surface="body" />
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader title="Tell us more" onBack={leave} />
       {error ? (

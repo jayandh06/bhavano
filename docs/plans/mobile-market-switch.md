@@ -210,3 +210,10 @@ where payments are off (built 2026-11-27, [us-admin-site.md](us-admin-site.md); 
 - No device or signed-in test against the US server.
 - US storefront availability, and whether Apple review needs anything extra for a US release.
 - The list of India-only wording comes from a text search, not a screen-by-screen review.
+
+## Post Ad stuck loading (fixed 2026-11-28)
+
+Reported after switching to the US: Post Ad kept loading and showed no options until about the third try. The screen waited for the city
+list with no way out if that request failed or stalled (React Native's `fetch` has no time limit, and the tab stays mounted, so
+nothing asked again). The request now has a 12-second limit and one retry; a failure shows "Try again", and returning to the tab tries
+again. The cause of the failed request on that phone is not confirmed: the US server answered every test request in under a second.
