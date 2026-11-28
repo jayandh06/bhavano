@@ -1,0 +1,1 @@
+{{discountPercent}}% off until {{offerEnds}}: ${{boostPrice}} instead of ${{boostBasePrice}}. Instant Alerts included.

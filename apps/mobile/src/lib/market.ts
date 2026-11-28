@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSyncExternalStore } from "react";
-import { getMarket, isMarketId, type MarketConfig, type MarketId } from "@bhavano/types/market";
+import { appMarket, isMarketId, type MarketConfig, type MarketId } from "@bhavano/types/market";
 import {
   askForFirstMarket,
   completeFirstChoice,
@@ -69,7 +69,7 @@ export function useMarketPhase(): MarketPhase {
   return useSyncExternalStore(subscribeMarket, getMarketPhase, getMarketPhase);
 }
 
-/** The market config for the screen being drawn; re-renders when the market changes. */
+/** The market config for the screen being drawn; re-renders when the market changes. `paymentsEnabled` here means this app sells. */
 export function useMarket(): MarketConfig {
-  return getMarket(useSyncExternalStore(subscribeMarket, getCurrentMarketId, getCurrentMarketId));
+  return appMarket(useSyncExternalStore(subscribeMarket, getCurrentMarketId, getCurrentMarketId));
 }

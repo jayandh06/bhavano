@@ -52,8 +52,11 @@ export interface MarketConfig {
   publishRequiresVerifiedPhone: boolean;
   /** One-time codes can be sent to a phone here: phone sign-in and adding a phone to an account. */
   phoneOtpAvailable: boolean;
-  /** Anything can be bought here (Featured ads, plans, contact credits). */
+  /** Anything can be bought here (Featured ads, plans, contact credits), on the website and by the server. */
   paymentsEnabled: boolean;
+  /** The phone apps may sell too. Apart from `paymentsEnabled` because the app stores have their own payment rules: a market can
+   * sell on its website while its apps offer nothing. The apps read it through `appMarket`. */
+  appPaymentsEnabled: boolean;
   /** India-only content is offered: calculators, blog and guides, RERA, Indian languages, in-app legal text. */
   indiaContent: boolean;
   /** The "owners and agents may call or message me" box starts ticked. Off where a ticked box may not count as consent to calls and texts. */
@@ -91,6 +94,7 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
     publishRequiresVerifiedPhone: true,
     phoneOtpAvailable: true,
     paymentsEnabled: true,
+    appPaymentsEnabled: true,
     indiaContent: true,
     contactConsentPreTicked: true,
     categories: ["house", "apartment", "villa", "pg", "storage", "coworking", "furniture", "interiors", "plot", "commercial"],
@@ -119,6 +123,7 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
     publishRequiresVerifiedPhone: false,
     phoneOtpAvailable: false,
     paymentsEnabled: false,
+    appPaymentsEnabled: false,
     indiaContent: false,
     contactConsentPreTicked: false,
     // Houses, apartments, condos, townhouses, manufactured homes, multi-family buildings, rooms, land ("plot"), storage and commercial space
@@ -151,9 +156,24 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
   },
 };
 
-/** An upload limit as a market words it: where nothing is sold, no limit says a Featured ad would raise it. */
-export function entitlementFor<T extends { canUpgradeByBoosting: boolean }>(id: MarketId, entitlement: T): T {
-  return MARKETS[id].paymentsEnabled ? entitlement : { ...entitlement, canUpgradeByBoosting: false };
+/** An upload limit as it should be worded: where nothing is sold (`sells` false), no limit says a Featured ad would raise it. */
+export function entitlementFor<T extends { canUpgradeByBoosting: boolean }>(sells: boolean, entitlement: T): T {
+  return sells ? entitlement : { ...entitlement, canUpgradeByBoosting: false };
+}
+
+const APP_MARKETS = new Map<MarketId, MarketConfig>();
+
+/** A market as the phone apps see it: `paymentsEnabled` there means the app itself sells. The same object each time for a market, so
+ * it is safe as a hook dependency. */
+export function appMarket(id: MarketId): MarketConfig {
+  const market = MARKETS[id];
+  if (market.paymentsEnabled === market.appPaymentsEnabled) return market;
+  let seen = APP_MARKETS.get(id);
+  if (!seen) {
+    seen = { ...market, paymentsEnabled: market.appPaymentsEnabled };
+    APP_MARKETS.set(id, seen);
+  }
+  return seen;
 }
 
 /** The market every existing deployment and every caller that names none uses. */

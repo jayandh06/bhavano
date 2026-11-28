@@ -110,7 +110,7 @@ export function BuyCreditsProvider({ children }: { children: ReactNode }) {
   }
 
   const packSize = opts.creditPackSize ?? 5;
-  const packPrice = opts.creditPackPriceRupees ?? 125;
+  const packPrice = opts.creditPackPriceRupees ?? (market.id === "us" ? 5 : 125);
 
   return (
     <BuyCreditsContext.Provider value={{ buyCredits }}>

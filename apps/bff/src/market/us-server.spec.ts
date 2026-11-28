@@ -147,11 +147,22 @@ describe('email copy', () => {
   const wording = (t: object) => JSON.stringify(t);
   const placeholders = (t: object) => new Set(wording(t).match(/\{\{\w+\}\}/g) ?? []);
 
+  /** The two emails that sell the Featured upgrade: sent only where payments are on, so their US copies keep the offer, in dollars. */
+  const offers = ['boost-promotion', 'boost-promotion-offer'];
+
   it('has US copies of the emails that name India or offer something to buy', () => {
-    expect(usFolders.sort()).toEqual(['claim-listing', 'listing-posted', 'listing-posted-reminder', 'requirement-captured-no-alert', 'welcome']);
+    expect(usFolders.sort()).toEqual([...offers, 'claim-listing', 'listing-posted', 'listing-posted-reminder', 'requirement-captured-no-alert', 'welcome']);
   });
 
-  it.each(usFolders)('the US %s names no India or paid feature, and uses only values the India one is given', (folder) => {
+  it.each(offers)('the US %s quotes dollars, and uses only values the India one is given', (folder) => {
+    const us = loader('us')(`email/${folder}`);
+    expect(wording(us)).toContain('${{boostPrice}}');
+    expect(wording(us)).not.toMatch(/India|₹|Rs|WhatsApp/);
+    const india = placeholders(loader('in')(`email/${folder}`));
+    for (const used of placeholders(us)) expect(india).toContain(used);
+  });
+
+  it.each(usFolders.filter((folder) => !offers.includes(folder)))('the US %s names no India or paid feature, and uses only values the India one is given', (folder) => {
     expect(existsSync(join(root, 'email', folder))).toBe(true);
     const us = loader('us')(`email/${folder}`);
     expect(wording(us)).not.toMatch(/India|₹|WhatsApp|Featur|Boost|instant alert|plots|PG accommodation|brokerage|favourite/i);

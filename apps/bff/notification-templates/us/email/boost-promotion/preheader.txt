@@ -1,0 +1,1 @@
+Feature from ${{boostPrice}} for {{boostDays}} days. Instant Alerts included.

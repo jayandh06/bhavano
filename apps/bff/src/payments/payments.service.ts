@@ -32,6 +32,7 @@ import {
 import { subscriptionPriceFor } from '@bhavano/types/subscriptionPricing';
 import { PrismaService } from '../prisma/prisma.service';
 import { assertPaymentsEnabled } from '../market/payments-available';
+import { MARKET } from '../market/market-config';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import {
@@ -226,7 +227,7 @@ export class PaymentsService {
         userId: listing.ownerId,
         razorpayOrderId: `admin_grant_${listingId}_${Date.now()}`,
         amount: 0,
-        currency: 'INR',
+        currency: MARKET.currency,
         purpose: 'listing_boost',
         listingId,
         boostDays,
@@ -489,7 +490,7 @@ export class PaymentsService {
           userId,
           razorpayOrderId: `referral_credit_${userId}_${Date.now()}`,
           amount: 0,
-          currency: 'INR',
+          currency: MARKET.currency,
           purpose: 'listing_boost',
           listingId,
           boostDays: credit.daysGranted,
@@ -504,7 +505,7 @@ export class PaymentsService {
       return {
         paymentId: payment.id,
         amount: 0,
-        currency: 'INR',
+        currency: MARKET.currency,
         activated: true,
       };
     }
@@ -528,7 +529,7 @@ export class PaymentsService {
               userId,
               razorpayOrderId: `pro_credit_${userId}_${Date.now()}`,
               amount: 0,
-              currency: 'INR',
+              currency: MARKET.currency,
               purpose: 'listing_boost',
               listingId,
               boostDays,
@@ -546,7 +547,7 @@ export class PaymentsService {
           return {
             paymentId: payment.id,
             amount: 0,
-            currency: 'INR',
+            currency: MARKET.currency,
             activated: true,
           };
         }
@@ -575,7 +576,7 @@ export class PaymentsService {
           userId,
           razorpayOrderId: `free_boost_${listingId}_${Date.now()}`,
           amount: 0,
-          currency: 'INR',
+          currency: MARKET.currency,
           purpose: 'listing_boost',
           listingId,
           boostDays,
@@ -593,12 +594,12 @@ export class PaymentsService {
       }
       const boostedUntil = await this.activateListingBoost(listingId, boostDays, payment.id);
       await this.activateInstantAlerts(listingId, payment.id, boostedUntil);
-      return { paymentId: payment.id, amount: 0, currency: 'INR', activated: true };
+      return { paymentId: payment.id, amount: 0, currency: MARKET.currency, activated: true };
     }
 
     const order = await this.getRazorpay().orders.create({
       amount: amountInPaise,
-      currency: 'INR',
+      currency: MARKET.currency,
       receipt: `boost_${listingId}_${Date.now()}`,
       notes: { purpose: 'listing_boost', listingId, boostDays: String(boostDays), includeInstantAlerts: 'true' },
     });
@@ -608,7 +609,7 @@ export class PaymentsService {
         userId,
         razorpayOrderId: order.id,
         amount: amountInPaise,
-        currency: 'INR',
+        currency: MARKET.currency,
         purpose: 'listing_boost',
         listingId,
         boostDays,
@@ -624,7 +625,7 @@ export class PaymentsService {
       razorpayOrderId: order.id,
       razorpayKeyId: this.config.get<string>('RAZORPAY_KEY_ID') ?? '',
       amount: amountInPaise,
-      currency: 'INR',
+      currency: MARKET.currency,
     };
   }
 
@@ -726,7 +727,7 @@ export class PaymentsService {
 
     const order = await this.getRazorpay().orders.create({
       amount: amountInPaise,
-      currency: 'INR',
+      currency: MARKET.currency,
       receipt: `instant_alerts_${listingId}_${Date.now()}`,
       notes: { purpose: 'instant_alerts', listingId },
     });
@@ -736,7 +737,7 @@ export class PaymentsService {
         userId,
         razorpayOrderId: order.id,
         amount: amountInPaise,
-        currency: 'INR',
+        currency: MARKET.currency,
         purpose: 'instant_alerts',
         listingId,
         discountCodeId: discount?.id,
@@ -749,7 +750,7 @@ export class PaymentsService {
       razorpayOrderId: order.id,
       razorpayKeyId: this.config.get<string>('RAZORPAY_KEY_ID') ?? '',
       amount: amountInPaise,
-      currency: 'INR',
+      currency: MARKET.currency,
     };
   }
 
@@ -823,7 +824,7 @@ export class PaymentsService {
           userId,
           razorpayOrderId: `listing_publish_${listingId}_${Date.now()}`,
           amount: 0,
-          currency: 'INR',
+          currency: MARKET.currency,
           purpose: 'listing_publish',
           listingId,
           boostDays: boostDays ?? null,
@@ -849,14 +850,14 @@ export class PaymentsService {
       return {
         paymentId: payment.id,
         amount: 0,
-        currency: 'INR',
+        currency: MARKET.currency,
         activated: true,
       };
     }
 
     const order = await this.getRazorpay().orders.create({
       amount: amountInPaise,
-      currency: 'INR',
+      currency: MARKET.currency,
       receipt: `lpub_${listingId}_${Date.now()}`,
       notes: {
         purpose: 'listing_publish',
@@ -871,7 +872,7 @@ export class PaymentsService {
         userId,
         razorpayOrderId: order.id,
         amount: amountInPaise,
-        currency: 'INR',
+        currency: MARKET.currency,
         purpose: 'listing_publish',
         listingId,
         boostDays: boostDays ?? null,
@@ -886,7 +887,7 @@ export class PaymentsService {
       razorpayOrderId: order.id,
       razorpayKeyId: this.config.get<string>('RAZORPAY_KEY_ID') ?? '',
       amount: amountInPaise,
-      currency: 'INR',
+      currency: MARKET.currency,
     };
   }
 
@@ -987,7 +988,7 @@ export class PaymentsService {
 
     const order = await this.getRazorpay().orders.create({
       amount: amountInPaise,
-      currency: 'INR',
+      currency: MARKET.currency,
       receipt: `${purpose}_${userId}_${Date.now()}`,
       notes: { purpose, tier, months: String(months), agentProUnits: String(units) },
     });
@@ -997,7 +998,7 @@ export class PaymentsService {
         userId,
         razorpayOrderId: order.id,
         amount: amountInPaise,
-        currency: 'INR',
+        currency: MARKET.currency,
         purpose,
         subscriptionMonths: months,
         agentProUnits: tier === 'agentPro' ? units : null,
@@ -1011,7 +1012,7 @@ export class PaymentsService {
       razorpayOrderId: order.id,
       razorpayKeyId: this.config.get<string>('RAZORPAY_KEY_ID') ?? '',
       amount: amountInPaise,
-      currency: 'INR',
+      currency: MARKET.currency,
     };
   }
 
@@ -1033,7 +1034,7 @@ export class PaymentsService {
 
     const order = await this.getRazorpay().orders.create({
       amount: amountInPaise,
-      currency: 'INR',
+      currency: MARKET.currency,
       // Razorpay caps `receipt` at 56 chars — `contact_reveal_credits_<cuid>_<ms>` is 62 and
       // gets rejected with input_validation_failed. Keep this prefix short; the full purpose is
       // already on `notes` and the Payment row.
@@ -1046,7 +1047,7 @@ export class PaymentsService {
         userId,
         razorpayOrderId: order.id,
         amount: amountInPaise,
-        currency: 'INR',
+        currency: MARKET.currency,
         purpose: 'contact_reveal_credits',
         creditPackSize: settings.creditPackSize,
         discountCodeId: discount?.id,
@@ -1059,7 +1060,7 @@ export class PaymentsService {
       razorpayOrderId: order.id,
       razorpayKeyId: this.config.get<string>('RAZORPAY_KEY_ID') ?? '',
       amount: amountInPaise,
-      currency: 'INR',
+      currency: MARKET.currency,
     };
   }
 

@@ -2228,7 +2228,7 @@ export class ListingsService {
       where: { id: ownerId },
       select: { agentProUntil: true },
     });
-    const entitlement = entitlementFor(MARKET.id, resolveVideoEntitlement(owner));
+    const entitlement = entitlementFor(MARKET.paymentsEnabled, resolveVideoEntitlement(owner));
     return videos
       .filter((v) => v.durationSec <= entitlement.maxDurationSec)
       .slice(0, entitlement.maxVideos);
@@ -2257,7 +2257,7 @@ export class ListingsService {
       where: { id: ownerId },
       select: { agentProUntil: true },
     });
-    const entitlement = entitlementFor(MARKET.id, resolveVideoEntitlement(owner, listing));
+    const entitlement = entitlementFor(MARKET.paymentsEnabled, resolveVideoEntitlement(owner, listing));
     if (listing.listingVideos.length >= entitlement.maxVideos) {
       throw new BadRequestException(
         entitlement.canUpgradeByBoosting
@@ -2378,7 +2378,7 @@ export class ListingsService {
       where: { id: ownerId },
       select: { agentProUntil: true },
     });
-    const entitlement = entitlementFor(MARKET.id, resolvePhotoEntitlement(owner, listing));
+    const entitlement = entitlementFor(MARKET.paymentsEnabled, resolvePhotoEntitlement(owner, listing));
     if (listing.listingPhotos.length >= entitlement.maxPhotos) {
       throw new BadRequestException(
         entitlement.canUpgradeByBoosting
@@ -4330,10 +4330,10 @@ export class ListingsService {
       photoUpdatedAts: listing.listingPhotos.map((p) => p.updatedAt.getTime()),
       videos,
       photoEntitlement: isOwnerOrAdmin
-        ? entitlementFor(MARKET.id, resolvePhotoEntitlement(listing.owner, listing))
+        ? entitlementFor(MARKET.paymentsEnabled, resolvePhotoEntitlement(listing.owner, listing))
         : undefined,
       videoEntitlement: isOwnerOrAdmin
-        ? entitlementFor(MARKET.id, resolveVideoEntitlement(listing.owner, listing))
+        ? entitlementFor(MARKET.paymentsEnabled, resolveVideoEntitlement(listing.owner, listing))
         : undefined,
       renewCount: listing.listingRenewals.length,
       isOwner,

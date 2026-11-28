@@ -291,7 +291,7 @@ export class PushService {
   ): Promise<void> {
     await this.sendToUser(recipientId, {
       title: listingTitle,
-      body: isBoosted || !MARKET.paymentsEnabled
+      body: isBoosted || !MARKET.appPaymentsEnabled
         ? `How's "${listingTitle}" doing? Check your views and messages.`
         : `🌟 Feature "${listingTitle}" to get seen first`,
       channelId: PUSH_CHANNEL_LISTING_ACTIVITY,
