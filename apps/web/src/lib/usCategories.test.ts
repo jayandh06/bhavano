@@ -44,8 +44,8 @@ describe("market category lists", () => {
     }
     expect(INTENT_CATEGORIES.buy).toEqual(["house", "apartment", "villa", "plot", "commercial"]);
     expect(INTENT_CATEGORIES.rentLease).toEqual(["house", "apartment", "villa", "commercial", "storage"]);
-    expect(intentCategories("buy", "us")).toEqual(["house", "apartment", "condo", "townhouse", "villa", "commercial"]);
-    expect(intentCategories("rentLease", "us")).toEqual(["house", "apartment", "condo", "townhouse", "room", "villa", "commercial", "storage"]);
+    expect(intentCategories("buy", "us")).toEqual(["house", "condo", "townhouse", "commercial"]);
+    expect(intentCategories("rentLease", "us")).toEqual(["house", "apartment", "condo", "townhouse", "room", "commercial", "storage"]);
     expect(intentCategories("pg", "us")).toEqual([]);
   });
 });
@@ -126,8 +126,9 @@ describe("menus", () => {
 
   it("adds condo, townhouse and room to the US menus, with bed wording", async () => {
     const { HOME_TABS } = await loadWith<Home>("./homeCategories", "us");
-    expect(values(HOME_TABS, "buy")).toEqual(["house", "apartment", "condo", "townhouse", "villa", "commercial"]);
-    expect(values(HOME_TABS, "rentLease")).toEqual(["house", "apartment", "condo", "townhouse", "room", "villa", "storage", "commercial"]);
+    expect(values(HOME_TABS, "buy")).toEqual(["house", "condo", "townhouse", "commercial"]);
+    expect(values(HOME_TABS, "rentLease")).toEqual(["house", "apartment", "condo", "townhouse", "room", "storage", "commercial"]);
+    expect(HOME_TABS.find((t) => t.value === "rentLease")!.label).toBe("Rent");
     const condo = HOME_TABS.find((t) => t.value === "buy")!.column1.find((c) => c.value === "condo")!;
     expect(condo.links("Austin")[1].label).toBe("Buy 2 bed Condo in Austin");
     expect(condo.href!("Austin")).toBe("/austin-tx/buy/condo");
@@ -140,3 +141,30 @@ describe("menus", () => {
     expect(india).toEqual(["all", "buy", "rentLease", "pg", "coworking"]);
   });
 });
+
+describe("US addresses", () => {
+  type Seo = typeof import("./seoRoute");
+  type Paths = typeof import("./listingPath");
+
+  it("sends villas to houses and apartments for sale to condos, and leaves every India address alone", async () => {
+    const { retiredPathSegments } = await loadWith<Seo>("./seoRoute", "us");
+    expect(retiredPathSegments(["austin-tx", "buy", "apartment", "2bhk"])).toEqual(["austin-tx", "buy", "condo", "2bhk"]);
+    expect(retiredPathSegments(["buy", "apartment"])).toEqual(["buy", "condo"]);
+    expect(retiredPathSegments(["austin-tx", "downtown", "rent-lease", "villa"])).toEqual(["austin-tx", "downtown", "rent-lease", "house"]);
+    expect(retiredPathSegments(["austin-tx", "rent-lease", "apartment"])).toBeNull();
+    expect(retiredPathSegments(["austin-tx", "buy", "house"])).toBeNull();
+    const india = await loadWith<Seo>("./seoRoute", "");
+    expect(india.retiredPathSegments(["pune", "buy", "apartment"])).toBeNull();
+    expect(india.retiredPathSegments(["pune", "buy", "villa"])).toBeNull();
+  });
+
+  it("keeps the US apartment rental address as it was, and does not turn a purchase search into rentals", async () => {
+    const { buildBrowsePath } = await loadWith<Paths>("./listingPath", "us");
+    expect(buildBrowsePath({ cityName: "Austin", transactionGroup: "rent-lease", category: "apartment" })).toMatch(/\/rent-lease\/apartment$/);
+    expect(buildBrowsePath({ cityName: "Austin", category: "apartment" })).toMatch(/\/rent-lease\/apartment$/);
+    expect(buildBrowsePath({ cityName: "Austin", transactionGroup: "buy", category: "apartment" })).toMatch(/\/buy\/apartment$/);
+    const india = await loadWith<Paths>("./listingPath", "");
+    expect(india.buildBrowsePath({ cityName: "Pune", category: "apartment" })).toBe("/pune/apartment");
+  });
+});
+

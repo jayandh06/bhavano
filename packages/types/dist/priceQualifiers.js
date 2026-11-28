@@ -60,7 +60,10 @@ exports.PRICE_QUALIFIER_OPTIONS = {
     plot: { sell: SELL_OPTIONS },
     commercial: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
 };
-function getPriceQualifierOptions(category, transactionType) {
+function getPriceQualifierOptions(category, transactionType, marketId = "in") {
+    // A US lease is quoted by the month; the lump sum "for the lease term" is India's lease.
+    if (marketId === "us" && transactionType === "lease")
+        return exports.PRICE_QUALIFIER_OPTIONS[category]?.lease ? MONTHLY_OPTIONS : [];
     return exports.PRICE_QUALIFIER_OPTIONS[category]?.[transactionType] ?? [];
 }
 /** Categories where `price: 0` ("Contact for price") is a legitimate posting — plans/pricing

@@ -1,4 +1,5 @@
 import type { ListingCategory, TransactionType } from "./index";
+import type { MarketId } from "./market";
 export interface PriceQualifierOption {
     value: string;
     label: string;
@@ -7,7 +8,7 @@ export interface PriceQualifierOption {
  * `POSTABLE_TRANSACTION_TYPES` in postingRules.ts — the single source of truth the wizard's
  * step-3 price qualifier dropdown, the edit form, and the BFF's validation all read from. */
 export declare const PRICE_QUALIFIER_OPTIONS: Record<ListingCategory, Partial<Record<TransactionType, PriceQualifierOption[]>>>;
-export declare function getPriceQualifierOptions(category: ListingCategory, transactionType: TransactionType): PriceQualifierOption[];
+export declare function getPriceQualifierOptions(category: ListingCategory, transactionType: TransactionType, marketId?: MarketId): PriceQualifierOption[];
 /** Categories where `price: 0` ("Contact for price") is a legitimate posting — plans/pricing
  * vary enough (PG sharing type, coworking seat type) that no single number is always honest.
  * Single source of truth: `ListingsService.assertValidPrice` enforces this server-side, and

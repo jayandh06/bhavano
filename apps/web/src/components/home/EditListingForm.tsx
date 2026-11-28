@@ -32,6 +32,7 @@ import { VideoManager } from "./VideoManager";
 import { FeaturedPerformanceCard } from "./FeaturedPerformanceCard";
 import { ListingLocationEditor, type ListingLocationChange } from "./ListingLocationEditor";
 import { useMarket } from "@/lib/useMarket";
+import { allowsPerUnitPrice } from "@bhavano/types/postingRules";
 
 function attributesToStrings(
   attributes: Record<string, unknown>,
@@ -108,7 +109,7 @@ export function EditListingForm({
 
   const fieldConfig = categoryFieldsFor(listing.category, market.id);
   const priceUnitAreaField =
-    listing.transactionType === "sell" || listing.transactionType === "lease"
+    allowsPerUnitPrice(listing.transactionType, market.id)
       ? fieldConfig.find((field) => field.type === "area")
       : undefined;
   const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
@@ -162,6 +163,7 @@ export function EditListingForm({
   const priceQualifierOptions = getPriceQualifierOptions(
     listing.category,
     listing.transactionType,
+    market.id,
   );
   const priceQualifierChoices = priceQualifierOptions.some(
     (opt) => opt.value === priceQualifier,

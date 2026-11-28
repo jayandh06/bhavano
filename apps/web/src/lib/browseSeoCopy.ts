@@ -9,6 +9,7 @@ import {
   type ParsedSegments,
   type TransactionGroup,
 } from "@/lib/seoRoute";
+import { buildMarket } from "./marketRobots";
 
 const MAX_SIBLING_AREAS = 8;
 const BHK_FACETS = [1, 2, 3, 4, 5] as const;
@@ -150,14 +151,16 @@ function buildRelatedLinks(input: BrowseSeoCopyInput): BrowseSeoLink[] {
     }
   } else if (group) {
     links.push({
-      label: group === "buy" ? `Buy in ${cityName}` : `Rent & lease in ${cityName}`,
+      label: group === "buy" ? `Buy in ${cityName}` : buildMarket().id === "us" ? `Rent in ${cityName}` : `Rent & lease in ${cityName}`,
       href: buildBrowsePath({ cityName, transactionGroup: group }),
     });
     links.push(...siblingAreaLinks(cityName, cityAreas, undefined, 6));
   } else {
+    // The US sells a unit as a condo; apartments there are only rented (docs/plans/us-listing-model.md).
+    const forSale = buildMarket().id === "us" ? "condo" : "apartment";
     links.push({
-      label: `Apartments for sale in ${cityName}`,
-      href: buildBrowsePath({ cityName, transactionGroup: "buy", category: "apartment" }),
+      label: `${CATEGORY_LABELS[forSale]} for sale in ${cityName}`,
+      href: buildBrowsePath({ cityName, transactionGroup: "buy", category: forSale }),
     });
     links.push({
       label: `Apartments for rent in ${cityName}`,
@@ -202,7 +205,9 @@ function buildIntroParagraphs(input: BrowseSeoCopyInput): string[] {
   } else {
     paragraphs.push(
       isAllTab
-        ? `Use the links below to explore neighbourhoods across ${cityName}, or pick Buy, Rent & Lease, PG, Furniture, or Interiors above to filter by what you need.`
+        ? buildMarket().id === "us"
+          ? `Use the links below to explore neighbourhoods across ${cityName}, or pick Buy or Rent above to filter by what you need.`
+          : `Use the links below to explore neighbourhoods across ${cityName}, or pick Buy, Rent & Lease, PG, Furniture, or Interiors above to filter by what you need.`
         : `Select a locality in the area filter or use the links below to drill into neighbourhoods across ${cityName}.`,
     );
   }

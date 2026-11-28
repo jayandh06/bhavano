@@ -15,8 +15,6 @@ import {
   type RequirementFeedSummaryDto,
 } from "@bhavano/types/requirementFeed";
 import {
-  INTENT_CATEGORIES,
-  INTENT_TRANSACTION_CHOICES,
   requirementQuestionsFor,
   REQUIREMENT_BEDROOM_OPTIONS,
   REQUIREMENT_CATEGORY_LABELS,
@@ -27,6 +25,8 @@ import {
   formatCompactMoney,
   sizeQuestionFor,
   type RequirementIntent,
+  intentCategories,
+  transactionChoicesFor,
 } from "@bhavano/types/requirementQuestions";
 import { auth } from "@/auth";
 import { BffAuthError, fetchRequirementFeed, fetchRequirementFeedSummary } from "@/lib/bff";
@@ -40,6 +40,7 @@ import { SERVER_MARKET } from "@/lib/serverMarket";
 import { marketDateFormatter, type MarketId } from "@bhavano/types/market";
 import { bedWord } from "@bhavano/types/bedrooms";
 import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
+import { marketTransactionType } from "@bhavano/types/postingRules";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -269,10 +270,13 @@ function FeedFilters({
   const href = (f: RequirementFeedFilters, slug = citySlug) => feedPath(slug, f);
   const withoutPlace = { ...filters, areas: undefined };
   const intent = filters.intent;
-  const transactionChoices = intent ? INTENT_TRANSACTION_CHOICES[intent] : undefined;
-  const transaction = filters.transactionType ?? (intent ? IMPLIED_TRANSACTION[intent] : undefined);
-  const categories = intent ? INTENT_CATEGORIES[intent] : [];
+  const transactionChoices = intent ? transactionChoicesFor(intent, SERVER_MARKET.id) : undefined;
+  const categories = intent ? intentCategories(intent, SERVER_MARKET.id) : [];
   const category = filters.category ?? (categories.length === 1 ? categories[0] : undefined);
+  // The US asks no "rent or lease": renting is implied, and commercial space is leased.
+  const impliedRent: TransactionType | undefined =
+    intent === "rentLease" && !transactionChoices ? (category ? marketTransactionType(category, "rent", SERVER_MARKET.id) : "rent") : undefined;
+  const transaction = filters.transactionType ?? impliedRent ?? (intent ? IMPLIED_TRANSACTION[intent] : undefined);
   const showBudget = Boolean(intent && (!transactionChoices || filters.transactionType));
   const size = category ? sizeQuestionFor(category, SERVER_MARKET.id) : undefined;
   const questions = category

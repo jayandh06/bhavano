@@ -37,7 +37,7 @@ describe('requirement wording', () => {
   it('writes beds and dollars in the US', () => {
     expect(us({ ...home, minPrice: 1_500, maxPrice: 2_000 })).toBe('2 or 3 bed apartment for rent in Downtown, Austin · $1.5k–2k/month');
     expect(us({ ...home, transactionType: 'sell', minPrice: undefined, maxPrice: 1_250_000 })).toContain('to buy in Downtown, Austin · up to $1.25M');
-    expect(us({ ...home, transactionType: 'lease', minPrice: 900, maxPrice: undefined })).toContain('for lease in Downtown, Austin · $900+ lease');
+    expect(us({ ...home, transactionType: 'lease', minPrice: 900, maxPrice: undefined })).toContain('for lease in Downtown, Austin · $900+/month');
   });
 
   it('writes US areas with US digit grouping', () => {

@@ -1,7 +1,7 @@
 import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, TransactionType } from "@bhavano/types";
 import type { HomeTabValue } from "./homeCategories";
 import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
-import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
+import { POSTABLE_TRANSACTION_TYPES, postableTransactionTypes } from "@bhavano/types/postingRules";
 import { MAX_BEDROOMS, bedroomLabel } from "@bhavano/types/bedrooms";
 
 export { MAX_BEDROOMS, bedroomLabel };
@@ -82,6 +82,7 @@ export interface SegmentQuery {
 export type { TransactionGroup } from "@bhavano/types/listingPath";
 export { transactionGroupFor } from "@bhavano/types/listingPath";
 import type { TransactionGroup } from "@bhavano/types/listingPath";
+import { buildMarket } from "./marketRobots";
 
 export function isTransactionGroup(value: string): value is TransactionGroup {
   return value === "buy" || value === "rent-lease";
@@ -101,14 +102,32 @@ export function isReservedSegment(value: string): boolean {
   return isTransactionGroup(value) || isListingCategory(value);
 }
 
-/** Which groups a category is reachable under, derived from POSTABLE_TRANSACTION_TYPES —
+/** Which groups a category is reachable under, derived from the market's posting rules —
  * one source of truth, not a second hardcoded map. */
 export function categoryGroupsFor(category: ListingCategory): TransactionGroup[] {
-  const types = POSTABLE_TRANSACTION_TYPES[category];
+  const types = postableTransactionTypes(category, buildMarket().id);
   const groups: TransactionGroup[] = [];
   if (types.some((t) => t === "buy" || t === "sell")) groups.push("buy");
   if (types.some((t) => t === "rent" || t === "lease")) groups.push("rent-lease");
   return groups;
+}
+
+/** A category with one group whose address still spells it out. US apartments became rent-only
+ * (docs/plans/us-listing-model.md); their existing /rent-lease/apartment addresses stay as they are. */
+export function keepsTransactionGroup(category: ListingCategory): TransactionGroup | undefined {
+  return buildMarket().id === "us" && category === "apartment" ? "rent-lease" : undefined;
+}
+
+/** Where a US address that no longer exists now lives: villas are listed as houses, and a unit for sale is a condo
+ * rather than an apartment. Null when the address is fine, and always null in India. */
+export function retiredPathSegments(segments: string[]): string[] | null {
+  if (buildMarket().id !== "us") return null;
+  const next = segments.map((segment, i) => {
+    if (segment === "villa") return "house";
+    if (segment === "apartment" && segments[i - 1] === "buy") return "condo";
+    return segment;
+  });
+  return next.some((segment, i) => segment !== segments[i]) ? next : null;
 }
 
 /** Generic Next.js searchParams parsing helpers shared by the homepage and the SEO catch-all

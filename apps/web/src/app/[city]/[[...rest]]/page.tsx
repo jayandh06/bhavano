@@ -40,12 +40,14 @@ import {
   POSTED_BY_VALUES,
   transactionGroupFor,
   type ParsedSegments,
+  retiredPathSegments,
 } from "@/lib/seoRoute";
 import { parseAreaSelection } from "@/lib/areaSelection";
 import { BrowseListingsView, PAGE_SIZE } from "@/components/home/BrowseListingsView";
 import { ListingDetailView } from "@/components/home/ListingDetailView";
 import { JsonLd } from "@/components/JsonLd";
 import { SERVER_MARKET } from "@/lib/serverMarket";
+import { buildMarket } from "@/lib/marketRobots";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 
@@ -211,7 +213,7 @@ function breadcrumbJsonLd(cityName: string, citySlug: string, parsed: ParsedSegm
   }
   if (parsed.transactionGroup) {
     path += `/${parsed.transactionGroup}`;
-    items.push({ name: parsed.transactionGroup === "buy" ? "Buy" : "Rent & Lease", path });
+    items.push({ name: parsed.transactionGroup === "buy" ? "Buy" : buildMarket().id === "us" ? "Rent" : "Rent & Lease", path });
   }
   if (parsed.category) {
     path += `/${parsed.category}`;
@@ -593,6 +595,16 @@ export default async function CityBrowsePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { city, rest = [] } = await params;
+
+  const retired = retiredPathSegments([city, ...rest]);
+  if (retired) {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(await searchParams)) {
+      for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) query.append(key, item);
+    }
+    const qs = query.toString();
+    permanentRedirect(`/${retired.join("/")}${qs ? `?${qs}` : ""}`);
+  }
 
   const national = nationalSegments(city, rest);
   if (national) {

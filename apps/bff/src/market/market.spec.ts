@@ -223,9 +223,9 @@ describe('market categories and area units', () => {
 
   it('limits the US to the categories and units it offers', () => {
     const offered = marketPostCategoryGroups('us').flatMap((g) => g.options.map((o) => o.value));
-    expect(offered).toEqual(expect.arrayContaining(['house', 'apartment', 'villa', 'commercial', 'storage']));
+    expect(offered).toEqual(expect.arrayContaining(['house', 'apartment', 'commercial', 'storage']));
     expect(offered).not.toEqual(expect.arrayContaining(['pg']));
-    for (const c of ['pg', 'coworking', 'plot', 'furniture', 'interiors'] as const) {
+    for (const c of ['pg', 'coworking', 'plot', 'furniture', 'interiors', 'villa'] as const) {
       expect(isMarketCategory('us', c)).toBe(false);
       expect(offered).not.toContain(c);
     }
@@ -236,7 +236,27 @@ describe('market categories and area units', () => {
 });
 
 describe('Fair Housing fields', () => {
-  const HIDDEN = ['preferredTenantTypes', 'vegetariansOnly', 'gender', 'foodType', 'entranceFacing'];
+  const HIDDEN = [
+    'preferredTenantTypes',
+    'vegetariansOnly',
+    'gender',
+    'foodType',
+    'entranceFacing',
+    // India-only questions (docs/plans/us-listing-model.md).
+    'reraRegistered',
+    'reraNumber',
+    'waterSource',
+    'gasPipeline',
+    'ownership',
+    'loanAvailable',
+    'possessionStatus',
+    'balconyCount',
+    'fireNoc',
+    'brokerageFeeApplicable',
+    'brokerageFeeType',
+    'brokerageFee',
+    'brokerageCommissionPercent',
+  ];
 
   it('hides nothing in India and the preference fields in the US', () => {
     expect(MARKETS.in.hiddenFieldKeys).toEqual([]);

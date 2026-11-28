@@ -199,7 +199,7 @@ export class RequirementsService {
 
     const category = dto.category;
     const transactionType = dto.transactionType;
-    if (category && transactionType && !isValidRequirementTransaction(category, transactionType)) {
+    if (category && transactionType && !isValidRequirementTransaction(category, transactionType, MARKET.id)) {
       throw new BadRequestException(`A ${category} can't be had on ${transactionType}`);
     }
 
@@ -384,7 +384,7 @@ export class RequirementsService {
     const pick = <T>(next: T | null | undefined, current: T | null): T | null => (next === undefined ? current : next);
     const category: ListingCategory | null = pick(dto.category, existing.category);
     const transactionType: TransactionType | null = pick(dto.transactionType, existing.transactionType);
-    if (category && transactionType && !isValidRequirementTransaction(category, transactionType)) {
+    if (category && transactionType && !isValidRequirementTransaction(category, transactionType, MARKET.id)) {
       throw new BadRequestException(`A ${category} can't be had on ${transactionType}`);
     }
 

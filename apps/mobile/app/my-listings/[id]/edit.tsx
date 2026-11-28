@@ -34,6 +34,7 @@ import { PerUnitTotalHint, PriceWordsHint } from "../../../src/components/home/P
 import { CategoryFieldsForm } from "../../../src/components/home/CategoryFieldsForm";
 import { ListingLocationEditor, type ListingLocationChange } from "../../../src/components/home/ListingLocationEditor";
 import { useMarket } from "../../../src/lib/market";
+import { allowsPerUnitPrice } from "@bhavano/types/postingRules";
 
 const ALLOWED_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const ALLOWED_VIDEO_MIME_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/3gpp", "video/x-matroska"];
@@ -116,7 +117,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
   const fieldConfig = categoryFieldsFor(listing.category, market.id);
   const visibleFields = fieldConfig.filter((field) => fieldIsVisible(field, listing.transactionType, attributes, market.id));
   const priceUnitAreaField =
-    listing.transactionType === "sell" || listing.transactionType === "lease"
+    allowsPerUnitPrice(listing.transactionType, market.id)
       ? fieldConfig.find((field) => field.type === "area")
       : undefined;
   const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
@@ -152,7 +153,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
     !brokerageIssue &&
     descriptionIssue === null;
 
-  const priceQualifierOptions = getPriceQualifierOptions(listing.category, listing.transactionType);
+  const priceQualifierOptions = getPriceQualifierOptions(listing.category, listing.transactionType, market.id);
   const priceQualifierChoices = priceQualifierOptions.some((opt) => opt.value === priceQualifier)
     ? priceQualifierOptions
     : [

@@ -58,7 +58,7 @@ const CATEGORY_LABELS: Record<ListingCategory, string> = {
   house: "House",
   apartment: "Apartment",
   villa: "Villa",
-  condo: "Condo",
+  condo: "Condo / Co-op",
   townhouse: "Townhouse",
   room: "Room for rent",
   plot: "Plot",
