@@ -216,6 +216,13 @@ Found on the live site, still open:
 - The US filter bar says "All BHK".
 - On the commercial lease form the yearly-rate box sits above the area it needs.
 
+Fixed after that check (built 2026-11-28, not yet deployed):
+
+- Typed prices, price filters, page headings, saved searches and the US admin write dollars; US price boxes read "1.5M".
+- Bedroom wording says "bed" or "Bedrooms" on the US website and admin.
+- In the US the space details come before pricing (`sectionOrderFor`), so a commercial area is asked before its rent.
+- The US admin's saved-search editor lists the US categories.
+
 ## SEO
 
 US pages are not indexed yet (`indexable: false`), so no ranking is at risk. Addresses that stop existing (apartments for

@@ -7,6 +7,7 @@ import { amenityOptionsFor, assetFiltersFor, type FilterableKey } from "@/lib/as
 import { customPriceLabel, parseAmount } from "@/lib/priceInput";
 import { useFilterCategory, useFilterSection } from "./FilterSection";
 import type { SearchFacts } from "@bhavano/types/searchFacts";
+import { buildMarket } from "@/lib/marketRobots";
 
 /** `price` plus whichever config-derived select filters this asset has. */
 type OpenFilter = "price" | "amenities" | FilterableKey | null;
@@ -119,7 +120,9 @@ export function BrowseFilterBar({
               <AmountInput value={price.max} onChange={(max) => update({ price: { ...price, max } })} placeholder="Max" label="Maximum price" />
             </div>
             {/* The accepted shorthand has to be visible, or nobody discovers it. */}
-            <div className="px-2.5 pt-1.5 text-[11px] text-muted">One bound is enough. 20k, 2L, 1.5Cr work too.</div>
+            <div className="px-2.5 pt-1.5 text-[11px] text-muted">
+              One bound is enough. {buildMarket().id === "us" ? "20k and 1.5M work too." : "20k, 2L, 1.5Cr work too."}
+            </div>
             <button
               type="button"
               onClick={() => update({ price: { min: "", max: "" } })}

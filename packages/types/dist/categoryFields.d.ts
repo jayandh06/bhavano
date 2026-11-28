@@ -14,6 +14,9 @@ export declare const SECTION_LABELS: Record<FieldSection, string>;
  * category's array, so a field can be added anywhere without reshuffling its section's
  * position in the UI. */
 export declare const SECTION_ORDER: FieldSection[];
+/** The display order in a market. The US asks about a space (its area) before its price, because a US commercial rent is
+ * worked out from the area. India's order is `SECTION_ORDER`. */
+export declare function sectionOrderFor(marketId?: MarketId): FieldSection[];
 export interface FieldDef {
     key: string;
     label: string;

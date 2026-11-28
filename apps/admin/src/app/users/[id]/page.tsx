@@ -108,7 +108,7 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
 
         <DeleteUserPanel userId={id} canDelete={user.role !== "admin"} />
 
-        <UserSavedSearchesPanel userId={id} initialSearches={savedSearches} cities={cities} />
+        <UserSavedSearchesPanel userId={id} initialSearches={savedSearches} cities={cities} marketId={adminMarket().id} />
 
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: "24px 0 12px" }}>
           Listings ({ownedListings.length})

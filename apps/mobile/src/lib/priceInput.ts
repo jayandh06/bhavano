@@ -1,3 +1,5 @@
+import type { MarketId } from "@bhavano/types/market";
+
 /**
  * Parses an amount the way people actually type one into a price box — mirrors web's own
  * `parseAmount` (apps/web/src/lib/priceInput.ts) exactly, kept as its own small copy here rather
@@ -8,21 +10,24 @@
  * fractional-rupee value, so the caller can refuse rather than silently filtering on a number the
  * visitor never meant.
  */
-export function parseAmount(raw: string): number | undefined {
+export function parseAmount(raw: string, marketId: MarketId = "in"): number | undefined {
   const cleaned = raw
     .trim()
     .toLowerCase()
-    .replace(/[₹,\s]/g, "");
+    .replace(/[₹$,\s]/g, "");
   if (!cleaned) return undefined;
 
-  const match = /^(\d+(?:\.\d+)?)(k|l|lac|lacs|lakh|lakhs|cr|crore|crores)?$/.exec(cleaned);
+  // The US writes millions ("1.5M"); India writes lakh and crore.
+  const match = (marketId === "us" ? /^(\d+(?:\.\d+)?)(k|m|million)?$/ : /^(\d+(?:\.\d+)?)(k|l|lac|lacs|lakh|lakhs|cr|crore|crores)?$/).exec(cleaned);
   if (!match) return undefined;
 
   const [, digits, suffix] = match;
   const multiplier = suffix
     ? suffix === "k"
       ? 1_000
-      : suffix.startsWith("cr")
+      : suffix.startsWith("m")
+        ? 1_000_000
+        : suffix.startsWith("cr")
         ? 1_00_00_000
         : 1_00_000
     : 1;

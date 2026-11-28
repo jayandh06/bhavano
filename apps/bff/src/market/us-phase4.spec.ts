@@ -1,6 +1,13 @@
 import 'reflect-metadata';
 import type { ListingCategory } from '@bhavano/types';
-import { categoryFieldsFor, defaultAttributesFor, listingAttributeIssues } from '@bhavano/types/categoryFields';
+import {
+  SECTION_ORDER,
+  categoryFieldsFor,
+  defaultAttributesFor,
+  groupFieldsBySection,
+  listingAttributeIssues,
+  sectionOrderFor,
+} from '@bhavano/types/categoryFields';
 import { deriveCardSpecs } from '@bhavano/types/cardSpecs';
 import { MARKETS } from '@bhavano/types/market';
 import { marketDealIssue } from '@bhavano/types/postingRules';
@@ -88,5 +95,16 @@ describe('US search filters', () => {
     const errors = (query: Record<string, string>) => validateSync(plainToInstance(ListListingsDto, query)).map((e) => e.property);
     expect(errors({ laundry: 'in-unit', petPolicy: 'cats', plotType: 'residential' })).toEqual([]);
     expect(errors({ laundry: 'roof' })).toEqual(['laundry']);
+  });
+});
+
+describe('US form order', () => {
+  it('asks a commercial space’s area before its price, and leaves India’s order alone', () => {
+    const sections = groupFieldsBySection(categoryFieldsFor('commercial', 'us'), 'us').map((s) => s.section);
+    expect(sections.indexOf('spaceDetails')).toBeLessThan(sections.indexOf('pricing'));
+    expect(sectionOrderFor()).toBe(SECTION_ORDER);
+    expect([...sectionOrderFor('us')].sort()).toEqual([...SECTION_ORDER].sort());
+    const india = groupFieldsBySection(categoryFieldsFor('commercial')).map((s) => s.section);
+    expect(india.indexOf('pricing')).toBeLessThan(india.indexOf('spaceDetails'));
   });
 });

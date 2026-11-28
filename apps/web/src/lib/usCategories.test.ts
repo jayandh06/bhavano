@@ -231,3 +231,37 @@ describe("US search filters", () => {
   });
 });
 
+describe("US money and bedroom wording", () => {
+  type Seo = typeof import("./seoRoute");
+  type Price = typeof import("./priceInput");
+  type Filters = typeof import("./assetFilters");
+  type Apply = typeof import("./filterApply");
+
+  it("writes dollars in the US and rupees in India", async () => {
+    const us = await loadWith<Seo>("./seoRoute", "us");
+    expect([900, 25_000, 1_500_000].map(us.formatINR)).toEqual(["$900", "$25k", "$1.5M"]);
+    const usPrice = await loadWith<Price>("./priceInput", "us");
+    expect(usPrice.customPriceLabel(1_000, 25_000)).toBe("$1k – $25k");
+    const india = await loadWith<Seo>("./seoRoute", "");
+    expect([900, 25_000, 1_500_000].map(india.formatINR)).toEqual(["₹900", "₹25k", "₹15L"]);
+  });
+
+  it("reads millions in the US and lakh and crore in India", async () => {
+    const us = (await loadWith<Price>("./priceInput", "us")).parseAmount;
+    expect([us("1.5M"), us("$20k"), us("2,000"), us("2L")]).toEqual([1_500_000, 20_000, 2_000, undefined]);
+    const india = (await loadWith<Price>("./priceInput", "")).parseAmount;
+    expect([india("2L"), india("1.5Cr"), india("₹20k"), india("1.5M")]).toEqual([200_000, 15_000_000, 20_000, undefined]);
+  });
+
+  it("says beds, not BHK", async () => {
+    const us = await loadWith<Seo>("./seoRoute", "us");
+    expect(us.buildHeading({ fallbackLabel: "Properties", cityName: "Austin", propertyType: "apartment", bedrooms: 2 })).toContain("2 bed Apartments");
+    const filters = await loadWith<Filters>("./assetFilters", "us");
+    expect(filters.assetFiltersFor("apartment").find((f) => f.key === "bedrooms")?.label).toBe("Bedrooms");
+    const apply = await loadWith<Apply>("./filterApply", "us");
+    expect(apply.draftIssue({ bhk: [] })).toBe("Pick at least one bedroom count");
+    const india = await loadWith<Seo>("./seoRoute", "");
+    expect(india.buildHeading({ fallbackLabel: "Properties", cityName: "Pune", propertyType: "apartment", bedrooms: 2 })).toContain("2 BHK Apartments");
+  });
+});
+

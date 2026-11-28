@@ -27,6 +27,7 @@ import { formatDate, formatDateTime } from "@/lib/formatDateTime";
 import { FullPageLink } from "@/components/FullPageLink";
 import { CopyButton } from "@/components/CopyButton";
 import { SKIP_REMEMBER_PARAM } from "@/lib/rememberedFilters";
+import { adminMarket } from "@/lib/market";
 /** Styling for each `ListingEngagementRowDto.action` value — gold for contact reveals since
  * that's the paid-feature action (same color `boostPromo`/gold-tier UI elsewhere in admin uses
  * for anything tied to a paid credit), green for a free like, muted for a plain view. */
@@ -65,7 +66,7 @@ function formatChangeValue(value: unknown): string {
 /** `price` is logged as the stored whole-rupee total; 0 is "Contact for price". */
 function formatPriceChangeValue(value: unknown): string {
   if (typeof value !== "number") return formatChangeValue(value);
-  return value === 0 ? "Contact for price" : formatInrWithWords(value);
+  return value === 0 ? "Contact for price" : formatInrWithWords(value, adminMarket().id);
 }
 
 /** `attributes` diffs as one field/change pair — `diffFields` (listings.service.ts) treats the

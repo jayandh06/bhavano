@@ -10,6 +10,7 @@ import {
   type TransactionGroup,
 } from "@/lib/seoRoute";
 import { buildMarket } from "./marketRobots";
+import { bedWord } from "@bhavano/types/bedrooms";
 
 const MAX_SIBLING_AREAS = 8;
 const BHK_FACETS = [1, 2, 3, 4, 5] as const;
@@ -53,7 +54,7 @@ function bhkFacetLinks(
   if (facetKindForCategory(category) !== "bedrooms") return [];
   const catLabel = CATEGORY_LABELS[category];
   return BHK_FACETS.filter((n) => n !== currentFacet).map((n) => ({
-    label: `${bedroomLabel(n)} BHK ${catLabel}`,
+    label: `${bedroomLabel(n)} ${bedWord(buildMarket().id)} ${catLabel}`,
     href: buildBrowsePath({
       cityName,
       areaName,

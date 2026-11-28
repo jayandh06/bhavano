@@ -1,4 +1,6 @@
 import { formatINR } from "./seoRoute";
+import { buildMarket } from "./marketRobots";
+import { type MarketId } from "@bhavano/types/market";
 
 /**
  * Parses an amount the way people actually type one into a price box.
@@ -12,21 +14,24 @@ import { formatINR } from "./seoRoute";
  * so the caller can refuse to navigate rather than silently filtering on a number the visitor
  * never meant.
  */
-export function parseAmount(raw: string): number | undefined {
+export function parseAmount(raw: string, marketId: MarketId = buildMarket().id): number | undefined {
   const cleaned = raw
     .trim()
     .toLowerCase()
-    .replace(/[₹,\s]/g, "");
+    .replace(/[₹$,\s]/g, "");
   if (!cleaned) return undefined;
 
-  const match = /^(\d+(?:\.\d+)?)(k|l|lac|lacs|lakh|lakhs|cr|crore|crores)?$/.exec(cleaned);
+  // The US writes millions ("1.5M"); India writes lakh and crore.
+  const match = (marketId === "us" ? /^(\d+(?:\.\d+)?)(k|m|million)?$/ : /^(\d+(?:\.\d+)?)(k|l|lac|lacs|lakh|lakhs|cr|crore|crores)?$/).exec(cleaned);
   if (!match) return undefined;
 
   const [, digits, suffix] = match;
   const multiplier = suffix
     ? suffix === "k"
       ? 1_000
-      : suffix.startsWith("cr")
+      : suffix.startsWith("m")
+        ? 1_000_000
+        : suffix.startsWith("cr")
         ? 1_00_00_000
         : 1_00_000
     : 1;

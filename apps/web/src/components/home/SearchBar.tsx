@@ -23,6 +23,7 @@ import { useClickOutside } from "@/lib/useClickOutside";
 import { Icon } from "./Icon";
 import { marketCopy } from "@/lib/marketCopy";
 import { buildMarket } from "@/lib/marketRobots";
+import { bedWord } from "@bhavano/types/bedrooms";
 
 // Market wording (India's strings unchanged): lib/marketCopy.ts.
 const COPY = marketCopy();
@@ -116,7 +117,7 @@ function interpret(text: string, cityName: string | undefined, cityNames: string
  * plain locality guess, not a confirmed match. */
 function describe(result: Interpretation): string[] {
   const tokens: string[] = [];
-  if (result.facetValue !== undefined) tokens.push(`${bedroomLabel(result.facetValue)} BHK`);
+  if (result.facetValue !== undefined) tokens.push(`${bedroomLabel(result.facetValue)} ${bedWord(buildMarket().id)}`);
   if (result.category) tokens.push(CATEGORY_LABELS[result.category]);
   if (result.transactionGroup) tokens.push(result.transactionGroup === "buy" ? "Buy" : buildMarket().id === "us" ? "Rent" : "Rent & Lease");
   if (result.minPrice !== undefined) tokens.push(`above ${formatINR(result.minPrice)}`);

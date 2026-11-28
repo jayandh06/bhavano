@@ -5,7 +5,7 @@ import type { MarketId } from "@bhavano/types/market";
 import Link from "next/link";
 import type { AdminRequirementDto, RequirementStatus } from "@bhavano/types";
 import { areaUnitShortLabel, convertArea } from "@bhavano/types/areaUnit";
-import { bedroomLabel } from "@bhavano/types/bedrooms";
+import { bedroomLabel, bedWord } from "@bhavano/types/bedrooms";
 import {
   REQUIREMENT_GAP_LABELS,
   amenityOptionsFor,
@@ -122,7 +122,7 @@ function RequirementCard({ item, marketId }: { item: AdminRequirementDto; market
           <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
             {[
               item.areaNames.length ? item.areaNames.join(", ") : item.cityName,
-              item.bedroomOptions.length ? `${item.bedroomOptions.map(bedroomLabel).join(" or ")} BHK` : null,
+              item.bedroomOptions.length ? `${item.bedroomOptions.map(bedroomLabel).join(" or ")} ${bedWord(marketId)}` : null,
               sizeText(item),
               budgetText(item),
               item.category ? requirementCategoryLabel(item.category, marketId) : null,

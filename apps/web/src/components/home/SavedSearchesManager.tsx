@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Area, City, ListingCategory, SavedSearchDto, TransactionType } from "@bhavano/types";
 import { formatInrWithWords } from "@bhavano/types/priceWords";
-import { MAX_BEDROOMS, bedroomLabel } from "@bhavano/types/bedrooms";
+import { MAX_BEDROOMS, bedroomLabel, bedWord } from "@bhavano/types/bedrooms";
 import { MAX_REQUIREMENT_AREAS, requirementCategoryLabel } from "@bhavano/types/requirementQuestions";
 import { createSavedSearchAction, deleteSavedSearchAction } from "@/app/actions/saved-searches";
 import { listAllAreasAction } from "@/app/actions/locations";
@@ -176,9 +176,9 @@ export function SavedSearchesManager({
                 s.transactionType,
                 s.cityName,
                 s.areaNames.length > 0 && s.areaNames.join(", "),
-                s.minPrice !== undefined && `min ${formatInrWithWords(s.minPrice)}`,
-                s.maxPrice !== undefined && `max ${formatInrWithWords(s.maxPrice)}`,
-                s.bedroomOptions.length > 0 && s.bedroomOptions.map((n) => `${bedroomLabel(n)} BHK`).join(" or "),
+                s.minPrice !== undefined && `min ${formatInrWithWords(s.minPrice, buildMarket().id)}`,
+                s.maxPrice !== undefined && `max ${formatInrWithWords(s.maxPrice, buildMarket().id)}`,
+                s.bedroomOptions.length > 0 && s.bedroomOptions.map((n) => `${bedroomLabel(n)} ${bedWord(buildMarket().id)}`).join(" or "),
               ]
                 .filter(Boolean)
                 .join(" · ") || "Any listing"}
@@ -200,7 +200,7 @@ export function SavedSearchesManager({
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. 2BHK in Koramangala"
+              placeholder={buildMarket().id === "us" ? "e.g. 2 bed in Austin" : "e.g. 2BHK in Koramangala"}
               className={fieldClass}
             />
           </div>
@@ -333,7 +333,7 @@ export function SavedSearchesManager({
                       active ? "border-green bg-green/10 text-green" : "border-border bg-surface text-text-soft"
                     }`}
                   >
-                    {bedroomLabel(n)} BHK
+                    {bedroomLabel(n)} {bedWord(buildMarket().id)}
                   </button>
                 );
               })}

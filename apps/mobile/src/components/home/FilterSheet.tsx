@@ -145,11 +145,11 @@ export const FilterSheet = forwardRef<
     setMaxText(applied.maxPrice !== undefined ? String(applied.maxPrice) : "");
   }, [applied]);
 
-  const parsedMin = minText.trim() ? parseAmount(minText) : undefined;
-  const parsedMax = maxText.trim() ? parseAmount(maxText) : undefined;
+  const parsedMin = minText.trim() ? parseAmount(minText, market.id) : undefined;
+  const parsedMax = maxText.trim() ? parseAmount(maxText, market.id) : undefined;
   const priceError =
     (minText.trim() && parsedMin === undefined) || (maxText.trim() && parsedMax === undefined)
-      ? "Enter an amount like 20000, 20k or 2L"
+      ? market.id === "us" ? "Enter an amount like 2000, 20k or 1.5M" : "Enter an amount like 20000, 20k or 2L"
       : parsedMin !== undefined && parsedMax !== undefined && parsedMin > parsedMax
         ? "Min must be less than max"
         : undefined;

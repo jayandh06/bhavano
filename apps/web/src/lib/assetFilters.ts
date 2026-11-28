@@ -48,7 +48,7 @@ export interface AssetFilter {
 /** Human labels for the filter buttons. The config's own `label` is written for a posting form
  * ("Furnishing status", "Sharing type"), which is too long for a filter pill. */
 const FILTER_LABELS: Record<(typeof FILTERABLE_KEYS)[number], string> = {
-  bedrooms: "BHK",
+  bedrooms: buildMarket().id === "us" ? "Bedrooms" : "BHK",
   furnished: "Furnishing",
   sharingType: "Sharing",
   condition: "Condition",

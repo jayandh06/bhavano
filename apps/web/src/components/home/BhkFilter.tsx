@@ -8,6 +8,8 @@ import { useClickOutside } from "@/lib/useClickOutside";
 import { useClampToViewport } from "@/lib/useClampToViewport";
 import { Icon } from "./Icon";
 import { useFilterCategory, useFilterSection } from "./FilterSection";
+import { bedWord } from "@bhavano/types/bedrooms";
+import { buildMarket } from "@/lib/marketRobots";
 
 /** Multi-select BHK filter for house/apartment/villa pages — same shape as `AreaFilter` (every bucket checked by default = no narrowing), for bedroom-count
  * buckets instead of areas. Ticks only change the filter section's draft; the section's Apply searches (see FilterSection), and at least one bucket must stay picked.
@@ -30,7 +32,13 @@ export function BhkFilter() {
   const selected = new Set(draft.bhk ?? (assetChanged ? BEDROOM_COUNTS : currentBhk(base)));
   const allSelected = selected.size === BEDROOM_COUNTS.length;
   // "3 BHK" for three *selected buckets* was indistinguishable from "3 BHK" the bedroom count — picking 2 and 3 read as "2 BHK". A count of selections has to say that it is one.
-  const label = allSelected ? "All BHK" : selected.size === 0 ? "Pick a BHK" : selected.size === 1 ? `${bedroomLabel([...selected][0])} BHK` : `${selected.size} selected`;
+  const marketId = buildMarket().id;
+  const word = bedWord(marketId);
+  const label = allSelected
+    ? marketId === "us" ? "Any bedrooms" : "All BHK"
+    : selected.size === 0
+      ? marketId === "us" ? "Pick bedrooms" : "Pick a BHK"
+      : selected.size === 1 ? `${bedroomLabel([...selected][0])} ${word}` : `${selected.size} selected`;
 
   function toggle(n: number) {
     const next = new Set(selected);
@@ -77,7 +85,7 @@ export function BhkFilter() {
           {BEDROOM_COUNTS.map((n) => (
             <label key={n} className="flex items-center gap-2 px-1 py-[7px] text-[13px] text-text cursor-pointer">
               <input type="checkbox" checked={selected.has(n)} onChange={() => toggle(n)} />
-              {bedroomLabel(n)} BHK
+              {bedroomLabel(n)} {word}
             </label>
           ))}
         </div>
