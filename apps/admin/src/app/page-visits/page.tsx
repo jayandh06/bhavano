@@ -30,6 +30,7 @@ import { PageVisitLegend, PageVisitsTable } from "@/components/PageVisitsTable";
 import { AdFilterPicker } from "@/components/AdFilterPicker";
 
 import { FullPageLink } from "@/components/FullPageLink";
+import { adminMarket } from "@/lib/market";
 /** What the BFF falls back to with no `?sort=` — named here so the Time column's header still
  * shows its ▼ before anything has been clicked. */
 const DEFAULT_SORT: AdminPageVisitSort = "lastActivity_desc";
@@ -377,7 +378,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                   <th style={filterThStyle} />
                   <th style={filterThStyle} />
                   <th style={filterThStyle}>
-                    <input name="landingPath" defaultValue={landingPath} placeholder="/bengaluru/…" style={headerInputStyle} />
+                    <input name="landingPath" defaultValue={landingPath} placeholder={adminMarket().id === "us" ? "/austin-tx/… (without /us)" : "/bengaluru/…"} style={headerInputStyle} />
                   </th>
                   <th style={filterThStyle}>
                     <input name="ip" defaultValue={ip} placeholder="103.21." style={headerInputStyle} />

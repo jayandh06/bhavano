@@ -13,6 +13,7 @@ import { UserSavedSearchesPanel } from "@/components/UserSavedSearchesPanel";
 import { PurchasesPanel } from "@/components/PurchasesPanel";
 import { MessagesTable } from "@/components/MessagesTable";
 import { SKIP_REMEMBER_PARAM } from "@/lib/rememberedFilters";
+import { publicPath } from "@/lib/pageTrail";
 
 /** Conversations shown on this page; the Messages screen has the rest. */
 const MESSAGES_SHOWN = 25;
@@ -245,7 +246,7 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
                   </div>
                   {visit.landingPath && (
                     <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
-                      Landed on {visit.landingPath}
+                      Landed on {publicPath(visit.landingPath, adminMarket().id)}
                     </div>
                   )}
                   {ipLocation && (

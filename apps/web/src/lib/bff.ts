@@ -76,6 +76,7 @@ import { isListingSlotCapErrorBody, ListingSlotCapError } from "@/lib/listingSlo
 import { isDuplicatePhotoErrorBody, DuplicatePhotoError } from "@/lib/duplicatePhotoErrors";
 import { cookieName } from "@/lib/cookieNames";
 import type { SearchFacts } from "@bhavano/types/searchFacts";
+import { visitorIp } from "@/lib/clientIp";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
 
@@ -111,17 +112,12 @@ export class ListingAlreadyClaimedError extends Error {
   }
 }
 
-/** The visitor's IP as Caddy saw it, same last-hop convention as middleware.ts's own clientIp()
- * (see that function's comment for why last, not first). Needed here because every call from
- * this file reaches the BFF over BFF_INTERNAL_URL — a direct container-to-container call that
- * never passes through Caddy — so without this, the BFF would see this app's own container IP
- * for every visitor's request, not the real one. See
+/** The visitor's IP (see `lib/clientIp`). Needed here because every call from this file reaches the BFF over
+ * BFF_INTERNAL_URL — a direct container-to-container call that never passes through Caddy — so without this, the BFF
+ * would see this app's own container IP for every visitor's request, not the real one. See
  * docs/plans/safely-reactivate-bff-throttling.md. */
 async function clientIp(): Promise<string | undefined> {
-  const forwarded = (await headers()).get("x-forwarded-for");
-  if (!forwarded) return undefined;
-  const hops = forwarded.split(",").map((v) => v.trim()).filter(Boolean);
-  return hops[hops.length - 1];
+  return visitorIp((await headers()).get("x-forwarded-for"));
 }
 
 async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {

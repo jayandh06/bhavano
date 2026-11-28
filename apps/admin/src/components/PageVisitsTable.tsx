@@ -5,7 +5,8 @@ import Link from "next/link";
 import type { DeviceType, OsFamily, PageVisitDto, PageVisitHighlights, SessionTrailDto } from "@bhavano/types";
 import { fetchSessionTrailAction } from "@/app/actions/admin";
 import { formatDateTime } from "@/lib/formatDateTime";
-import { trailEntry, trailEntryHref, trailPath } from "@/lib/pageTrail";
+import { publicPath, trailEntry, trailEntryHref, trailPath, trailText } from "@/lib/pageTrail";
+import { useAdminMarketId } from "./MarketContext";
 import { HighlightBadge, HighlightLegend, rowHighlightStyle, type HighlightKey } from "@/components/RowHighlights";
 
 const dash = <span style={{ color: "var(--muted)" }}>—</span>;
@@ -68,6 +69,7 @@ export function PageVisitsTable({
   unclassifiedHref: string;
   everythingHref: string;
 }) {
+  const marketId = useAdminMarketId();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [trails, setTrails] = useState<Record<string, SessionTrailDto | "loading" | "error">>({});
 
@@ -164,9 +166,9 @@ export function PageVisitsTable({
               </td>
               <td
                 style={{ ...tdStyle, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                title={v.landingPath ?? undefined}
+                title={v.landingPath ? publicPath(v.landingPath, marketId) : undefined}
               >
-                {v.landingPath ?? dash}
+                {v.landingPath ? publicPath(v.landingPath, marketId) : dash}
               </td>
               <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{v.ip ?? dash}</td>
               <td style={tdStyle}>{v.ipCity ?? dash}</td>
@@ -228,6 +230,7 @@ function SessionTrailPanel({
   /** Set on a grouped row: how many sessions the trail below combines. */
   sessionCount?: number;
 }) {
+  const marketId = useAdminMarketId();
   if (state === undefined || state === "loading") {
     return <p style={{ fontSize: 13, color: "var(--muted)", padding: 16, margin: 0 }}>Loading…</p>;
   }
@@ -255,7 +258,7 @@ function SessionTrailPanel({
           {pageViews.map((pv, i) => {
             const prev = i > 0 ? pageViews[i - 1] : null;
             const gapMs = prev ? new Date(pv.createdAt).getTime() - new Date(prev.createdAt).getTime() : null;
-            const href = trailEntryHref(pv.path, pv.query);
+            const href = trailEntryHref(pv.path, pv.query, marketId);
             return (
               <div
                 key={`${pv.path}-${pv.createdAt}-${i}`}
@@ -281,10 +284,10 @@ function SessionTrailPanel({
                   {i + 1}.{" "}
                   {href ? (
                     <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "var(--green)" }}>
-                      {trailEntry(trailPath(pv)).text}
+                      {trailText(pv, marketId)}
                     </a>
                   ) : (
-                    trailEntry(trailPath(pv)).text
+                    trailText(pv, marketId)
                   )}
                 </div>
               </div>

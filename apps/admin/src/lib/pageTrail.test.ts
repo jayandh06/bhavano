@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { trailEntry, trailEntryHref } from "./pageTrail";
+import {
+  trailEntry,
+  trailEntryHref,
+  publicPath,
+  trailText,
+} from "./pageTrail";
 
 describe("trailEntry", () => {
   it("leaves ordinary paths untouched", () => {
@@ -261,3 +266,25 @@ describe("trailEntry: the post form's exit question and the Finish your ad promp
     expect(trailEntryHref("/post/finish-prompt?event=shown")).toBeNull();
   });
 });
+
+describe("paths on the US admin", () => {
+  it("link to and read as the US site, where India's stay as they are", () => {
+    expect(trailEntryHref("/premium", null, "us")).toBe("https://www.bhavano.com/us/premium");
+    expect(trailEntryHref("/", null, "us")).toBe("https://www.bhavano.com/us");
+    expect(trailEntryHref("/austin-tx/rent-lease/apartment", "bedrooms=2", "us")).toBe(
+      "https://www.bhavano.com/us/austin-tx/rent-lease/apartment?bedrooms=2",
+    );
+    expect(trailEntryHref("/premium")).toBe("https://www.bhavano.com/premium");
+    expect(publicPath("/help", "us")).toBe("/us/help");
+    expect(publicPath("/help")).toBe("/help");
+  });
+
+  it("writes a page with the prefix and leaves an event's words alone", () => {
+    expect(trailText({ path: "/austin-tx" }, "us")).toBe("/us/austin-tx");
+    expect(trailText({ path: "/austin-tx" })).toBe("/austin-tx");
+    const event = { path: "/post/error" };
+    expect(trailText(event, "us")).toBe(trailText(event));
+    expect(trailEntryHref(event.path, null, "us")).toBeNull();
+  });
+});
+

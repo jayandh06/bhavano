@@ -4,7 +4,8 @@ import type { DeviceType } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchSessionTrail } from "@/lib/bff";
 import { formatDateTime } from "@/lib/formatDateTime";
-import { trailEntry, trailEntryHref, trailPath } from "@/lib/pageTrail";
+import { trailEntry, trailEntryHref, trailPath, trailText } from "@/lib/pageTrail";
+import { adminMarket } from "@/lib/market";
 
 const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
   desktop: "Desktop",
@@ -36,6 +37,7 @@ function formatGap(ms: number): string {
 }
 
 export default async function SessionTrailPage({ params }: { params: Promise<{ sessionId: string }> }) {
+  const marketId = adminMarket().id;
   const { accessToken } = await requireAdmin();
   const { sessionId } = await params;
 
@@ -124,7 +126,7 @@ export default async function SessionTrailPage({ params }: { params: Promise<{ s
             {pageViews.map((pv, i) => {
               const prev = i > 0 ? pageViews[i - 1] : null;
               const gapMs = prev ? new Date(pv.createdAt).getTime() - new Date(prev.createdAt).getTime() : null;
-              const href = trailEntryHref(pv.path, pv.query);
+              const href = trailEntryHref(pv.path, pv.query, marketId);
               return (
                 <div
                   key={`${pv.path}-${pv.createdAt}-${i}`}
@@ -152,10 +154,10 @@ export default async function SessionTrailPage({ params }: { params: Promise<{ s
                     {i + 1}.{" "}
                     {href ? (
                       <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "var(--green)" }}>
-                        {trailEntry(trailPath(pv)).text}
+                        {trailText(pv, marketId)}
                       </a>
                     ) : (
-                      trailEntry(trailPath(pv)).text
+                      trailText(pv, marketId)
                     )}
                   </div>
                 </div>

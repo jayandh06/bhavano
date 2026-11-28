@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { AdminNav } from "@/components/AdminNav";
+import { MarketProvider } from "@/components/MarketContext";
+import { adminMarket } from "@/lib/market";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,8 +14,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <AdminNav />
-        <main className="admin-page-content">{children}</main>
+        <MarketProvider id={adminMarket().id}>
+          <AdminNav />
+          <main className="admin-page-content">{children}</main>
+        </MarketProvider>
       </body>
     </html>
   );

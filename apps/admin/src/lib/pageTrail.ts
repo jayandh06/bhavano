@@ -1,5 +1,6 @@
 import { readablePageViewQuery } from "@bhavano/types/pageViewQuery";
 import { parsePostFieldEventPath, POST_FIELD_PATH_PREFIX, postFieldTargetLabel } from "@bhavano/types/postFieldEvents";
+import { marketPath, type MarketId } from "@bhavano/types/market";
 
 /** Which on-site link sent a visitor to `/post` — decodes the `?from=` query param every
  * `/post/*` synthetic path now carries (see
@@ -316,6 +317,17 @@ function appInstallLabel(path: string): string {
 
 const SITE_URL = "https://www.bhavano.com";
 
+/** A stored path as the public site's address has it. Paths are recorded without the market's prefix ("/premium" on the
+ * US site is www.bhavano.com/us/premium), so showing or linking one as stored points at India. */
+export function publicPath(path: string, marketId: MarketId = "in"): string {
+  return marketPath(marketId, path);
+}
+
+/** The address of a stored path on this market's public site. */
+export function publicUrl(path: string, marketId: MarketId = "in"): string {
+  return `${SITE_URL}${publicPath(path, marketId)}`;
+}
+
 
 const EVENT_MARKER_PREFIXES = [
   "/login-nudge",
@@ -333,9 +345,9 @@ const EVENT_MARKER_PREFIXES = [
 /** The real page to open for a trail entry, or null for an event marker (see trailEntry above) —
  * those aren't pages anyone can visit, just an event encoded as a path, so there's nothing to
  * link to. */
-export function trailEntryHref(path: string, query?: string | null): string | null {
+export function trailEntryHref(path: string, query?: string | null, marketId: MarketId = "in"): string | null {
   if (EVENT_MARKER_PREFIXES.some((prefix) => path.startsWith(prefix))) return null;
-  return `${SITE_URL}${path}${query ? `?${query}` : ""}`;
+  return publicUrl(`${path}${query ? `?${query}` : ""}`, marketId);
 }
 
 /** What to show for a page view: the path with the filters that were on it, read as words
@@ -344,3 +356,11 @@ export function trailEntryHref(path: string, query?: string | null): string | nu
 export function trailPath(pv: { path: string; query?: string | null }): string {
   return pv.query ? `${pv.path}?${readablePageViewQuery(pv.query)}` : pv.path;
 }
+
+/** What the trail writes for a page view: an event keeps its words, and a page's path reads as the public site's. */
+export function trailText(pv: { path: string; query?: string | null }, marketId: MarketId = "in"): string {
+  const text = trailEntry(trailPath(pv)).text;
+  if (trailEntryHref(pv.path, pv.query) === null || !text.startsWith(pv.path)) return text;
+  return `${publicPath(pv.path, marketId)}${text.slice(pv.path.length)}`;
+}
+

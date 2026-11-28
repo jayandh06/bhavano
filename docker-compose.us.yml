@@ -74,6 +74,9 @@ services:
     environment:
       MARKET: us
       BFF_INTERNAL_URL: http://bff:4000
+      # www.bhavano.com/us is forwarded by India's Caddy, so its address ends every X-Forwarded-For: skip it to read the
+      # visitor's (the same address Caddyfile.us trusts).
+      TRUSTED_PROXY_IPS: ${INDIA_PROXY_IP:-13.205.0.54}
       # NEXT_PUBLIC_* are baked into the image at build time (US_NEXT_PUBLIC_* repository variables); these runtime copies are for server code.
       NEXT_PUBLIC_BFF_URL: ${NEXT_PUBLIC_BFF_URL}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}

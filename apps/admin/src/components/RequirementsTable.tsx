@@ -16,6 +16,7 @@ import {
 import { formatInrRangeWithWords } from "@bhavano/types/priceWords";
 import { updateRequirementAction } from "@/app/actions/admin";
 import { formatDateTime } from "@/lib/formatDateTime";
+import { publicPath, publicUrl } from "@/lib/pageTrail";
 
 const STATUS_LABELS: Record<RequirementStatus, string> = {
   open: "Open",
@@ -233,8 +234,8 @@ function RequirementCard({ item, marketId }: { item: AdminRequirementDto; market
         {item.landingPath && (
           <div>
             <span style={{ color: "var(--muted)" }}>Searched: </span>
-            <a href={`https://www.bhavano.com${item.landingPath}`} target="_blank" rel="noopener noreferrer">
-              {item.landingPath}
+            <a href={publicUrl(item.landingPath, marketId)} target="_blank" rel="noopener noreferrer">
+              {publicPath(item.landingPath, marketId)}
             </a>
           </div>
         )}
