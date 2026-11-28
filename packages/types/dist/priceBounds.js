@@ -21,6 +21,7 @@ exports.PRICE_BOUNDS = {
     townhouse: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
     room: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 100, max: 100_000 } },
     multifamily: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
+    manufactured: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
     pg: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 100_000 } },
     storage: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 200, max: 100_000 } },
     coworking: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 500, max: 200_000 } },
@@ -49,6 +50,7 @@ exports.US_PRICE_BOUNDS = {
     // building is the most the price box accepts.
     multifamily: { sale: { min: 50_000, max: 200_000_000 }, rental: US_HOME.rental },
     plot: { sale: { min: 1_000, max: 50_000_000 }, rental: US_HOME.rental },
+    manufactured: { sale: { min: 5_000, max: 2_000_000 }, rental: US_HOME.rental },
     // Rent-only, so the sale band is never reached.
     room: { sale: US_HOME.sale, rental: { min: 100, max: 50_000 } },
     storage: { sale: { min: 1_000, max: 10_000_000 }, rental: { min: 10, max: 6_000 } },

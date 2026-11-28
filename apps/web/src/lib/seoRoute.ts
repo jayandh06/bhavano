@@ -29,6 +29,7 @@ export const LISTING_CATEGORIES: ListingCategory[] = [
   "townhouse",
   "room",
   "multifamily",
+  "manufactured",
 ];
 
 export function isTransactionType(value: string): value is TransactionType {
@@ -53,6 +54,7 @@ const SHARED_CATEGORY_LABELS: Record<ListingCategory, string> = {
   condo: "Condos",
   townhouse: "Townhouses",
   multifamily: "Multi-Family Homes",
+  manufactured: "Manufactured Homes",
   room: "Rooms for Rent",
 };
 
@@ -174,7 +176,7 @@ export function parseEnum<T extends string>(value: string | string[] | undefined
 }
 
 export const FURNISHING_VALUES = ["unfurnished", "semi", "furnished"] as const;
-export const PROPERTY_TYPE_VALUES: PropertyTypeFilter[] = ["house", "apartment", "villa", "condo", "townhouse", "multifamily", "room", "storage", "coworking"];
+export const PROPERTY_TYPE_VALUES: PropertyTypeFilter[] = ["house", "apartment", "villa", "condo", "townhouse", "multifamily", "manufactured", "room", "storage", "coworking"];
 export const SHARING_TYPE_VALUES = CATEGORY_FIELD_CONFIG.pg.find((f) => f.key === "sharingType")!.options!.map((o) => o.value);
 export const CONDITION_VALUES = CATEGORY_FIELD_CONFIG.furniture.find((f) => f.key === "condition")!.options!.map((o) => o.value);
 export const SERVICE_TYPE_VALUES = CATEGORY_FIELD_CONFIG.interiors.find((f) => f.key === "serviceType")!.options!.map((o) => o.value);
@@ -190,7 +192,7 @@ export const POSTED_BY_VALUES = ["owner"] as const;
 export type FacetKind = "bedrooms" | "sharingType" | "condition" | "serviceType" | "none";
 
 export function facetKindForCategory(category: ListingCategory): FacetKind {
-  if (category === "house" || category === "apartment" || category === "villa" || category === "condo" || category === "townhouse") return "bedrooms";
+  if (category === "house" || category === "apartment" || category === "villa" || category === "condo" || category === "townhouse" || category === "manufactured") return "bedrooms";
   if (category === "pg") return "sharingType";
   if (category === "furniture") return "condition";
   if (category === "interiors") return "serviceType";

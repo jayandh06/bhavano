@@ -260,6 +260,7 @@ export async function BrowseListingsView({
                   activeSharingType={query.sharingType}
                     activeCondition={query.condition}
                     activeServiceType={query.serviceType}
+                    activeFacts={query.facts}
                   />
                   {(activeIntent === "buy" || activeIntent === "rentLease") && (
                     <OwnersOnlyToggle active={query.postedBy === "owner"} />

@@ -47,7 +47,7 @@ function bhkFacetLinks(
   cityName: string,
   areaName: string | undefined,
   group: TransactionGroup,
-  category: "house" | "apartment" | "villa" | "condo" | "townhouse",
+  category: "house" | "apartment" | "villa" | "condo" | "townhouse" | "manufactured",
   currentFacet?: number,
 ): BrowseSeoLink[] {
   if (facetKindForCategory(category) !== "bedrooms") return [];
@@ -81,7 +81,7 @@ function buildRelatedLinks(input: BrowseSeoCopyInput): BrowseSeoLink[] {
   if (areaName && category && group) {
     const catLabel = CATEGORY_LABELS[category];
 
-    if (facetValue !== undefined && (category === "house" || category === "apartment" || category === "villa" || category === "condo" || category === "townhouse")) {
+    if (facetValue !== undefined && (category === "house" || category === "apartment" || category === "villa" || category === "condo" || category === "townhouse" || category === "manufactured")) {
       const bedroom = typeof facetValue === "number" ? facetValue : undefined;
       links.push({
         label: `All ${catLabel.toLowerCase()} in ${areaName}`,
@@ -89,7 +89,7 @@ function buildRelatedLinks(input: BrowseSeoCopyInput): BrowseSeoLink[] {
       });
       links.push(...bhkFacetLinks(cityName, areaName, group, category, bedroom));
     } else {
-      if (category === "house" || category === "apartment" || category === "villa" || category === "condo" || category === "townhouse") {
+      if (category === "house" || category === "apartment" || category === "villa" || category === "condo" || category === "townhouse" || category === "manufactured") {
         links.push(...bhkFacetLinks(cityName, areaName, group, category));
       }
       links.push({
@@ -125,7 +125,7 @@ function buildRelatedLinks(input: BrowseSeoCopyInput): BrowseSeoLink[] {
         href: buildBrowsePath({ cityName, transactionGroup: otherGroup, category }),
       });
     }
-    if (category === "house" || category === "apartment" || category === "villa" || category === "condo" || category === "townhouse") {
+    if (category === "house" || category === "apartment" || category === "villa" || category === "condo" || category === "townhouse" || category === "manufactured") {
       const bedroom = typeof facetValue === "number" ? facetValue : undefined;
       if (facetValue !== undefined) {
         links.push({

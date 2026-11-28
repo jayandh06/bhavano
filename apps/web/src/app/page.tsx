@@ -51,6 +51,8 @@ import {
   SHARING_TYPE_VALUES,
 } from "@/lib/seoRoute";
 import { citySlug as toCitySlug } from "@bhavano/types/citySlug";
+import { parseSearchFacts } from "@bhavano/types/searchFacts";
+import { buildMarket } from "@/lib/marketRobots";
 
 const PAGE_SIZE = 12;
 /** The Featured rail's own item count, and how many of the main grid's boosted matches the BFF
@@ -98,6 +100,7 @@ export default async function HomePage({
   const sharingType = parseEnum(sp.sharingType, SHARING_TYPE_VALUES);
   const condition = parseEnum(sp.condition, CONDITION_VALUES);
   const serviceType = parseEnum(sp.serviceType, SERVICE_TYPE_VALUES);
+  const facts = parseSearchFacts((key) => sp[key], buildMarket().id);
 
   // Raw bypass (currently only Furniture's mega-menu links use this, to split Buy vs Rent —
   // the tab-grouped `category`/`propertyType` filter above doesn't distinguish transaction
@@ -139,6 +142,7 @@ export default async function HomePage({
     sharingType,
     condition,
     serviceType,
+    facts,
     offset,
     limit: PAGE_SIZE,
     // Asks the BFF to compute the homepage's own Featured rail in this same request (returned as
@@ -262,6 +266,7 @@ export default async function HomePage({
     !sharingType &&
     !condition &&
     !serviceType &&
+    Object.keys(facts).length === 0 &&
     !(bedrooms && bedrooms.length > 0) &&
     !(areaIds && areaIds.length > 0) &&
     !noAreaSelected;
@@ -281,6 +286,7 @@ export default async function HomePage({
     if (sharingType) params.set("sharingType", sharingType);
     if (condition) params.set("condition", condition);
     if (serviceType) params.set("serviceType", serviceType);
+    for (const [key, value] of Object.entries(facts)) params.set(key, value);
     if (listingCategory) params.set("listingCategory", listingCategory);
     if (transactionType) params.set("transactionType", transactionType);
     if (areaIds && areaIds.length > 0) params.set("areas", areaIds.join(","));

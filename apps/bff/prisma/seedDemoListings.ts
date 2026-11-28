@@ -42,6 +42,7 @@ const CATEGORY_STYLE: Record<ListingCategory, { label: string; bg: string; fg: s
   condo: { label: 'Condo', bg: '#2a5f7a', fg: '#e8f3f8' },
   townhouse: { label: 'Townhouse', bg: '#3a6b3f', fg: '#eaf6ec' },
   multifamily: { label: 'Multi-family', bg: '#5a4a3a', fg: '#f6efe8' },
+  manufactured: { label: 'Manufactured', bg: '#4a5a52', fg: '#eef6f1' },
   room: { label: 'Room for rent', bg: '#7a5a2a', fg: '#fbf1e2' },
   pg: { label: 'PG / Co-living', bg: '#8a4b1f', fg: '#fdf0e6' },
   storage: { label: 'Storage', bg: '#4a4f57', fg: '#f0f2f5' },
@@ -165,13 +166,14 @@ function deriveFields(category: ListingCategory, transactionType: TransactionTyp
     case 'apartment':
     case 'condo':
     case 'townhouse':
+    case 'manufactured':
     case 'villa': {
       const bedrooms = [2, 3, 4][i];
       const bathrooms = [2, 2, 3][i];
       const sqft = [950, 1450, 2200][i];
       const furnished = ['unfurnished', 'semi', 'furnished'][i];
       const noun =
-        category === 'house' ? 'Independent House' : category === 'apartment' ? 'Apartment' : category === 'condo' ? 'Condo' : category === 'townhouse' ? 'Townhouse' : 'Villa';
+        category === 'house' ? 'Independent House' : category === 'apartment' ? 'Apartment' : category === 'condo' ? 'Condo' : category === 'townhouse' ? 'Townhouse' : category === 'manufactured' ? 'Manufactured Home' : 'Villa';
       return {
         title: `${bedrooms} BHK ${noun} ${suffix} in ${areaName}`,
         specs: [`${bedrooms} Beds`, `${bathrooms} Bath`, `${sqft} sqft`],

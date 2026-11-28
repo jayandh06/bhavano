@@ -2,9 +2,10 @@ import { Transform, Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, TransactionType } from '@bhavano/types';
 import { AMENITY_KEYS, CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
+import { searchFactValues } from '@bhavano/types/searchFacts';
 
 const HOME_CATEGORIES: HomeCategoryFilter[] = ['buy', 'rentLease', 'pg', 'furniture', 'interiors'];
-const PROPERTY_TYPES: PropertyTypeFilter[] = ['house', 'apartment', 'villa', 'condo', 'townhouse', 'multifamily', 'room', 'storage', 'coworking', 'plot', 'commercial'];
+const PROPERTY_TYPES: PropertyTypeFilter[] = ['house', 'apartment', 'villa', 'condo', 'townhouse', 'multifamily', 'manufactured', 'room', 'storage', 'coworking', 'plot', 'commercial'];
 const LISTING_CATEGORIES: ListingCategory[] = [
   'house',
   'apartment',
@@ -12,6 +13,7 @@ const LISTING_CATEGORIES: ListingCategory[] = [
   'condo',
   'townhouse',
   'multifamily',
+  'manufactured',
   'room',
   'pg',
   'storage',
@@ -146,6 +148,39 @@ export class ListListingsDto {
   @IsOptional()
   @IsIn(SERVICE_TYPE_VALUES)
   serviceType?: string;
+
+  // US filters on the answers its listing form asks (`@bhavano/types/searchFacts`). Each matches that attribute.
+
+  @IsOptional()
+  @IsIn(searchFactValues('laundry'))
+  laundry?: string;
+
+  @IsOptional()
+  @IsIn(searchFactValues('parkingType'))
+  parkingType?: string;
+
+  /** The stored answer is a list: "cats" matches an ad that allows cats, whatever else it allows. */
+  @IsOptional()
+  @IsIn(searchFactValues('petPolicy'))
+  petPolicy?: string;
+
+  @IsOptional()
+  @IsIn(searchFactValues('homeWidth'))
+  homeWidth?: string;
+
+  /** Commercial property type. */
+  @IsOptional()
+  @IsIn(searchFactValues('purpose'))
+  purpose?: string;
+
+  @IsOptional()
+  @IsIn(searchFactValues('storageType'))
+  storageType?: string;
+
+  /** Land zoning. */
+  @IsOptional()
+  @IsIn(searchFactValues('plotType'))
+  plotType?: string;
 
   @IsOptional()
   @IsString()

@@ -190,6 +190,7 @@ export async function ListingDetailView({
                   </div>
                 )}
               </div>
+              {listing.annualRate && <p className="text-[13px] font-semibold text-text-soft mb-2">{listing.annualRate}</p>}
               {listing.priceOnRequest && !listing.ownerUnverified && (
                 <p className="text-[13px] text-muted mb-2">
                   Plans and pricing vary — reach out to the owner for a quote.

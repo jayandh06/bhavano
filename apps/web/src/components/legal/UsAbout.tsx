@@ -11,7 +11,7 @@ export function UsAbout() {
       <PageSection heading="Who we are">
         <p className="m-0">
           {entityOperatorSentence()} Bhavano is a classifieds marketplace where people browse, post, rent, buy and sell homes, condos,
-          townhouses, multi-family buildings, land, rooms, storage space and commercial space across the United States, with no login needed to browse.
+          townhouses, manufactured homes, multi-family buildings, land, rooms, storage space and commercial space across the United States, with no login needed to browse.
         </p>
       </PageSection>
 

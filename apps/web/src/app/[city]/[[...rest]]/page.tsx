@@ -48,6 +48,7 @@ import { ListingDetailView } from "@/components/home/ListingDetailView";
 import { JsonLd } from "@/components/JsonLd";
 import { SERVER_MARKET } from "@/lib/serverMarket";
 import { buildMarket } from "@/lib/marketRobots";
+import { parseSearchFacts, type SearchFacts } from "@bhavano/types/searchFacts";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 
@@ -170,11 +171,13 @@ function parseAssetSelects(sp: Record<string, string | string[] | undefined>): {
   sharingType?: string;
   condition?: string;
   serviceType?: string;
+  facts: SearchFacts;
 } {
   return {
     sharingType: parseEnum(sp.sharingType, SHARING_TYPE_VALUES),
     condition: parseEnum(sp.condition, CONDITION_VALUES),
     serviceType: parseEnum(sp.serviceType, SERVICE_TYPE_VALUES),
+    facts: parseSearchFacts((key) => sp[key], buildMarket().id),
   };
 }
 
@@ -237,7 +240,7 @@ function breadcrumbJsonLd(cityName: string, citySlug: string, parsed: ParsedSegm
 
 // Categories with real property/land, as opposed to rentable space, goods, or services — these
 // get a location-aware `RealEstateListing` instead of the generic `Product` schema.
-const REAL_ESTATE_CATEGORIES = new Set<ListingCategory>(["house", "apartment", "villa", "plot", "commercial", "condo", "townhouse", "multifamily", "room"]);
+const REAL_ESTATE_CATEGORIES = new Set<ListingCategory>(["house", "apartment", "villa", "plot", "commercial", "condo", "townhouse", "multifamily", "manufactured", "room"]);
 
 // `attributes` values arrive as sanitized strings from PostAdWizard's number inputs, never numbers.
 const SQFT_ATTRIBUTE_KEY: Partial<Record<ListingCategory, string>> = {
@@ -247,6 +250,7 @@ const SQFT_ATTRIBUTE_KEY: Partial<Record<ListingCategory, string>> = {
   condo: "sqft",
   townhouse: "sqft",
   multifamily: "carpetAreaSqft",
+  manufactured: "carpetAreaSqft",
   commercial: "sqft",
   plot: "plotAreaSqft",
 };
@@ -438,6 +442,7 @@ async function NationalBrowsePage({
         sharingType: selects.sharingType ?? baseQuery.sharingType,
         condition: selects.condition ?? baseQuery.condition,
         serviceType: selects.serviceType ?? baseQuery.serviceType,
+        facts: selects.facts,
         amenities,
       }}
       heading={headingFor(parsed, "India")}
@@ -780,6 +785,7 @@ export default async function CityBrowsePage({
           sharingType: selects.sharingType ?? baseQuery.sharingType,
           condition: selects.condition ?? baseQuery.condition,
           serviceType: selects.serviceType ?? baseQuery.serviceType,
+          facts: selects.facts,
           amenities,
         }}
         cityName={cityRow.name}

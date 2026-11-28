@@ -6,6 +6,7 @@ import { useClampToViewport } from "@/lib/useClampToViewport";
 import { amenityOptionsFor, assetFiltersFor, type FilterableKey } from "@/lib/assetFilters";
 import { customPriceLabel, parseAmount } from "@/lib/priceInput";
 import { useFilterCategory, useFilterSection } from "./FilterSection";
+import type { SearchFacts } from "@bhavano/types/searchFacts";
 
 /** `price` plus whichever config-derived select filters this asset has. */
 type OpenFilter = "price" | "amenities" | FilterableKey | null;
@@ -34,6 +35,7 @@ export function BrowseFilterBar({
   activeCondition,
   activeServiceType,
   activeAmenities,
+  activeFacts,
 }: {
   activeMinPrice?: number;
   activeMaxPrice?: number;
@@ -46,6 +48,8 @@ export function BrowseFilterBar({
   activeServiceType?: string;
   /** Amenity keys currently ticked (`?amenities=lift,gym`). */
   activeAmenities?: string[];
+  /** US filters on the listing form's answers (`?laundry=in-unit`). */
+  activeFacts?: SearchFacts;
 }) {
   const { draft, update } = useFilterSection();
   // The asset the filters are drawn for: a Type just picked in the draft counts straight away, so its filters show before Apply instead of after a second search.
@@ -83,6 +87,7 @@ export function BrowseFilterBar({
     sharingType: activeSharingType,
     condition: activeCondition,
     serviceType: activeServiceType,
+    ...activeFacts,
   };
   // A value left over from another asset (the URL's, until Apply) is not one of this asset's options, so it neither highlights the pill nor counts as chosen.
   const valueOf = (key: FilterableKey) => {

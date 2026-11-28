@@ -15,6 +15,7 @@ exports.POSTABLE_TRANSACTION_TYPES = {
     condo: ["sell", "rent", "lease"],
     townhouse: ["sell", "rent", "lease"],
     multifamily: ["sell"],
+    manufactured: ["sell", "rent"],
     room: ["rent"],
     pg: ["rent"],
     storage: ["rent", "lease"],

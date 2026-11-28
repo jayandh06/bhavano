@@ -63,8 +63,8 @@ exports.INTENT_CATEGORIES = {
 /** The US market's categories for the two property intents: its own order, condo, townhouse and room for rent, and apartments for rent only. The other
  * intents (PG, coworking, furniture, interiors) have no category in the US. India's lists above are unchanged. */
 const US_INTENT_CATEGORIES = {
-    buy: ["house", "condo", "townhouse", "multifamily", "plot", "commercial"],
-    rentLease: ["house", "apartment", "condo", "townhouse", "room", "commercial", "storage"],
+    buy: ["house", "condo", "townhouse", "manufactured", "multifamily", "plot", "commercial"],
+    rentLease: ["house", "apartment", "condo", "townhouse", "manufactured", "room", "commercial", "storage"],
 };
 /** The "Looking to ..." choices with at least one category in the market (the US has no PG, coworking, furniture or interiors). India gets
  * `REQUIREMENT_INTENTS` itself. */
@@ -93,6 +93,7 @@ exports.REQUIREMENT_CATEGORY_LABELS = {
     condo: "Condo / Co-op",
     townhouse: "Townhouse",
     multifamily: "Multi-family",
+    manufactured: "Manufactured home",
     room: "Room for rent",
     pg: "PG",
     storage: "Storage",
@@ -180,6 +181,8 @@ exports.REQUIREMENT_ATTRIBUTE_QUESTIONS = {
     condo: residentialQuestions("condo"),
     townhouse: residentialQuestions("townhouse"),
     multifamily: [],
+    // US-only, so no tenant-type question.
+    manufactured: [question("manufactured", "furnished", "Furnishing", true)],
     room: [question("room", "roomType", "Room type", true), question("room", "bathroom", "Bathroom", true)],
     pg: [
         question("pg", "sharingType", "Sharing", true),
@@ -207,6 +210,7 @@ function anySizeQuestionFor(category) {
         case "villa":
         case "condo":
         case "townhouse":
+        case "manufactured":
             return { kind: "bedrooms", label: "How many bedrooms?" };
         case "plot":
             return { kind: "area", label: "Plot size", units: ["sqft", "cent", "acre", "hectare", "sqm"] };
@@ -566,17 +570,19 @@ function subjectPhrase(c, marketId) {
                 ? `${joinOr([...c.bedroomOptions].sort((a, b) => a - b).map(bedrooms_1.bedroomLabel))} ${(0, bedrooms_1.bedWord)(marketId)}`
                 : "";
             const furnished = joinOr(attr("furnished").map((f) => f.toLowerCase()));
-            const noun = c.category === "multifamily"
-                ? "multi-family building"
-                : c.category === "plot" && marketId === "us"
-                    ? "land"
-                    : c.category === "commercial"
-                        ? "commercial space"
-                        : c.category === "storage"
-                            ? "storage space"
-                            : c.category === "coworking"
-                                ? "coworking seat"
-                                : c.category;
+            const noun = c.category === "manufactured"
+                ? "manufactured home"
+                : c.category === "multifamily"
+                    ? "multi-family building"
+                    : c.category === "plot" && marketId === "us"
+                        ? "land"
+                        : c.category === "commercial"
+                            ? "commercial space"
+                            : c.category === "storage"
+                                ? "storage space"
+                                : c.category === "coworking"
+                                    ? "coworking seat"
+                                    : c.category;
             const head = [bhk, furnished, noun, txn].filter(Boolean).join(" ");
             return `${head[0].toUpperCase()}${head.slice(1)}`;
         }

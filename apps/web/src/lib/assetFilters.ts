@@ -4,6 +4,7 @@ import { CATEGORY_LABELS, categoryGroupsFor, segmentsForHomeCategory } from "./s
 import { amenityFieldsFor, CATEGORY_FIELD_CONFIG, categoryFieldsFor } from "@bhavano/types/categoryFields";
 import { isMarketCategory } from "@bhavano/types/market";
 import { buildMarket } from "./marketRobots";
+import { searchFactsFor, type SearchFactKey } from "@bhavano/types/searchFacts";
 
 /**
  * Which attribute filters a given asset type has, derived from `CATEGORY_FIELD_CONFIG` rather
@@ -27,7 +28,8 @@ import { buildMarket } from "./marketRobots";
  */
 const FILTERABLE_KEYS = ["bedrooms", "furnished", "sharingType", "condition", "serviceType"] as const;
 
-export type FilterableKey = (typeof FILTERABLE_KEYS)[number];
+/** A shared filter, or one of the US filters on its listing form's answers. */
+export type FilterableKey = (typeof FILTERABLE_KEYS)[number] | SearchFactKey;
 
 export interface AssetFilterOption {
   value: string;
@@ -45,7 +47,7 @@ export interface AssetFilter {
 
 /** Human labels for the filter buttons. The config's own `label` is written for a posting form
  * ("Furnishing status", "Sharing type"), which is too long for a filter pill. */
-const FILTER_LABELS: Record<FilterableKey, string> = {
+const FILTER_LABELS: Record<(typeof FILTERABLE_KEYS)[number], string> = {
   bedrooms: "BHK",
   furnished: "Furnishing",
   sharingType: "Sharing",
@@ -58,8 +60,8 @@ export function assetFiltersFor(category: ListingCategory | undefined): AssetFil
   if (!CATEGORY_FIELD_CONFIG[category]) return [];
   const fields = categoryFieldsFor(category, buildMarket().id);
 
-  return fields
-    .filter((field): field is (typeof fields)[number] & { key: FilterableKey } =>
+  const shared: AssetFilter[] = fields
+    .filter((field): field is (typeof fields)[number] & { key: (typeof FILTERABLE_KEYS)[number] } =>
       (FILTERABLE_KEYS as readonly string[]).includes(field.key),
     )
     .map((field) => ({
@@ -70,6 +72,8 @@ export function assetFiltersFor(category: ListingCategory | undefined): AssetFil
       // since ListListingsDto reads the same array.
       options: (field.options ?? []).map((option) => ({ value: option.value, label: option.label })),
     }));
+  // The US also filters on what its own listing form asks; India has none of these.
+  return [...shared, ...searchFactsFor(category, buildMarket().id)];
 }
 
 /**

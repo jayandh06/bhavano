@@ -18,6 +18,7 @@ export function audienceFor(category: ListingCategory | null | undefined, transa
     case "house":
     case "apartment":
     case "villa":
+    case "manufactured":
     case "multifamily":
     case "plot":
     case "commercial":

@@ -18,6 +18,7 @@ const RECIPES = {
     villa: PROPERTY,
     condo: PROPERTY,
     townhouse: PROPERTY,
+    manufactured: PROPERTY,
     multifamily: [
         { kind: "count", key: "unitCount", one: "Unit", many: "Units" },
         { kind: "unit", key: "carpetAreaSqft", suffix: "sqft" },

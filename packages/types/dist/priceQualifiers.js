@@ -2,6 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PRICE_ON_REQUEST_CATEGORIES = exports.PRICE_QUALIFIER_OPTIONS = void 0;
 exports.getPriceQualifierOptions = getPriceQualifierOptions;
+exports.showsAnnualRate = showsAnnualRate;
+exports.annualRatePerSqft = annualRatePerSqft;
+exports.monthlyFromAnnualRate = monthlyFromAnnualRate;
+exports.formatAnnualRate = formatAnnualRate;
+const areaUnit_1 = require("./areaUnit");
 /** "" (Fixed price) is a deliberately valid, selectable option for sell listings — it submits
  * as a blank priceQualifier, matching pre-existing sell listings that show no suffix at all. */
 const SELL_OPTIONS = [
@@ -50,6 +55,7 @@ exports.PRICE_QUALIFIER_OPTIONS = {
     condo: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
     townhouse: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
     multifamily: { sell: SELL_OPTIONS },
+    manufactured: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS },
     room: { rent: MONTHLY_OPTIONS },
     pg: { rent: PG_RENT_OPTIONS },
     storage: { rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
@@ -76,3 +82,29 @@ exports.PRICE_ON_REQUEST_CATEGORIES = new Set([
     "pg",
     "coworking",
 ]);
+// ---------------------------------------------------------------------------
+// US commercial rent, which is quoted per square foot per year
+// ---------------------------------------------------------------------------
+/** Whether a listing also shows its rent as a yearly rate per square foot. The stored price stays the monthly figure. */
+function showsAnnualRate(category, transactionType, marketId = "in") {
+    return marketId === "us" && category === "commercial" && transactionType === "lease";
+}
+function squareFeet(area, unit) {
+    return (0, areaUnit_1.convertArea)(area, unit, "sqft");
+}
+/** What a monthly rent comes to per square foot per year, to the cent; null without both figures. */
+function annualRatePerSqft(monthly, area, unit = "sqft") {
+    if (!(monthly > 0) || !(area > 0))
+        return null;
+    return Math.round(((monthly * 12) / squareFeet(area, unit)) * 100) / 100;
+}
+/** The monthly rent a yearly rate per square foot comes to, in whole dollars; null without both figures. */
+function monthlyFromAnnualRate(rate, area, unit = "sqft") {
+    if (!(rate > 0) || !(area > 0))
+        return null;
+    return Math.round((rate * squareFeet(area, unit)) / 12);
+}
+/** "$24.50/sq ft/yr" */
+function formatAnnualRate(rate) {
+    return `$${rate.toFixed(2)}/sq ft/yr`;
+}

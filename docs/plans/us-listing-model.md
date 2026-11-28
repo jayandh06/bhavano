@@ -2,7 +2,8 @@
 
 Status: **approved 2026-11-28 with the recommendations below; phase 1 deployed to the US the same day** (pull request 111,
 image `sha-a621e459`: `bff`, `web`, `admin`; India not deployed). **Phase 2 deployed to the US the same day** (pull request 112, image `sha-c4806155`: `bff`, `web`, `admin`). The app needs a
-new build. **Phase 3 built, not merged or deployed.** Part of the US launch
+new build. **Phase 3 deployed to the US the same day** (pull request 114,
+image `sha-040f8e56`; the migration was applied to the US database). **Phase 4 built, not merged or deployed.** Part of the US launch
 ([us-market-expansion.md](us-market-expansion.md)). Builds on
 [us-categories-condo-townhouse-room.md](us-categories-condo-townhouse-room.md) and, if approved, replaces parts of it
 and of [us-price-limits.md](us-price-limits.md).
@@ -181,6 +182,26 @@ preview and publishing were not tried.
 - India offers nothing new. Its database receives the same added enum value at its next deploy.
 - Not done: the admin's saved-search editor still lists India's categories; buyers' requests ask no zoning question.
 - Tests: `apps/bff/src/market/us-multifamily-land.spec.ts`.
+
+Checked live after the deploy: the migration ran and the database lists the new value; the multi-family and land browse
+pages answer with their US titles; the server returns empty results for both and refuses a $500 land price; the land post
+form shows the fields above; India's apartment and plot pages answer. The multi-family post form was not opened, and
+signed-in preview and publishing were not tried.
+
+## Phase 4 as built
+
+- **Manufactured home** is a new category, `manufactured` (migration `20261128100000_add_manufactured_category`), sold or
+  rented. It asks a house's questions plus home size (single, double, triple-wide), whether the land is included or the
+  lot leased, and the monthly lot rent on a leased lot. Sale limit $5,000 to $2,000,000.
+- **Commercial yearly rate:** nothing new is stored. The price stays monthly; a US commercial lease shows
+  "$24.50/sq ft/yr" on its card and page, worked out from price and area. The post and edit forms (website and app) have
+  a box for the yearly rate that fills the monthly price. The admin edit form has no such box.
+- **Search filters** (`searchFacts.ts`), website browse pages and the app's filter sheet: laundry, parking, pets (homes);
+  home size (manufactured); property type (commercial); storage type; zoning (land). Each is one `?key=value`; canonical
+  addresses are unchanged. India has none.
+- Not done: filters on number ranges (square feet, year built, units); saved searches and AI search do not keep or read
+  the new filters.
+- Tests: `apps/bff/src/market/us-phase4.spec.ts`, `apps/web/src/lib/usCategories.test.ts`.
 
 ## SEO
 

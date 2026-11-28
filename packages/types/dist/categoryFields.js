@@ -155,6 +155,7 @@ exports.SECTION_FIELD_GROUPS = {
         { id: "parking", label: "Parking", keys: ["openParkingCount", "closedParkingCount", "parkingType", "parkingSpaces"] },
         { id: "furnishing", label: "Furnishing & utilities", keys: ["furnished", "laundry", "heating", "cooling", "utilitiesIncluded", "waterSource", "gasPipeline"] },
         { id: "society", label: "Society & outdoor space", keys: ["societyName", "gatedCommunity", "privateGarden", "privateTerrace"] },
+        { id: "manufactured", label: "Home and land", keys: ["homeWidth", "lotOwnership", "lotRent"] },
         { id: "availability", label: "Availability", keys: ["availableFrom", "leaseTerm", "lockInPeriod", "petPolicy", "newConstruction", "possessionStatus", "propertyAge"] },
         { id: "legal", label: "Ownership & legal", keys: ["ownership", "loanAvailable", "reraRegistered", "reraNumber"] },
     ],
@@ -1179,6 +1180,7 @@ exports.CATEGORY_FIELD_CONFIG = {
     room: ROOM_FIELDS,
     // US-only: its one list lives with the other US forms.
     multifamily: usCategoryFields_1.MULTIFAMILY_FIELDS,
+    manufactured: usCategoryFields_1.MANUFACTURED_FIELDS,
     pg: [
         {
             // Multi-select, not select — a PG can genuinely offer more than one sharing type at once

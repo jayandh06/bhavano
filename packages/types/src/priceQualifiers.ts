@@ -1,5 +1,6 @@
 import type { ListingCategory, TransactionType } from "./index";
 import type { MarketId } from "./market";
+import { convertArea, type AreaUnit } from "./areaUnit";
 
 export interface PriceQualifierOption {
   value: string;
@@ -60,6 +61,7 @@ export const PRICE_QUALIFIER_OPTIONS: Record<ListingCategory, Partial<Record<Tra
   condo: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
   townhouse: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
   multifamily: { sell: SELL_OPTIONS },
+  manufactured: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS },
   room: { rent: MONTHLY_OPTIONS },
   pg: { rent: PG_RENT_OPTIONS },
   storage: { rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
@@ -91,3 +93,34 @@ export const PRICE_ON_REQUEST_CATEGORIES: ReadonlySet<ListingCategory> = new Set
   "pg",
   "coworking",
 ]);
+
+// ---------------------------------------------------------------------------
+// US commercial rent, which is quoted per square foot per year
+// ---------------------------------------------------------------------------
+
+/** Whether a listing also shows its rent as a yearly rate per square foot. The stored price stays the monthly figure. */
+export function showsAnnualRate(category: ListingCategory, transactionType: TransactionType, marketId: MarketId = "in"): boolean {
+  return marketId === "us" && category === "commercial" && transactionType === "lease";
+}
+
+function squareFeet(area: number, unit: AreaUnit): number {
+  return convertArea(area, unit, "sqft");
+}
+
+/** What a monthly rent comes to per square foot per year, to the cent; null without both figures. */
+export function annualRatePerSqft(monthly: number, area: number, unit: AreaUnit = "sqft"): number | null {
+  if (!(monthly > 0) || !(area > 0)) return null;
+  return Math.round(((monthly * 12) / squareFeet(area, unit)) * 100) / 100;
+}
+
+/** The monthly rent a yearly rate per square foot comes to, in whole dollars; null without both figures. */
+export function monthlyFromAnnualRate(rate: number, area: number, unit: AreaUnit = "sqft"): number | null {
+  if (!(rate > 0) || !(area > 0)) return null;
+  return Math.round((rate * squareFeet(area, unit)) / 12);
+}
+
+/** "$24.50/sq ft/yr" */
+export function formatAnnualRate(rate: number): string {
+  return `$${rate.toFixed(2)}/sq ft/yr`;
+}
+

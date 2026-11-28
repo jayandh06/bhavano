@@ -27,6 +27,7 @@ export const NATIONAL_FIRST_SEGMENTS = new Set([
   "condo",
   "townhouse",
   "multifamily",
+  "manufactured",
   "room",
   "pg",
   "storage",
