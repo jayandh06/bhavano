@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { RequirementDto } from "@bhavano/types";
-import { bedroomLabel } from "@bhavano/types/bedrooms";
+import { bedWord, bedroomLabel } from "@bhavano/types/bedrooms";
 import { describeRequirementGaps, missingForLead } from "@bhavano/types/requirementQuestions";
 import { formatInrRangeWithWords } from "@bhavano/types/priceWords";
 import {
@@ -24,8 +24,8 @@ function daysUntil(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
 }
 
-function budgetText(r: RequirementDto): string | null {
-  return formatInrRangeWithWords(r.minPrice, r.maxPrice) ?? null;
+function budgetText(r: RequirementDto, marketId: MarketId): string | null {
+  return formatInrRangeWithWords(r.minPrice, r.maxPrice, marketId) ?? null;
 }
 
 /**
@@ -85,9 +85,9 @@ export function MyRequirementCard({ requirement }: { requirement: RequirementDto
             {[
               current.areaNames.length ? current.areaNames.join(", ") : current.cityName,
               current.bedroomOptions.length
-                ? `${current.bedroomOptions.map(bedroomLabel).join(" or ")} BHK`
+                ? `${current.bedroomOptions.map(bedroomLabel).join(" or ")} ${bedWord(market.id)}`
                 : null,
-              budgetText(current),
+              budgetText(current, market.id),
             ]
               .filter(Boolean)
               .join(" · ")}

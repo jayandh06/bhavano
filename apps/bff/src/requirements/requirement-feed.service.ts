@@ -28,6 +28,7 @@ import {
   type FeedRow,
   type InventoryItem,
 } from './requirement-feed';
+import { MARKET } from '../market/market-config';
 
 const FEED_PAGE_LIMIT = 50;
 /** A refine within this long of posting is part of posting, not an update worth flagging. */
@@ -230,6 +231,7 @@ export class RequirementFeedService {
         criteria,
         { cityName: row.city?.name, areaNames },
         { budget: true, size: true, amenities: true },
+        MARKET.id,
       ),
       intent: intentOf(category, transactionType),
       category,
@@ -239,7 +241,7 @@ export class RequirementFeedService {
       bedroomOptions: row.bedroomOptions,
       minPrice: row.minPrice ?? undefined,
       maxPrice: row.maxPrice ?? undefined,
-      budgetUnit: budgetPresetsFor(category, transactionType).unit,
+      budgetUnit: budgetPresetsFor(category, transactionType, MARKET.id).unit,
       minAreaSqft: row.minAreaSqft ?? undefined,
       maxAreaSqft: row.maxAreaSqft ?? undefined,
       areaUnit: (row.areaUnit as AreaUnit | null) ?? undefined,

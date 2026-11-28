@@ -127,7 +127,7 @@ export const RequirementsFeedFilters = forwardRef<
   const categories = intent ? requirementCategoriesFor(intent, getCurrentMarketId()) : [];
   const category = staged.category ?? (categories.length === 1 ? categories[0] : undefined);
   const showBudget = Boolean(intent && (!transactionChoices || staged.transactionType));
-  const size = category ? sizeQuestionFor(category) : undefined;
+  const size = category ? sizeQuestionFor(category, getCurrentMarketId()) : undefined;
   const questions = category
     ? requirementQuestionsFor(category, getCurrentMarketId()).filter((q) => !q.transactionTypes || (transaction && q.transactionTypes.includes(transaction)))
     : [];

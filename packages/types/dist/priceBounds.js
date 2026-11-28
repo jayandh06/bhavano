@@ -6,6 +6,7 @@ exports.requirementBudgetIssue = requirementBudgetIssue;
 const areaUnit_1 = require("./areaUnit");
 const priceQualifiers_1 = require("./priceQualifiers");
 const priceWords_1 = require("./priceWords");
+const market_1 = require("./market");
 /** Rough plausibility bounds per category (INR) Ã¢ÂÂ originally just a fat-finger/scam-price
  * defense at posting time (see apps/bff/src/moderation/priceBounds.ts), also reused by the web
  * app to build category-aware price quick-picks on browse pages. Sale = buy/sell, rental =
@@ -63,10 +64,14 @@ function listingPriceIssue(category, transactionType, total, perUnit) {
  * budget at all — this used to be a floor-only check for exactly that reason (a ceiling didn't
  * matter when budget was optional either way), until budget became required.
  */
-function requirementBudgetIssue(category, transactionType, value) {
+function requirementBudgetIssue(category, transactionType, value, marketId = "in") {
     const bounds = exports.PRICE_BOUNDS[category][transactionType === "buy" || transactionType === "sell" ? "sale" : "rental"];
     if (value >= bounds.min && value <= bounds.max)
         return null;
+    if (marketId !== "in") {
+        const money = (amount) => (0, market_1.formatMoney)(marketId, amount);
+        return `${money(value)} is outside the typical range for this category (${money(bounds.min)} to ${money(bounds.max)})`;
+    }
     const range = `${(0, priceWords_1.formatInrWithWords)(bounds.min)} to ${(0, priceWords_1.formatInrWithWords)(bounds.max)}`;
     return `₹${(0, priceWords_1.groupInr)(value)} is outside the typical range for this category (${range})`;
 }

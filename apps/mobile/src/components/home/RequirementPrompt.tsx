@@ -59,7 +59,8 @@ export function RequirementPrompt({
   const needsCity = !criteria.cityId;
   const [city, setCity] = useState<PickedCity | undefined>(undefined);
   const cityId = criteria.cityId ?? city?.id;
-  const shownLabel = needsCity && city ? formatRequirementLabel({ ...criteria, cityId: city.id }, { cityName: city.name }) : label;
+  const shownLabel =
+    needsCity && city ? formatRequirementLabel({ ...criteria, cityId: city.id }, { cityName: city.name }, undefined, market.id) : label;
 
   /** Login comes before the questions, so the create at the end of them can't be the thing that
    * sends someone off to sign in. */

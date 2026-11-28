@@ -138,15 +138,21 @@ Apple purchases get no session outside India (phase 1). The server refuses payme
 where payments are off (built 2026-11-27, [us-admin-site.md](us-admin-site.md); needs a US backend deploy).
 
 ### Still India-flavoured in the US
-- The shared requirement label (written by the server as `searchLabel` and previewed in the app and on the web) says
-  "BHK" and rupees. It needs a market argument in `@bhavano/types/requirementQuestions`.
-- The store link in `UpdateGate` (release phase).
+- Fixed 2026-11-28: requirement titles and the website's requirement screens follow the market (beds, dollars, US area
+  units and choices, no rupee budget bands), as do the app's two search hints. The market is an argument of the shared
+  functions in `@bhavano/types`, India's the default.
+- **Price limits are rupee figures in every market** (`priceBounds.ts`): the US refuses a home rent under $1,000, a
+  commercial rent under $5,000, storage under $200 a month and a sale under $100,000, for listings and budgets. Needs
+  dollar limits.
+- Saved-search screens on the website still say "BHK" and rupees.
 - Wording was checked by text search and a few screens in a browser preview, not screen by screen on a phone.
 
 ### 8. Release, stores and operations
 - Adding `expo-localization` is a native change: bump the app version (for example 1.7.0). `runtimeVersion` follows the
   version, so this must go out as a store build, not an over-the-air update to 1.6.0.
-- Store link in `UpdateGate`: choose the App Store country by **device region**, not app market.
+- Store link in `UpdateGate` (**done 2026-11-28**, `iosStoreUrl`): the US App Store on a phone set up for the US in a
+  build that offers the US, otherwise India's. A link must name a listing country. **On 2026-11-28 only India's App
+  Store listed the app** (not the US, UK or UAE), so make it available in the US before shipping a US build.
 - Each server has its own forced-update minimum (this corrects "stays shared" in the expansion plan): set both.
 - Stores: confirm US availability in App Store Connect and Play; US listing text and screenshots.
 - US push: set `EXPO_PUSH_ENABLED` and `EXPO_ACCESS_TOKEN` on the US server.

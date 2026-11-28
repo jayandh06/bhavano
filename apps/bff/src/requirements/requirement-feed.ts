@@ -8,6 +8,7 @@ import {
   sizeQuestionFor,
   type RequirementCriteria,
 } from '@bhavano/types/requirementQuestions';
+import { MARKET } from '../market/market-config';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -108,7 +109,7 @@ export function matchFeedFilters(
 
   const size = c.category ? sizeQuestionFor(c.category) : undefined;
   if (f.bedrooms?.length && size?.kind === 'bedrooms') {
-    if (!c.bedroomOptions?.length) unanswered.push('BHK not given');
+    if (!c.bedroomOptions?.length) unanswered.push(MARKET.id === 'us' ? 'Bedrooms not given' : 'BHK not given');
     else if (!intersects(c.bedroomOptions, f.bedrooms)) return no;
   }
   if (

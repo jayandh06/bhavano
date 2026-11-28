@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.REQUIREMENT_GAP_PHRASES = exports.REQUIREMENT_GAP_LABELS = exports.REQUIRED_REQUIREMENT_STEPS = exports.REQUIREMENT_TIMELINE_OPTIONS = exports.REQUIREMENT_BEDROOM_OPTIONS = exports.REQUIREMENT_ATTRIBUTE_QUESTIONS = exports.INTENT_TRANSACTION_CHOICES = exports.REQUIREMENT_CATEGORY_LABELS = exports.INTENT_CATEGORIES = exports.REQUIREMENT_INTENTS = exports.MAX_REQUIREMENT_AREAS = void 0;
+exports.requirementIntentsFor = requirementIntentsFor;
 exports.intentCategories = intentCategories;
 exports.intentOf = intentOf;
 exports.applyIntent = applyIntent;
@@ -9,6 +10,7 @@ exports.sizeQuestionFor = sizeQuestionFor;
 exports.amenityOptionsFor = amenityOptionsFor;
 exports.sanitizeRequirementAttributes = sanitizeRequirementAttributes;
 exports.formatCompactInr = formatCompactInr;
+exports.formatCompactMoney = formatCompactMoney;
 exports.budgetPresetsFor = budgetPresetsFor;
 exports.applicableSteps = applicableSteps;
 exports.answeredSteps = answeredSteps;
@@ -62,6 +64,13 @@ const US_INTENT_CATEGORIES = {
     buy: ["house", "apartment", "condo", "townhouse", "villa", "commercial"],
     rentLease: ["house", "apartment", "condo", "townhouse", "room", "villa", "commercial", "storage"],
 };
+/** The "Looking to ..." choices with at least one category in the market (the US has no PG, coworking, furniture or interiors). India gets
+ * `REQUIREMENT_INTENTS` itself. */
+function requirementIntentsFor(marketId = "in") {
+    if (marketId === "in")
+        return exports.REQUIREMENT_INTENTS;
+    return exports.REQUIREMENT_INTENTS.filter((intent) => intentCategories(intent.value, marketId).length > 0);
+}
 /** The categories an intent offers in a market. India (the default) gets `INTENT_CATEGORIES[intent]` itself, unchanged; the US gets its own list. */
 function intentCategories(intent, marketId = "in") {
     if (marketId === "in")
@@ -167,8 +176,14 @@ exports.REQUIREMENT_ATTRIBUTE_QUESTIONS = {
     plot: [question("plot", "facing", "Preferred facing", true)],
     commercial: [question("commercial", "purpose", "What is it for?", true), question("commercial", "furnished", "Furnishing", true)],
 };
-/** The size question, when a category has one: BHK for homes, a floor/land area range otherwise. */
-function sizeQuestionFor(category) {
+/** The size question, when a category has one: bedrooms for homes, a floor/land area range otherwise, in the market's area units. */
+function sizeQuestionFor(category, marketId = "in") {
+    const size = anySizeQuestionFor(category);
+    if (marketId === "in" || size?.kind !== "area")
+        return size;
+    return { ...size, units: size.units.filter((unit) => market_1.MARKETS[marketId].areaUnits.includes(unit)) };
+}
+function anySizeQuestionFor(category) {
     switch (category) {
         case "house":
         case "apartment":
@@ -251,6 +266,18 @@ function formatCompactInr(amount) {
         return `₹${trim(amount / 1_000)}k`;
     return `₹${Math.round(amount)}`;
 }
+/** A short amount for chips and labels in a market's money: "₹1.5L" in India, "$25k" or "$1.25M" in the US. */
+function formatCompactMoney(amount, marketId = "in") {
+    if (marketId === "in")
+        return formatCompactInr(amount);
+    // Cut to two decimals, never rounded up, as the Indian short forms are.
+    const trim = (n) => String(Math.floor(n * 100 + 1e-9) / 100);
+    if (amount >= 1_000_000)
+        return `${market_1.MARKETS[marketId].currencySymbol}${trim(amount / 1_000_000)}M`;
+    if (amount >= 1_000)
+        return `${market_1.MARKETS[marketId].currencySymbol}${trim(amount / 1_000)}k`;
+    return (0, market_1.formatMoney)(marketId, amount);
+}
 function presets(bounds) {
     const out = [{ label: `Under ${formatCompactInr(bounds[0])}`, max: bounds[0] }];
     for (let i = 0; i < bounds.length - 1; i++) {
@@ -266,14 +293,20 @@ function presets(bounds) {
 const HOME_SALE = [3_000_000, 6_000_000, 10_000_000, 20_000_000, 50_000_000];
 const HOME_RENT = [10_000, 20_000, 35_000, 60_000, 100_000];
 const HOME_LEASE = [500_000, 1_000_000, 2_000_000];
+/** The budget bands to offer in a market, and the unit amounts are in. India's bands are rupee amounts and no dollar ones have been chosen,
+ * so elsewhere there are none: the seeker types the numbers. */
+function budgetPresetsFor(category, transactionType, marketId = "in") {
+    const india = indiaBudgetPresetsFor(category, transactionType);
+    return marketId === "in" ? india : { unit: india.unit, presets: [] };
+}
 /**
- * Preset budget bands for a category and transaction, and the unit they are in.
+ * India's preset budget bands for a category and transaction, and the unit they are in.
  *
  * A starting guess for Tier-1/2 cities, kept here so both apps get the same bands and they can be
  * tuned in one place. Without a category the unit is still right (rent is monthly, a sale is a
  * total), so the bands fall back to the home ones.
  */
-function budgetPresetsFor(category, transactionType) {
+function indiaBudgetPresetsFor(category, transactionType) {
     const buying = transactionType === "buy" || transactionType === "sell";
     switch (category) {
         case "pg":
@@ -459,37 +492,38 @@ function optionLabel(category, key, value) {
     const q = exports.REQUIREMENT_ATTRIBUTE_QUESTIONS[category].find((x) => x.key === key);
     return q?.options.find((o) => o.value === value)?.label ?? value;
 }
-function transactionPhrase(transactionType) {
+function transactionPhrase(transactionType, marketId) {
     if (transactionType === "buy" || transactionType === "sell")
         return "to buy";
     if (transactionType === "rent")
         return "for rent";
     if (transactionType === "lease")
-        return "on lease";
+        return marketId === "us" ? "for lease" : "on lease";
     return "";
 }
-function budgetPhrase(c) {
+function budgetPhrase(c, marketId) {
+    const money = (amount) => formatCompactMoney(amount, marketId);
     if (c.minPrice === undefined && c.maxPrice === undefined)
         return undefined;
     const range = c.minPrice !== undefined && c.maxPrice !== undefined
-        ? `${formatCompactInr(c.minPrice)}–${formatCompactInr(c.maxPrice).slice(1)}`
+        ? `${money(c.minPrice)}–${money(c.maxPrice).slice(1)}`
         : c.maxPrice !== undefined
-            ? `up to ${formatCompactInr(c.maxPrice)}`
-            : `${formatCompactInr(c.minPrice)}+`;
+            ? `up to ${money(c.maxPrice)}`
+            : `${money(c.minPrice)}+`;
     const monthly = c.transactionType === "rent" || c.category === "pg";
     return monthly ? `${range}/month` : c.transactionType === "lease" ? `${range} lease` : range;
 }
-function sizePhrase(c) {
+function sizePhrase(c, marketId) {
     if (c.minAreaSqft === undefined && c.maxAreaSqft === undefined)
         return undefined;
     const unit = c.areaUnit ?? "sqft";
-    const show = (sqft) => (0, areaUnit_1.formatArea)(Math.round((0, areaUnit_1.convertArea)(sqft, "sqft", unit) * 100) / 100, unit);
+    const show = (sqft) => (0, areaUnit_1.formatArea)(Math.round((0, areaUnit_1.convertArea)(sqft, "sqft", unit) * 100) / 100, unit, marketId);
     if (c.minAreaSqft !== undefined && c.maxAreaSqft !== undefined)
         return `${show(c.minAreaSqft)} – ${show(c.maxAreaSqft)}`;
     return c.maxAreaSqft !== undefined ? `up to ${show(c.maxAreaSqft)}` : `from ${show(c.minAreaSqft)}`;
 }
-function subjectPhrase(c) {
-    const txn = transactionPhrase(c.transactionType);
+function subjectPhrase(c, marketId) {
+    const txn = transactionPhrase(c.transactionType, marketId);
     const attr = (key) => (c.category ? (c.attributes?.[key] ?? []).map((v) => optionLabel(c.category, key, v)) : []);
     switch (c.category) {
         case undefined:
@@ -509,7 +543,7 @@ function subjectPhrase(c) {
         }
         default: {
             const bhk = c.bedroomOptions?.length
-                ? `${joinOr([...c.bedroomOptions].sort((a, b) => a - b).map(bedrooms_1.bedroomLabel))} BHK`
+                ? `${joinOr([...c.bedroomOptions].sort((a, b) => a - b).map(bedrooms_1.bedroomLabel))} ${(0, bedrooms_1.bedWord)(marketId)}`
                 : "";
             const furnished = joinOr(attr("furnished").map((f) => f.toLowerCase()));
             const noun = c.category === "commercial"
@@ -539,22 +573,22 @@ function subjectPhrase(c) {
  * budget-stripped `c` instead (as this used to) made every card's budget look unspecified to
  * `missingForLead`, regardless of whether one was actually set.
  */
-function formatRequirementLabel(c, names, omit) {
+function formatRequirementLabel(c, names, omit, marketId = "in") {
     const where = names.areaNames?.length
         ? ` in ${joinOr(names.areaNames)}${names.cityName ? `, ${names.cityName}` : ""}`
         : names.cityName
             ? ` in ${names.cityName}`
             : "";
     const extras = [
-        omit?.budget ? undefined : budgetPhrase(c),
-        omit?.size ? undefined : sizePhrase(c),
+        omit?.budget ? undefined : budgetPhrase(c, marketId),
+        omit?.size ? undefined : sizePhrase(c, marketId),
         !omit?.amenities && c.category && c.attributes?.amenities?.length
             ? c.attributes.amenities.map((a) => amenityOptionsFor(c.category).find((o) => o.value === a)?.label.toLowerCase() ?? a).join(", ")
             : undefined,
     ].filter(Boolean);
     const missing = missingForLead(c);
     const gap = missing.length ? ` — ${joinAnd(missing.map((m) => exports.REQUIREMENT_GAP_LABELS[m]))} not specified` : "";
-    const label = `${subjectPhrase(c)}${where}${extras.length ? ` · ${extras.join(" · ")}` : ""}${gap}`;
+    const label = `${subjectPhrase(c, marketId)}${where}${extras.length ? ` · ${extras.join(" · ")}` : ""}${gap}`;
     return label.length > 200 ? `${label.slice(0, 199)}…` : label;
 }
 /**

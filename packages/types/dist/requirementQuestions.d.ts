@@ -47,6 +47,9 @@ export declare const REQUIREMENT_INTENTS: {
  * Coworking is its own intent (not folded into rentLease) to mirror HOME_TABS, which promoted it
  * to its own tab for the same "nothing narrower to offer, deserves its own entry point" reason. */
 export declare const INTENT_CATEGORIES: Record<RequirementIntent, ListingCategory[]>;
+/** The "Looking to ..." choices with at least one category in the market (the US has no PG, coworking, furniture or interiors). India gets
+ * `REQUIREMENT_INTENTS` itself. */
+export declare function requirementIntentsFor(marketId?: MarketId): typeof REQUIREMENT_INTENTS;
 /** The categories an intent offers in a market. India (the default) gets `INTENT_CATEGORIES[intent]` itself, unchanged; the US gets its own list. */
 export declare function intentCategories(intent: RequirementIntent, marketId?: MarketId): ListingCategory[];
 export declare const REQUIREMENT_CATEGORY_LABELS: Record<ListingCategory, string>;
@@ -85,8 +88,8 @@ export type RequirementSizeQuestion = {
     label: string;
     units: AreaUnit[];
 };
-/** The size question, when a category has one: BHK for homes, a floor/land area range otherwise. */
-export declare function sizeQuestionFor(category: ListingCategory): RequirementSizeQuestion | undefined;
+/** The size question, when a category has one: bedrooms for homes, a floor/land area range otherwise, in the market's area units. */
+export declare function sizeQuestionFor(category: ListingCategory, marketId?: MarketId): RequirementSizeQuestion | undefined;
 export declare const REQUIREMENT_BEDROOM_OPTIONS: number[];
 /** The amenities a category declares, as a must-haves question. Empty for categories with none. */
 export declare function amenityOptionsFor(category: ListingCategory): FieldOption[];
@@ -108,14 +111,11 @@ export interface BudgetPreset {
 }
 /** "₹25k", "₹1.5L", "₹2Cr" — compact, for chips and labels where "₹25 Thousand" is too long. */
 export declare function formatCompactInr(amount: number): string;
-/**
- * Preset budget bands for a category and transaction, and the unit they are in.
- *
- * A starting guess for Tier-1/2 cities, kept here so both apps get the same bands and they can be
- * tuned in one place. Without a category the unit is still right (rent is monthly, a sale is a
- * total), so the bands fall back to the home ones.
- */
-export declare function budgetPresetsFor(category: ListingCategory | undefined, transactionType: TransactionType | undefined): {
+/** A short amount for chips and labels in a market's money: "₹1.5L" in India, "$25k" or "$1.25M" in the US. */
+export declare function formatCompactMoney(amount: number, marketId?: MarketId): string;
+/** The budget bands to offer in a market, and the unit amounts are in. India's bands are rupee amounts and no dollar ones have been chosen,
+ * so elsewhere there are none: the seeker types the numbers. */
+export declare function budgetPresetsFor(category: ListingCategory | undefined, transactionType: TransactionType | undefined, marketId?: MarketId): {
     unit: string;
     presets: BudgetPreset[];
 };
@@ -195,7 +195,7 @@ export declare function formatRequirementLabel(c: RequirementCriteria, names: {
     budget?: boolean;
     size?: boolean;
     amenities?: boolean;
-}): string;
+}, marketId?: MarketId): string;
 export interface BrowseFiltersForRequirement {
     homeCategory?: HomeCategoryFilter;
     propertyType?: PropertyTypeFilter;

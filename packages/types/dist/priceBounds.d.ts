@@ -1,5 +1,6 @@
 import type { ListingCategory, TransactionType } from "./index";
 import { type AreaUnit } from "./areaUnit";
+import { type MarketId } from "./market";
 export interface PriceBounds {
     min: number;
     max: number;
@@ -35,4 +36,4 @@ export declare function listingPriceIssue(category: ListingCategory, transaction
  * budget at all — this used to be a floor-only check for exactly that reason (a ceiling didn't
  * matter when budget was optional either way), until budget became required.
  */
-export declare function requirementBudgetIssue(category: ListingCategory, transactionType: TransactionType, value: number): string | null;
+export declare function requirementBudgetIssue(category: ListingCategory, transactionType: TransactionType, value: number, marketId?: MarketId): string | null;

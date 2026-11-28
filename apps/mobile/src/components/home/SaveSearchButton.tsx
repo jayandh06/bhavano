@@ -5,6 +5,7 @@ import type { CreateSavedSearchInput } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { BffError, createSavedSearch } from "../../lib/bffClient";
+import { useMarket } from "../../lib/market";
 
 /**
  * "Save this search" in the home screen's filter row — mobile counterpart to the website's
@@ -14,6 +15,7 @@ import { BffError, createSavedSearch } from "../../lib/bffClient";
  */
 export function SaveSearchButton({ criteria }: { criteria: Omit<CreateSavedSearchInput, "name"> }) {
   const { colors } = useAppTheme();
+  const market = useMarket();
   const router = useRouter();
   const { accessToken, requireLogin } = useHomeSheets();
   const [open, setOpen] = useState(false);
@@ -102,7 +104,7 @@ export function SaveSearchButton({ criteria }: { criteria: Omit<CreateSavedSearc
                   value={name}
                   onChangeText={setName}
                   onSubmitEditing={() => void onSave()}
-                  placeholder="e.g. 2BHK in Koramangala"
+                  placeholder={market.id === "us" ? "e.g. 2 bed in Austin" : "e.g. 2BHK in Koramangala"}
                   placeholderTextColor={colors.muted}
                   autoFocus
                   maxLength={80}
